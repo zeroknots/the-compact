@@ -7,3 +7,6 @@
 [submodule "lib/soledge"]
 	path = lib/soledge
 	url = https://github.com/vectorized/soledge
+[submodule "lib/permit2"]
+	path = lib/permit2
+	url = https://github.com/Uniswap/permit2
