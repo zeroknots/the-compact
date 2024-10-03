@@ -8,7 +8,7 @@ struct Allocation {
     address owner; // The account to source the allocation from.
     uint256 startTime; // The time at which the allocation can be released.
     uint256 endTime; // The time at which the allocation expires.
-    bytes32 salt; // A parameter to promote uniqueness and irreversibility.
+    uint256 nonce; // A parameter to enforce replay protection, scoped to allocator.
     uint256 id; // The token ID of the ERC6909 token to allocate.
     uint256 amount; // The amount of ERC6909 tokens to allocate.
     address allocatee; // The allocation recipient (no address: any recipient)
@@ -16,8 +16,8 @@ struct Allocation {
     bytes oracleFixedData; // The fixed data payload provided to the oracle.
 }
 
-// keccak256("Allocation(address owner,uint256 startTime,uint256 endTime,bytes32 salt,uint256 id,uint256 amount,address allocatee,address oracle,bytes oracleFixedData)")
-bytes32 constant ALLOCATION_TYPEHASH = 0xf181a5004b8ddd6d6d06e2df399d7e5f9edf308da0c9ff114b3eca3cbe232607;
+// keccak256("Allocation(address owner,uint256 startTime,uint256 endTime,uint256 nonce,uint256 id,uint256 amount,address allocatee,address oracle,bytes oracleFixedData)")
+bytes32 constant ALLOCATION_TYPEHASH = 0x261660044e0551d6569dddfcbddcc3428f495c7f4808a46fc85661a59e23e781;
 
 // Message signed by the allocator that confirms that a given allocation does
 // not result in an over-allocated state for the token owner, and that modifies
@@ -56,7 +56,7 @@ struct DelegatedWithdrawal {
     address owner; // The account to source the withdrawal from.
     uint256 startTime; // The time at which the withdrawal can be released.
     uint256 endTime; // The time at which the withdrawal expires.
-    uint256 nonce; // A parameter to enforce replay protection, scoped to token owner.
+    uint256 nonce; // A parameter to enforce replay protection, scoped to allocator.
     uint256 id; // The token ID of the ERC6909 token to use for the withdrawal.
     uint256 amount; // The amount of underlying tokens to withdraw.
     address recipient; // The withdrawal recipient.
@@ -82,25 +82,25 @@ bytes32 constant BYPASS_AUTHORIZATION_TYPEHASH = 0x4d94159be1b1adcd02090bf6eb3b3
 // not result in an over-allocated state for the token owner, and that enables
 // the owner to directly transfer their tokens to an arbitrary recipient.
 struct TransferAuthorization {
-    address owner;
-    uint256 expiration; // The time at which the withdrawal expires.
-    uint256 nonce;
-    uint256 id;
-    uint256 amount;
+    address owner; // The token owner to enable the transfer for.
+    uint256 expiration; // The time at which the transfer expires.
+    uint256 nonce; // A parameter to enforce replay protection, scoped to allocator.
+    uint256 id; // The token ID of the ERC6909 tokens to transfer.
+    uint256 amount; // The amount of ERC6909 tokens to transfer.
 }
 
 // keccak256("TransferAuthorization(address owner,uint256 expiration,uint256 nonce,uint256 id,uint256 amount)")
 bytes32 constant TRANSFER_AUTHORIZATION_TYPEHASH = 0x133283649d13b9fb62bd3e61ca2c22c2ffa47bbc9c1e45a1b4907081a27adeb1;
 
 struct DelegatedTransfer {
-    address owner;
-    uint256 startTime;
-    uint256 endTime;
-    uint256 nonce;
-    uint256 id;
-    uint256 amount;
-    address recipient;
-    uint256 pledge;
+    address owner; // The account to perform the transfer from.
+    uint256 startTime; // The time at which the transfer can be performed.
+    uint256 endTime; // The time at which the transfer expires.
+    uint256 nonce; // A parameter to enforce replay protection, scoped to allocator.
+    uint256 id; // The token ID of the ERC6909 tokens to transfer.
+    uint256 amount; // The amount of ERC6909 tokens to transfer.
+    address recipient; // The recipient of the transfer.
+    uint256 pledge; // The maximum payment to a keeper that initiates the transfer.
 }
 
 // keccak256("DelegatedTransfer(address owner,uint256 startTime,uint256 endTime,uint256 nonce,uint256 id,uint256 amount,address recipient,uint256 pledge)")
