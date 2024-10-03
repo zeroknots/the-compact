@@ -17,7 +17,8 @@ struct Allocation {
 }
 
 // keccak256("Allocation(address owner,uint256 startTime,uint256 endTime,uint256 nonce,uint256 id,uint256 amount,address claimant,address oracle,bytes oracleFixedData)")
-bytes32 constant ALLOCATION_TYPEHASH = 0x332b96efcdc96931e9c671e47db4a873af3efa03557c9c2b93f4eb5f85587c15;
+bytes32 constant ALLOCATION_TYPEHASH =
+    0x332b96efcdc96931e9c671e47db4a873af3efa03557c9c2b93f4eb5f85587c15;
 
 // Message signed by the allocator that confirms that a given allocation does
 // not result in an over-allocated state for the token owner, and that modifies
@@ -31,7 +32,8 @@ struct AllocationAuthorization {
 }
 
 // keccak256("AllocationAuthorization(bytes32 allocationHash,uint256 startTime,uint256 endTime,address claimant,uint256 amountReduction)")
-bytes32 constant ALLOCATION_AUTHORIZATION_TYPEHASH = 0x9d7957a907b00fac8de3a22c078f7f0409c40a085d5c51f7a371cf3291563692;
+bytes32 constant ALLOCATION_AUTHORIZATION_TYPEHASH =
+    0x9d7957a907b00fac8de3a22c078f7f0409c40a085d5c51f7a371cf3291563692;
 
 // Message signed by the allocator that confirms that a given withdrawal does
 // not result in an over-allocated state for the token owner, and that enables
@@ -45,7 +47,8 @@ struct WithdrawalAuthorization {
 }
 
 // keccak256("WithdrawalAuthorization(address owner,uint256 expiration,uint256 nonce,uint256 id,uint256 amount)")
-bytes32 constant WITHDRAWAL_AUTHORIZATION_TYPEHASH = 0xe8ddf15cb7ca4c43508ca754003eb19691666659efea41674f94eef9311cea83;
+bytes32 constant WITHDRAWAL_AUTHORIZATION_TYPEHASH =
+    0xe8ddf15cb7ca4c43508ca754003eb19691666659efea41674f94eef9311cea83;
 
 // Message signed by both the token owner and the allocator that expresses the
 // intention to perform a withdrawal to a specific recipient and confirms that a
@@ -64,7 +67,8 @@ struct DelegatedWithdrawal {
 }
 
 // keccak256("DelegatedWithdrawal(address owner,uint256 startTime,uint256 endTime,uint256 nonce,uint256 id,uint256 amount,address recipient,uint256 pledge)")
-bytes32 constant DELEGATED_WITHDRAWAL_TYPEHASH = 0x4500e9eeb2d9479ee76ef8d1eaa3f2a58acd5a783fdcc66ac7d6beab87147770;
+bytes32 constant DELEGATED_WITHDRAWAL_TYPEHASH =
+    0x4500e9eeb2d9479ee76ef8d1eaa3f2a58acd5a783fdcc66ac7d6beab87147770;
 
 // Message signed by the allocator that confirms that a given transfer does
 // not result in an over-allocated state for the token owner, and that enables
@@ -78,7 +82,8 @@ struct TransferAuthorization {
 }
 
 // keccak256("TransferAuthorization(address owner,uint256 expiration,uint256 nonce,uint256 id,uint256 amount)")
-bytes32 constant TRANSFER_AUTHORIZATION_TYPEHASH = 0x133283649d13b9fb62bd3e61ca2c22c2ffa47bbc9c1e45a1b4907081a27adeb1;
+bytes32 constant TRANSFER_AUTHORIZATION_TYPEHASH =
+    0x133283649d13b9fb62bd3e61ca2c22c2ffa47bbc9c1e45a1b4907081a27adeb1;
 
 struct DelegatedTransfer {
     address owner; // The account to perform the transfer from.
@@ -92,4 +97,5 @@ struct DelegatedTransfer {
 }
 
 // keccak256("DelegatedTransfer(address owner,uint256 startTime,uint256 endTime,uint256 nonce,uint256 id,uint256 amount,address recipient,uint256 pledge)")
-bytes32 constant DELEGATED_TRANSFER_TYPEHASH = 0x02a1a148b3d717493ad30699c0dfdc6e576338dc5c5c3de643fae9a53f20a46a;
+bytes32 constant DELEGATED_TRANSFER_TYPEHASH =
+    0x02a1a148b3d717493ad30699c0dfdc6e576338dc5c5c3de643fae9a53f20a46a;

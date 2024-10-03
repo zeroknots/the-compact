@@ -7,6 +7,8 @@ bytecode_hash = 'none'
 src = "src"
 out = "out"
 libs = ["lib"]
-line_length = 80
+
+[fmt]
+line_length = 100
 tab_width = 4
 bracket_spacing = true

@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.13;
 
-import {Test, console} from "forge-std/Test.sol";
-import {TheCompact} from "../src/TheCompact.sol";
-import {MockERC20} from "../lib/solady/test/utils/mocks/MockERC20.sol";
+import { Test, console } from "forge-std/Test.sol";
+import { TheCompact } from "../src/TheCompact.sol";
+import { MockERC20 } from "../lib/solady/test/utils/mocks/MockERC20.sol";
 
 interface EIP712 {
     function DOMAIN_SEPARATOR() external view returns (bytes32);
@@ -51,27 +51,73 @@ contract TheCompactTest is Test {
         vm.stopPrank();
     }
 
+    function test_name() public view {
+        string memory name = theCompact.name();
+        assertEq(keccak256(bytes(name)), keccak256(bytes("The Compact")));
+    }
+
     function test_depositETHAndURI() public {
-        vm.startPrank(swapper);
-        uint256 id = theCompact.deposit{value: 1e18}(address(this), 120, address(this));
-        console.log(theCompact.tokenURI(id));
-        vm.stopPrank();
+        uint256 initialRegisteredAllocators = theCompact.getTotalRegisteredAllocators();
+        address recipient = 0x1111111111111111111111111111111111111111;
+        address allocator = 0x2222222222222222222222222222222222222222;
+        uint48 resetPeriod = 120;
+        uint256 amount = 1e18;
+
+        vm.prank(swapper);
+        uint256 id = theCompact.deposit{ value: amount }(allocator, resetPeriod, recipient);
+
+        assertEq(initialRegisteredAllocators + 1, theCompact.getTotalRegisteredAllocators());
+        (address derivedToken, address derivedAllocator, uint256 derivedResetPeriod) =
+            theCompact.getLockDetails(id);
+        assertEq(derivedToken, address(0));
+        assertEq(derivedAllocator, allocator);
+        assertEq(derivedResetPeriod, uint256(resetPeriod));
+        uint256 allocatorIndex = theCompact.getAllocatorIndex(allocator);
+        assertEq(
+            id,
+            abi.decode(abi.encodePacked(uint48(allocatorIndex), resetPeriod, address(0)), (uint256))
+        );
+        assertEq(address(theCompact).balance, amount);
+        assertEq(theCompact.balanceOf(recipient, id), amount);
+        assert(bytes(theCompact.tokenURI(id)).length > 0);
     }
 
     function test_depositERC20AndURI() public {
-        vm.startPrank(swapper);
-        uint256 id = theCompact.deposit(address(token), address(this), 120, 1e18, address(this));
-        console.log(theCompact.tokenURI(id));
-        vm.stopPrank();
+        uint256 initialRegisteredAllocators = theCompact.getTotalRegisteredAllocators();
+        address recipient = 0x1111111111111111111111111111111111111111;
+        address allocator = 0x2222222222222222222222222222222222222222;
+        uint48 resetPeriod = 120;
+        uint256 amount = 1e18;
+
+        vm.prank(swapper);
+        uint256 id = theCompact.deposit(address(token), allocator, resetPeriod, amount, recipient);
+
+        assertEq(initialRegisteredAllocators + 1, theCompact.getTotalRegisteredAllocators());
+        (address derivedToken, address derivedAllocator, uint256 derivedResetPeriod) =
+            theCompact.getLockDetails(id);
+        assertEq(derivedToken, address(token));
+        assertEq(derivedAllocator, allocator);
+        assertEq(derivedResetPeriod, uint256(resetPeriod));
+        uint256 allocatorIndex = theCompact.getAllocatorIndex(allocator);
+        assertEq(
+            id,
+            abi.decode(
+                abi.encodePacked(uint48(allocatorIndex), resetPeriod, address(token)), (uint256)
+            )
+        );
+        assertEq(token.balanceOf(address(theCompact)), amount);
+        assertEq(theCompact.balanceOf(recipient, id), amount);
+        assert(bytes(theCompact.tokenURI(id)).length > 0);
     }
 
     function test_depositERC20ViaPermit2AndURI() public {
-        address allocator = address(this);
-        address recipient = address(this);
+        uint256 initialRegisteredAllocators = theCompact.getTotalRegisteredAllocators();
+        address recipient = 0x1111111111111111111111111111111111111111;
+        address allocator = 0x2222222222222222222222222222222222222222;
+        uint48 resetPeriod = 120;
+        uint256 amount = 1e18;
         uint256 nonce = 0;
         uint256 deadline = block.timestamp + 1000;
-        uint256 amount = 1e18;
-        uint48 resetPeriod = 120;
 
         bytes32 domainSeparator = keccak256(
             abi.encode(
@@ -95,7 +141,9 @@ contract TheCompactTest is Test {
                         ),
                         keccak256(
                             abi.encode(
-                                keccak256("TokenPermissions(address token,uint256 amount)"), address(token), amount
+                                keccak256("TokenPermissions(address token,uint256 amount)"),
+                                address(token),
+                                amount
                             )
                         ),
                         address(theCompact), // spender
@@ -121,9 +169,32 @@ contract TheCompactTest is Test {
         bytes memory signature = abi.encodePacked(r, vs);
 
         uint256 id = theCompact.deposit(
-            swapper, address(token), allocator, resetPeriod, amount, recipient, nonce, deadline, signature
+            swapper,
+            address(token),
+            allocator,
+            resetPeriod,
+            amount,
+            recipient,
+            nonce,
+            deadline,
+            signature
         );
 
-        console.log(theCompact.tokenURI(id));
+        assertEq(initialRegisteredAllocators + 1, theCompact.getTotalRegisteredAllocators());
+        (address derivedToken, address derivedAllocator, uint256 derivedResetPeriod) =
+            theCompact.getLockDetails(id);
+        assertEq(derivedToken, address(token));
+        assertEq(derivedAllocator, allocator);
+        assertEq(derivedResetPeriod, uint256(resetPeriod));
+        uint256 allocatorIndex = theCompact.getAllocatorIndex(allocator);
+        assertEq(
+            id,
+            abi.decode(
+                abi.encodePacked(uint48(allocatorIndex), resetPeriod, address(token)), (uint256)
+            )
+        );
+        assertEq(token.balanceOf(address(theCompact)), amount);
+        assertEq(theCompact.balanceOf(recipient, id), amount);
+        assert(bytes(theCompact.tokenURI(id)).length > 0);
     }
 }

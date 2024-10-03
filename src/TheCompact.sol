@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.27;
 
-import {Lock} from "./types/Lock.sol";
-import {IdLib} from "./lib/IdLib.sol";
-import {ConsumerLib} from "./lib/ConsumerLib.sol";
-import {ERC6909} from "solady/tokens/ERC6909.sol";
-import {FixedPointMathLib} from "solady/utils/FixedPointMathLib.sol";
-import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
-import {SignatureCheckerLib} from "solady/utils/SignatureCheckerLib.sol";
-import {IPermit2} from "permit2/src/interfaces/IPermit2.sol";
-import {ISignatureTransfer} from "permit2/src/interfaces/ISignatureTransfer.sol";
+import { Lock } from "./types/Lock.sol";
+import { IdLib } from "./lib/IdLib.sol";
+import { ConsumerLib } from "./lib/ConsumerLib.sol";
+import { ERC6909 } from "solady/tokens/ERC6909.sol";
+import { FixedPointMathLib } from "solady/utils/FixedPointMathLib.sol";
+import { SafeTransferLib } from "solady/utils/SafeTransferLib.sol";
+import { SignatureCheckerLib } from "solady/utils/SignatureCheckerLib.sol";
+import { IPermit2 } from "permit2/src/interfaces/IPermit2.sol";
+import { ISignatureTransfer } from "permit2/src/interfaces/ISignatureTransfer.sol";
 import {
     Allocation,
     AllocationAuthorization,
@@ -20,8 +20,8 @@ import {
     WITHDRAWAL_AUTHORIZATION_TYPEHASH,
     DELEGATED_WITHDRAWAL_TYPEHASH
 } from "./types/EIP712Types.sol";
-import {IOracle} from "./interfaces/IOracle.sol";
-import {IAllocator} from "./interfaces/IAllocator.sol";
+import { IOracle } from "./interfaces/IOracle.sol";
+import { IAllocator } from "./interfaces/IAllocator.sol";
 
 contract TheCompact is ERC6909 {
     using IdLib for uint256;
@@ -32,7 +32,12 @@ contract TheCompact is ERC6909 {
     using SignatureCheckerLib for address;
     using FixedPointMathLib for uint256;
 
-    event Deposit(address indexed depositor, address indexed recipient, uint256 indexed id, uint256 depositedAmount);
+    event Deposit(
+        address indexed depositor,
+        address indexed recipient,
+        uint256 indexed id,
+        uint256 depositedAmount
+    );
     event Claim(
         address indexed provider,
         address indexed allocator,
@@ -40,8 +45,15 @@ contract TheCompact is ERC6909 {
         bytes32 allocationHash,
         uint256 claimAmount
     );
-    event Withdrawal(address indexed account, address indexed recipient, uint256 indexed id, uint256 withdrawnAmount);
-    event ForcedWithdrawalEnabled(address indexed account, uint256 indexed id, uint256 withdrawableAt);
+    event Withdrawal(
+        address indexed account,
+        address indexed recipient,
+        uint256 indexed id,
+        uint256 withdrawnAmount
+    );
+    event ForcedWithdrawalEnabled(
+        address indexed account, uint256 indexed id, uint256 withdrawableAt
+    );
     event ForcedWithdrawalDisabled(address indexed account, uint256 indexed id);
 
     error InvalidToken(address token);
@@ -50,7 +62,9 @@ contract TheCompact is ERC6909 {
     error InvalidSignature();
     error PrematureWithdrawal(uint256 id);
     error ForcedWithdrawalAlreadyDisabled(address account, uint256 id);
-    error InvalidClaimant(address providerClaimant, address allocatorClaimant, address oracleClaimant);
+    error InvalidClaimant(
+        address providerClaimant, address allocatorClaimant, address oracleClaimant
+    );
     error InvalidAmountReduction(uint256 amount, uint256 amountReduction);
     error UnallocatedTransfer(address from, address to, uint256 id, uint256 amount);
 
@@ -67,17 +81,38 @@ contract TheCompact is ERC6909 {
         0x1b3d7edb2e9c0b0e7c525b20aaaef0f5940d2ed71663c7d39266ecafac728859;
 
     /// @dev `keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)")`.
-    bytes32 private constant _DOMAIN_TYPEHASH = 0x8b73c3c69bb8fe3d512ecc4cf759cc79239f7b179b0ffacaa9a75d522b39400f;
+    bytes32 private constant _DOMAIN_TYPEHASH =
+        0x8b73c3c69bb8fe3d512ecc4cf759cc79239f7b179b0ffacaa9a75d522b39400f;
+
+    /// @dev `keccak256(bytes("The Compact"))`.
+    bytes32 private constant _NAME_HASH =
+        0x5e6f7b4e1ac3d625bac418bc955510b3e054cb6cc23cc27885107f080180b292;
 
     /// @dev `keccak256("1")`.
-    bytes32 private constant _VERSION_HASH = 0xc89efdaa54c0f20c7adf612882df0950f5a951637e0307cdcb4c672f298b8bc6;
+    bytes32 private constant _VERSION_HASH =
+        0xc89efdaa54c0f20c7adf612882df0950f5a951637e0307cdcb4c672f298b8bc6;
 
-    // Rage-quit functionality
+    // Rage-quit functionality (TODO: optimize storage layout)
     mapping(address => mapping(uint256 => uint256)) public cutoffTime;
 
+    uint256 private immutable _INITIAL_CHAIN_ID;
+    bytes32 private immutable _INITIAL_DOMAIN_SEPARATOR;
+
+    constructor() {
+        _INITIAL_CHAIN_ID = block.chainid;
+        _INITIAL_DOMAIN_SEPARATOR = keccak256(
+            abi.encode(_DOMAIN_TYPEHASH, _NAME_HASH, _VERSION_HASH, block.chainid, address(this))
+        );
+    }
+
     /// @dev Returns the name for the contract.
-    function name() public pure returns (string memory) {
-        return "The Compact";
+    function name() external pure returns (string memory) {
+        // Return the name of the contract.
+        assembly ("memory-safe") {
+            mstore(0x20, 0x20)
+            mstore(0x4b, 0x0b54686520436f6d70616374)
+            return(0x20, 0x60)
+        }
     }
 
     /// @dev Returns the symbol for token `id`.
@@ -95,17 +130,24 @@ contract TheCompact is ERC6909 {
         return id.toURI();
     }
 
-    function deposit(address allocator, uint48 resetPeriod, address recipient) external payable returns (uint256 id) {
+    function deposit(address allocator, uint48 resetPeriod, address recipient)
+        external
+        payable
+        returns (uint256 id)
+    {
         Lock memory lock = address(0).toLock(allocator, resetPeriod);
         id = lock.toId();
 
         _deposit(msg.sender, recipient, id, msg.value);
     }
 
-    function deposit(address token, address allocator, uint48 resetPeriod, uint256 amount, address recipient)
-        external
-        returns (uint256 id)
-    {
+    function deposit(
+        address token,
+        address allocator,
+        uint48 resetPeriod,
+        uint256 amount,
+        address recipient
+    ) external returns (uint256 id) {
         if (token == address(0)) {
             revert InvalidToken(token);
         }
@@ -137,16 +179,17 @@ contract TheCompact is ERC6909 {
         id = lock.toId();
 
         ISignatureTransfer.SignatureTransferDetails memory signatureTransferDetails =
-            ISignatureTransfer.SignatureTransferDetails({to: address(this), requestedAmount: amount});
+        ISignatureTransfer.SignatureTransferDetails({ to: address(this), requestedAmount: amount });
 
         ISignatureTransfer.TokenPermissions memory tokenPermissions =
-            ISignatureTransfer.TokenPermissions({token: token, amount: amount});
+            ISignatureTransfer.TokenPermissions({ token: token, amount: amount });
 
-        ISignatureTransfer.PermitTransferFrom memory permitTransferFrom =
-            ISignatureTransfer.PermitTransferFrom({permitted: tokenPermissions, nonce: nonce, deadline: deadline});
+        ISignatureTransfer.PermitTransferFrom memory permitTransferFrom = ISignatureTransfer
+            .PermitTransferFrom({ permitted: tokenPermissions, nonce: nonce, deadline: deadline });
 
-        bytes32 witness =
-            keccak256(abi.encode(_PERMIT2_WITNESS_FRAGMENT_HASH, depositor, allocator, resetPeriod, recipient));
+        bytes32 witness = keccak256(
+            abi.encode(_PERMIT2_WITNESS_FRAGMENT_HASH, depositor, allocator, resetPeriod, recipient)
+        );
 
         _PERMIT2.permitWitnessTransferFrom(
             permitTransferFrom,
@@ -167,8 +210,13 @@ contract TheCompact is ERC6909 {
         bytes calldata ownerSignature,
         bytes calldata allocatorSignature
     ) external returns (address claimant, uint256 claimAmount) {
-        (claimant, claimAmount) =
-            _processClaim(allocation, allocationAuthorization, oracleVariableData, ownerSignature, allocatorSignature);
+        (claimant, claimAmount) = _processClaim(
+            allocation,
+            allocationAuthorization,
+            oracleVariableData,
+            ownerSignature,
+            allocatorSignature
+        );
 
         _release(allocation.owner, claimant, allocation.id, claimAmount);
     }
@@ -180,8 +228,13 @@ contract TheCompact is ERC6909 {
         bytes calldata ownerSignature,
         bytes calldata allocatorSignature
     ) external returns (address claimant, uint256 claimAmount) {
-        (claimant, claimAmount) =
-            _processClaim(allocation, allocationAuthorization, oracleVariableData, ownerSignature, allocatorSignature);
+        (claimant, claimAmount) = _processClaim(
+            allocation,
+            allocationAuthorization,
+            oracleVariableData,
+            ownerSignature,
+            allocatorSignature
+        );
 
         _withdraw(allocation.owner, claimant, allocation.id, claimAmount);
     }
@@ -197,7 +250,9 @@ contract TheCompact is ERC6909 {
         _assertValidTime(allocationAuthorization.startTime, allocationAuthorization.endTime);
 
         if (allocationAuthorization.amountReduction >= allocation.amount) {
-            revert InvalidAmountReduction(allocation.amount, allocationAuthorization.amountReduction);
+            revert InvalidAmountReduction(
+                allocation.amount, allocationAuthorization.amountReduction
+            );
         }
 
         address allocator = allocation.id.toAllocator();
@@ -207,13 +262,16 @@ contract TheCompact is ERC6909 {
         bytes32 allocationAuthorizationMessageHash =
             _getAllocationAuthorizationMessageHash(allocationAuthorization, allocationMessageHash);
         _assertValidSignature(allocationAuthorizationMessageHash, allocatorSignature, allocator);
-        (address oracleClaimant, uint256 oracleClaimAmount) =
-            IOracle(allocation.oracle).attest(allocationMessageHash, allocation.oracleFixedData, oracleVariableData);
+        (address oracleClaimant, uint256 oracleClaimAmount) = IOracle(allocation.oracle).attest(
+            allocationMessageHash, allocation.oracleFixedData, oracleVariableData
+        );
 
-        claimant = _deriveClaimant(allocation.claimant, allocationAuthorization.claimant, oracleClaimant);
+        claimant =
+            _deriveClaimant(allocation.claimant, allocationAuthorization.claimant, oracleClaimant);
 
         unchecked {
-            claimAmount = oracleClaimAmount.min(allocation.amount - allocationAuthorization.amountReduction);
+            claimAmount =
+                oracleClaimAmount.min(allocation.amount - allocationAuthorization.amountReduction);
         }
 
         emit Claim(allocation.owner, allocator, claimant, allocationMessageHash, claimAmount);
@@ -221,7 +279,9 @@ contract TheCompact is ERC6909 {
 
     function enableForcedWithdrawal(uint256 id) external returns (uint256 withdrawableAt) {
         withdrawableAt = block.timestamp + id.toResetPeriod();
+
         cutoffTime[msg.sender][id] = withdrawableAt;
+
         emit ForcedWithdrawalEnabled(msg.sender, id, withdrawableAt);
     }
 
@@ -229,12 +289,18 @@ contract TheCompact is ERC6909 {
         if (cutoffTime[msg.sender][id] == 0) {
             revert ForcedWithdrawalAlreadyDisabled(msg.sender, id);
         }
+
         delete cutoffTime[msg.sender][id];
+
         emit ForcedWithdrawalDisabled(msg.sender, id);
     }
 
-    function forcedWithdrawal(uint256 id, address recipient) external returns (uint256 withdrawnAmount) {
+    function forcedWithdrawal(uint256 id, address recipient)
+        external
+        returns (uint256 withdrawnAmount)
+    {
         uint256 withdrawableAt = cutoffTime[msg.sender][id];
+
         if (withdrawableAt == 0 || withdrawableAt > block.timestamp) {
             revert PrematureWithdrawal(id);
         }
@@ -253,10 +319,13 @@ contract TheCompact is ERC6909 {
         bytes memory allocatorSignature
     ) external returns (bool) {
         _assertValidTime(expiration);
+
         address allocator = id.toAllocator();
         nonce.consumeNonce(allocator);
+
         bytes32 messageHash = _getAuthorizedTransferMessageHash(expiration, nonce, id, amount);
         _assertValidSignature(messageHash, allocatorSignature, allocator);
+
         return _release(msg.sender, recipient, id, amount);
     }
 
@@ -273,13 +342,18 @@ contract TheCompact is ERC6909 {
         bytes memory allocatorSignature
     ) external returns (bool) {
         _assertValidTime(startTime, endTime);
+
         address allocator = id.toAllocator();
         nonce.consumeNonce(allocator);
-        bytes32 messageHash =
-            _getDelegatedTransferMessageHash(owner, startTime, endTime, nonce, id, amount, recipient, pledge);
+
+        bytes32 messageHash = _getDelegatedTransferMessageHash(
+            owner, startTime, endTime, nonce, id, amount, recipient, pledge
+        );
         _assertValidSignature(messageHash, ownerSignature, owner);
         _assertValidSignature(messageHash, allocatorSignature, allocator);
+
         _processPledge(owner, id, pledge, startTime, endTime);
+
         return _release(owner, recipient, id, amount);
     }
 
@@ -292,11 +366,15 @@ contract TheCompact is ERC6909 {
         bytes memory allocatorSignature
     ) external returns (bool) {
         _assertValidTime(expiration);
+
         address allocator = id.toAllocator();
         nonce.consumeNonce(allocator);
+
         bytes32 messageHash = _getAuthorizedWithdrawalMessageHash(expiration, nonce, id, amount);
         _assertValidSignature(messageHash, allocatorSignature, allocator);
+
         _withdraw(msg.sender, recipient, id, amount);
+
         return true;
     }
 
@@ -313,22 +391,57 @@ contract TheCompact is ERC6909 {
         bytes memory allocatorSignature
     ) external returns (bool) {
         _assertValidTime(startTime, endTime);
+
         address allocator = id.toAllocator();
         nonce.consumeNonce(allocator);
-        bytes32 messageHash =
-            _getDelegatedWithdrawalMessageHash(owner, startTime, endTime, nonce, id, amount, recipient, pledge);
+
+        bytes32 messageHash = _getDelegatedWithdrawalMessageHash(
+            owner, startTime, endTime, nonce, id, amount, recipient, pledge
+        );
         _assertValidSignature(messageHash, ownerSignature, owner);
         _assertValidSignature(messageHash, allocatorSignature, allocator);
+
         _processPledge(owner, id, pledge, startTime, endTime);
+
         _withdraw(owner, recipient, id, amount);
+
         return true;
+    }
+
+    function getLockDetails(uint256 id)
+        external
+        view
+        returns (address token, address allocator, uint256 resetPeriod)
+    {
+        Lock memory lock = id.toLock();
+        token = lock.token;
+        allocator = lock.allocator;
+        resetPeriod = lock.resetPeriod;
+    }
+
+    function getTotalRegisteredAllocators() external view returns (uint256) {
+        return IdLib.registeredAllocators();
+    }
+
+    function getAllocatorByIndex(uint256 index) external view returns (address) {
+        return index.registeredAllocatorByIndex();
+    }
+
+    function getAllocatorIndex(address allocator) external view returns (uint256) {
+        return allocator.toIndexIfRegistered();
+    }
+
+    function check(uint256 nonce, address allocator) external view returns (bool consumed) {
+        return nonce.isConsumedBy(allocator);
     }
 
     /// @dev Moves token `id` from `from` to `to` without checking
     //  allowances or _beforeTokenTransfer / _afterTokenTransfer hooks.
-    function _release(address from, address to, uint256 id, uint256 amount) internal returns (bool) {
-        /// @solidity memory-safe-assembly
-        assembly {
+    function _release(address from, address to, uint256 id, uint256 amount)
+        internal
+        returns (bool)
+    {
+        assembly ("memory-safe") {
             /// Compute the balance slot and load its value.
             mstore(0x20, _ERC6909_MASTER_SLOT_SEED)
             mstore(0x14, from)
@@ -370,8 +483,7 @@ contract TheCompact is ERC6909 {
     /// @dev Mints `amount` of token `id` to `to` without checking transfer hooks.
     /// Emits {Transfer} and {Deposit} events.
     function _deposit(address from, address to, uint256 id, uint256 amount) internal virtual {
-        /// @solidity memory-safe-assembly
-        assembly {
+        assembly ("memory-safe") {
             // Compute the balance slot.
             mstore(0x20, _ERC6909_MASTER_SLOT_SEED)
             mstore(0x14, to)
@@ -398,8 +510,7 @@ contract TheCompact is ERC6909 {
     /// @dev Burns `amount` token `id` from `from` without checking transfer hooks and sends
     /// the corresponding underlying tokens to `to`. Emits {Transfer} & {Withdrawal} events.
     function _withdraw(address from, address to, uint256 id, uint256 amount) internal virtual {
-        /// @solidity memory-safe-assembly
-        assembly {
+        assembly ("memory-safe") {
             // Compute the balance slot.
             mstore(0x20, _ERC6909_MASTER_SLOT_SEED)
             mstore(0x14, from)
@@ -430,7 +541,7 @@ contract TheCompact is ERC6909 {
     }
 
     function _assertValidTime(uint256 startTime, uint256 endTime) internal view {
-        assembly {
+        assembly ("memory-safe") {
             if or(gt(startTime, timestamp()), iszero(gt(endTime, timestamp()))) {
                 // revert InvalidTime(startTime, endTime);
                 mstore(0, 0x21ccfeb7)
@@ -442,7 +553,7 @@ contract TheCompact is ERC6909 {
     }
 
     function _assertValidTime(uint256 expiration) internal view {
-        assembly {
+        assembly ("memory-safe") {
             if iszero(gt(expiration, timestamp())) {
                 // revert Expired(expiration);
                 mstore(0, 0xf80dbaea)
@@ -452,7 +563,11 @@ contract TheCompact is ERC6909 {
         }
     }
 
-    function _assertValidSignature(bytes32 messageHash, bytes memory signature, address expectedSigner) internal view {
+    function _assertValidSignature(
+        bytes32 messageHash,
+        bytes memory signature,
+        address expectedSigner
+    ) internal view {
         // NOTE: analyze whether the signature check can safely be skipped in all
         // cases where the caller is the expected signer.
         if (msg.sender != expectedSigner) {
@@ -467,7 +582,7 @@ contract TheCompact is ERC6909 {
         address allocationAuthorizationClaimant,
         address oracleClaimant
     ) internal pure returns (address claimant) {
-        assembly {
+        assembly ("memory-safe") {
             // clean upper dirty bits just in case
             let a := shr(0x60, shl(0x60, allocationClaimant))
             let b := shr(0x60, shl(0x60, allocationAuthorizationClaimant))
@@ -499,23 +614,27 @@ contract TheCompact is ERC6909 {
         }
     }
 
-    // TODO: cache domain separator based on chainId
     function _getDomainHash(bytes32 messageHash) internal view returns (bytes32 domainHash) {
-        bytes32 nameHash = keccak256(bytes("The Compact"));
+        uint256 initialChainId = _INITIAL_CHAIN_ID;
+        bytes32 domainSeparator = _INITIAL_DOMAIN_SEPARATOR;
 
-        assembly {
+        assembly ("memory-safe") {
             let m := mload(0x40) // Grab the free memory pointer.
 
             // Prepare the 712 prefix.
             mstore(0, 0x1901)
 
-            // Prepare the domain separator.
-            mstore(m, _DOMAIN_TYPEHASH)
-            mstore(add(m, 0x20), nameHash)
-            mstore(add(m, 0x40), _VERSION_HASH)
-            mstore(add(m, 0x60), chainid())
-            mstore(add(m, 0x80), address())
-            mstore(0x20, keccak256(m, 0xa0))
+            // Prepare the domain separator, rederiving it if necessary.
+            if xor(chainid(), initialChainId) {
+                mstore(m, _DOMAIN_TYPEHASH)
+                mstore(add(m, 0x20), _NAME_HASH)
+                mstore(add(m, 0x40), _VERSION_HASH)
+                mstore(add(m, 0x60), chainid())
+                mstore(add(m, 0x80), address())
+                domainSeparator := keccak256(m, 0xa0)
+            }
+
+            mstore(0x20, domainSeparator)
 
             // Prepare the message hash and compute the domain hash.
             mstore(0x40, messageHash)
@@ -525,9 +644,13 @@ contract TheCompact is ERC6909 {
         }
     }
 
-    function _processPledge(address owner, uint256 id, uint256 maxPledge, uint256 startTime, uint256 endTime)
-        internal
-    {
+    function _processPledge(
+        address owner,
+        uint256 id,
+        uint256 maxPledge,
+        uint256 startTime,
+        uint256 endTime
+    ) internal {
         uint256 currentPledge = _deriveCurrentPledgeAmount(maxPledge, startTime, endTime);
 
         if (currentPledge != 0) {
@@ -535,8 +658,13 @@ contract TheCompact is ERC6909 {
         }
     }
 
-    function _beforeTokenTransfer(address from, address to, uint256 id, uint256 amount) internal virtual override {
-        if (IAllocator(id.toAllocator()).attest(from, to, id, amount) != IAllocator.attest.selector) {
+    function _beforeTokenTransfer(address from, address to, uint256 id, uint256 amount)
+        internal
+        virtual
+        override
+    {
+        if (IAllocator(id.toAllocator()).attest(from, to, id, amount) != IAllocator.attest.selector)
+        {
             revert UnallocatedTransfer(from, to, id, amount);
         }
     }
@@ -549,7 +677,11 @@ contract TheCompact is ERC6909 {
         return (maxPledge * (block.timestamp - startTime)) / (endTime - startTime);
     }
 
-    function _getAllocationMessageHash(Allocation memory allocation) internal pure returns (bytes32 messageHash) {
+    function _getAllocationMessageHash(Allocation memory allocation)
+        internal
+        pure
+        returns (bytes32 messageHash)
+    {
         messageHash = keccak256(
             abi.encode(
                 ALLOCATION_TYPEHASH,
@@ -582,12 +714,13 @@ contract TheCompact is ERC6909 {
         );
     }
 
-    function _getAuthorizedTransferMessageHash(uint256 expiration, uint256 nonce, uint256 id, uint256 amount)
-        internal
-        view
-        returns (bytes32 messageHash)
-    {
-        assembly {
+    function _getAuthorizedTransferMessageHash(
+        uint256 expiration,
+        uint256 nonce,
+        uint256 id,
+        uint256 amount
+    ) internal view returns (bytes32 messageHash) {
+        assembly ("memory-safe") {
             let m := mload(0x40) // Grab the free memory pointer; memory will be left dirtied.
 
             mstore(m, TRANSFER_AUTHORIZATION_TYPEHASH)
@@ -610,7 +743,7 @@ contract TheCompact is ERC6909 {
         address recipient,
         uint256 pledge
     ) internal pure returns (bytes32 messageHash) {
-        assembly {
+        assembly ("memory-safe") {
             let m := mload(0x40) // Grab the free memory pointer; memory will be left dirtied.
 
             mstore(m, DELEGATED_TRANSFER_TYPEHASH)
@@ -626,12 +759,13 @@ contract TheCompact is ERC6909 {
         }
     }
 
-    function _getAuthorizedWithdrawalMessageHash(uint256 expiration, uint256 nonce, uint256 id, uint256 amount)
-        internal
-        view
-        returns (bytes32 messageHash)
-    {
-        assembly {
+    function _getAuthorizedWithdrawalMessageHash(
+        uint256 expiration,
+        uint256 nonce,
+        uint256 id,
+        uint256 amount
+    ) internal view returns (bytes32 messageHash) {
+        assembly ("memory-safe") {
             let m := mload(0x40) // Grab the free memory pointer; memory will be left dirtied.
 
             mstore(m, WITHDRAWAL_AUTHORIZATION_TYPEHASH)
@@ -654,7 +788,7 @@ contract TheCompact is ERC6909 {
         address recipient,
         uint256 pledge
     ) internal pure returns (bytes32 messageHash) {
-        assembly {
+        assembly ("memory-safe") {
             let m := mload(0x40) // Grab the free memory pointer; memory will be left dirtied.
 
             mstore(m, DELEGATED_WITHDRAWAL_TYPEHASH)
@@ -667,6 +801,59 @@ contract TheCompact is ERC6909 {
             mstore(add(m, 0xe0), shr(0x60, shl(0x60, recipient)))
             mstore(add(m, 0x100), pledge)
             messageHash := keccak256(m, 0x120)
+        }
+    }
+
+    function extsload(bytes32 slot) external view returns (bytes32) {
+        assembly ("memory-safe") {
+            mstore(0, sload(slot))
+            return(0, 0x20)
+        }
+    }
+
+    function extsload(bytes32 startSlot, uint256 nSlots) external view returns (bytes32[] memory) {
+        assembly ("memory-safe") {
+            let memptr := mload(0x40)
+            let start := memptr
+            // A left bit-shift of 5 is equivalent to multiplying by 32 but costs less gas.
+            let length := shl(5, nSlots)
+            // The abi offset of dynamic array in the returndata is 32.
+            mstore(memptr, 0x20)
+            // Store the length of the array returned
+            mstore(add(memptr, 0x20), nSlots)
+            // update memptr to the first location to hold a result
+            memptr := add(memptr, 0x40)
+            let end := add(memptr, length)
+            for { } 1 { } {
+                mstore(memptr, sload(startSlot))
+                memptr := add(memptr, 0x20)
+                startSlot := add(startSlot, 1)
+                if iszero(lt(memptr, end)) { break }
+            }
+            return(start, sub(end, start))
+        }
+    }
+
+    function extsload(bytes32[] calldata slots) external view returns (bytes32[] memory) {
+        assembly ("memory-safe") {
+            let memptr := mload(0x40)
+            let start := memptr
+            // for abi encoding the response - the array will be found at 0x20
+            mstore(memptr, 0x20)
+            // next we store the length of the return array
+            mstore(add(memptr, 0x20), slots.length)
+            // update memptr to the first location to hold an array entry
+            memptr := add(memptr, 0x40)
+            // A left bit-shift of 5 is equivalent to multiplying by 32 but costs less gas.
+            let end := add(memptr, shl(5, slots.length))
+            let calldataptr := slots.offset
+            for { } 1 { } {
+                mstore(memptr, sload(calldataload(calldataptr)))
+                memptr := add(memptr, 0x20)
+                calldataptr := add(calldataptr, 0x20)
+                if iszero(lt(memptr, end)) { break }
+            }
+            return(start, sub(end, start))
         }
     }
 }

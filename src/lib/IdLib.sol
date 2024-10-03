@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.27;
 
-import {Lock} from "../types/Lock.sol";
-import {LibString} from "solady/utils/LibString.sol";
-import {MetadataReaderLib} from "solady/utils/MetadataReaderLib.sol";
+import { Lock } from "../types/Lock.sol";
+import { LibString } from "solady/utils/LibString.sol";
+import { MetadataReaderLib } from "solady/utils/MetadataReaderLib.sol";
 
 library IdLib {
     using LibString for uint256;
@@ -36,7 +36,8 @@ library IdLib {
 
     function toURI(uint256 id) internal view returns (string memory uri) {
         Lock memory lock = toLock(id);
-        string memory tokenAddress = lock.token == address(0) ? "Native Token" : lock.token.toHexStringChecksummed();
+        string memory tokenAddress =
+            lock.token == address(0) ? "Native Token" : lock.token.toHexStringChecksummed();
         string memory allocator = lock.allocator.toHexStringChecksummed();
         string memory resetPeriod = string.concat(lock.resetPeriod.toString(), " seconds");
         string memory tokenName = lock.token.readNameWithDefaultValue();
@@ -85,7 +86,11 @@ library IdLib {
         }
     }
 
-    function readSymbolWithDefaultValue(address token) internal view returns (string memory symbol) {
+    function readSymbolWithDefaultValue(address token)
+        internal
+        view
+        returns (string memory symbol)
+    {
         // NOTE: this will not take into account the correct symbol on many chains
         if (token == address(0)) {
             return "ETH";
@@ -97,7 +102,11 @@ library IdLib {
         }
     }
 
-    function readDecimalsWithDefaultValue(address token) internal view returns (string memory decimals) {
+    function readDecimalsWithDefaultValue(address token)
+        internal
+        view
+        returns (string memory decimals)
+    {
         if (token == address(0)) {
             return "18";
         }
@@ -109,11 +118,17 @@ library IdLib {
         pure
         returns (string memory attribute)
     {
-        return string.concat("{\"trait_type\": \"", trait, "\", \"value\": \"", value, "\"}", terminal ? "" : ",");
+        return string.concat(
+            "{\"trait_type\": \"", trait, "\", \"value\": \"", value, "\"}", terminal ? "" : ","
+        );
     }
 
-    function toLock(address token, address allocator, uint48 resetPeriod) internal pure returns (Lock memory) {
-        return Lock({token: token, allocator: allocator, resetPeriod: uint256(resetPeriod)});
+    function toLock(address token, address allocator, uint48 resetPeriod)
+        internal
+        pure
+        returns (Lock memory)
+    {
+        return Lock({ token: token, allocator: allocator, resetPeriod: uint256(resetPeriod) });
     }
 
     function toLock(uint256 id) internal view returns (Lock memory lock) {
@@ -123,16 +138,19 @@ library IdLib {
     }
 
     function toId(Lock memory lock) internal returns (uint256 id) {
-        id = (uint256(uint160(lock.token)) | ((lock.resetPeriod << 0xd0) >> 0x30) | toIndex(lock.allocator) << 0xd0);
+        id = (
+            uint256(uint160(lock.token)) | ((lock.resetPeriod << 0xd0) >> 0x30)
+                | toIndex(lock.allocator) << 0xd0
+        );
     }
 
-    function registeredAllocators() public view returns (uint256 total) {
+    function registeredAllocators() internal view returns (uint256 total) {
         assembly {
             total := sload(_REGISTERED_ALLOCATORS_SLOT)
         }
     }
 
-    function registeredAllocatorByIndex(uint256 index) public view returns (address allocator) {
+    function registeredAllocatorByIndex(uint256 index) internal view returns (address allocator) {
         assembly {
             allocator := sload(or(_ALLOCATOR_BY_INDEX_SLOT_SEED, index))
 
@@ -167,6 +185,20 @@ library IdLib {
                 mstore(0x00, index)
                 mstore(0x20, allocator)
                 log1(0x00, 0x40, _ALLOCATOR_REGISTERED_EVENT_SIGNATURE)
+            }
+        }
+    }
+
+    function toIndexIfRegistered(address allocator) internal view returns (uint256 index) {
+        assembly {
+            let indexSlot := or(_INDEX_BY_ALLOCATOR_SLOT_SEED, allocator)
+            let indexWithOffset := sload(indexSlot)
+            index := sub(indexWithOffset, 1)
+
+            if iszero(indexWithOffset) {
+                mstore(0, _NO_ALLOCATOR_REGISTERED_ERROR_SIGNATURE)
+                mstore(0x20, index)
+                revert(0x1c, 0x24)
             }
         }
     }

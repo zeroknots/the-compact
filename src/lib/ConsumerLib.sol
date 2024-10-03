@@ -61,7 +61,11 @@ library ConsumerLib {
         }
     }
 
-    function isConsumedBy(uint256 nonceToCheck, address account) internal view returns (bool consumed) {
+    function isConsumedBy(uint256 nonceToCheck, address account)
+        internal
+        view
+        returns (bool consumed)
+    {
         assembly {
             let freeMemoryPointer := mload(0x40)
 
