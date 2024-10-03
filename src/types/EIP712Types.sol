@@ -11,13 +11,13 @@ struct Allocation {
     uint256 nonce; // A parameter to enforce replay protection, scoped to allocator.
     uint256 id; // The token ID of the ERC6909 token to allocate.
     uint256 amount; // The amount of ERC6909 tokens to allocate.
-    address allocatee; // The allocation recipient (no address: any recipient)
+    address claimant; // The allocation recipient (no address: any recipient)
     address oracle; // The account enforcing whether to release allocated funds.
     bytes oracleFixedData; // The fixed data payload provided to the oracle.
 }
 
-// keccak256("Allocation(address owner,uint256 startTime,uint256 endTime,uint256 nonce,uint256 id,uint256 amount,address allocatee,address oracle,bytes oracleFixedData)")
-bytes32 constant ALLOCATION_TYPEHASH = 0x261660044e0551d6569dddfcbddcc3428f495c7f4808a46fc85661a59e23e781;
+// keccak256("Allocation(address owner,uint256 startTime,uint256 endTime,uint256 nonce,uint256 id,uint256 amount,address claimant,address oracle,bytes oracleFixedData)")
+bytes32 constant ALLOCATION_TYPEHASH = 0x332b96efcdc96931e9c671e47db4a873af3efa03557c9c2b93f4eb5f85587c15;
 
 // Message signed by the allocator that confirms that a given allocation does
 // not result in an over-allocated state for the token owner, and that modifies
@@ -26,12 +26,12 @@ struct AllocationAuthorization {
     // bytes32 allocationHash; // signed but not explicitly supplied as a parameter
     uint256 startTime; // The time at which the allocation authorization becomes valid.
     uint256 endTime; // The time at which the allocation authorization expires.
-    address assignedAllocatee; // The allocation recipient (no address: any recipient)
+    address claimant; // The allocation recipient (no address: any recipient)
     uint256 amountReduction; // The amount by which the claimable tokens will be reduced.
 }
 
-// keccak256("AllocationAuthorization(bytes32 allocationHash,uint256 startTime,uint256 endTime,address assignedAllocatee,uint256 amountReduction)")
-bytes32 constant ALLOCATION_AUTHORIZATION_TYPEHASH = 0x7104d916fcff1b1de3f1523f7f121a0a2e731d463b04b91972aa6c6be2fedf71;
+// keccak256("AllocationAuthorization(bytes32 allocationHash,uint256 startTime,uint256 endTime,address claimant,uint256 amountReduction)")
+bytes32 constant ALLOCATION_AUTHORIZATION_TYPEHASH = 0x9d7957a907b00fac8de3a22c078f7f0409c40a085d5c51f7a371cf3291563692;
 
 // Message signed by the allocator that confirms that a given withdrawal does
 // not result in an over-allocated state for the token owner, and that enables
@@ -65,18 +65,6 @@ struct DelegatedWithdrawal {
 
 // keccak256("DelegatedWithdrawal(address owner,uint256 startTime,uint256 endTime,uint256 nonce,uint256 id,uint256 amount,address recipient,uint256 pledge)")
 bytes32 constant DELEGATED_WITHDRAWAL_TYPEHASH = 0x4500e9eeb2d9479ee76ef8d1eaa3f2a58acd5a783fdcc66ac7d6beab87147770;
-
-// Message signed by the allocator that enables token transfers and withdrawals for
-// a given token owner for a window of time without requiring additional approval.
-// Overrides any existing bypass state.
-struct BypassAuthorization {
-    address owner; // The token owner to enable the bypass for.
-    uint256 expiration; // The time at which the withdrawal expires.
-    uint256 nonce; // A parameter to enforce replay protection, scoped to allocator.
-}
-
-// keccak256("BypassAuthorization(address owner,uint256 expiration,uint256 nonce)")
-bytes32 constant BYPASS_AUTHORIZATION_TYPEHASH = 0x4d94159be1b1adcd02090bf6eb3b3db124dd7c7c9e1ce3a368643c691ea9b998;
 
 // Message signed by the allocator that confirms that a given transfer does
 // not result in an over-allocated state for the token owner, and that enables
