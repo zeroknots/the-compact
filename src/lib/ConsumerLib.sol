@@ -26,74 +26,27 @@ library ConsumerLib {
 
     function consumeNonce(uint256 nonce, address account) internal {
         // The last byte of the nonce is used to assign a bit in a 256-bit bucket;
-        // specific nonces are consumed for each account and can only be used once,
-        // and nonces must be supplied in exact ascending order. NOTE: this function
-        // temporarily overwrites the free memory pointer but restores it afterward.
+        // specific nonces are consumed for each account and can only be used once.
+        // NOTE: this function temporarily overwrites the free memory pointer, but
+        // restores it before returning.
         assembly {
             let freeMemoryPointer := mload(0x40)
 
-            // Slot for the wordPos: keccak256(_CONSUMER_NONCE_SCOPE ++ account)
+            // slot: keccak256(_CONSUMER_NONCE_SCOPE ++ account ++ nonce[0:31])
             mstore(0x20, account)
             mstore(0x0c, _CONSUMER_NONCE_SCOPE)
-            let wordPosSlot := keccak256(0x28, 0x18)
-
-            // Slot for the bitmap: keccak256(_CONSUMER_NONCE_SCOPE ++ account ++ nonce[0:31])
             mstore(0x40, nonce)
-            let bitmapSlot := keccak256(0x28, 0x37)
+            let bucketSlot := keccak256(0x28, 0x37)
 
-            let currentWordPos := sload(wordPosSlot)
-            let bucketValue := sload(bitmapSlot)
-            let bareNewWordPos := shr(8, nonce)
-            let newWordPos := or(shl(0xf8, 0xff), bareNewWordPos)
-            let lastByte := and(0xff, nonce)
-            let bit := shl(lastByte, 1)
-
-            let valid
-
-            // Check if the new nonce is in the same word or exactly one word higher
-            if and(iszero(iszero(lastByte)), eq(newWordPos, currentWordPos)) {
-                // Ensure the nonce is being used incrementally
-                // Create a mask where all bits up to (but not including) bitPos are 1, except the LSB
-                let mask := sub(bit, 1)
-
-                let newBucketValue := or(or(bucketValue, bit), 1)
-
-                if iszero(eq(and(newBucketValue, mask), mask)) {
-                    // `InvalidNonce(address,uint256)` with padding for `account`.
-                    mstore(0x0c, 0x8baa579f000000000000000000000000)
-                    revert(0x1c, 0x44)
-                }
-
-                // Update the bitmap
-                sstore(bitmapSlot, newBucketValue)
-
-                valid := true
-            }
-
-            if iszero(lastByte) {
-                let isFirstNonce := and(iszero(currentWordPos), iszero(bareNewWordPos))
-                let isNextWord
-                if iszero(isFirstNonce) {
-                    mstore(0x40, sub(nonce, 1))
-                    let priorBucketIsFull := iszero(not(sload(keccak256(0x28, 0x37))))
-                    isNextWord := and(priorBucketIsFull, eq(newWordPos, add(currentWordPos, 1)))
-                }
-
-                // check if a new wordpos is being set, which requires that the last byte is 0
-                if or(isFirstNonce, isNextWord) {
-                    // Exactly one word higher
-                    sstore(wordPosSlot, newWordPos)
-
-                    valid := true
-                }
-            }
-
-            if iszero(valid) {
-                // Not a sequential nonce
+            let bucketValue := sload(bucketSlot)
+            let bit := shl(and(0xff, nonce), 1)
+            if and(bit, bucketValue) {
                 // `InvalidNonce(address,uint256)` with padding for `account`.
                 mstore(0x0c, 0x8baa579f000000000000000000000000)
                 revert(0x1c, 0x44)
             }
+
+            sstore(bucketSlot, or(bucketValue, bit)) // Invalidate the nonce.
 
             mstore(0x40, freeMemoryPointer)
         }
