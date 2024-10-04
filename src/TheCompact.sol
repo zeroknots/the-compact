@@ -4,6 +4,8 @@ pragma solidity ^0.8.27;
 import { Lock } from "./types/Lock.sol";
 import { IdLib } from "./lib/IdLib.sol";
 import { ConsumerLib } from "./lib/ConsumerLib.sol";
+import { EfficiencyLib } from "./lib/EfficiencyLib.sol";
+import { MetadataLib } from "./lib/MetadataLib.sol";
 import { ERC6909 } from "solady/tokens/ERC6909.sol";
 import { FixedPointMathLib } from "solady/utils/FixedPointMathLib.sol";
 import { SafeTransferLib } from "solady/utils/SafeTransferLib.sol";
@@ -13,8 +15,12 @@ import { ISignatureTransfer } from "permit2/src/interfaces/ISignatureTransfer.so
 import {
     Allocation,
     AllocationAuthorization,
+    BatchAllocation,
+    BatchAllocationAuthorization,
     ALLOCATION_TYPEHASH,
     ALLOCATION_AUTHORIZATION_TYPEHASH,
+    BATCH_ALLOCATION_TYPEHASH,
+    BATCH_ALLOCATION_AUTHORIZATION_TYPEHASH,
     TRANSFER_AUTHORIZATION_TYPEHASH,
     DELEGATED_TRANSFER_TYPEHASH,
     WITHDRAWAL_AUTHORIZATION_TYPEHASH,
@@ -22,6 +28,7 @@ import {
 } from "./types/EIP712Types.sol";
 import { IOracle } from "./interfaces/IOracle.sol";
 import { IAllocator } from "./interfaces/IAllocator.sol";
+import { MetadataRenderer } from "./lib/MetadataRenderer.sol";
 
 /**
  * @title The Compact
@@ -35,10 +42,13 @@ contract TheCompact is ERC6909 {
     using IdLib for uint256;
     using IdLib for address;
     using IdLib for Lock;
+    using MetadataLib for address;
     using ConsumerLib for uint256;
     using SafeTransferLib for address;
     using SignatureCheckerLib for address;
     using FixedPointMathLib for uint256;
+    using EfficiencyLib for bool;
+    using EfficiencyLib for uint256;
 
     event Deposit(
         address indexed depositor,
@@ -48,8 +58,8 @@ contract TheCompact is ERC6909 {
     );
     event Claim(
         address indexed provider,
-        address indexed allocator,
         address indexed claimant,
+        uint256 indexed id,
         bytes32 allocationHash,
         uint256 claimAmount
     );
@@ -76,6 +86,7 @@ contract TheCompact is ERC6909 {
     error InvalidAmountReduction(uint256 amount, uint256 amountReduction);
     error UnallocatedTransfer(address from, address to, uint256 id, uint256 amount);
     error CallerNotClaimant();
+    error InvalidBatchAllocation();
 
     IPermit2 private constant _PERMIT2 = IPermit2(0x000000000022D473030F116dDEE9F6B43aC78BA3);
 
@@ -106,12 +117,14 @@ contract TheCompact is ERC6909 {
 
     uint256 private immutable _INITIAL_CHAIN_ID;
     bytes32 private immutable _INITIAL_DOMAIN_SEPARATOR;
+    MetadataRenderer private immutable _METADATA_RENDERER;
 
     constructor() {
         _INITIAL_CHAIN_ID = block.chainid;
         _INITIAL_DOMAIN_SEPARATOR = keccak256(
             abi.encode(_DOMAIN_TYPEHASH, _NAME_HASH, _VERSION_HASH, block.chainid, address(this))
         );
+        _METADATA_RENDERER = new MetadataRenderer();
     }
 
     /// @dev Returns the name for the contract.
@@ -136,7 +149,7 @@ contract TheCompact is ERC6909 {
 
     /// @dev Returns the Uniform Resource Identifier (URI) for token `id`.
     function tokenURI(uint256 id) public view virtual override returns (string memory) {
-        return id.toURI();
+        return _METADATA_RENDERER.uri(id.toLock(), id);
     }
 
     function deposit(address allocator, uint48 resetPeriod, address recipient)
@@ -230,6 +243,32 @@ contract TheCompact is ERC6909 {
         _release(allocation.owner, claimant, allocation.id, claimAmount);
     }
 
+    function claim(
+        BatchAllocation calldata batchAllocation,
+        BatchAllocationAuthorization calldata batchAllocationAuthorization,
+        bytes calldata oracleVariableData,
+        bytes calldata ownerSignature,
+        bytes calldata allocatorSignature
+    ) external returns (address claimant, uint256[] memory claimAmounts) {
+        (claimant, claimAmounts) = _processBatchClaim(
+            batchAllocation,
+            batchAllocationAuthorization,
+            oracleVariableData,
+            ownerSignature,
+            allocatorSignature
+        );
+        
+
+        uint256 totalIds = batchAllocation.ids.length;
+        address owner = batchAllocation.owner;
+        unchecked {
+            for (uint256 i = 0; i < totalIds; ++i) {
+                // TODO: skip bounds checks on array accesses
+                _release(owner, claimant, batchAllocation.ids[i], claimAmounts[i]);
+            }
+        }
+    }
+
     // Note: this can be frontrun since anyone can call claim
     function claimAndWithdraw(
         Allocation calldata allocation,
@@ -290,7 +329,61 @@ contract TheCompact is ERC6909 {
                 oracleClaimAmount.min(allocation.amount - allocationAuthorization.amountReduction);
         }
 
-        emit Claim(allocation.owner, allocator, claimant, allocationMessageHash, claimAmount);
+        emit Claim(allocation.owner, claimant, allocation.id, allocationMessageHash, claimAmount);
+    }
+
+    function _processBatchClaim(
+        BatchAllocation calldata batchAllocation,
+        BatchAllocationAuthorization calldata batchAllocationAuthorization,
+        bytes calldata oracleVariableData,
+        bytes calldata ownerSignature,
+        bytes calldata allocatorSignature
+    ) internal returns (address claimant, uint256[] memory claimAmounts) {
+        _assertValidTime(batchAllocation.startTime, batchAllocation.endTime);
+        _assertValidTime(batchAllocationAuthorization.startTime, batchAllocationAuthorization.endTime);
+
+        uint256 totalIds = batchAllocation.ids.length;
+        if (
+            (totalIds == 0).or(totalIds != batchAllocation.amounts.length).or(totalIds != batchAllocationAuthorization.amountReductions.length)
+        ) {
+            revert InvalidBatchAllocation();
+        }
+
+        // TODO: skip the bounds check on this array access
+        uint256 allocatorIndex = batchAllocation.ids[0].toAllocatorIndex();
+        claimAmounts = new uint256[](totalIds);
+
+        address allocator = allocatorIndex.toRegisteredAllocator();
+        batchAllocation.nonce.consumeNonce(allocator);
+        bytes32 batchAllocationMessageHash = _getBatchAllocationMessageHash(batchAllocation);
+        _assertValidSignature(batchAllocationMessageHash, ownerSignature, batchAllocation.owner);
+        bytes32 batchAllocationAuthorizationMessageHash =
+            _getBatchAllocationAuthorizationMessageHash(batchAllocationAuthorization, batchAllocationMessageHash);
+        _assertValidSignature(batchAllocationAuthorizationMessageHash, allocatorSignature, allocator);
+        (address oracleClaimant, uint256[] memory oracleClaimAmounts) = IOracle(batchAllocation.oracle).attestBatch(
+            batchAllocationMessageHash, batchAllocation.oracleFixedData, oracleVariableData
+        );
+
+        claimant =
+            _deriveClaimant(batchAllocation.claimant, batchAllocationAuthorization.claimant, oracleClaimant);
+
+        // TODO: many of the bounds checks on these array accesses can be skipped as an optimization
+        uint256 errorBuffer = (batchAllocationAuthorization.amountReductions[0] >= batchAllocation.amounts[0]).or(totalIds != oracleClaimAmounts.length).asUint256();
+        unchecked {
+            for (uint256 i = 1; i < totalIds; ++i) {
+                uint256 id = batchAllocation.ids[i];
+                uint256 originalAmount = batchAllocation.amounts[i];
+                uint256 amountReduction = batchAllocationAuthorization.amountReductions[i];
+                errorBuffer |= (amountReduction >= originalAmount).or(id.toAllocatorIndex() != allocatorIndex).asUint256();
+                uint256 claimAmount = oracleClaimAmounts[i].min(originalAmount - amountReduction);
+                claimAmounts[i] = claimAmount;
+                emit Claim(batchAllocation.owner, claimant, id, batchAllocationMessageHash, claimAmount);
+            }
+        }
+        if (errorBuffer.asBool()) {
+            // TODO: extract more informative error by deriving the reason for the failure
+            revert InvalidBatchAllocation();
+        }
     }
 
     function enableForcedWithdrawal(uint256 id) external returns (uint256 withdrawableAt) {
@@ -317,7 +410,7 @@ contract TheCompact is ERC6909 {
     {
         uint256 withdrawableAt = cutoffTime[msg.sender][id];
 
-        if (withdrawableAt == 0 || withdrawableAt > block.timestamp) {
+        if ((withdrawableAt == 0).or(withdrawableAt > block.timestamp)) {
             revert PrematureWithdrawal(id);
         }
 
@@ -440,7 +533,7 @@ contract TheCompact is ERC6909 {
     }
 
     function getAllocatorByIndex(uint256 index) external view returns (address) {
-        return index.registeredAllocatorByIndex();
+        return index.toRegisteredAllocator();
     }
 
     function getAllocatorIndex(address allocator) external view returns (uint256) {
@@ -732,6 +825,27 @@ contract TheCompact is ERC6909 {
         );
     }
 
+    function _getBatchAllocationMessageHash(BatchAllocation memory batchAllocation)
+        internal
+        pure
+        returns (bytes32 messageHash)
+    {
+        messageHash = keccak256(
+            abi.encode(
+                BATCH_ALLOCATION_TYPEHASH,
+                batchAllocation.owner,
+                batchAllocation.startTime,
+                batchAllocation.endTime,
+                batchAllocation.nonce,
+                keccak256(abi.encode(batchAllocation.ids)),
+                keccak256(abi.encode(batchAllocation.amounts)),
+                batchAllocation.claimant,
+                batchAllocation.oracle,
+                keccak256(batchAllocation.oracleFixedData)
+            )
+        );
+    }
+
     function _getAllocationAuthorizationMessageHash(
         AllocationAuthorization memory allocationAuthorization,
         bytes32 allocationMessageHash
@@ -744,6 +858,22 @@ contract TheCompact is ERC6909 {
                 allocationAuthorization.endTime,
                 allocationAuthorization.claimant,
                 allocationAuthorization.amountReduction
+            )
+        );
+    }
+
+    function _getBatchAllocationAuthorizationMessageHash(
+        BatchAllocationAuthorization memory batchAllocationAuthorization,
+        bytes32 batchAllocationMessageHash
+    ) internal pure returns (bytes32 messageHash) {
+        messageHash = keccak256(
+            abi.encode(
+                BATCH_ALLOCATION_AUTHORIZATION_TYPEHASH,
+                batchAllocationMessageHash,
+                batchAllocationAuthorization.startTime,
+                batchAllocationAuthorization.endTime,
+                batchAllocationAuthorization.claimant,
+                keccak256(abi.encode(batchAllocationAuthorization.amountReductions))
             )
         );
     }

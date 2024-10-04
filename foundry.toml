@@ -2,8 +2,7 @@
 solc = '0.8.27'
 evm_version='cancun'
 via_ir = true
-# optimizer_runs = 4_294_967_295 # turn this back on after making the compact more compact
-optimizer_runs = 200
+optimizer_runs = 4_294_967_295
 bytecode_hash = 'none'
 src = "src"
 out = "out"

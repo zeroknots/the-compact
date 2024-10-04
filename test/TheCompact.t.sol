@@ -4,7 +4,7 @@ pragma solidity ^0.8.13;
 import { Test, console } from "forge-std/Test.sol";
 import { TheCompact } from "../src/TheCompact.sol";
 import { MockERC20 } from "../lib/solady/test/utils/mocks/MockERC20.sol";
-import { Allocation, AllocationAuthorization } from "../src/types/EIP712Types.sol";
+import { Allocation, AllocationAuthorization, BatchAllocation, BatchAllocationAuthorization } from "../src/types/EIP712Types.sol";
 
 interface EIP712 {
     function DOMAIN_SEPARATOR() external view returns (bytes32);
@@ -13,12 +13,14 @@ interface EIP712 {
 contract TheCompactTest is Test {
     TheCompact public theCompact;
     MockERC20 public token;
+    MockERC20 public anotherToken;
     address permit2 = address(0x000000000022D473030F116dDEE9F6B43aC78BA3);
     uint256 swapperPrivateKey;
     address swapper;
     uint256 allocatorPrivateKey;
     address allocator;
     address dummyOracle;
+    address dummyBatchOracle;
     bytes32 compactEIP712DomainHash = keccak256(
         "EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"
     );
@@ -27,6 +29,7 @@ contract TheCompactTest is Test {
 
     function setUp() public {
         address deployedDummyOracle;
+        address deployedDummyBatchOracle;
         assembly {
             // deploy a contract that always returns one word of 0's followed by one word of f's
             // minimal "constructor" 0x600b5981380380925939f3... (11 bytes)
@@ -41,8 +44,15 @@ contract TheCompactTest is Test {
             // F3	    RETURN	        [] (Returns 0x40 bytes from memory starting at 0x00)
             mstore(0, 0x600b5981380380925939f360403d3d19602052f3)
             deployedDummyOracle := create(0, 12, 20)
+
+            // and this one returns [0, 0x40, 3, 0xfff, 0xfff, 0xfff]
+            mstore(0, 0x600b598138038092)
+            mstore(0x20, 0x5939f360c03d60406020600360403d1960603d1960803d1960a05252525252f3)
+            deployedDummyBatchOracle := create(0, 24, 40)
         }
         dummyOracle = deployedDummyOracle;
+        dummyBatchOracle = deployedDummyBatchOracle;
+
         address permit2Deployer = address(0x4e59b44847b379578588920cA78FbF26c0B4956C);
         address deployedPermit2Deployer;
         address permit2DeployerDeployer = address(0x3fAB184622Dc19b6109349B94811493BF2a45362);
@@ -65,16 +75,20 @@ contract TheCompactTest is Test {
 
         theCompact = new TheCompact();
         token = new MockERC20("Mock ERC20", "MOCK", 18);
+        anotherToken = new MockERC20("Another Mock ERC20", "MOCK2", 18);
 
         (swapper, swapperPrivateKey) = makeAddrAndKey("swapper");
         (allocator, allocatorPrivateKey) = makeAddrAndKey("allocator");
 
         vm.deal(swapper, 2e18);
         token.mint(swapper, 1e18);
+        anotherToken.mint(swapper, 1e18);
 
         vm.startPrank(swapper);
         token.approve(address(theCompact), 1e18);
         token.approve(permit2, 1e18);
+        anotherToken.approve(address(theCompact), 1e18);
+        anotherToken.approve(permit2, 1e18);
         vm.stopPrank();
     }
 
@@ -564,6 +578,8 @@ contract TheCompactTest is Test {
 
         address allocatorClaimant = claimant;
         uint256 amountReduction = 0;
+        uint256 anotherAmountReduction = 0;
+        uint256 aThirdAmountReduction = 0;
 
         vm.prank(swapper);
         uint256 id = theCompact.deposit{ value: amount }(allocator, resetPeriod, swapper);
@@ -638,5 +654,127 @@ contract TheCompactTest is Test {
         assertEq(theCompact.balanceOf(swapper, id), 0);
         assertEq(theCompact.balanceOf(claimant, id), 0);
         assertEq(theCompact.balanceOf(recipient, id), 0);
+    }
+
+    function test_batchClaim() public {
+        uint48 resetPeriod = 120;
+        uint256 amount = 1e18;
+        uint256 anotherAmount = 1e18;
+        uint256 aThirdAmount = 1e18;
+        uint256 nonce = 0;
+        uint256 startTime = block.timestamp;
+        uint256 endTime = block.timestamp + 1000;
+        address claimant = 0x1111111111111111111111111111111111111111;
+        address oracle = dummyBatchOracle;
+        bytes memory oracleFixedData;
+        bytes memory oracleVariableData;
+
+        address allocatorClaimant = claimant;
+        uint256 amountReduction = 0;
+        uint256 anotherAmountReduction = 0;
+        uint256 aThirdAmountReduction = 0;
+
+        vm.startPrank(swapper);
+        uint256 id = theCompact.deposit{ value: amount }(allocator, resetPeriod, swapper);
+
+        uint256 anotherId = theCompact.deposit(address(token), allocator, resetPeriod, anotherAmount, swapper);
+        assertEq(theCompact.balanceOf(swapper, id), anotherAmount);
+
+        uint256 aThirdId = theCompact.deposit(address(anotherToken), allocator, resetPeriod, aThirdAmount, swapper);
+        assertEq(theCompact.balanceOf(swapper, id), aThirdAmount);
+
+        vm.stopPrank();
+
+        assertEq(theCompact.balanceOf(swapper, id), amount);
+        assertEq(theCompact.balanceOf(swapper, anotherId), anotherAmount);
+        assertEq(theCompact.balanceOf(swapper, aThirdId), aThirdAmount);
+
+        uint256[] memory ids = new uint256[](3);
+        ids[0] = id;
+        ids[1] = anotherId;
+        ids[2] = aThirdId;
+
+        uint256[] memory amounts = new uint256[](3);
+        amounts[0] = amount;
+        amounts[1] = anotherAmount;
+        amounts[2] = aThirdAmount;
+
+        uint256[] memory amountReductions = new uint256[](3);
+        amountReductions[0] = amountReduction;
+        amountReductions[1] = anotherAmountReduction;
+        amountReductions[2] = aThirdAmountReduction;
+
+        bytes32 allocationHash = keccak256(
+            abi.encode(
+                keccak256(
+                    "BatchAllocation(address owner,uint256 startTime,uint256 endTime,uint256 nonce,uint256[] ids,uint256[] amounts,address claimant,address oracle,bytes oracleFixedData)"
+                ),
+                swapper,
+                startTime,
+                endTime,
+                nonce,
+                keccak256(abi.encode(ids)),
+                keccak256(abi.encode(amounts)),
+                claimant,
+                oracle,
+                keccak256(oracleFixedData)
+            )
+        );
+
+        bytes32 digest = keccak256(
+            abi.encodePacked(bytes2(0x1901), theCompact.DOMAIN_SEPARATOR(), allocationHash)
+        );
+
+        (bytes32 r, bytes32 vs) = vm.signCompact(swapperPrivateKey, digest);
+        bytes memory ownerSignature = abi.encodePacked(r, vs);
+
+        digest = keccak256(
+            abi.encodePacked(
+                bytes2(0x1901),
+                theCompact.DOMAIN_SEPARATOR(),
+                keccak256(
+                    abi.encode(
+                        keccak256(
+                            "BatchAllocationAuthorization(bytes32 allocationHash,uint256 startTime,uint256 endTime,address claimant,uint256[] amountReductions)"
+                        ),
+                        allocationHash,
+                        startTime,
+                        endTime,
+                        allocatorClaimant,
+                        keccak256(abi.encode(amountReductions))
+                    )
+                )
+            )
+        );
+
+        (r, vs) = vm.signCompact(allocatorPrivateKey, digest);
+        bytes memory allocatorSignature = abi.encodePacked(r, vs);
+
+        BatchAllocation memory allocation = BatchAllocation(
+            swapper, startTime, endTime, nonce, ids, amounts, claimant, oracle, oracleFixedData
+        );
+        BatchAllocationAuthorization memory allocationAuthorization =
+            BatchAllocationAuthorization(startTime, endTime, allocatorClaimant, amountReductions);
+
+        (address returnedClaimant, uint256[] memory returnedClaimAmounts) = theCompact.claim(
+            allocation,
+            allocationAuthorization,
+            oracleVariableData,
+            ownerSignature,
+            allocatorSignature
+        );
+        assertEq(claimant, returnedClaimant);
+
+        for (uint256 i = 0; i < ids.length; ++i) {
+            assertEq(amounts[i], returnedClaimAmounts[i]);
+        }
+
+        assertEq(address(theCompact).balance, amount);
+        assertEq(token.balanceOf(address(theCompact)), anotherAmount);
+        assertEq(anotherToken.balanceOf(address(theCompact)), aThirdAmount);
+
+        assertEq(theCompact.balanceOf(claimant, id), amount);
+        assertEq(theCompact.balanceOf(claimant, anotherId), anotherAmount);
+        assertEq(theCompact.balanceOf(claimant, aThirdId), aThirdAmount);
     }
 }

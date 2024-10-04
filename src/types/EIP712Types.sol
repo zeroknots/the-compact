@@ -20,6 +20,26 @@ struct Allocation {
 bytes32 constant ALLOCATION_TYPEHASH =
     0x332b96efcdc96931e9c671e47db4a873af3efa03557c9c2b93f4eb5f85587c15;
 
+
+// Message signed by the owner that specifies the conditions under which a set of
+// tokens can be allocated; the specified oracle verifies that those conditions
+// have been met, enabling an allocatee to claim the specified token amounts.
+struct BatchAllocation {
+    address owner; // The account to source the allocation from.
+    uint256 startTime; // The time at which the allocation can be released.
+    uint256 endTime; // The time at which the allocation expires.
+    uint256 nonce; // A parameter to enforce replay protection, scoped to allocator.
+    uint256[] ids; // The token IDs to allocate, ordered sequentially by token address & sharing a single allocator.
+    uint256[] amounts; // The amounts of each ERC6909 token to allocate.
+    address claimant; // The allocation recipient (no address: any recipient)
+    address oracle; // The account enforcing whether to release allocated funds.
+    bytes oracleFixedData; // The fixed data payload provided to the oracle.
+}
+
+// keccak256("BatchAllocation(address owner,uint256 startTime,uint256 endTime,uint256 nonce,uint256[] ids,uint256[] amounts,address claimant,address oracle,bytes oracleFixedData)")
+bytes32 constant BATCH_ALLOCATION_TYPEHASH =
+    0x4a861c73d7d12b2f376a12be983a2d1f530af97e12d5ff0b5f8e9d790ee09b93;
+
 // Message signed by the allocator that confirms that a given allocation does
 // not result in an over-allocated state for the token owner, and that modifies
 // the conditions of the allocation where applicable.
@@ -34,6 +54,21 @@ struct AllocationAuthorization {
 // keccak256("AllocationAuthorization(bytes32 allocationHash,uint256 startTime,uint256 endTime,address claimant,uint256 amountReduction)")
 bytes32 constant ALLOCATION_AUTHORIZATION_TYPEHASH =
     0x9d7957a907b00fac8de3a22c078f7f0409c40a085d5c51f7a371cf3291563692;
+
+// Message signed by the allocator that confirms that a given allocation does
+// not result in an over-allocated state for the token owner, and that modifies
+// the conditions of the allocation where applicable.
+struct BatchAllocationAuthorization {
+    // bytes32 allocationHash; // signed but not explicitly supplied as a parameter
+    uint256 startTime; // The time at which the allocation authorization becomes valid.
+    uint256 endTime; // The time at which the allocation authorization expires.
+    address claimant; // The allocation recipient (no address: any recipient)
+    uint256[] amountReductions; // The amounts by which each claimable token will be reduced.
+}
+
+// keccak256("BatchAllocationAuthorization(bytes32 allocationHash,uint256 startTime,uint256 endTime,address claimant,uint256[] amountReductions)")
+bytes32 constant BATCH_ALLOCATION_AUTHORIZATION_TYPEHASH =
+    0x4c90cb61ec8a1c2fae08542cc7898d379b30b0aa4a2a31eb94f4942bf3b3e59a;
 
 // Message signed by the allocator that confirms that a given withdrawal does
 // not result in an over-allocated state for the token owner, and that enables
