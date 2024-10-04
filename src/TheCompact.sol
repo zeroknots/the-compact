@@ -23,6 +23,14 @@ import {
 import { IOracle } from "./interfaces/IOracle.sol";
 import { IAllocator } from "./interfaces/IAllocator.sol";
 
+/**
+ * @title The Compact
+ * @custom:version 1 (early-stage proof-of-concept)
+ * @author 0age (0age.eth)
+ * @notice The Compact is an ownerless ERC6909 contract that facilitates the voluntary
+ *         formation (and, if necessary, involuntary dissolution) of "resource locks."
+ *         This contract has not yet been properly tested, audited, or reviewed.
+ */
 contract TheCompact is ERC6909 {
     using IdLib for uint256;
     using IdLib for address;
