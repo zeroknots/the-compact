@@ -1,7 +1,7 @@
 # The Compact 🤝
-**Compact** *[noun]*: an agreement or covenant between two or more parties.
-**Compact** *[transitive verb]*: to make up by connecting or combining.
-**Compact** *[adjective]*: occupying a small volume by reason of efficient use of space.
+ - **Compact** *[noun]*: an agreement or covenant between two or more parties.
+ - **Compact** *[transitive verb]*: to make up by connecting or combining.
+ - **Compact** *[adjective]*: occupying a small volume by reason of efficient use of space.
 
 > :warning: This is an early-stage contract under active development; it has not yet been properly tested, reviewed, or audited.
 
