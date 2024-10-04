@@ -67,6 +67,7 @@ contract TheCompact is ERC6909 {
     );
     error InvalidAmountReduction(uint256 amount, uint256 amountReduction);
     error UnallocatedTransfer(address from, address to, uint256 id, uint256 amount);
+    error CallerNotClaimant();
 
     IPermit2 private constant _PERMIT2 = IPermit2(0x000000000022D473030F116dDEE9F6B43aC78BA3);
 
@@ -221,13 +222,16 @@ contract TheCompact is ERC6909 {
         _release(allocation.owner, claimant, allocation.id, claimAmount);
     }
 
+    // Note: this can be frontrun since anyone can call claim
     function claimAndWithdraw(
         Allocation calldata allocation,
         AllocationAuthorization calldata allocationAuthorization,
         bytes calldata oracleVariableData,
         bytes calldata ownerSignature,
-        bytes calldata allocatorSignature
-    ) external returns (address claimant, uint256 claimAmount) {
+        bytes calldata allocatorSignature,
+        address recipient
+    ) external returns (uint256 claimAmount) {
+        address claimant;
         (claimant, claimAmount) = _processClaim(
             allocation,
             allocationAuthorization,
@@ -236,7 +240,11 @@ contract TheCompact is ERC6909 {
             allocatorSignature
         );
 
-        _withdraw(allocation.owner, claimant, allocation.id, claimAmount);
+        if (msg.sender != claimant) {
+            revert CallerNotClaimant();
+        }
+
+        _withdraw(allocation.owner, recipient, allocation.id, claimAmount);
     }
 
     function _processClaim(
@@ -433,6 +441,24 @@ contract TheCompact is ERC6909 {
 
     function check(uint256 nonce, address allocator) external view returns (bool consumed) {
         return nonce.isConsumedBy(allocator);
+    }
+
+    function DOMAIN_SEPARATOR() external view returns (bytes32 domainSeparator) {
+        uint256 initialChainId = _INITIAL_CHAIN_ID;
+        domainSeparator = _INITIAL_DOMAIN_SEPARATOR;
+
+        assembly ("memory-safe") {
+            // Prepare the domain separator, rederiving it if necessary.
+            if xor(chainid(), initialChainId) {
+                let m := mload(0x40) // Grab the free memory pointer.
+                mstore(m, _DOMAIN_TYPEHASH)
+                mstore(add(m, 0x20), _NAME_HASH)
+                mstore(add(m, 0x40), _VERSION_HASH)
+                mstore(add(m, 0x60), chainid())
+                mstore(add(m, 0x80), address())
+                domainSeparator := keccak256(m, 0xa0)
+            }
+        }
     }
 
     /// @dev Moves token `id` from `from` to `to` without checking

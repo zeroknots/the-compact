@@ -4,6 +4,7 @@ pragma solidity ^0.8.13;
 import { Test, console } from "forge-std/Test.sol";
 import { TheCompact } from "../src/TheCompact.sol";
 import { MockERC20 } from "../lib/solady/test/utils/mocks/MockERC20.sol";
+import { Allocation, AllocationAuthorization } from "../src/types/EIP712Types.sol";
 
 interface EIP712 {
     function DOMAIN_SEPARATOR() external view returns (bytes32);
@@ -15,8 +16,33 @@ contract TheCompactTest is Test {
     address permit2 = address(0x000000000022D473030F116dDEE9F6B43aC78BA3);
     uint256 swapperPrivateKey;
     address swapper;
+    uint256 allocatorPrivateKey;
+    address allocator;
+    address dummyOracle;
+    bytes32 compactEIP712DomainHash = keccak256(
+        "EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"
+    );
+    bytes32 permit2EIP712DomainHash =
+        keccak256("EIP712Domain(string name,uint256 chainId,address verifyingContract)");
 
     function setUp() public {
+        address deployedDummyOracle;
+        assembly {
+            // deploy a contract that always returns one word of 0's followed by one word of f's
+            // minimal "constructor" 0x600b5981380380925939f3... (11 bytes)
+            // runtime code (9 bytes):
+            // Op       Opcode Name     Stack
+            // 60 40	PUSH1 0x40	    [0x40]
+            // 3D	    RETURNDATASIZE	[0, 0x40]
+            // 3D	    RETURNDATASIZE	[0, 0, 0x40]
+            // 19	    NOT	            [type(uint256).max, 0, 0x40]
+            // 60 20    PUSH1 0x20	    [0x20, type(uint256).max, 0, 0x40]
+            // 52	    MSTORE	        [0, 0x40] (Memory at 0x20 set to type(uint256).max)
+            // F3	    RETURN	        [] (Returns 0x40 bytes from memory starting at 0x00)
+            mstore(0, 0x600b5981380380925939f360403d3d19602052f3)
+            deployedDummyOracle := create(0, 12, 20)
+        }
+        dummyOracle = deployedDummyOracle;
         address permit2Deployer = address(0x4e59b44847b379578588920cA78FbF26c0B4956C);
         address deployedPermit2Deployer;
         address permit2DeployerDeployer = address(0x3fAB184622Dc19b6109349B94811493BF2a45362);
@@ -41,6 +67,7 @@ contract TheCompactTest is Test {
         token = new MockERC20("Mock ERC20", "MOCK", 18);
 
         (swapper, swapperPrivateKey) = makeAddrAndKey("swapper");
+        (allocator, allocatorPrivateKey) = makeAddrAndKey("allocator");
 
         vm.deal(swapper, 2e18);
         token.mint(swapper, 1e18);
@@ -56,10 +83,41 @@ contract TheCompactTest is Test {
         assertEq(keccak256(bytes(name)), keccak256(bytes("The Compact")));
     }
 
+    function test_domainSeparator() public view {
+        bytes32 domainSeparator = keccak256(
+            abi.encode(
+                compactEIP712DomainHash,
+                keccak256(bytes("The Compact")),
+                keccak256(bytes("1")),
+                block.chainid,
+                address(theCompact)
+            )
+        );
+        assertEq(domainSeparator, theCompact.DOMAIN_SEPARATOR());
+    }
+
+    function test_domainSeparatorOnNewChain() public {
+        uint256 currentChainId = block.chainid;
+        uint256 differentChainId = currentChainId + 42;
+        bytes32 domainSeparator = keccak256(
+            abi.encode(
+                compactEIP712DomainHash,
+                keccak256(bytes("The Compact")),
+                keccak256(bytes("1")),
+                differentChainId,
+                address(theCompact)
+            )
+        );
+        vm.chainId(differentChainId);
+        assertEq(block.chainid, differentChainId);
+        assertEq(domainSeparator, theCompact.DOMAIN_SEPARATOR());
+        vm.chainId(currentChainId);
+        assertEq(block.chainid, currentChainId);
+    }
+
     function test_depositETHAndURI() public {
         uint256 initialRegisteredAllocators = theCompact.getTotalRegisteredAllocators();
         address recipient = 0x1111111111111111111111111111111111111111;
-        address allocator = 0x2222222222222222222222222222222222222222;
         uint48 resetPeriod = 120;
         uint256 amount = 1e18;
 
@@ -85,7 +143,6 @@ contract TheCompactTest is Test {
     function test_depositERC20AndURI() public {
         uint256 initialRegisteredAllocators = theCompact.getTotalRegisteredAllocators();
         address recipient = 0x1111111111111111111111111111111111111111;
-        address allocator = 0x2222222222222222222222222222222222222222;
         uint48 resetPeriod = 120;
         uint256 amount = 1e18;
 
@@ -113,7 +170,6 @@ contract TheCompactTest is Test {
     function test_depositERC20ViaPermit2AndURI() public {
         uint256 initialRegisteredAllocators = theCompact.getTotalRegisteredAllocators();
         address recipient = 0x1111111111111111111111111111111111111111;
-        address allocator = 0x2222222222222222222222222222222222222222;
         uint48 resetPeriod = 120;
         uint256 amount = 1e18;
         uint256 nonce = 0;
@@ -121,7 +177,7 @@ contract TheCompactTest is Test {
 
         bytes32 domainSeparator = keccak256(
             abi.encode(
-                keccak256("EIP712Domain(string name,uint256 chainId,address verifyingContract)"),
+                permit2EIP712DomainHash,
                 keccak256(bytes("Permit2")),
                 block.chainid,
                 address(permit2)
@@ -196,5 +252,391 @@ contract TheCompactTest is Test {
         assertEq(token.balanceOf(address(theCompact)), amount);
         assertEq(theCompact.balanceOf(recipient, id), amount);
         assert(bytes(theCompact.tokenURI(id)).length > 0);
+    }
+
+    function test_delegatedWithdrawal() public {
+        uint48 resetPeriod = 120;
+        uint256 amount = 1e18;
+        uint256 nonce = 0;
+        uint256 startTime = block.timestamp;
+        uint256 endTime = block.timestamp + 1000;
+        address recipient = 0x1111111111111111111111111111111111111111;
+        uint256 pledge = 0;
+
+        vm.prank(swapper);
+        uint256 id = theCompact.deposit{ value: amount }(allocator, resetPeriod, swapper);
+        assertEq(theCompact.balanceOf(swapper, id), amount);
+
+        bytes32 digest = keccak256(
+            abi.encodePacked(
+                bytes2(0x1901),
+                theCompact.DOMAIN_SEPARATOR(),
+                keccak256(
+                    abi.encode(
+                        keccak256(
+                            "DelegatedWithdrawal(address owner,uint256 startTime,uint256 endTime,uint256 nonce,uint256 id,uint256 amount,address recipient,uint256 pledge)"
+                        ),
+                        swapper,
+                        startTime,
+                        endTime,
+                        nonce,
+                        id,
+                        amount,
+                        recipient,
+                        pledge
+                    )
+                )
+            )
+        );
+
+        (bytes32 r, bytes32 vs) = vm.signCompact(swapperPrivateKey, digest);
+        bytes memory ownerSignature = abi.encodePacked(r, vs);
+        (r, vs) = vm.signCompact(allocatorPrivateKey, digest);
+        bytes memory allocatorSignature = abi.encodePacked(r, vs);
+
+        bool status = theCompact.allocatedWithdrawalFrom(
+            swapper,
+            id,
+            amount,
+            nonce,
+            startTime,
+            endTime,
+            recipient,
+            pledge,
+            ownerSignature,
+            allocatorSignature
+        );
+        assert(status);
+
+        assertEq(address(theCompact).balance, 0);
+        assertEq(recipient.balance, amount);
+        assertEq(theCompact.balanceOf(swapper, id), 0);
+        assertEq(theCompact.balanceOf(recipient, id), 0);
+    }
+
+    function test_withdrawalViaAuthorization() public {
+        uint48 resetPeriod = 120;
+        uint256 amount = 1e18;
+        uint256 nonce = 0;
+        uint256 expiration = block.timestamp + 1000;
+        address recipient = 0x1111111111111111111111111111111111111111;
+
+        vm.prank(swapper);
+        uint256 id = theCompact.deposit(address(token), allocator, resetPeriod, amount, swapper);
+        assertEq(theCompact.balanceOf(swapper, id), amount);
+
+        bytes32 digest = keccak256(
+            abi.encodePacked(
+                bytes2(0x1901),
+                theCompact.DOMAIN_SEPARATOR(),
+                keccak256(
+                    abi.encode(
+                        keccak256(
+                            "WithdrawalAuthorization(address owner,uint256 expiration,uint256 nonce,uint256 id,uint256 amount)"
+                        ),
+                        swapper,
+                        expiration,
+                        nonce,
+                        id,
+                        amount
+                    )
+                )
+            )
+        );
+
+        (bytes32 r, bytes32 vs) = vm.signCompact(allocatorPrivateKey, digest);
+        bytes memory allocatorSignature = abi.encodePacked(r, vs);
+
+        vm.prank(swapper);
+        bool status = theCompact.allocatedWithdrawal(
+            id, amount, nonce, expiration, recipient, allocatorSignature
+        );
+        assert(status);
+
+        assertEq(token.balanceOf(address(theCompact)), 0);
+        assertEq(token.balanceOf(recipient), amount);
+        assertEq(theCompact.balanceOf(swapper, id), 0);
+        assertEq(theCompact.balanceOf(recipient, id), 0);
+    }
+
+    function test_delegatedTransfer() public {
+        uint48 resetPeriod = 120;
+        uint256 amount = 1e18;
+        uint256 nonce = 0;
+        uint256 startTime = block.timestamp;
+        uint256 endTime = block.timestamp + 1000;
+        address recipient = 0x1111111111111111111111111111111111111111;
+        uint256 pledge = 0;
+
+        vm.prank(swapper);
+        uint256 id = theCompact.deposit{ value: amount }(allocator, resetPeriod, swapper);
+        assertEq(theCompact.balanceOf(swapper, id), amount);
+
+        bytes32 digest = keccak256(
+            abi.encodePacked(
+                bytes2(0x1901),
+                theCompact.DOMAIN_SEPARATOR(),
+                keccak256(
+                    abi.encode(
+                        keccak256(
+                            "DelegatedTransfer(address owner,uint256 startTime,uint256 endTime,uint256 nonce,uint256 id,uint256 amount,address recipient,uint256 pledge)"
+                        ),
+                        swapper,
+                        startTime,
+                        endTime,
+                        nonce,
+                        id,
+                        amount,
+                        recipient,
+                        pledge
+                    )
+                )
+            )
+        );
+
+        (bytes32 r, bytes32 vs) = vm.signCompact(swapperPrivateKey, digest);
+        bytes memory ownerSignature = abi.encodePacked(r, vs);
+        (r, vs) = vm.signCompact(allocatorPrivateKey, digest);
+        bytes memory allocatorSignature = abi.encodePacked(r, vs);
+
+        bool status = theCompact.allocatedTransferFrom(
+            swapper,
+            id,
+            amount,
+            nonce,
+            startTime,
+            endTime,
+            recipient,
+            pledge,
+            ownerSignature,
+            allocatorSignature
+        );
+        assert(status);
+
+        assertEq(address(theCompact).balance, amount);
+        assertEq(recipient.balance, 0);
+        assertEq(theCompact.balanceOf(swapper, id), 0);
+        assertEq(theCompact.balanceOf(recipient, id), amount);
+    }
+
+    function test_TransferViaAuthorization() public {
+        uint48 resetPeriod = 120;
+        uint256 amount = 1e18;
+        uint256 nonce = 0;
+        uint256 expiration = block.timestamp + 1000;
+        address recipient = 0x1111111111111111111111111111111111111111;
+
+        vm.prank(swapper);
+        uint256 id = theCompact.deposit(address(token), allocator, resetPeriod, amount, swapper);
+        assertEq(theCompact.balanceOf(swapper, id), amount);
+
+        bytes32 digest = keccak256(
+            abi.encodePacked(
+                bytes2(0x1901),
+                theCompact.DOMAIN_SEPARATOR(),
+                keccak256(
+                    abi.encode(
+                        keccak256(
+                            "TransferAuthorization(address owner,uint256 expiration,uint256 nonce,uint256 id,uint256 amount)"
+                        ),
+                        swapper,
+                        expiration,
+                        nonce,
+                        id,
+                        amount
+                    )
+                )
+            )
+        );
+
+        (bytes32 r, bytes32 vs) = vm.signCompact(allocatorPrivateKey, digest);
+        bytes memory allocatorSignature = abi.encodePacked(r, vs);
+
+        vm.prank(swapper);
+        bool status = theCompact.allocatedTransfer(
+            id, amount, nonce, expiration, recipient, allocatorSignature
+        );
+        assert(status);
+
+        assertEq(token.balanceOf(address(theCompact)), amount);
+        assertEq(token.balanceOf(recipient), 0);
+        assertEq(theCompact.balanceOf(swapper, id), 0);
+        assertEq(theCompact.balanceOf(recipient, id), amount);
+    }
+
+    function test_claim() public {
+        uint48 resetPeriod = 120;
+        uint256 amount = 1e18;
+        uint256 nonce = 0;
+        uint256 startTime = block.timestamp;
+        uint256 endTime = block.timestamp + 1000;
+        address claimant = 0x1111111111111111111111111111111111111111;
+        address oracle = dummyOracle;
+        bytes memory oracleFixedData;
+        bytes memory oracleVariableData;
+
+        address allocatorClaimant = claimant;
+        uint256 amountReduction = 0;
+
+        vm.prank(swapper);
+        uint256 id = theCompact.deposit{ value: amount }(allocator, resetPeriod, swapper);
+        assertEq(theCompact.balanceOf(swapper, id), amount);
+
+        bytes32 allocationHash = keccak256(
+            abi.encode(
+                keccak256(
+                    "Allocation(address owner,uint256 startTime,uint256 endTime,uint256 nonce,uint256 id,uint256 amount,address claimant,address oracle,bytes oracleFixedData)"
+                ),
+                swapper,
+                startTime,
+                endTime,
+                nonce,
+                id,
+                amount,
+                claimant,
+                oracle,
+                keccak256(oracleFixedData)
+            )
+        );
+
+        bytes32 digest = keccak256(
+            abi.encodePacked(bytes2(0x1901), theCompact.DOMAIN_SEPARATOR(), allocationHash)
+        );
+
+        (bytes32 r, bytes32 vs) = vm.signCompact(swapperPrivateKey, digest);
+        bytes memory ownerSignature = abi.encodePacked(r, vs);
+
+        digest = keccak256(
+            abi.encodePacked(
+                bytes2(0x1901),
+                theCompact.DOMAIN_SEPARATOR(),
+                keccak256(
+                    abi.encode(
+                        keccak256(
+                            "AllocationAuthorization(bytes32 allocationHash,uint256 startTime,uint256 endTime,address claimant,uint256 amountReduction)"
+                        ),
+                        allocationHash,
+                        startTime,
+                        endTime,
+                        allocatorClaimant,
+                        amountReduction
+                    )
+                )
+            )
+        );
+
+        (r, vs) = vm.signCompact(allocatorPrivateKey, digest);
+        bytes memory allocatorSignature = abi.encodePacked(r, vs);
+
+        Allocation memory allocation = Allocation(
+            swapper, startTime, endTime, nonce, id, amount, claimant, oracle, oracleFixedData
+        );
+        AllocationAuthorization memory allocationAuthorization =
+            AllocationAuthorization(startTime, endTime, allocatorClaimant, amountReduction);
+
+        (address returnedClaimant, uint256 returnedClaimAmount) = theCompact.claim(
+            allocation,
+            allocationAuthorization,
+            oracleVariableData,
+            ownerSignature,
+            allocatorSignature
+        );
+        assertEq(claimant, returnedClaimant);
+        assertEq(amount, returnedClaimAmount);
+
+        assertEq(address(theCompact).balance, amount);
+        assertEq(claimant.balance, 0);
+        assertEq(theCompact.balanceOf(swapper, id), 0);
+        assertEq(theCompact.balanceOf(claimant, id), amount);
+    }
+
+    function test_claimAndWithdraw() public {
+        uint48 resetPeriod = 120;
+        uint256 amount = 1e18;
+        uint256 nonce = 0;
+        uint256 startTime = block.timestamp;
+        uint256 endTime = block.timestamp + 1000;
+        address claimant = 0x1111111111111111111111111111111111111111;
+        address oracle = dummyOracle;
+        bytes memory oracleFixedData;
+        bytes memory oracleVariableData;
+        address recipient = 0x2222222222222222222222222222222222222222;
+
+        address allocatorClaimant = claimant;
+        uint256 amountReduction = 0;
+
+        vm.prank(swapper);
+        uint256 id = theCompact.deposit{ value: amount }(allocator, resetPeriod, swapper);
+        assertEq(theCompact.balanceOf(swapper, id), amount);
+
+        bytes32 allocationHash = keccak256(
+            abi.encode(
+                keccak256(
+                    "Allocation(address owner,uint256 startTime,uint256 endTime,uint256 nonce,uint256 id,uint256 amount,address claimant,address oracle,bytes oracleFixedData)"
+                ),
+                swapper,
+                startTime,
+                endTime,
+                nonce,
+                id,
+                amount,
+                claimant,
+                oracle,
+                keccak256(oracleFixedData)
+            )
+        );
+
+        bytes32 digest = keccak256(
+            abi.encodePacked(bytes2(0x1901), theCompact.DOMAIN_SEPARATOR(), allocationHash)
+        );
+
+        (bytes32 r, bytes32 vs) = vm.signCompact(swapperPrivateKey, digest);
+        bytes memory ownerSignature = abi.encodePacked(r, vs);
+
+        digest = keccak256(
+            abi.encodePacked(
+                bytes2(0x1901),
+                theCompact.DOMAIN_SEPARATOR(),
+                keccak256(
+                    abi.encode(
+                        keccak256(
+                            "AllocationAuthorization(bytes32 allocationHash,uint256 startTime,uint256 endTime,address claimant,uint256 amountReduction)"
+                        ),
+                        allocationHash,
+                        startTime,
+                        endTime,
+                        allocatorClaimant,
+                        amountReduction
+                    )
+                )
+            )
+        );
+
+        (r, vs) = vm.signCompact(allocatorPrivateKey, digest);
+        bytes memory allocatorSignature = abi.encodePacked(r, vs);
+
+        Allocation memory allocation = Allocation(
+            swapper, startTime, endTime, nonce, id, amount, claimant, oracle, oracleFixedData
+        );
+        AllocationAuthorization memory allocationAuthorization =
+            AllocationAuthorization(startTime, endTime, allocatorClaimant, amountReduction);
+
+        vm.prank(claimant);
+        uint256 returnedClaimAmount = theCompact.claimAndWithdraw(
+            allocation,
+            allocationAuthorization,
+            oracleVariableData,
+            ownerSignature,
+            allocatorSignature,
+            recipient
+        );
+        assertEq(amount, returnedClaimAmount);
+
+        assertEq(address(theCompact).balance, 0);
+        assertEq(claimant.balance, 0);
+        assertEq(recipient.balance, amount);
+        assertEq(theCompact.balanceOf(swapper, id), 0);
+        assertEq(theCompact.balanceOf(claimant, id), 0);
+        assertEq(theCompact.balanceOf(recipient, id), 0);
     }
 }
