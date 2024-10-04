@@ -4,7 +4,12 @@ pragma solidity ^0.8.13;
 import { Test, console } from "forge-std/Test.sol";
 import { TheCompact } from "../src/TheCompact.sol";
 import { MockERC20 } from "../lib/solady/test/utils/mocks/MockERC20.sol";
-import { Allocation, AllocationAuthorization, BatchAllocation, BatchAllocationAuthorization } from "../src/types/EIP712Types.sol";
+import {
+    Allocation,
+    AllocationAuthorization,
+    BatchAllocation,
+    BatchAllocationAuthorization
+} from "../src/types/EIP712Types.sol";
 
 interface EIP712 {
     function DOMAIN_SEPARATOR() external view returns (bytes32);
@@ -578,8 +583,6 @@ contract TheCompactTest is Test {
 
         address allocatorClaimant = claimant;
         uint256 amountReduction = 0;
-        uint256 anotherAmountReduction = 0;
-        uint256 aThirdAmountReduction = 0;
 
         vm.prank(swapper);
         uint256 id = theCompact.deposit{ value: amount }(allocator, resetPeriod, swapper);
@@ -677,11 +680,13 @@ contract TheCompactTest is Test {
         vm.startPrank(swapper);
         uint256 id = theCompact.deposit{ value: amount }(allocator, resetPeriod, swapper);
 
-        uint256 anotherId = theCompact.deposit(address(token), allocator, resetPeriod, anotherAmount, swapper);
-        assertEq(theCompact.balanceOf(swapper, id), anotherAmount);
+        uint256 anotherId =
+            theCompact.deposit(address(token), allocator, resetPeriod, anotherAmount, swapper);
+        assertEq(theCompact.balanceOf(swapper, anotherId), anotherAmount);
 
-        uint256 aThirdId = theCompact.deposit(address(anotherToken), allocator, resetPeriod, aThirdAmount, swapper);
-        assertEq(theCompact.balanceOf(swapper, id), aThirdAmount);
+        uint256 aThirdId =
+            theCompact.deposit(address(anotherToken), allocator, resetPeriod, aThirdAmount, swapper);
+        assertEq(theCompact.balanceOf(swapper, aThirdId), aThirdAmount);
 
         vm.stopPrank();
 

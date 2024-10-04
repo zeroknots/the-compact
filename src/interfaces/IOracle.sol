@@ -8,7 +8,9 @@ interface IOracle {
         returns (address claimant, uint256 claimAmount);
 
     // Called on claims referencing an array of allocated tokens.
-    function attestBatch(bytes32 allocationHash, bytes calldata fixedData, bytes calldata variableData)
-        external
-        returns (address claimant, uint256[] memory claimAmounts);
+    function attestBatch(
+        bytes32 allocationHash,
+        bytes calldata fixedData,
+        bytes calldata variableData
+    ) external returns (address claimant, uint256[] memory claimAmounts);
 }

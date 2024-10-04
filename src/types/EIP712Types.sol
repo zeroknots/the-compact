@@ -20,7 +20,6 @@ struct Allocation {
 bytes32 constant ALLOCATION_TYPEHASH =
     0x332b96efcdc96931e9c671e47db4a873af3efa03557c9c2b93f4eb5f85587c15;
 
-
 // Message signed by the owner that specifies the conditions under which a set of
 // tokens can be allocated; the specified oracle verifies that those conditions
 // have been met, enabling an allocatee to claim the specified token amounts.

@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.27;
 
+import { ITheCompact } from "./interfaces/ITheCompact.sol";
 import { Lock } from "./types/Lock.sol";
+import { ForcedWithdrawalStatus } from "./types/ForcedWithdrawalStatus.sol";
 import { IdLib } from "./lib/IdLib.sol";
 import { ConsumerLib } from "./lib/ConsumerLib.sol";
 import { EfficiencyLib } from "./lib/EfficiencyLib.sol";
@@ -38,7 +40,7 @@ import { MetadataRenderer } from "./lib/MetadataRenderer.sol";
  *         formation (and, if necessary, involuntary dissolution) of "resource locks."
  *         This contract has not yet been properly tested, audited, or reviewed.
  */
-contract TheCompact is ERC6909 {
+contract TheCompact is ITheCompact, ERC6909 {
     using IdLib for uint256;
     using IdLib for address;
     using IdLib for Lock;
@@ -49,44 +51,6 @@ contract TheCompact is ERC6909 {
     using FixedPointMathLib for uint256;
     using EfficiencyLib for bool;
     using EfficiencyLib for uint256;
-
-    event Deposit(
-        address indexed depositor,
-        address indexed recipient,
-        uint256 indexed id,
-        uint256 depositedAmount
-    );
-    event Claim(
-        address indexed provider,
-        address indexed claimant,
-        uint256 indexed id,
-        bytes32 allocationHash,
-        uint256 claimAmount
-    );
-    event Withdrawal(
-        address indexed account,
-        address indexed recipient,
-        uint256 indexed id,
-        uint256 withdrawnAmount
-    );
-    event ForcedWithdrawalEnabled(
-        address indexed account, uint256 indexed id, uint256 withdrawableAt
-    );
-    event ForcedWithdrawalDisabled(address indexed account, uint256 indexed id);
-
-    error InvalidToken(address token);
-    error Expired(uint256 expiration);
-    error InvalidTime(uint256 startTime, uint256 endTime);
-    error InvalidSignature();
-    error PrematureWithdrawal(uint256 id);
-    error ForcedWithdrawalAlreadyDisabled(address account, uint256 id);
-    error InvalidClaimant(
-        address providerClaimant, address allocatorClaimant, address oracleClaimant
-    );
-    error InvalidAmountReduction(uint256 amount, uint256 amountReduction);
-    error UnallocatedTransfer(address from, address to, uint256 id, uint256 amount);
-    error CallerNotClaimant();
-    error InvalidBatchAllocation();
 
     IPermit2 private constant _PERMIT2 = IPermit2(0x000000000022D473030F116dDEE9F6B43aC78BA3);
 
@@ -113,7 +77,7 @@ contract TheCompact is ERC6909 {
         0xc89efdaa54c0f20c7adf612882df0950f5a951637e0307cdcb4c672f298b8bc6;
 
     // Rage-quit functionality (TODO: optimize storage layout)
-    mapping(address => mapping(uint256 => uint256)) public cutoffTime;
+    mapping(address => mapping(uint256 => uint256)) private _cutoffTime;
 
     uint256 private immutable _INITIAL_CHAIN_ID;
     bytes32 private immutable _INITIAL_DOMAIN_SEPARATOR;
@@ -125,31 +89,6 @@ contract TheCompact is ERC6909 {
             abi.encode(_DOMAIN_TYPEHASH, _NAME_HASH, _VERSION_HASH, block.chainid, address(this))
         );
         _METADATA_RENDERER = new MetadataRenderer();
-    }
-
-    /// @dev Returns the name for the contract.
-    function name() external pure returns (string memory) {
-        // Return the name of the contract.
-        assembly ("memory-safe") {
-            mstore(0x20, 0x20)
-            mstore(0x4b, 0x0b54686520436f6d70616374)
-            return(0x20, 0x60)
-        }
-    }
-
-    /// @dev Returns the symbol for token `id`.
-    function name(uint256 id) public view virtual override returns (string memory) {
-        return string.concat("Compact ", id.toToken().readNameWithDefaultValue());
-    }
-
-    /// @dev Returns the symbol for token `id`.
-    function symbol(uint256 id) public view virtual override returns (string memory) {
-        return string.concat(unicode"🤝-", id.toToken().readSymbolWithDefaultValue());
-    }
-
-    /// @dev Returns the Uniform Resource Identifier (URI) for token `id`.
-    function tokenURI(uint256 id) public view virtual override returns (string memory) {
-        return _METADATA_RENDERER.uri(id.toLock(), id);
     }
 
     function deposit(address allocator, uint48 resetPeriod, address recipient)
@@ -257,7 +196,6 @@ contract TheCompact is ERC6909 {
             ownerSignature,
             allocatorSignature
         );
-        
 
         uint256 totalIds = batchAllocation.ids.length;
         address owner = batchAllocation.owner;
@@ -292,131 +230,6 @@ contract TheCompact is ERC6909 {
         }
 
         _withdraw(allocation.owner, recipient, allocation.id, claimAmount);
-    }
-
-    function _processClaim(
-        Allocation calldata allocation,
-        AllocationAuthorization calldata allocationAuthorization,
-        bytes calldata oracleVariableData,
-        bytes calldata ownerSignature,
-        bytes calldata allocatorSignature
-    ) internal returns (address claimant, uint256 claimAmount) {
-        _assertValidTime(allocation.startTime, allocation.endTime);
-        _assertValidTime(allocationAuthorization.startTime, allocationAuthorization.endTime);
-
-        if (allocationAuthorization.amountReduction >= allocation.amount) {
-            revert InvalidAmountReduction(
-                allocation.amount, allocationAuthorization.amountReduction
-            );
-        }
-
-        address allocator = allocation.id.toAllocator();
-        allocation.nonce.consumeNonce(allocator);
-        bytes32 allocationMessageHash = _getAllocationMessageHash(allocation);
-        _assertValidSignature(allocationMessageHash, ownerSignature, allocation.owner);
-        bytes32 allocationAuthorizationMessageHash =
-            _getAllocationAuthorizationMessageHash(allocationAuthorization, allocationMessageHash);
-        _assertValidSignature(allocationAuthorizationMessageHash, allocatorSignature, allocator);
-        (address oracleClaimant, uint256 oracleClaimAmount) = IOracle(allocation.oracle).attest(
-            allocationMessageHash, allocation.oracleFixedData, oracleVariableData
-        );
-
-        claimant =
-            _deriveClaimant(allocation.claimant, allocationAuthorization.claimant, oracleClaimant);
-
-        unchecked {
-            claimAmount =
-                oracleClaimAmount.min(allocation.amount - allocationAuthorization.amountReduction);
-        }
-
-        emit Claim(allocation.owner, claimant, allocation.id, allocationMessageHash, claimAmount);
-    }
-
-    function _processBatchClaim(
-        BatchAllocation calldata batchAllocation,
-        BatchAllocationAuthorization calldata batchAllocationAuthorization,
-        bytes calldata oracleVariableData,
-        bytes calldata ownerSignature,
-        bytes calldata allocatorSignature
-    ) internal returns (address claimant, uint256[] memory claimAmounts) {
-        _assertValidTime(batchAllocation.startTime, batchAllocation.endTime);
-        _assertValidTime(batchAllocationAuthorization.startTime, batchAllocationAuthorization.endTime);
-
-        uint256 totalIds = batchAllocation.ids.length;
-        if (
-            (totalIds == 0).or(totalIds != batchAllocation.amounts.length).or(totalIds != batchAllocationAuthorization.amountReductions.length)
-        ) {
-            revert InvalidBatchAllocation();
-        }
-
-        // TODO: skip the bounds check on this array access
-        uint256 allocatorIndex = batchAllocation.ids[0].toAllocatorIndex();
-        claimAmounts = new uint256[](totalIds);
-
-        address allocator = allocatorIndex.toRegisteredAllocator();
-        batchAllocation.nonce.consumeNonce(allocator);
-        bytes32 batchAllocationMessageHash = _getBatchAllocationMessageHash(batchAllocation);
-        _assertValidSignature(batchAllocationMessageHash, ownerSignature, batchAllocation.owner);
-        bytes32 batchAllocationAuthorizationMessageHash =
-            _getBatchAllocationAuthorizationMessageHash(batchAllocationAuthorization, batchAllocationMessageHash);
-        _assertValidSignature(batchAllocationAuthorizationMessageHash, allocatorSignature, allocator);
-        (address oracleClaimant, uint256[] memory oracleClaimAmounts) = IOracle(batchAllocation.oracle).attestBatch(
-            batchAllocationMessageHash, batchAllocation.oracleFixedData, oracleVariableData
-        );
-
-        claimant =
-            _deriveClaimant(batchAllocation.claimant, batchAllocationAuthorization.claimant, oracleClaimant);
-
-        // TODO: many of the bounds checks on these array accesses can be skipped as an optimization
-        uint256 errorBuffer = (batchAllocationAuthorization.amountReductions[0] >= batchAllocation.amounts[0]).or(totalIds != oracleClaimAmounts.length).asUint256();
-        unchecked {
-            for (uint256 i = 1; i < totalIds; ++i) {
-                uint256 id = batchAllocation.ids[i];
-                uint256 originalAmount = batchAllocation.amounts[i];
-                uint256 amountReduction = batchAllocationAuthorization.amountReductions[i];
-                errorBuffer |= (amountReduction >= originalAmount).or(id.toAllocatorIndex() != allocatorIndex).asUint256();
-                uint256 claimAmount = oracleClaimAmounts[i].min(originalAmount - amountReduction);
-                claimAmounts[i] = claimAmount;
-                emit Claim(batchAllocation.owner, claimant, id, batchAllocationMessageHash, claimAmount);
-            }
-        }
-        if (errorBuffer.asBool()) {
-            // TODO: extract more informative error by deriving the reason for the failure
-            revert InvalidBatchAllocation();
-        }
-    }
-
-    function enableForcedWithdrawal(uint256 id) external returns (uint256 withdrawableAt) {
-        withdrawableAt = block.timestamp + id.toResetPeriod();
-
-        cutoffTime[msg.sender][id] = withdrawableAt;
-
-        emit ForcedWithdrawalEnabled(msg.sender, id, withdrawableAt);
-    }
-
-    function disableForcedWithdrawal(uint256 id) external {
-        if (cutoffTime[msg.sender][id] == 0) {
-            revert ForcedWithdrawalAlreadyDisabled(msg.sender, id);
-        }
-
-        delete cutoffTime[msg.sender][id];
-
-        emit ForcedWithdrawalDisabled(msg.sender, id);
-    }
-
-    function forcedWithdrawal(uint256 id, address recipient)
-        external
-        returns (uint256 withdrawnAmount)
-    {
-        uint256 withdrawableAt = cutoffTime[msg.sender][id];
-
-        if ((withdrawableAt == 0).or(withdrawableAt > block.timestamp)) {
-            revert PrematureWithdrawal(id);
-        }
-
-        withdrawnAmount = balanceOf(msg.sender, id);
-
-        _withdraw(msg.sender, recipient, id, withdrawnAmount);
     }
 
     function allocatedTransfer(
@@ -517,6 +330,55 @@ contract TheCompact is ERC6909 {
         return true;
     }
 
+    function enableForcedWithdrawal(uint256 id) external returns (uint256 withdrawableAt) {
+        withdrawableAt = block.timestamp + id.toResetPeriod();
+
+        _cutoffTime[msg.sender][id] = withdrawableAt;
+
+        emit ForcedWithdrawalEnabled(msg.sender, id, withdrawableAt);
+    }
+
+    function disableForcedWithdrawal(uint256 id) external {
+        if (_cutoffTime[msg.sender][id] == 0) {
+            revert ForcedWithdrawalAlreadyDisabled(msg.sender, id);
+        }
+
+        delete _cutoffTime[msg.sender][id];
+
+        emit ForcedWithdrawalDisabled(msg.sender, id);
+    }
+
+    function forcedWithdrawal(uint256 id, address recipient)
+        external
+        returns (uint256 withdrawnAmount)
+    {
+        uint256 withdrawableAt = _cutoffTime[msg.sender][id];
+
+        if ((withdrawableAt == 0).or(withdrawableAt > block.timestamp)) {
+            revert PrematureWithdrawal(id);
+        }
+
+        withdrawnAmount = balanceOf(msg.sender, id);
+
+        _withdraw(msg.sender, recipient, id, withdrawnAmount);
+    }
+
+    function getForcedWithdrawalStatus(address account, uint256 id)
+        external
+        view
+        returns (ForcedWithdrawalStatus status, uint256 forcedWithdrawalAvailableAt)
+    {
+        forcedWithdrawalAvailableAt = _cutoffTime[account][id];
+
+        if (forcedWithdrawalAvailableAt == 0) {
+            status = ForcedWithdrawalStatus.Disabled;
+        } else if (forcedWithdrawalAvailableAt > block.timestamp) {
+            status = ForcedWithdrawalStatus.Pending;
+        } else {
+            status = ForcedWithdrawalStatus.Enabled;
+        }
+    }
+
     function getLockDetails(uint256 id)
         external
         view
@@ -559,6 +421,199 @@ contract TheCompact is ERC6909 {
                 mstore(add(m, 0x80), address())
                 domainSeparator := keccak256(m, 0xa0)
             }
+        }
+    }
+
+    function extsload(bytes32 slot) external view returns (bytes32) {
+        assembly ("memory-safe") {
+            mstore(0, sload(slot))
+            return(0, 0x20)
+        }
+    }
+
+    function extsload(bytes32 startSlot, uint256 nSlots) external view returns (bytes32[] memory) {
+        assembly ("memory-safe") {
+            let memptr := mload(0x40)
+            let start := memptr
+            // A left bit-shift of 5 is equivalent to multiplying by 32 but costs less gas.
+            let length := shl(5, nSlots)
+            // The abi offset of dynamic array in the returndata is 32.
+            mstore(memptr, 0x20)
+            // Store the length of the array returned
+            mstore(add(memptr, 0x20), nSlots)
+            // update memptr to the first location to hold a result
+            memptr := add(memptr, 0x40)
+            let end := add(memptr, length)
+            for { } 1 { } {
+                mstore(memptr, sload(startSlot))
+                memptr := add(memptr, 0x20)
+                startSlot := add(startSlot, 1)
+                if iszero(lt(memptr, end)) { break }
+            }
+            return(start, sub(end, start))
+        }
+    }
+
+    function extsload(bytes32[] calldata slots) external view returns (bytes32[] memory) {
+        assembly ("memory-safe") {
+            let memptr := mload(0x40)
+            let start := memptr
+            // for abi encoding the response - the array will be found at 0x20
+            mstore(memptr, 0x20)
+            // next we store the length of the return array
+            mstore(add(memptr, 0x20), slots.length)
+            // update memptr to the first location to hold an array entry
+            memptr := add(memptr, 0x40)
+            // A left bit-shift of 5 is equivalent to multiplying by 32 but costs less gas.
+            let end := add(memptr, shl(5, slots.length))
+            let calldataptr := slots.offset
+            for { } 1 { } {
+                mstore(memptr, sload(calldataload(calldataptr)))
+                memptr := add(memptr, 0x20)
+                calldataptr := add(calldataptr, 0x20)
+                if iszero(lt(memptr, end)) { break }
+            }
+            return(start, sub(end, start))
+        }
+    }
+
+    /// @dev Returns the symbol for token `id`.
+    function name(uint256 id) public view virtual override returns (string memory) {
+        return string.concat("Compact ", id.toToken().readNameWithDefaultValue());
+    }
+
+    /// @dev Returns the symbol for token `id`.
+    function symbol(uint256 id) public view virtual override returns (string memory) {
+        return string.concat(unicode"🤝-", id.toToken().readSymbolWithDefaultValue());
+    }
+
+    /// @dev Returns the Uniform Resource Identifier (URI) for token `id`.
+    function tokenURI(uint256 id) public view virtual override returns (string memory) {
+        return _METADATA_RENDERER.uri(id.toLock(), id);
+    }
+
+    /// @dev Returns the name for the contract.
+    function name() external pure returns (string memory) {
+        // Return the name of the contract.
+        assembly ("memory-safe") {
+            mstore(0x20, 0x20)
+            mstore(0x4b, 0x0b54686520436f6d70616374)
+            return(0x20, 0x60)
+        }
+    }
+
+    function _processClaim(
+        Allocation calldata allocation,
+        AllocationAuthorization calldata allocationAuthorization,
+        bytes calldata oracleVariableData,
+        bytes calldata ownerSignature,
+        bytes calldata allocatorSignature
+    ) internal returns (address claimant, uint256 claimAmount) {
+        _assertValidTime(allocation.startTime, allocation.endTime);
+        _assertValidTime(allocationAuthorization.startTime, allocationAuthorization.endTime);
+
+        if (allocationAuthorization.amountReduction >= allocation.amount) {
+            revert InvalidAmountReduction(
+                allocation.amount, allocationAuthorization.amountReduction
+            );
+        }
+
+        address allocator = allocation.id.toAllocator();
+        allocation.nonce.consumeNonce(allocator);
+        bytes32 allocationMessageHash = _getAllocationMessageHash(allocation);
+        _assertValidSignature(allocationMessageHash, ownerSignature, allocation.owner);
+        bytes32 allocationAuthorizationMessageHash =
+            _getAllocationAuthorizationMessageHash(allocationAuthorization, allocationMessageHash);
+        _assertValidSignature(allocationAuthorizationMessageHash, allocatorSignature, allocator);
+        (address oracleClaimant, uint256 oracleClaimAmount) = IOracle(allocation.oracle).attest(
+            allocationMessageHash, allocation.oracleFixedData, oracleVariableData
+        );
+
+        claimant =
+            _deriveClaimant(allocation.claimant, allocationAuthorization.claimant, oracleClaimant);
+
+        unchecked {
+            claimAmount =
+                oracleClaimAmount.min(allocation.amount - allocationAuthorization.amountReduction);
+        }
+
+        emit Claim(allocation.owner, claimant, allocation.id, allocationMessageHash, claimAmount);
+    }
+
+    function _processBatchClaim(
+        BatchAllocation calldata batchAllocation,
+        BatchAllocationAuthorization calldata batchAllocationAuthorization,
+        bytes calldata oracleVariableData,
+        bytes calldata ownerSignature,
+        bytes calldata allocatorSignature
+    ) internal returns (address claimant, uint256[] memory claimAmounts) {
+        _assertValidTime(batchAllocation.startTime, batchAllocation.endTime);
+        _assertValidTime(
+            batchAllocationAuthorization.startTime, batchAllocationAuthorization.endTime
+        );
+
+        uint256 totalIds = batchAllocation.ids.length;
+        if (
+            (totalIds == 0).or(totalIds != batchAllocation.amounts.length).or(
+                totalIds != batchAllocationAuthorization.amountReductions.length
+            )
+        ) {
+            revert InvalidBatchAllocation();
+        }
+
+        // TODO: skip the bounds check on this array access
+        uint256 allocatorIndex = batchAllocation.ids[0].toAllocatorIndex();
+        claimAmounts = new uint256[](totalIds);
+
+        address allocator = allocatorIndex.toRegisteredAllocator();
+        batchAllocation.nonce.consumeNonce(allocator);
+        bytes32 batchAllocationMessageHash = _getBatchAllocationMessageHash(batchAllocation);
+        _assertValidSignature(batchAllocationMessageHash, ownerSignature, batchAllocation.owner);
+        bytes32 batchAllocationAuthorizationMessageHash =
+        _getBatchAllocationAuthorizationMessageHash(
+            batchAllocationAuthorization, batchAllocationMessageHash
+        );
+        _assertValidSignature(
+            batchAllocationAuthorizationMessageHash, allocatorSignature, allocator
+        );
+        (address oracleClaimant, uint256[] memory oracleClaimAmounts) = IOracle(
+            batchAllocation.oracle
+        ).attestBatch(
+            batchAllocationMessageHash, batchAllocation.oracleFixedData, oracleVariableData
+        );
+
+        claimant = _deriveClaimant(
+            batchAllocation.claimant, batchAllocationAuthorization.claimant, oracleClaimant
+        );
+
+        // TODO: many of the bounds checks on these array accesses can be skipped as an optimization
+        uint256 id = batchAllocation.ids[0];
+        uint256 originalAmount = batchAllocation.amounts[0];
+        uint256 amountReduction = batchAllocationAuthorization.amountReductions[0];
+        uint256 claimAmount = oracleClaimAmounts[0].min(originalAmount - amountReduction);
+        claimAmounts[0] = claimAmount;
+        emit Claim(batchAllocation.owner, claimant, id, batchAllocationMessageHash, claimAmount);
+        uint256 errorBuffer = (
+            batchAllocationAuthorization.amountReductions[0] >= batchAllocation.amounts[0]
+        ).or(totalIds != oracleClaimAmounts.length).asUint256();
+        unchecked {
+            for (uint256 i = 1; i < totalIds; ++i) {
+                id = batchAllocation.ids[i];
+                originalAmount = batchAllocation.amounts[i];
+                amountReduction = batchAllocationAuthorization.amountReductions[i];
+                errorBuffer |= (amountReduction >= originalAmount).or(
+                    id.toAllocatorIndex() != allocatorIndex
+                ).asUint256();
+                claimAmount = oracleClaimAmounts[i].min(originalAmount - amountReduction);
+                claimAmounts[i] = claimAmount;
+                emit Claim(
+                    batchAllocation.owner, claimant, id, batchAllocationMessageHash, claimAmount
+                );
+            }
+        }
+        if (errorBuffer.asBool()) {
+            // TODO: extract more informative error by deriving the reason for the failure
+            revert InvalidBatchAllocation();
         }
     }
 
@@ -965,59 +1020,6 @@ contract TheCompact is ERC6909 {
             mstore(add(m, 0xe0), shr(0x60, shl(0x60, recipient)))
             mstore(add(m, 0x100), pledge)
             messageHash := keccak256(m, 0x120)
-        }
-    }
-
-    function extsload(bytes32 slot) external view returns (bytes32) {
-        assembly ("memory-safe") {
-            mstore(0, sload(slot))
-            return(0, 0x20)
-        }
-    }
-
-    function extsload(bytes32 startSlot, uint256 nSlots) external view returns (bytes32[] memory) {
-        assembly ("memory-safe") {
-            let memptr := mload(0x40)
-            let start := memptr
-            // A left bit-shift of 5 is equivalent to multiplying by 32 but costs less gas.
-            let length := shl(5, nSlots)
-            // The abi offset of dynamic array in the returndata is 32.
-            mstore(memptr, 0x20)
-            // Store the length of the array returned
-            mstore(add(memptr, 0x20), nSlots)
-            // update memptr to the first location to hold a result
-            memptr := add(memptr, 0x40)
-            let end := add(memptr, length)
-            for { } 1 { } {
-                mstore(memptr, sload(startSlot))
-                memptr := add(memptr, 0x20)
-                startSlot := add(startSlot, 1)
-                if iszero(lt(memptr, end)) { break }
-            }
-            return(start, sub(end, start))
-        }
-    }
-
-    function extsload(bytes32[] calldata slots) external view returns (bytes32[] memory) {
-        assembly ("memory-safe") {
-            let memptr := mload(0x40)
-            let start := memptr
-            // for abi encoding the response - the array will be found at 0x20
-            mstore(memptr, 0x20)
-            // next we store the length of the return array
-            mstore(add(memptr, 0x20), slots.length)
-            // update memptr to the first location to hold an array entry
-            memptr := add(memptr, 0x40)
-            // A left bit-shift of 5 is equivalent to multiplying by 32 but costs less gas.
-            let end := add(memptr, shl(5, slots.length))
-            let calldataptr := slots.offset
-            for { } 1 { } {
-                mstore(memptr, sload(calldataload(calldataptr)))
-                memptr := add(memptr, 0x20)
-                calldataptr := add(calldataptr, 0x20)
-                if iszero(lt(memptr, end)) { break }
-            }
-            return(start, sub(end, start))
         }
     }
 }
