@@ -137,6 +137,39 @@ contract TheCompactTest is Test {
         assertEq(block.chainid, currentChainId);
     }
 
+    function test_depositETHBasic() public {
+        address recipient = swapper;
+        ResetPeriod resetPeriod = ResetPeriod.TenMinutes;
+        Scope scope = Scope.Multichain;
+        uint256 amount = 1e18;
+
+        vm.prank(allocator);
+        uint96 allocatorId = theCompact.__register(allocator, "");
+
+        vm.prank(swapper);
+        uint256 id = theCompact.deposit{ value: amount }(allocator);
+
+        (
+            address derivedToken,
+            address derivedAllocator,
+            ResetPeriod derivedResetPeriod,
+            Scope derivedScope
+        ) = theCompact.getLockDetails(id);
+        assertEq(derivedToken, address(0));
+        assertEq(derivedAllocator, allocator);
+        assertEq(uint256(derivedResetPeriod), uint256(resetPeriod));
+        assertEq(uint256(derivedScope), uint256(scope));
+        assertEq(
+            id,
+            (uint256(scope) << 255) | (uint256(resetPeriod) << 252) | (uint256(allocatorId) << 160)
+                | uint256(uint160(address(0)))
+        );
+
+        assertEq(address(theCompact).balance, amount);
+        assertEq(theCompact.balanceOf(recipient, id), amount);
+        assert(bytes(theCompact.tokenURI(id)).length > 0);
+    }
+
     function test_depositETHAndURI() public {
         address recipient = 0x1111111111111111111111111111111111111111;
         ResetPeriod resetPeriod = ResetPeriod.TenMinutes;
@@ -144,7 +177,7 @@ contract TheCompactTest is Test {
         uint256 amount = 1e18;
 
         vm.prank(allocator);
-        theCompact.__register(allocator, "");
+        uint96 allocatorId = theCompact.__register(allocator, "");
 
         vm.prank(swapper);
         uint256 id = theCompact.deposit{ value: amount }(allocator, resetPeriod, scope, recipient);
@@ -159,9 +192,46 @@ contract TheCompactTest is Test {
         assertEq(derivedAllocator, allocator);
         assertEq(uint256(derivedResetPeriod), uint256(resetPeriod));
         assertEq(uint256(derivedScope), uint256(scope));
-        // TODO: make sure ID matches expectations
+        assertEq(
+            id,
+            (uint256(scope) << 255) | (uint256(resetPeriod) << 252) | (uint256(allocatorId) << 160)
+                | uint256(uint160(address(0)))
+        );
 
         assertEq(address(theCompact).balance, amount);
+        assertEq(theCompact.balanceOf(recipient, id), amount);
+        assert(bytes(theCompact.tokenURI(id)).length > 0);
+    }
+
+    function test_depositERC20Basic() public {
+        address recipient = swapper;
+        ResetPeriod resetPeriod = ResetPeriod.TenMinutes;
+        Scope scope = Scope.Multichain;
+        uint256 amount = 1e18;
+
+        vm.prank(allocator);
+        uint96 allocatorId = theCompact.__register(allocator, "");
+
+        vm.prank(swapper);
+        uint256 id = theCompact.deposit(address(token), allocator, amount);
+
+        (
+            address derivedToken,
+            address derivedAllocator,
+            ResetPeriod derivedResetPeriod,
+            Scope derivedScope
+        ) = theCompact.getLockDetails(id);
+        assertEq(derivedToken, address(token));
+        assertEq(derivedAllocator, allocator);
+        assertEq(uint256(derivedResetPeriod), uint256(resetPeriod));
+        assertEq(uint256(derivedScope), uint256(scope));
+        assertEq(
+            id,
+            (uint256(scope) << 255) | (uint256(resetPeriod) << 252) | (uint256(allocatorId) << 160)
+                | uint256(uint160(address(token)))
+        );
+
+        assertEq(token.balanceOf(address(theCompact)), amount);
         assertEq(theCompact.balanceOf(recipient, id), amount);
         assert(bytes(theCompact.tokenURI(id)).length > 0);
     }
@@ -173,7 +243,7 @@ contract TheCompactTest is Test {
         uint256 amount = 1e18;
 
         vm.prank(allocator);
-        theCompact.__register(allocator, "");
+        uint96 allocatorId = theCompact.__register(allocator, "");
 
         vm.prank(swapper);
         uint256 id =
@@ -189,7 +259,11 @@ contract TheCompactTest is Test {
         assertEq(derivedAllocator, allocator);
         assertEq(uint256(derivedResetPeriod), uint256(resetPeriod));
         assertEq(uint256(derivedScope), uint256(scope));
-        // TODO: make sure ID matches expectations
+        assertEq(
+            id,
+            (uint256(scope) << 255) | (uint256(resetPeriod) << 252) | (uint256(allocatorId) << 160)
+                | uint256(uint160(address(token)))
+        );
 
         assertEq(token.balanceOf(address(theCompact)), amount);
         assertEq(theCompact.balanceOf(recipient, id), amount);
@@ -227,7 +301,12 @@ contract TheCompactTest is Test {
         assertEq(derivedAllocator, allocator);
         assertEq(uint256(derivedResetPeriod), uint256(resetPeriod));
         assertEq(uint256(derivedScope), uint256(scope));
-        // TODO: make sure ID matches expectations
+
+        assertEq(
+            id,
+            (uint256(scope) << 255) | (uint256(resetPeriod) << 252) | (uint256(allocatorId) << 160)
+                | uint256(uint160(address(token)))
+        );
 
         assertEq(token.balanceOf(address(theCompact)), amount);
         assertEq(theCompact.balanceOf(recipient, id), amount);
@@ -293,7 +372,7 @@ contract TheCompactTest is Test {
         bytes memory signature = abi.encodePacked(r, vs);
 
         vm.prank(allocator);
-        theCompact.__register(allocator, "");
+        uint96 allocatorId = theCompact.__register(allocator, "");
 
         uint256 id = theCompact.deposit(
             swapper,
@@ -318,7 +397,11 @@ contract TheCompactTest is Test {
         assertEq(derivedAllocator, allocator);
         assertEq(uint256(derivedResetPeriod), uint256(resetPeriod));
         assertEq(uint256(derivedScope), uint256(scope));
-        // TODO: make sure ID matches expectations
+        assertEq(
+            id,
+            (uint256(scope) << 255) | (uint256(resetPeriod) << 252) | (uint256(allocatorId) << 160)
+                | uint256(uint160(address(token)))
+        );
 
         assertEq(token.balanceOf(address(theCompact)), amount);
         assertEq(theCompact.balanceOf(recipient, id), amount);
@@ -336,7 +419,7 @@ contract TheCompactTest is Test {
         uint256 pledge = 0;
 
         vm.prank(allocator);
-        theCompact.__register(allocator, "");
+        uint96 allocatorId = theCompact.__register(allocator, "");
 
         vm.prank(swapper);
         uint256 id = theCompact.deposit{ value: amount }(allocator, resetPeriod, scope, swapper);
@@ -398,7 +481,7 @@ contract TheCompactTest is Test {
         address recipient = 0x1111111111111111111111111111111111111111;
 
         vm.prank(allocator);
-        theCompact.__register(allocator, "");
+        uint96 allocatorId = theCompact.__register(allocator, "");
 
         vm.prank(swapper);
         uint256 id =
@@ -450,7 +533,7 @@ contract TheCompactTest is Test {
         uint256 pledge = 0;
 
         vm.prank(allocator);
-        theCompact.__register(allocator, "");
+        uint96 allocatorId = theCompact.__register(allocator, "");
 
         vm.prank(swapper);
         uint256 id = theCompact.deposit{ value: amount }(allocator, resetPeriod, scope, swapper);
@@ -512,7 +595,7 @@ contract TheCompactTest is Test {
         address recipient = 0x1111111111111111111111111111111111111111;
 
         vm.prank(allocator);
-        theCompact.__register(allocator, "");
+        uint96 allocatorId = theCompact.__register(allocator, "");
 
         vm.prank(swapper);
         uint256 id =
@@ -569,7 +652,7 @@ contract TheCompactTest is Test {
         uint256 amountReduction = 0;
 
         vm.prank(allocator);
-        theCompact.__register(allocator, "");
+        uint96 allocatorId = theCompact.__register(allocator, "");
 
         vm.prank(swapper);
         uint256 id = theCompact.deposit{ value: amount }(allocator, resetPeriod, scope, swapper);
@@ -660,7 +743,7 @@ contract TheCompactTest is Test {
         uint256 amountReduction = 0;
 
         vm.prank(allocator);
-        theCompact.__register(allocator, "");
+        uint96 allocatorId = theCompact.__register(allocator, "");
 
         vm.prank(swapper);
         uint256 id = theCompact.deposit{ value: amount }(allocator, resetPeriod, scope, swapper);
@@ -755,7 +838,7 @@ contract TheCompactTest is Test {
         uint256 aThirdAmountReduction = 0;
 
         vm.prank(allocator);
-        theCompact.__register(allocator, "");
+        uint96 allocatorId = theCompact.__register(allocator, "");
 
         vm.startPrank(swapper);
         uint256 id = theCompact.deposit{ value: amount }(
@@ -940,7 +1023,7 @@ contract TheCompactTest is Test {
         bytes memory signature = abi.encodePacked(r, vs);
 
         vm.prank(allocator);
-        theCompact.__register(allocator, "");
+        uint96 allocatorId = theCompact.__register(allocator, "");
 
         ISignatureTransfer.TokenPermissions[] memory tokenPermissions =
             new ISignatureTransfer.TokenPermissions[](1);
@@ -971,7 +1054,11 @@ contract TheCompactTest is Test {
         assertEq(derivedAllocator, allocator);
         assertEq(uint256(derivedResetPeriod), uint256(resetPeriod));
         assertEq(uint256(derivedScope), uint256(scope));
-        // TODO: make sure ID matches expectations
+        assertEq(
+            ids[0],
+            (uint256(scope) << 255) | (uint256(resetPeriod) << 252) | (uint256(allocatorId) << 160)
+                | uint256(uint160(address(token)))
+        );
 
         assertEq(token.balanceOf(address(theCompact)), amount);
         assertEq(theCompact.balanceOf(recipient, ids[0]), amount);

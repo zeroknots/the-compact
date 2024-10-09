@@ -164,7 +164,12 @@ library IdLib {
         );
     }
 
-    function toIdIfRegistered(address token, Scope scope, ResetPeriod resetPeriod, address allocator) internal view returns (uint256 id) {
+    function toIdIfRegistered(
+        address token,
+        Scope scope,
+        ResetPeriod resetPeriod,
+        address allocator
+    ) internal view returns (uint256 id) {
         uint96 allocatorId = allocator.usingAllocatorId();
         allocatorId.mustHaveARegisteredAllocator();
         id = (

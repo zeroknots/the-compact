@@ -95,6 +95,27 @@ contract TheCompact is ITheCompact, ERC6909 {
         _METADATA_RENDERER = new MetadataRenderer();
     }
 
+    function deposit(address allocator) external payable returns (uint256 id) {
+        id = address(0).toIdIfRegistered(Scope.Multichain, ResetPeriod.TenMinutes, allocator);
+
+        _deposit(msg.sender, msg.sender, id, msg.value);
+    }
+
+    function deposit(address token, address allocator, uint256 amount)
+        external
+        returns (uint256 id)
+    {
+        if (token == address(0)) {
+            revert InvalidToken(token);
+        }
+
+        id = token.toIdIfRegistered(Scope.Multichain, ResetPeriod.TenMinutes, allocator);
+
+        token.safeTransferFrom(msg.sender, address(this), amount);
+
+        _deposit(msg.sender, msg.sender, id, amount);
+    }
+
     function deposit(address allocator, ResetPeriod resetPeriod, Scope scope, address recipient)
         external
         payable
