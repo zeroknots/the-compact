@@ -59,6 +59,7 @@ interface ITheCompact {
     error CallerNotClaimant();
     error InvalidBatchAllocation();
     error InvalidRegistrationProof(address allocator);
+    error InvalidBatchDepositStructure();
 
     function deposit(address allocator, ResetPeriod resetPeriod, Scope scope, address recipient)
         external

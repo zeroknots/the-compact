@@ -126,6 +126,68 @@ contract TheCompact is ITheCompact, ERC6909 {
         _deposit(msg.sender, recipient, id, amount);
     }
 
+    function deposit(uint256[2][] calldata idsAndAmounts, address recipient)
+        external
+        payable
+        returns (bool)
+    {
+        uint256 totalIds = idsAndAmounts.length;
+        bool firstUnderlyingTokenIsNative;
+        uint256 id;
+
+        assembly {
+            let idsAndAmountsOffset := idsAndAmounts.offset
+            id := calldataload(idsAndAmountsOffset)
+            firstUnderlyingTokenIsNative := iszero(shr(96, shl(96, id)))
+            // Revert if:
+            //  * the array is empty
+            //  * the callvalue is zero but the first token is native
+            //  * the callvalue is nonzero but the first token is non-native
+            //  * the first token is non-native and the callvalue doesn't equal the first amount
+            if or(
+                iszero(totalIds),
+                or(
+                    eq(firstUnderlyingTokenIsNative, iszero(callvalue())),
+                    and(
+                        firstUnderlyingTokenIsNative,
+                        iszero(eq(callvalue(), calldataload(add(idsAndAmountsOffset, 0x20))))
+                    )
+                )
+            ) {
+                // revert InvalidBatchDepositStructure()
+                mstore(0, 0xca0fc08e)
+                revert(0x1c, 0x04)
+            }
+        }
+
+        uint96 currentAllocatorId = id.toAllocatorId();
+        currentAllocatorId.mustHaveARegisteredAllocator();
+
+        if (firstUnderlyingTokenIsNative) {
+            _deposit(msg.sender, recipient, id, msg.value);
+        }
+
+        unchecked {
+            for (uint256 i = firstUnderlyingTokenIsNative.asUint256(); i < totalIds; ++i) {
+                uint256[2] calldata idAndAmount = idsAndAmounts[i];
+                id = idAndAmount[0];
+                uint256 amount = idAndAmount[1];
+
+                uint96 newAllocatorId = id.toAllocatorId();
+                if (newAllocatorId != currentAllocatorId) {
+                    newAllocatorId.mustHaveARegisteredAllocator();
+                    currentAllocatorId = newAllocatorId;
+                }
+
+                id.toToken().safeTransferFrom(msg.sender, address(this), amount);
+
+                _deposit(msg.sender, recipient, id, amount);
+            }
+        }
+
+        return true;
+    }
+
     function deposit(
         address depositor,
         address token,
@@ -170,6 +232,131 @@ contract TheCompact is ITheCompact, ERC6909 {
         );
 
         _deposit(depositor, recipient, id, amount);
+    }
+
+    function deposit(
+        address depositor,
+        ISignatureTransfer.TokenPermissions[] calldata permitted,
+        address allocator,
+        ResetPeriod resetPeriod,
+        Scope scope,
+        address recipient,
+        uint256 nonce,
+        uint256 deadline,
+        bytes calldata signature
+    ) external payable returns (uint256[] memory) {
+        uint256 totalTokens = permitted.length;
+        bool firstUnderlyingTokenIsNative;
+        assembly {
+            let permittedOffset := permitted.offset
+            firstUnderlyingTokenIsNative := iszero(shr(96, shl(96, add(permittedOffset, 0x20))))
+
+            // Revert if:
+            //  * the array is empty
+            //  * the callvalue is zero but the first token is native
+            //  * the callvalue is nonzero but the first token is non-native
+            //  * the first token is non-native and the callvalue doesn't equal the first amount
+            if or(
+                iszero(totalTokens),
+                or(
+                    eq(firstUnderlyingTokenIsNative, iszero(callvalue())),
+                    and(
+                        firstUnderlyingTokenIsNative,
+                        iszero(eq(callvalue(), calldataload(add(permittedOffset, 0x40))))
+                    )
+                )
+            ) {
+                // revert InvalidBatchDepositStructure()
+                mstore(0, 0xca0fc08e)
+                revert(0x1c, 0x04)
+            }
+        }
+
+        uint256 initialId = address(0).toLock(allocator, resetPeriod, scope).toId();
+
+        bytes32 witness = keccak256(
+            abi.encode(
+                _PERMIT2_WITNESS_FRAGMENT_HASH, depositor, allocator, resetPeriod, scope, recipient
+            )
+        );
+
+        return _processBatchPermit2Deposits(
+            firstUnderlyingTokenIsNative,
+            recipient,
+            initialId,
+            totalTokens,
+            permitted,
+            depositor,
+            nonce,
+            deadline,
+            witness,
+            signature
+        );
+    }
+
+    function _processBatchPermit2Deposits(
+        bool firstUnderlyingTokenIsNative,
+        address recipient,
+        uint256 initialId,
+        uint256 totalTokens,
+        ISignatureTransfer.TokenPermissions[] calldata permitted,
+        address depositor,
+        uint256 nonce,
+        uint256 deadline,
+        bytes32 witness,
+        bytes calldata signature
+    ) internal returns (uint256[] memory ids) {
+        ids = new uint256[](totalTokens);
+
+        uint256 totalTokensLessInitialNative;
+        unchecked {
+            totalTokensLessInitialNative = totalTokens - firstUnderlyingTokenIsNative.asUint256();
+        }
+
+        if (firstUnderlyingTokenIsNative) {
+            _deposit(msg.sender, recipient, initialId, msg.value);
+            ids[0] = initialId;
+        }
+
+        unchecked {
+            ISignatureTransfer.SignatureTransferDetails[] memory details =
+                new ISignatureTransfer.SignatureTransferDetails[](totalTokensLessInitialNative);
+
+            ISignatureTransfer.TokenPermissions[] memory permittedTokens =
+                new ISignatureTransfer.TokenPermissions[](totalTokensLessInitialNative);
+
+            for (uint256 i = 0; i < totalTokensLessInitialNative; ++i) {
+                ISignatureTransfer.TokenPermissions calldata permittedToken =
+                    permitted[i + firstUnderlyingTokenIsNative.asUint256()];
+
+                permittedTokens[i] = permittedToken;
+                details[i] = ISignatureTransfer.SignatureTransferDetails({
+                    to: address(this),
+                    requestedAmount: permittedToken.amount
+                });
+
+                uint256 id = initialId.withReplacedToken(permittedToken.token);
+                ids[i + firstUnderlyingTokenIsNative.asUint256()] = id;
+
+                _deposit(depositor, recipient, id, permittedToken.amount);
+            }
+
+            ISignatureTransfer.PermitBatchTransferFrom memory permitTransferFrom =
+            ISignatureTransfer.PermitBatchTransferFrom({
+                permitted: permittedTokens,
+                nonce: nonce,
+                deadline: deadline
+            });
+
+            _PERMIT2.permitWitnessTransferFrom(
+                permitTransferFrom,
+                details,
+                depositor,
+                witness,
+                "CompactDeposit witness)CompactDeposit(address depositor,address allocator,uint8 resetPeriod,uint8 scope,address recipient)TokenPermissions(address token,uint256 amount)",
+                signature
+            );
+        }
     }
 
     function claim(

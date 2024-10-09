@@ -34,6 +34,16 @@ library IdLib {
         return id.asSanitizedAddress();
     }
 
+    function withReplacedToken(uint256 id, address token)
+        internal
+        pure
+        returns (uint256 updatedId)
+    {
+        assembly {
+            updatedId := or(shl(160, shr(160, id)), shr(96, shl(96, token)))
+        }
+    }
+
     function toScope(uint256 id) internal pure returns (Scope scope) {
         assembly {
             // extract uppermost bit
@@ -160,6 +170,17 @@ library IdLib {
             allocator := sload(or(_ALLOCATOR_BY_ALLOCATOR_ID_SLOT_SEED, allocatorId))
 
             if iszero(allocator) {
+                mstore(0, _NO_ALLOCATOR_REGISTERED_ERROR_SIGNATURE)
+                mstore(0x20, allocatorId)
+                revert(0x1c, 0x24)
+            }
+        }
+    }
+
+    function mustHaveARegisteredAllocator(uint96 allocatorId) internal view {
+        assembly {
+            // NOTE: consider an SLOAD bypass for a fully compact allocator
+            if iszero(sload(or(_ALLOCATOR_BY_ALLOCATOR_ID_SLOT_SEED, allocatorId))) {
                 mstore(0, _NO_ALLOCATOR_REGISTERED_ERROR_SIGNATURE)
                 mstore(0x20, allocatorId)
                 revert(0x1c, 0x24)

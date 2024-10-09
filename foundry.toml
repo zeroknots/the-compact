@@ -7,6 +7,7 @@ bytecode_hash = 'none'
 src = "src"
 out = "out"
 libs = ["lib"]
+extra_output_files = ["irOptimized"]
 
 [fmt]
 line_length = 100
