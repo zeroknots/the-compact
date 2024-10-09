@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.27;
 
+import { Scope } from "../types/Scope.sol";
+import { ResetPeriod } from "../types/ResetPeriod.sol";
+
 library EfficiencyLib {
     // NOTE: this function is only safe if the supplied booleans are known to not
     // have any dirty bits set (i.e. they are either 0 or 1). It is meant to get
@@ -30,7 +33,38 @@ library EfficiencyLib {
         }
     }
 
+    function asSanitizedAddress(uint256 accountValue) internal pure returns (address account) {
+        // extract last 160 bits (can also just use a mask if contract size permits)
+        assembly {
+            account := shr(96, shl(96, accountValue))
+        }
+    }
+
     function asUint256(bool a) internal pure returns (uint256 b) {
+        assembly {
+            b := a
+        }
+    }
+
+    function asUint256(uint8 a) internal pure returns (uint256 b) {
+        assembly {
+            b := a
+        }
+    }
+
+    function asUint256(Scope a) internal pure returns (uint256 b) {
+        assembly {
+            b := a
+        }
+    }
+
+    function asUint256(address a) internal pure returns (uint256 b) {
+        assembly {
+            b := a
+        }
+    }
+
+    function asUint256(ResetPeriod a) internal pure returns (uint256 b) {
         assembly {
             b := a
         }

@@ -2,6 +2,8 @@
 pragma solidity ^0.8.27;
 
 import { ForcedWithdrawalStatus } from "../types/ForcedWithdrawalStatus.sol";
+import { ResetPeriod } from "../types/ResetPeriod.sol";
+import { Scope } from "../types/Scope.sol";
 import {
     Allocation,
     AllocationAuthorization,
@@ -41,6 +43,7 @@ interface ITheCompact {
         address indexed account, uint256 indexed id, uint256 withdrawableAt
     );
     event ForcedWithdrawalDisabled(address indexed account, uint256 indexed id);
+    event AllocatorRegistered(uint96 allocatorId, address allocator);
 
     error InvalidToken(address token);
     error Expired(uint256 expiration);
@@ -55,8 +58,9 @@ interface ITheCompact {
     error UnallocatedTransfer(address from, address to, uint256 id, uint256 amount);
     error CallerNotClaimant();
     error InvalidBatchAllocation();
+    error InvalidRegistrationProof(address allocator);
 
-    function deposit(address allocator, uint48 resetPeriod, address recipient)
+    function deposit(address allocator, ResetPeriod resetPeriod, Scope scope, address recipient)
         external
         payable
         returns (uint256 id);
@@ -64,7 +68,8 @@ interface ITheCompact {
     function deposit(
         address token,
         address allocator,
-        uint48 resetPeriod,
+        ResetPeriod resetPeriod,
+        Scope scope,
         uint256 amount,
         address recipient
     ) external returns (uint256 id);
@@ -73,7 +78,8 @@ interface ITheCompact {
         address depositor,
         address token,
         address allocator,
-        uint48 resetPeriod,
+        ResetPeriod resetPeriod,
+        Scope scope,
         uint256 amount,
         address recipient,
         uint256 nonce,
@@ -151,9 +157,13 @@ interface ITheCompact {
         bytes memory allocatorSignature
     ) external returns (bool);
 
+    function __register(address allocator, bytes calldata proof)
+        external
+        returns (uint96 allocatorId);
+
     function enableForcedWithdrawal(uint256 id) external returns (uint256 withdrawableAt);
 
-    function disableForcedWithdrawal(uint256 id) external;
+    function disableForcedWithdrawal(uint256 id) external returns (bool);
 
     function forcedWithdrawal(uint256 id, address recipient)
         external
@@ -167,17 +177,11 @@ interface ITheCompact {
     function getLockDetails(uint256 id)
         external
         view
-        returns (address token, address allocator, uint256 resetPeriod);
-
-    function getTotalRegisteredAllocators() external view returns (uint256);
-
-    function getAllocatorByIndex(uint256 index) external view returns (address);
-
-    function getAllocatorIndex(address allocator) external view returns (uint256);
+        returns (address token, address allocator, ResetPeriod resetPeriod, Scope scope);
 
     function check(uint256 nonce, address allocator) external view returns (bool consumed);
 
-    function DOMAIN_SEPARATOR() external view returns (bytes32);
+    function DOMAIN_SEPARATOR() external view returns (bytes32 domainSeparator);
 
     function extsload(bytes32 slot) external view returns (bytes32);
 

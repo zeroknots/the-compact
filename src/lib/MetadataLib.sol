@@ -2,6 +2,8 @@
 pragma solidity ^0.8.27;
 
 import { Lock } from "../types/Lock.sol";
+import { ResetPeriod } from "../types/ResetPeriod.sol";
+// TODO: add scope to metadata
 import { IdLib } from "./IdLib.sol";
 import { LibString } from "solady/utils/LibString.sol";
 import { MetadataReaderLib } from "solady/utils/MetadataReaderLib.sol";
@@ -10,6 +12,7 @@ library MetadataLib {
     using MetadataLib for address;
     using MetadataLib for string;
     using IdLib for Lock;
+    using IdLib for ResetPeriod;
     using LibString for uint256;
     using LibString for address;
     using MetadataReaderLib for address;
@@ -18,7 +21,8 @@ library MetadataLib {
         string memory tokenAddress =
             lock.token == address(0) ? "Native Token" : lock.token.toHexStringChecksummed();
         string memory allocator = lock.allocator.toHexStringChecksummed();
-        string memory resetPeriod = string.concat(lock.resetPeriod.toString(), " seconds");
+        string memory resetPeriod =
+            string.concat(lock.resetPeriod.toSeconds().toString(), " seconds"); // TODO: return minutes / hours / days
         string memory tokenName = lock.token.readNameWithDefaultValue();
         string memory tokenSymbol = lock.token.readSymbolWithDefaultValue();
         string memory tokenDecimals = uint256(lock.token.readDecimals()).toString();

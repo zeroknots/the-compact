@@ -3,6 +3,8 @@ pragma solidity ^0.8.27;
 
 import { ITheCompact } from "./interfaces/ITheCompact.sol";
 import { Lock } from "./types/Lock.sol";
+import { Scope } from "./types/Scope.sol";
+import { ResetPeriod } from "./types/ResetPeriod.sol";
 import { ForcedWithdrawalStatus } from "./types/ForcedWithdrawalStatus.sol";
 import { IdLib } from "./lib/IdLib.sol";
 import { ConsumerLib } from "./lib/ConsumerLib.sol";
@@ -41,9 +43,11 @@ import { MetadataRenderer } from "./lib/MetadataRenderer.sol";
  *         This contract has not yet been properly tested, audited, or reviewed.
  */
 contract TheCompact is ITheCompact, ERC6909 {
+    using IdLib for uint96;
     using IdLib for uint256;
     using IdLib for address;
     using IdLib for Lock;
+    using IdLib for ResetPeriod;
     using MetadataLib for address;
     using ConsumerLib for uint256;
     using SafeTransferLib for address;
@@ -54,9 +58,9 @@ contract TheCompact is ITheCompact, ERC6909 {
 
     IPermit2 private constant _PERMIT2 = IPermit2(0x000000000022D473030F116dDEE9F6B43aC78BA3);
 
-    /// @dev `keccak256(bytes("CompactDeposit(address depositor,address allocator,uint48 resetPeriod,address recipient)"))`.
+    /// @dev `keccak256(bytes("CompactDeposit(address depositor,address allocator,uint8 resetPeriod,uint8 scope,address recipient)"))`.
     bytes32 private constant _PERMIT2_WITNESS_FRAGMENT_HASH =
-        0x071166d6878b3bfcd3ba8404bfc1b6603843d71b55c61bdc31a9d954319f57b9;
+        0x0091bfc8f1539e204529602051ae82f3e6c6f0f86d0227c9ea890616cedbe646;
 
     uint256 private constant _ERC6909_MASTER_SLOT_SEED = 0xedcaa89a82293940;
 
@@ -91,12 +95,12 @@ contract TheCompact is ITheCompact, ERC6909 {
         _METADATA_RENDERER = new MetadataRenderer();
     }
 
-    function deposit(address allocator, uint48 resetPeriod, address recipient)
+    function deposit(address allocator, ResetPeriod resetPeriod, Scope scope, address recipient)
         external
         payable
         returns (uint256 id)
     {
-        Lock memory lock = address(0).toLock(allocator, resetPeriod);
+        Lock memory lock = address(0).toLock(allocator, resetPeriod, scope);
         id = lock.toId();
 
         _deposit(msg.sender, recipient, id, msg.value);
@@ -105,7 +109,8 @@ contract TheCompact is ITheCompact, ERC6909 {
     function deposit(
         address token,
         address allocator,
-        uint48 resetPeriod,
+        ResetPeriod resetPeriod,
+        Scope scope,
         uint256 amount,
         address recipient
     ) external returns (uint256 id) {
@@ -113,7 +118,7 @@ contract TheCompact is ITheCompact, ERC6909 {
             revert InvalidToken(token);
         }
 
-        Lock memory lock = token.toLock(allocator, resetPeriod);
+        Lock memory lock = token.toLock(allocator, resetPeriod, scope);
         id = lock.toId();
 
         token.safeTransferFrom(msg.sender, address(this), amount);
@@ -125,7 +130,8 @@ contract TheCompact is ITheCompact, ERC6909 {
         address depositor,
         address token,
         address allocator,
-        uint48 resetPeriod,
+        ResetPeriod resetPeriod,
+        Scope scope,
         uint256 amount,
         address recipient,
         uint256 nonce,
@@ -136,7 +142,7 @@ contract TheCompact is ITheCompact, ERC6909 {
             revert InvalidToken(token);
         }
 
-        Lock memory lock = token.toLock(allocator, resetPeriod);
+        Lock memory lock = token.toLock(allocator, resetPeriod, scope);
         id = lock.toId();
 
         ISignatureTransfer.SignatureTransferDetails memory signatureTransferDetails =
@@ -149,7 +155,9 @@ contract TheCompact is ITheCompact, ERC6909 {
             .PermitTransferFrom({ permitted: tokenPermissions, nonce: nonce, deadline: deadline });
 
         bytes32 witness = keccak256(
-            abi.encode(_PERMIT2_WITNESS_FRAGMENT_HASH, depositor, allocator, resetPeriod, recipient)
+            abi.encode(
+                _PERMIT2_WITNESS_FRAGMENT_HASH, depositor, allocator, resetPeriod, scope, recipient
+            )
         );
 
         _PERMIT2.permitWitnessTransferFrom(
@@ -157,7 +165,7 @@ contract TheCompact is ITheCompact, ERC6909 {
             signatureTransferDetails,
             depositor,
             witness,
-            "CompactDeposit witness)CompactDeposit(address depositor,address allocator,uint48 resetPeriod,address recipient)TokenPermissions(address token,uint256 amount)",
+            "CompactDeposit witness)CompactDeposit(address depositor,address allocator,uint8 resetPeriod,uint8 scope,address recipient)TokenPermissions(address token,uint256 amount)",
             signature
         );
 
@@ -330,15 +338,26 @@ contract TheCompact is ITheCompact, ERC6909 {
         return true;
     }
 
+    function __register(address allocator, bytes calldata proof)
+        external
+        returns (uint96 allocatorId)
+    {
+        if (!allocator.canBeRegistered(proof)) {
+            revert InvalidRegistrationProof(allocator);
+        }
+
+        allocatorId = allocator.register();
+    }
+
     function enableForcedWithdrawal(uint256 id) external returns (uint256 withdrawableAt) {
-        withdrawableAt = block.timestamp + id.toResetPeriod();
+        withdrawableAt = block.timestamp + id.toResetPeriod().toSeconds();
 
         _cutoffTime[msg.sender][id] = withdrawableAt;
 
         emit ForcedWithdrawalEnabled(msg.sender, id, withdrawableAt);
     }
 
-    function disableForcedWithdrawal(uint256 id) external {
+    function disableForcedWithdrawal(uint256 id) external returns (bool) {
         if (_cutoffTime[msg.sender][id] == 0) {
             revert ForcedWithdrawalAlreadyDisabled(msg.sender, id);
         }
@@ -346,6 +365,8 @@ contract TheCompact is ITheCompact, ERC6909 {
         delete _cutoffTime[msg.sender][id];
 
         emit ForcedWithdrawalDisabled(msg.sender, id);
+
+        return true;
     }
 
     function forcedWithdrawal(uint256 id, address recipient)
@@ -382,24 +403,13 @@ contract TheCompact is ITheCompact, ERC6909 {
     function getLockDetails(uint256 id)
         external
         view
-        returns (address token, address allocator, uint256 resetPeriod)
+        returns (address token, address allocator, ResetPeriod resetPeriod, Scope scope)
     {
         Lock memory lock = id.toLock();
         token = lock.token;
         allocator = lock.allocator;
         resetPeriod = lock.resetPeriod;
-    }
-
-    function getTotalRegisteredAllocators() external view returns (uint256) {
-        return IdLib.registeredAllocators();
-    }
-
-    function getAllocatorByIndex(uint256 index) external view returns (address) {
-        return index.toRegisteredAllocator();
-    }
-
-    function getAllocatorIndex(address allocator) external view returns (uint256) {
-        return allocator.toIndexIfRegistered();
+        scope = lock.scope;
     }
 
     function check(uint256 nonce, address allocator) external view returns (bool consumed) {
@@ -562,10 +572,8 @@ contract TheCompact is ITheCompact, ERC6909 {
         }
 
         // TODO: skip the bounds check on this array access
-        uint256 allocatorIndex = batchAllocation.ids[0].toAllocatorIndex();
-        claimAmounts = new uint256[](totalIds);
-
-        address allocator = allocatorIndex.toRegisteredAllocator();
+        uint96 allocatorId = batchAllocation.ids[0].toAllocatorId();
+        address allocator = allocatorId.toRegisteredAllocator();
         batchAllocation.nonce.consumeNonce(allocator);
         bytes32 batchAllocationMessageHash = _getBatchAllocationMessageHash(batchAllocation);
         _assertValidSignature(batchAllocationMessageHash, ownerSignature, batchAllocation.owner);
@@ -586,6 +594,28 @@ contract TheCompact is ITheCompact, ERC6909 {
             batchAllocation.claimant, batchAllocationAuthorization.claimant, oracleClaimant
         );
 
+        claimAmounts = _deriveClaimAmountsAndEmitEvents(
+            batchAllocation,
+            batchAllocationAuthorization,
+            batchAllocationMessageHash,
+            totalIds,
+            allocatorId,
+            claimant,
+            oracleClaimAmounts
+        );
+    }
+
+    function _deriveClaimAmountsAndEmitEvents(
+        BatchAllocation calldata batchAllocation,
+        BatchAllocationAuthorization calldata batchAllocationAuthorization,
+        bytes32 batchAllocationMessageHash,
+        uint256 totalIds,
+        uint96 allocatorId,
+        address claimant,
+        uint256[] memory oracleClaimAmounts
+    ) internal returns (uint256[] memory claimAmounts) {
+        claimAmounts = new uint256[](totalIds);
+
         // TODO: many of the bounds checks on these array accesses can be skipped as an optimization
         uint256 id = batchAllocation.ids[0];
         uint256 originalAmount = batchAllocation.amounts[0];
@@ -602,7 +632,7 @@ contract TheCompact is ITheCompact, ERC6909 {
                 originalAmount = batchAllocation.amounts[i];
                 amountReduction = batchAllocationAuthorization.amountReductions[i];
                 errorBuffer |= (amountReduction >= originalAmount).or(
-                    id.toAllocatorIndex() != allocatorIndex
+                    id.toAllocatorId() != allocatorId
                 ).asUint256();
                 claimAmount = oracleClaimAmounts[i].min(originalAmount - amountReduction);
                 claimAmounts[i] = claimAmount;
