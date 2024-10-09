@@ -14,6 +14,7 @@ library IdLib {
     using IdLib for address;
     using MetadataLib for Lock;
     using EfficiencyLib for uint8;
+    using EfficiencyLib for uint96;
     using EfficiencyLib for uint256;
     using EfficiencyLib for address;
     using EfficiencyLib for ResetPeriod;
@@ -159,7 +160,16 @@ library IdLib {
     function toId(Lock memory lock) internal pure returns (uint256 id) {
         id = (
             (lock.scope.asUint256() << 255) | (lock.resetPeriod.asUint256() << 252)
-                | (uint256(lock.allocator.usingAllocatorId()) << 160) | lock.token.asUint256()
+                | (lock.allocator.usingAllocatorId().asUint256() << 160) | lock.token.asUint256()
+        );
+    }
+
+    function toIdIfRegistered(address token, Scope scope, ResetPeriod resetPeriod, address allocator) internal view returns (uint256 id) {
+        uint96 allocatorId = allocator.usingAllocatorId();
+        allocatorId.mustHaveARegisteredAllocator();
+        id = (
+            (scope.asUint256() << 255) | (resetPeriod.asUint256() << 252)
+                | (allocatorId.asUint256() << 160) | token.asUint256()
         );
     }
 

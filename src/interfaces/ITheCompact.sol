@@ -10,6 +10,7 @@ import {
     BatchAllocation,
     BatchAllocationAuthorization
 } from "../types/EIP712Types.sol";
+import { ISignatureTransfer } from "permit2/src/interfaces/ISignatureTransfer.sol";
 
 /**
  * @title The Compact
@@ -87,6 +88,18 @@ interface ITheCompact {
         uint256 deadline,
         bytes calldata signature
     ) external returns (uint256 id);
+
+    function deposit(
+        address depositor,
+        ISignatureTransfer.TokenPermissions[] calldata permitted,
+        address allocator,
+        ResetPeriod resetPeriod,
+        Scope scope,
+        address recipient,
+        uint256 nonce,
+        uint256 deadline,
+        bytes calldata signature
+    ) external payable returns (uint256[] memory ids);
 
     function claim(
         Allocation calldata allocation,

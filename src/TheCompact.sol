@@ -100,8 +100,7 @@ contract TheCompact is ITheCompact, ERC6909 {
         payable
         returns (uint256 id)
     {
-        Lock memory lock = address(0).toLock(allocator, resetPeriod, scope);
-        id = lock.toId();
+        id = address(0).toIdIfRegistered(scope, resetPeriod, allocator);
 
         _deposit(msg.sender, recipient, id, msg.value);
     }
@@ -118,8 +117,7 @@ contract TheCompact is ITheCompact, ERC6909 {
             revert InvalidToken(token);
         }
 
-        Lock memory lock = token.toLock(allocator, resetPeriod, scope);
-        id = lock.toId();
+        id = token.toIdIfRegistered(scope, resetPeriod, allocator);
 
         token.safeTransferFrom(msg.sender, address(this), amount);
 
@@ -204,8 +202,7 @@ contract TheCompact is ITheCompact, ERC6909 {
             revert InvalidToken(token);
         }
 
-        Lock memory lock = token.toLock(allocator, resetPeriod, scope);
-        id = lock.toId();
+        id = token.toIdIfRegistered(scope, resetPeriod, allocator);
 
         ISignatureTransfer.SignatureTransferDetails memory signatureTransferDetails =
         ISignatureTransfer.SignatureTransferDetails({ to: address(this), requestedAmount: amount });
@@ -272,7 +269,7 @@ contract TheCompact is ITheCompact, ERC6909 {
             }
         }
 
-        uint256 initialId = address(0).toLock(allocator, resetPeriod, scope).toId();
+        uint256 initialId = address(0).toIdIfRegistered(scope, resetPeriod, allocator);
 
         bytes32 witness = keccak256(
             abi.encode(
@@ -292,71 +289,6 @@ contract TheCompact is ITheCompact, ERC6909 {
             witness,
             signature
         );
-    }
-
-    function _processBatchPermit2Deposits(
-        bool firstUnderlyingTokenIsNative,
-        address recipient,
-        uint256 initialId,
-        uint256 totalTokens,
-        ISignatureTransfer.TokenPermissions[] calldata permitted,
-        address depositor,
-        uint256 nonce,
-        uint256 deadline,
-        bytes32 witness,
-        bytes calldata signature
-    ) internal returns (uint256[] memory ids) {
-        ids = new uint256[](totalTokens);
-
-        uint256 totalTokensLessInitialNative;
-        unchecked {
-            totalTokensLessInitialNative = totalTokens - firstUnderlyingTokenIsNative.asUint256();
-        }
-
-        if (firstUnderlyingTokenIsNative) {
-            _deposit(msg.sender, recipient, initialId, msg.value);
-            ids[0] = initialId;
-        }
-
-        unchecked {
-            ISignatureTransfer.SignatureTransferDetails[] memory details =
-                new ISignatureTransfer.SignatureTransferDetails[](totalTokensLessInitialNative);
-
-            ISignatureTransfer.TokenPermissions[] memory permittedTokens =
-                new ISignatureTransfer.TokenPermissions[](totalTokensLessInitialNative);
-
-            for (uint256 i = 0; i < totalTokensLessInitialNative; ++i) {
-                ISignatureTransfer.TokenPermissions calldata permittedToken =
-                    permitted[i + firstUnderlyingTokenIsNative.asUint256()];
-
-                permittedTokens[i] = permittedToken;
-                details[i] = ISignatureTransfer.SignatureTransferDetails({
-                    to: address(this),
-                    requestedAmount: permittedToken.amount
-                });
-
-                uint256 id = initialId.withReplacedToken(permittedToken.token);
-                ids[i + firstUnderlyingTokenIsNative.asUint256()] = id;
-
-                _deposit(depositor, recipient, id, permittedToken.amount);
-            }
-
-            ISignatureTransfer.PermitBatchTransferFrom memory permitTransferFrom =
-            ISignatureTransfer.PermitBatchTransferFrom({
-                permitted: permittedTokens,
-                nonce: nonce,
-                deadline: deadline
-            });
-
-            _PERMIT2.permitWitnessTransferFrom(
-                permitTransferFrom,
-                details,
-                depositor,
-                witness,
-                "CompactDeposit witness)CompactDeposit(address depositor,address allocator,uint8 resetPeriod,uint8 scope,address recipient)TokenPermissions(address token,uint256 amount)",
-                signature
-            );
-        }
     }
 
     function claim(
@@ -790,6 +722,71 @@ contract TheCompact is ITheCompact, ERC6909 {
             claimant,
             oracleClaimAmounts
         );
+    }
+
+    function _processBatchPermit2Deposits(
+        bool firstUnderlyingTokenIsNative,
+        address recipient,
+        uint256 initialId,
+        uint256 totalTokens,
+        ISignatureTransfer.TokenPermissions[] calldata permitted,
+        address depositor,
+        uint256 nonce,
+        uint256 deadline,
+        bytes32 witness,
+        bytes calldata signature
+    ) internal returns (uint256[] memory ids) {
+        ids = new uint256[](totalTokens);
+
+        uint256 totalTokensLessInitialNative;
+        unchecked {
+            totalTokensLessInitialNative = totalTokens - firstUnderlyingTokenIsNative.asUint256();
+        }
+
+        if (firstUnderlyingTokenIsNative) {
+            _deposit(msg.sender, recipient, initialId, msg.value);
+            ids[0] = initialId;
+        }
+
+        unchecked {
+            ISignatureTransfer.SignatureTransferDetails[] memory details =
+                new ISignatureTransfer.SignatureTransferDetails[](totalTokensLessInitialNative);
+
+            ISignatureTransfer.TokenPermissions[] memory permittedTokens =
+                new ISignatureTransfer.TokenPermissions[](totalTokensLessInitialNative);
+
+            for (uint256 i = 0; i < totalTokensLessInitialNative; ++i) {
+                ISignatureTransfer.TokenPermissions calldata permittedToken =
+                    permitted[i + firstUnderlyingTokenIsNative.asUint256()];
+
+                permittedTokens[i] = permittedToken;
+                details[i] = ISignatureTransfer.SignatureTransferDetails({
+                    to: address(this),
+                    requestedAmount: permittedToken.amount
+                });
+
+                uint256 id = initialId.withReplacedToken(permittedToken.token);
+                ids[i + firstUnderlyingTokenIsNative.asUint256()] = id;
+
+                _deposit(depositor, recipient, id, permittedToken.amount);
+            }
+
+            ISignatureTransfer.PermitBatchTransferFrom memory permitTransferFrom =
+            ISignatureTransfer.PermitBatchTransferFrom({
+                permitted: permittedTokens,
+                nonce: nonce,
+                deadline: deadline
+            });
+
+            _PERMIT2.permitWitnessTransferFrom(
+                permitTransferFrom,
+                details,
+                depositor,
+                witness,
+                "CompactDeposit witness)CompactDeposit(address depositor,address allocator,uint8 resetPeriod,uint8 scope,address recipient)TokenPermissions(address token,uint256 amount)",
+                signature
+            );
+        }
     }
 
     function _deriveClaimAmountsAndEmitEvents(

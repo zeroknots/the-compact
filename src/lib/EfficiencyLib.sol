@@ -52,6 +52,12 @@ library EfficiencyLib {
         }
     }
 
+    function asUint256(uint96 a) internal pure returns (uint256 b) {
+        assembly {
+            b := a
+        }
+    }
+
     function asUint256(Scope a) internal pure returns (uint256 b) {
         assembly {
             b := a
