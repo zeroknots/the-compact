@@ -44,16 +44,12 @@ interface ITheCompact {
 
     error InvalidToken(address token);
     error Expired(uint256 expiration);
-    error InvalidTime(uint256 startTime, uint256 endTime);
     error InvalidSignature();
     error PrematureWithdrawal(uint256 id);
     error ForcedWithdrawalAlreadyDisabled(address account, uint256 id);
-    error InvalidClaimant(
-        address providerClaimant, address allocatorClaimant, address oracleClaimant
+    error UnallocatedTransfer(
+        address operator, address from, address to, uint256 id, uint256 amount
     );
-    error InvalidAmountReduction(uint256 amount, uint256 amountReduction);
-    error UnallocatedTransfer(address from, address to, uint256 id, uint256 amount);
-    error CallerNotClaimant();
     error InvalidBatchAllocation();
     error InvalidRegistrationProof(address allocator);
     error InvalidBatchDepositStructure();
@@ -108,10 +104,6 @@ interface ITheCompact {
 
     function claimAndWithdraw(Claim memory claim) external returns (bool);
 
-    function __register(address allocator, bytes calldata proof)
-        external
-        returns (uint96 allocatorId);
-
     function enableForcedWithdrawal(uint256 id) external returns (uint256 withdrawableAt);
 
     function disableForcedWithdrawal(uint256 id) external returns (bool);
@@ -119,6 +111,10 @@ interface ITheCompact {
     function forcedWithdrawal(uint256 id, address recipient)
         external
         returns (uint256 withdrawnAmount);
+
+    function __register(address allocator, bytes calldata proof)
+        external
+        returns (uint96 allocatorId);
 
     function getForcedWithdrawalStatus(address account, uint256 id)
         external

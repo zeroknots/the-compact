@@ -2,27 +2,9 @@
 pragma solidity ^0.8.27;
 
 library ConsumerLib {
-    bytes4 private constant _CONSUMER_HASH_SCOPE = 0xd4b1f245;
     bytes4 private constant _CONSUMER_NONCE_SCOPE = 0x153dc4d7;
 
-    error InvalidHash(bytes32);
     error InvalidNonce(address account, uint256 nonce);
-
-    function consumeHash(bytes32 hashToConsume) internal {
-        assembly {
-            // slot: keccak256(_CONSUMER_HASH_SCOPE ++ hashToConsume)
-            mstore(0, _CONSUMER_HASH_SCOPE)
-            mstore(0x20, hashToConsume)
-            let bucketSlot := keccak256(0x1c, 0x24)
-
-            if sload(bucketSlot) {
-                mstore(0x00, 0x44d659bf) // `InvalidHash(bytes32)`.
-                revert(0x1c, 0x24)
-            }
-
-            sstore(bucketSlot, 1) // Invalidate the hash.
-        }
-    }
 
     function consumeNonce(uint256 nonce, address account) internal {
         // The last byte of the nonce is used to assign a bit in a 256-bit bucket;
@@ -49,15 +31,6 @@ library ConsumerLib {
             sstore(bucketSlot, or(bucketValue, bit)) // Invalidate the nonce.
 
             mstore(0x40, freeMemoryPointer)
-        }
-    }
-
-    function isConsumed(bytes32 hashToCheck) internal view returns (bool consumed) {
-        assembly {
-            // slot: keccak256(_CONSUMER_HASH_SCOPE ++ hashToCheck)
-            mstore(0, _CONSUMER_HASH_SCOPE)
-            mstore(0x20, hashToCheck)
-            consumed := sload(keccak256(0x1c, 0x24))
         }
     }
 

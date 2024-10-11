@@ -120,3 +120,7 @@ bytes25 constant MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_THREE =
 // associated compact signed by the sponsor, which will be supplied by The Compact.
 // If additional parameters are not required, the allocator instead signs the same
 // payload as the sponsor.
+
+/// @dev `keccak256(bytes("CompactDeposit(address depositor,address allocator,uint8 resetPeriod,uint8 scope,address recipient)"))`.
+bytes32 constant PERMIT2_WITNESS_FRAGMENT_HASH =
+    0x0091bfc8f1539e204529602051ae82f3e6c6f0f86d0227c9ea890616cedbe646;

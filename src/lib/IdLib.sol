@@ -192,6 +192,11 @@ library IdLib {
         }
     }
 
+    function toRegisteredAllocatorId(uint256 id) internal view returns (uint96 allocatorId) {
+        allocatorId = id.toAllocatorId();
+        allocatorId.mustHaveARegisteredAllocator();
+    }
+
     function mustHaveARegisteredAllocator(uint96 allocatorId) internal view {
         assembly {
             // NOTE: consider an SLOAD bypass for a fully compact allocator

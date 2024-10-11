@@ -7,14 +7,13 @@ import { Scope } from "./types/Scope.sol";
 import { ResetPeriod } from "./types/ResetPeriod.sol";
 import { ForcedWithdrawalStatus } from "./types/ForcedWithdrawalStatus.sol";
 import { IdLib } from "./lib/IdLib.sol";
-import { ConsumerLib } from "./lib/ConsumerLib.sol";
 import { EfficiencyLib } from "./lib/EfficiencyLib.sol";
 import { HashLib } from "./lib/HashLib.sol";
 import { MetadataLib } from "./lib/MetadataLib.sol";
+import { ValidityLib } from "./lib/ValidityLib.sol";
 import { ERC6909 } from "solady/tokens/ERC6909.sol";
 import { FixedPointMathLib } from "solady/utils/FixedPointMathLib.sol";
 import { SafeTransferLib } from "solady/utils/SafeTransferLib.sol";
-import { SignatureCheckerLib } from "solady/utils/SignatureCheckerLib.sol";
 import { IPermit2 } from "permit2/src/interfaces/IPermit2.sol";
 import { ISignatureTransfer } from "permit2/src/interfaces/ISignatureTransfer.sol";
 import {
@@ -76,6 +75,7 @@ import { MetadataRenderer } from "./lib/MetadataRenderer.sol";
  *         This contract has not yet been properly tested, audited, or reviewed.
  */
 contract TheCompact is ITheCompact, ERC6909 {
+    using HashLib for address;
     using HashLib for bytes32;
     using HashLib for BasicTransfer;
     using HashLib for SplitTransfer;
@@ -119,18 +119,16 @@ contract TheCompact is ITheCompact, ERC6909 {
     using IdLib for Lock;
     using IdLib for ResetPeriod;
     using MetadataLib for address;
-    using ConsumerLib for uint256;
     using SafeTransferLib for address;
-    using SignatureCheckerLib for address;
     using FixedPointMathLib for uint256;
     using EfficiencyLib for bool;
     using EfficiencyLib for uint256;
+    using ValidityLib for address;
+    using ValidityLib for uint96;
+    using ValidityLib for uint256;
+    using ValidityLib for bytes32;
 
     IPermit2 private constant _PERMIT2 = IPermit2(0x000000000022D473030F116dDEE9F6B43aC78BA3);
-
-    /// @dev `keccak256(bytes("CompactDeposit(address depositor,address allocator,uint8 resetPeriod,uint8 scope,address recipient)"))`.
-    bytes32 private constant _PERMIT2_WITNESS_FRAGMENT_HASH =
-        0x0091bfc8f1539e204529602051ae82f3e6c6f0f86d0227c9ea890616cedbe646;
 
     uint256 private constant _ERC6909_MASTER_SLOT_SEED = 0xedcaa89a82293940;
 
@@ -243,8 +241,7 @@ contract TheCompact is ITheCompact, ERC6909 {
             }
         }
 
-        uint96 currentAllocatorId = id.toAllocatorId();
-        currentAllocatorId.mustHaveARegisteredAllocator();
+        uint96 currentAllocatorId = id.toRegisteredAllocatorId();
 
         if (firstUnderlyingTokenIsNative) {
             _deposit(msg.sender, recipient, id, msg.value);
@@ -298,17 +295,11 @@ contract TheCompact is ITheCompact, ERC6909 {
         ISignatureTransfer.PermitTransferFrom memory permitTransferFrom = ISignatureTransfer
             .PermitTransferFrom({ permitted: tokenPermissions, nonce: nonce, deadline: deadline });
 
-        bytes32 witness = keccak256(
-            abi.encode(
-                _PERMIT2_WITNESS_FRAGMENT_HASH, depositor, allocator, resetPeriod, scope, recipient
-            )
-        );
-
         _PERMIT2.permitWitnessTransferFrom(
             permitTransferFrom,
             signatureTransferDetails,
             depositor,
-            witness,
+            allocator.toPermit2WitnessHash(depositor, resetPeriod, scope, recipient),
             "CompactDeposit witness)CompactDeposit(address depositor,address allocator,uint8 resetPeriod,uint8 scope,address recipient)TokenPermissions(address token,uint256 amount)",
             signature
         );
@@ -356,12 +347,6 @@ contract TheCompact is ITheCompact, ERC6909 {
 
         uint256 initialId = address(0).toIdIfRegistered(scope, resetPeriod, allocator);
 
-        bytes32 witness = keccak256(
-            abi.encode(
-                _PERMIT2_WITNESS_FRAGMENT_HASH, depositor, allocator, resetPeriod, scope, recipient
-            )
-        );
-
         return _processBatchPermit2Deposits(
             firstUnderlyingTokenIsNative,
             recipient,
@@ -371,29 +356,35 @@ contract TheCompact is ITheCompact, ERC6909 {
             depositor,
             nonce,
             deadline,
-            witness,
+            allocator.toPermit2WitnessHash(depositor, resetPeriod, scope, recipient),
             signature
         );
     }
 
     function allocatedTransfer(BasicTransfer memory transfer) external returns (bool) {
-        _assertValidTime(transfer.expires);
+        transfer.expires.later();
 
-        address allocator = transfer.id.toAllocator();
-        transfer.nonce.consumeNonce(allocator);
+        address allocator = transfer.id.toRegisteredAllocatorWithConsumed(transfer.nonce);
 
-        _assertValidSignature(transfer.toMessageHash(), transfer.allocatorSignature, allocator);
+        transfer.toMessageHash().signedBy(
+            allocator,
+            transfer.allocatorSignature,
+            _INITIAL_DOMAIN_SEPARATOR.toLatest(_INITIAL_CHAIN_ID)
+        );
 
         return _release(msg.sender, transfer.recipient, transfer.id, transfer.amount);
     }
 
     function allocatedWithdrawal(BasicTransfer memory transfer) external returns (bool) {
-        _assertValidTime(transfer.expires);
+        transfer.expires.later();
 
-        address allocator = transfer.id.toAllocator();
-        transfer.nonce.consumeNonce(allocator);
+        address allocator = transfer.id.toRegisteredAllocatorWithConsumed(transfer.nonce);
 
-        _assertValidSignature(transfer.toMessageHash(), transfer.allocatorSignature, allocator);
+        transfer.toMessageHash().signedBy(
+            allocator,
+            transfer.allocatorSignature,
+            _INITIAL_DOMAIN_SEPARATOR.toLatest(_INITIAL_CHAIN_ID)
+        );
 
         _withdraw(msg.sender, transfer.recipient, transfer.id, transfer.amount);
 
@@ -418,17 +409,6 @@ contract TheCompact is ITheCompact, ERC6909 {
         _withdraw(claimPayload.sponsor, claimPayload.claimant, claimPayload.id, claimPayload.amount);
 
         return true;
-    }
-
-    function __register(address allocator, bytes calldata proof)
-        external
-        returns (uint96 allocatorId)
-    {
-        if (!allocator.canBeRegistered(proof)) {
-            revert InvalidRegistrationProof(allocator);
-        }
-
-        allocatorId = allocator.register();
     }
 
     function enableForcedWithdrawal(uint256 id) external returns (uint256 withdrawableAt) {
@@ -466,6 +446,17 @@ contract TheCompact is ITheCompact, ERC6909 {
         _withdraw(msg.sender, recipient, id, withdrawnAmount);
     }
 
+    function __register(address allocator, bytes calldata proof)
+        external
+        returns (uint96 allocatorId)
+    {
+        if (!allocator.canBeRegistered(proof)) {
+            revert InvalidRegistrationProof(allocator);
+        }
+
+        allocatorId = allocator.register();
+    }
+
     function getForcedWithdrawalStatus(address account, uint256 id)
         external
         view
@@ -495,7 +486,7 @@ contract TheCompact is ITheCompact, ERC6909 {
     }
 
     function check(uint256 nonce, address allocator) external view returns (bool consumed) {
-        return nonce.isConsumedBy(allocator);
+        consumed = allocator.hasConsumed(nonce);
     }
 
     function DOMAIN_SEPARATOR() external view returns (bytes32 domainSeparator) {
@@ -581,17 +572,17 @@ contract TheCompact is ITheCompact, ERC6909 {
     }
 
     function _processClaim(Claim memory claimPayload) internal {
-        _assertValidTime(claimPayload.expires);
+        claimPayload.expires.later();
         if (claimPayload.allocatedAmount < claimPayload.amount) {
             revert AllocatedAmountExceeded(claimPayload.allocatedAmount, claimPayload.amount);
         }
 
-        address allocator = claimPayload.id.toAllocator();
-        claimPayload.nonce.consumeNonce(allocator);
+        address allocator = claimPayload.id.toRegisteredAllocatorWithConsumed(claimPayload.nonce);
 
         bytes32 messageHash = claimPayload.toMessageHash();
-        _assertValidSignature(messageHash, claimPayload.sponsorSignature, claimPayload.sponsor);
-        _assertValidSignature(messageHash, claimPayload.allocatorSignature, allocator);
+        bytes32 domainSeparator = _INITIAL_DOMAIN_SEPARATOR.toLatest(_INITIAL_CHAIN_ID);
+        messageHash.signedBy(claimPayload.sponsor, claimPayload.sponsorSignature, domainSeparator);
+        messageHash.signedBy(allocator, claimPayload.allocatorSignature, domainSeparator);
 
         emit Claimed(
             claimPayload.sponsor,
@@ -603,7 +594,7 @@ contract TheCompact is ITheCompact, ERC6909 {
     }
 
     function _processBatchClaim(BatchClaim memory batchClaim) internal returns (bool) {
-        _assertValidTime(batchClaim.expires);
+        batchClaim.expires.later();
 
         uint256 totalClaims = batchClaim.claims.length;
         if (totalClaims == 0) {
@@ -612,11 +603,13 @@ contract TheCompact is ITheCompact, ERC6909 {
 
         // TODO: skip the bounds check on this array access
         uint96 allocatorId = batchClaim.claims[0].id.toAllocatorId();
-        address allocator = allocatorId.toRegisteredAllocator();
-        batchClaim.nonce.consumeNonce(allocator);
+
+        address allocator = allocatorId.fromRegisteredAllocatorIdWithConsumed(batchClaim.nonce);
+
         bytes32 messageHash = batchClaim.toMessageHash();
-        _assertValidSignature(messageHash, batchClaim.sponsorSignature, batchClaim.sponsor);
-        _assertValidSignature(messageHash, batchClaim.allocatorSignature, allocator);
+        bytes32 domainSeparator = _INITIAL_DOMAIN_SEPARATOR.toLatest(_INITIAL_CHAIN_ID);
+        messageHash.signedBy(batchClaim.sponsor, batchClaim.sponsorSignature, domainSeparator);
+        messageHash.signedBy(allocator, batchClaim.allocatorSignature, domainSeparator);
 
         // TODO: many of the bounds checks on these array accesses can be skipped as an optimization
         BatchClaimComponent memory component = batchClaim.claims[0];
@@ -827,107 +820,16 @@ contract TheCompact is ITheCompact, ERC6909 {
         emit Withdrawal(from, to, id, amount);
     }
 
-    function _assertValidTime(uint256 startTime, uint256 endTime) internal view {
-        assembly ("memory-safe") {
-            if or(gt(startTime, timestamp()), iszero(gt(endTime, timestamp()))) {
-                // revert InvalidTime(startTime, endTime);
-                mstore(0, 0x21ccfeb7)
-                mstore(0x20, startTime)
-                mstore(0x40, endTime)
-                revert(0x1c, 0x44)
-            }
-        }
-    }
-
-    function _assertValidTime(uint256 expiration) internal view {
-        assembly ("memory-safe") {
-            if iszero(gt(expiration, timestamp())) {
-                // revert Expired(expiration);
-                mstore(0, 0xf80dbaea)
-                mstore(0x20, expiration)
-                revert(0x1c, 0x24)
-            }
-        }
-    }
-
-    function _assertValidSignature(
-        bytes32 messageHash,
-        bytes memory signature,
-        address expectedSigner
-    ) internal view {
-        // NOTE: analyze whether the signature check can safely be skipped in all
-        // cases where the caller is the expected signer.
-        if (msg.sender != expectedSigner) {
-            if (!expectedSigner.isValidSignatureNow(_getDomainHash(messageHash), signature)) {
-                revert InvalidSignature();
-            }
-        }
-    }
-
-    function _deriveClaimant(
-        address allocationClaimant,
-        address allocationAuthorizationClaimant,
-        address oracleClaimant
-    ) internal pure returns (address claimant) {
-        assembly ("memory-safe") {
-            // clean upper dirty bits just in case
-            let a := shr(0x60, shl(0x60, allocationClaimant))
-            let b := shr(0x60, shl(0x60, allocationAuthorizationClaimant))
-            let c := shr(0x60, shl(0x60, oracleClaimant))
-
-            // all these things need to be true:
-            // 1) a != 0 || b != 0 || c != 0
-            // 2) a == b || a == 0 || b == 0
-            // 3) a == c || a == 0 || c == 0
-            // 4) b == c || b == 0 || c == 0
-            let valid :=
-                and(
-                    and(iszero(iszero(or(or(a, b), c))), or(eq(a, b), or(iszero(a), iszero(b)))),
-                    and(or(eq(a, c), or(iszero(a), iszero(c))), or(eq(b, c), or(iszero(b), iszero(c))))
-                )
-
-            if iszero(valid) {
-                // `InvalidClaimant(address providerClaimant, address allocatorClaimant, address oracleClaimant)`
-                mstore(0, 0xeeaed345)
-                mstore(0x20, a)
-                mstore(0x40, b)
-                mstore(0x60, c)
-                revert(0x1c, 0x64)
-            }
-
-            // a + (iszero(a) * b) + (iszero(a) * iszero(b) * c)
-            // this gives the first non-zero address among a, b, or c
-            claimant := add(add(a, mul(iszero(a), b)), mul(and(iszero(a), iszero(b)), c))
-        }
-    }
-
-    function _getDomainHash(bytes32 messageHash) internal view returns (bytes32 domainHash) {
-        bytes32 domainSeparator = _INITIAL_DOMAIN_SEPARATOR.toLatest(_INITIAL_CHAIN_ID);
-
-        assembly ("memory-safe") {
-            let m := mload(0x40) // Grab the free memory pointer.
-
-            // Prepare the 712 prefix.
-            mstore(0, 0x1901)
-
-            mstore(0x20, domainSeparator)
-
-            // Prepare the message hash and compute the domain hash.
-            mstore(0x40, messageHash)
-            domainHash := keccak256(0x1e, 0x42)
-
-            mstore(0x40, m) // Restore the free memory pointer.
-        }
-    }
-
     function _beforeTokenTransfer(address from, address to, uint256 id, uint256 amount)
         internal
         virtual
         override
     {
-        if (IAllocator(id.toAllocator()).attest(from, to, id, amount) != IAllocator.attest.selector)
-        {
-            revert UnallocatedTransfer(from, to, id, amount);
+        if (
+            IAllocator(id.toAllocator()).attest(msg.sender, from, to, id, amount)
+                != IAllocator.attest.selector
+        ) {
+            revert UnallocatedTransfer(msg.sender, from, to, id, amount);
         }
     }
 }

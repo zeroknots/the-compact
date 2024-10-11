@@ -22,7 +22,8 @@ import {
     MULTICHAIN_COMPACT_TYPEHASH,
     MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_ONE,
     MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_TWO,
-    MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_THREE
+    MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_THREE,
+    PERMIT2_WITNESS_FRAGMENT_HASH
 } from "../types/EIP712Types.sol";
 
 import {
@@ -69,6 +70,9 @@ import {
     ExogenousQualifiedSplitMultichainClaim,
     ExogenousQualifiedSplitMultichainClaimWithWitness
 } from "../types/MultichainClaims.sol";
+
+import { ResetPeriod } from "../types/ResetPeriod.sol";
+import { Scope } from "../types/Scope.sol";
 
 // TODO: make calldata versions of these where useful
 library HashLib {
@@ -1819,6 +1823,26 @@ library HashLib {
         );
     }
 
+    function toPermit2WitnessHash(
+        address allocator,
+        address depositor,
+        ResetPeriod resetPeriod,
+        Scope scope,
+        address recipient
+    ) internal pure returns (bytes32 witnessHash) {
+        assembly ("memory-safe") {
+            let m := mload(0x40) // Grab the free memory pointer; memory will be left dirtied.
+
+            mstore(m, PERMIT2_WITNESS_FRAGMENT_HASH)
+            mstore(add(m, 0x20), depositor)
+            mstore(add(m, 0x40), allocator)
+            mstore(add(m, 0x60), resetPeriod)
+            mstore(add(m, 0x80), scope)
+            mstore(add(m, 0xa0), recipient)
+            witnessHash := keccak256(m, 0xc0)
+        }
+    }
+
     function toMessageHash(Compact memory compact) internal pure returns (bytes32 messageHash) {
         assembly ("memory-safe") {
             let m := mload(0x40) // Grab the free memory pointer; memory will be left dirtied.
@@ -1928,6 +1952,27 @@ library HashLib {
             mstore(add(m, 0x60), notarizedChainId)
             mstore(add(m, 0x80), address())
             mstore(0x20, keccak256(m, 0xa0))
+
+            // Prepare the message hash and compute the domain hash.
+            mstore(0x40, messageHash)
+            domainHash := keccak256(0x1e, 0x42)
+
+            mstore(0x40, m) // Restore the free memory pointer.
+        }
+    }
+
+    function withDomain(bytes32 messageHash, bytes32 domainSeparator)
+        internal
+        pure
+        returns (bytes32 domainHash)
+    {
+        assembly ("memory-safe") {
+            let m := mload(0x40) // Grab the free memory pointer.
+
+            // Prepare the 712 prefix.
+            mstore(0, 0x1901)
+
+            mstore(0x20, domainSeparator)
 
             // Prepare the message hash and compute the domain hash.
             mstore(0x40, messageHash)
