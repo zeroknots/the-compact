@@ -11,6 +11,7 @@ import { EfficiencyLib } from "./lib/EfficiencyLib.sol";
 import { HashLib } from "./lib/HashLib.sol";
 import { MetadataLib } from "./lib/MetadataLib.sol";
 import { ValidityLib } from "./lib/ValidityLib.sol";
+import { Extsload } from "./lib/Extsload.sol";
 import { ERC6909 } from "solady/tokens/ERC6909.sol";
 import { FixedPointMathLib } from "solady/utils/FixedPointMathLib.sol";
 import { SafeTransferLib } from "solady/utils/SafeTransferLib.sol";
@@ -61,7 +62,12 @@ import {
     ExogenousQualifiedSplitMultichainClaimWithWitness
 } from "./types/MultichainClaims.sol";
 
-import { BatchClaimComponent } from "./types/Components.sol";
+import {
+    SplitComponent,
+    TransferComponent,
+    SplitByIdComponent,
+    BatchClaimComponent
+} from "./types/Components.sol";
 
 import { IAllocator } from "./interfaces/IAllocator.sol";
 import { MetadataRenderer } from "./lib/MetadataRenderer.sol";
@@ -74,7 +80,7 @@ import { MetadataRenderer } from "./lib/MetadataRenderer.sol";
  *         formation (and, if necessary, involuntary dissolution) of "resource locks."
  *         This contract has not yet been properly tested, audited, or reviewed.
  */
-contract TheCompact is ITheCompact, ERC6909 {
+contract TheCompact is ITheCompact, ERC6909, Extsload {
     using HashLib for address;
     using HashLib for bytes32;
     using HashLib for BasicTransfer;
@@ -167,11 +173,9 @@ contract TheCompact is ITheCompact, ERC6909 {
         external
         returns (uint256 id)
     {
-        if (token == address(0)) {
-            revert InvalidToken(token);
-        }
-
-        id = token.toIdIfRegistered(Scope.Multichain, ResetPeriod.TenMinutes, allocator);
+        id = token.excludingNative().toIdIfRegistered(
+            Scope.Multichain, ResetPeriod.TenMinutes, allocator
+        );
 
         token.safeTransferFrom(msg.sender, address(this), amount);
 
@@ -196,11 +200,7 @@ contract TheCompact is ITheCompact, ERC6909 {
         uint256 amount,
         address recipient
     ) external returns (uint256 id) {
-        if (token == address(0)) {
-            revert InvalidToken(token);
-        }
-
-        id = token.toIdIfRegistered(scope, resetPeriod, allocator);
+        id = token.excludingNative().toIdIfRegistered(scope, resetPeriod, allocator);
 
         token.safeTransferFrom(msg.sender, address(this), amount);
 
@@ -280,11 +280,7 @@ contract TheCompact is ITheCompact, ERC6909 {
         uint256 deadline,
         bytes calldata signature
     ) external returns (uint256 id) {
-        if (token == address(0)) {
-            revert InvalidToken(token);
-        }
-
-        id = token.toIdIfRegistered(scope, resetPeriod, allocator);
+        id = token.excludingNative().toIdIfRegistered(scope, resetPeriod, allocator);
 
         ISignatureTransfer.SignatureTransferDetails memory signatureTransferDetails =
         ISignatureTransfer.SignatureTransferDetails({ to: address(this), requestedAmount: amount });
@@ -362,41 +358,39 @@ contract TheCompact is ITheCompact, ERC6909 {
     }
 
     function allocatedTransfer(BasicTransfer memory transfer) external returns (bool) {
-        transfer.expires.later();
-
-        address allocator = transfer.id.toRegisteredAllocatorWithConsumed(transfer.nonce);
-
-        transfer.toMessageHash().signedBy(
-            allocator,
-            transfer.allocatorSignature,
-            _INITIAL_DOMAIN_SEPARATOR.toLatest(_INITIAL_CHAIN_ID)
-        );
-
-        return _release(msg.sender, transfer.recipient, transfer.id, transfer.amount);
+        return _processBasic(transfer, _release);
     }
 
-    function allocatedWithdrawal(BasicTransfer memory transfer) external returns (bool) {
-        transfer.expires.later();
+    function allocatedTransfer(SplitTransfer memory transfer) external returns (bool) {
+        return _processSplit(transfer, _release);
+    }
 
-        address allocator = transfer.id.toRegisteredAllocatorWithConsumed(transfer.nonce);
+    function allocatedWithdrawal(BasicTransfer memory withdrawal) external returns (bool) {
+        return _processBasic(withdrawal, _withdraw);
+    }
 
-        transfer.toMessageHash().signedBy(
-            allocator,
-            transfer.allocatorSignature,
-            _INITIAL_DOMAIN_SEPARATOR.toLatest(_INITIAL_CHAIN_ID)
-        );
+    function allocatedWithdrawal(SplitTransfer memory withdrawal) external returns (bool) {
+        return _processSplit(withdrawal, _withdraw);
+    }
 
-        _withdraw(msg.sender, transfer.recipient, transfer.id, transfer.amount);
+    function allocatedTransfer(BatchTransfer memory transfer) external returns (bool) {
+        return _processBatchTransfer(transfer, _release);
+    }
 
-        return true;
+    function allocatedWithdrawal(BatchTransfer memory withdrawal) external returns (bool) {
+        return _processBatchTransfer(withdrawal, _withdraw);
+    }
+
+    function allocatedTransfer(SplitBatchTransfer memory transfer) external returns (bool) {
+        return _processSplitBatchTransfer(transfer, _release);
+    }
+
+    function allocatedWithdrawal(SplitBatchTransfer memory withdrawal) external returns (bool) {
+        return _processSplitBatchTransfer(withdrawal, _withdraw);
     }
 
     function claim(Claim memory claimPayload) external returns (bool) {
-        _processClaim(claimPayload);
-
-        return _release(
-            claimPayload.sponsor, claimPayload.claimant, claimPayload.id, claimPayload.amount
-        );
+        return _processClaim(claimPayload, _release);
     }
 
     function claim(BatchClaim memory claimPayload) external returns (bool) {
@@ -404,11 +398,7 @@ contract TheCompact is ITheCompact, ERC6909 {
     }
 
     function claimAndWithdraw(Claim memory claimPayload) external returns (bool) {
-        _processClaim(claimPayload);
-
-        _withdraw(claimPayload.sponsor, claimPayload.claimant, claimPayload.id, claimPayload.amount);
-
-        return true;
+        return _processClaim(claimPayload, _withdraw);
     }
 
     function enableForcedWithdrawal(uint256 id) external returns (uint256 withdrawableAt) {
@@ -493,59 +483,6 @@ contract TheCompact is ITheCompact, ERC6909 {
         return _INITIAL_DOMAIN_SEPARATOR.toLatest(_INITIAL_CHAIN_ID);
     }
 
-    function extsload(bytes32 slot) external view returns (bytes32) {
-        assembly ("memory-safe") {
-            mstore(0, sload(slot))
-            return(0, 0x20)
-        }
-    }
-
-    function extsload(bytes32 startSlot, uint256 nSlots) external view returns (bytes32[] memory) {
-        assembly ("memory-safe") {
-            let memptr := mload(0x40)
-            let start := memptr
-            // A left bit-shift of 5 is equivalent to multiplying by 32 but costs less gas.
-            let length := shl(5, nSlots)
-            // The abi offset of dynamic array in the returndata is 32.
-            mstore(memptr, 0x20)
-            // Store the length of the array returned
-            mstore(add(memptr, 0x20), nSlots)
-            // update memptr to the first location to hold a result
-            memptr := add(memptr, 0x40)
-            let end := add(memptr, length)
-            for { } 1 { } {
-                mstore(memptr, sload(startSlot))
-                memptr := add(memptr, 0x20)
-                startSlot := add(startSlot, 1)
-                if iszero(lt(memptr, end)) { break }
-            }
-            return(start, sub(end, start))
-        }
-    }
-
-    function extsload(bytes32[] calldata slots) external view returns (bytes32[] memory) {
-        assembly ("memory-safe") {
-            let memptr := mload(0x40)
-            let start := memptr
-            // for abi encoding the response - the array will be found at 0x20
-            mstore(memptr, 0x20)
-            // next we store the length of the return array
-            mstore(add(memptr, 0x20), slots.length)
-            // update memptr to the first location to hold an array entry
-            memptr := add(memptr, 0x40)
-            // A left bit-shift of 5 is equivalent to multiplying by 32 but costs less gas.
-            let end := add(memptr, shl(5, slots.length))
-            let calldataptr := slots.offset
-            for { } 1 { } {
-                mstore(memptr, sload(calldataload(calldataptr)))
-                memptr := add(memptr, 0x20)
-                calldataptr := add(calldataptr, 0x20)
-                if iszero(lt(memptr, end)) { break }
-            }
-            return(start, sub(end, start))
-        }
-    }
-
     /// @dev Returns the symbol for token `id`.
     function name(uint256 id) public view virtual override returns (string memory) {
         return string.concat("Compact ", id.toToken().readNameWithDefaultValue());
@@ -571,7 +508,107 @@ contract TheCompact is ITheCompact, ERC6909 {
         }
     }
 
-    function _processClaim(Claim memory claimPayload) internal {
+    function _processBasic(
+        BasicTransfer memory transfer,
+        function(address, address, uint256, uint256) internal returns (bool) operation
+    ) internal returns (bool) {
+        transfer.expires.later();
+
+        transfer.toMessageHash().signedBy(
+            transfer.id.toRegisteredAllocatorWithConsumed(transfer.nonce),
+            transfer.allocatorSignature,
+            _INITIAL_DOMAIN_SEPARATOR.toLatest(_INITIAL_CHAIN_ID)
+        );
+
+        return operation(msg.sender, transfer.recipient, transfer.id, transfer.amount);
+    }
+
+    function _processSplit(
+        SplitTransfer memory transfer,
+        function(address, address, uint256, uint256) internal returns (bool) operation
+    ) internal returns (bool) {
+        transfer.expires.later();
+
+        transfer.toMessageHash().signedBy(
+            transfer.id.toRegisteredAllocatorWithConsumed(transfer.nonce),
+            transfer.allocatorSignature,
+            _INITIAL_DOMAIN_SEPARATOR.toLatest(_INITIAL_CHAIN_ID)
+        );
+
+        uint256 totalSplits = transfer.recipients.length;
+        SplitComponent memory component;
+        unchecked {
+            for (uint256 i = 0; i < totalSplits; ++i) {
+                component = transfer.recipients[i];
+                operation(msg.sender, component.claimant, transfer.id, component.amount);
+            }
+        }
+
+        return true;
+    }
+
+    function _processBatchTransfer(
+        BatchTransfer memory transfer,
+        function(address, address, uint256, uint256) internal returns (bool) operation
+    ) internal returns (bool) {
+        transfer.expires.later();
+
+        address allocator =
+            _deriveConsistentAllocatorAndConsumeNonce(transfer.transfers, transfer.nonce);
+
+        transfer.toMessageHash().signedBy(
+            allocator,
+            transfer.allocatorSignature,
+            _INITIAL_DOMAIN_SEPARATOR.toLatest(_INITIAL_CHAIN_ID)
+        );
+
+        unchecked {
+            uint256 totalTransfers = transfer.transfers.length;
+            for (uint256 i = 0; i < totalTransfers; ++i) {
+                TransferComponent memory component = transfer.transfers[i];
+                operation(msg.sender, component.recipient, component.id, component.amount);
+            }
+        }
+
+        return true;
+    }
+
+    function _processSplitBatchTransfer(
+        SplitBatchTransfer memory transfer,
+        function(address, address, uint256, uint256) internal returns (bool) operation
+    ) internal returns (bool) {
+        transfer.expires.later();
+
+        address allocator = usingSplitByIdComponent(_deriveConsistentAllocatorAndConsumeNonce)(
+            transfer.transfers, transfer.nonce
+        );
+
+        transfer.toMessageHash().signedBy(
+            allocator,
+            transfer.allocatorSignature,
+            _INITIAL_DOMAIN_SEPARATOR.toLatest(_INITIAL_CHAIN_ID)
+        );
+
+        unchecked {
+            uint256 totalIds = transfer.transfers.length;
+            for (uint256 i = 0; i < totalIds; ++i) {
+                SplitByIdComponent memory component = transfer.transfers[i];
+                SplitComponent[] memory portions = component.portions;
+                uint256 totalPortions = portions.length;
+                for (uint256 j = 0; j < totalPortions; ++j) {
+                    SplitComponent memory portion = portions[j];
+                    operation(msg.sender, portion.claimant, component.id, portion.amount);
+                }
+            }
+        }
+
+        return true;
+    }
+
+    function _processClaim(
+        Claim memory claimPayload,
+        function(address, address, uint256, uint256) internal returns (bool) operation
+    ) internal returns (bool) {
         claimPayload.expires.later();
         if (claimPayload.allocatedAmount < claimPayload.amount) {
             revert AllocatedAmountExceeded(claimPayload.allocatedAmount, claimPayload.amount);
@@ -590,6 +627,10 @@ contract TheCompact is ITheCompact, ERC6909 {
             claimPayload.id,
             messageHash,
             claimPayload.amount
+        );
+
+        return operation(
+            claimPayload.sponsor, claimPayload.claimant, claimPayload.id, claimPayload.amount
         );
     }
 
@@ -715,6 +756,42 @@ contract TheCompact is ITheCompact, ERC6909 {
         }
     }
 
+    // NOTE: the id field needs to be at the exact same struct offset for this to work!
+    function usingSplitByIdComponent(
+        function (TransferComponent[] memory, uint256) internal returns (address) fnIn
+    )
+        internal
+        pure
+        returns (function (SplitByIdComponent[] memory, uint256) internal returns (address) fnOut)
+    {
+        assembly {
+            fnOut := fnIn
+        }
+    }
+
+    function _deriveConsistentAllocatorAndConsumeNonce(
+        TransferComponent[] memory components,
+        uint256 nonce
+    ) internal returns (address allocator) {
+        uint256 totalComponents = components.length;
+
+        uint256 errorBuffer = (components.length == 0).asUint256();
+
+        // TODO: bounds checks on these array accesses can be skipped as an optimization
+        uint96 allocatorId = components[0].id.toAllocatorId();
+
+        allocator = allocatorId.fromRegisteredAllocatorIdWithConsumed(nonce);
+
+        unchecked {
+            for (uint256 i = 1; i < totalComponents; ++i) {
+                errorBuffer |= (components[i].id.toAllocatorId() != allocatorId).asUint256();
+            }
+        }
+        if (errorBuffer.asBool()) {
+            revert InvalidBatchAllocation();
+        }
+    }
+
     /// @dev Moves token `id` from `from` to `to` without checking
     //  allowances or _beforeTokenTransfer / _afterTokenTransfer hooks.
     function _release(address from, address to, uint256 id, uint256 amount)
@@ -762,7 +839,7 @@ contract TheCompact is ITheCompact, ERC6909 {
 
     /// @dev Mints `amount` of token `id` to `to` without checking transfer hooks.
     /// Emits {Transfer} and {Deposit} events.
-    function _deposit(address from, address to, uint256 id, uint256 amount) internal virtual {
+    function _deposit(address from, address to, uint256 id, uint256 amount) internal {
         assembly ("memory-safe") {
             // Compute the balance slot.
             mstore(0x20, _ERC6909_MASTER_SLOT_SEED)
@@ -789,7 +866,10 @@ contract TheCompact is ITheCompact, ERC6909 {
 
     /// @dev Burns `amount` token `id` from `from` without checking transfer hooks and sends
     /// the corresponding underlying tokens to `to`. Emits {Transfer} & {Withdrawal} events.
-    function _withdraw(address from, address to, uint256 id, uint256 amount) internal virtual {
+    function _withdraw(address from, address to, uint256 id, uint256 amount)
+        internal
+        returns (bool)
+    {
         assembly ("memory-safe") {
             // Compute the balance slot.
             mstore(0x20, _ERC6909_MASTER_SLOT_SEED)
@@ -818,6 +898,8 @@ contract TheCompact is ITheCompact, ERC6909 {
         }
 
         emit Withdrawal(from, to, id, amount);
+
+        return true;
     }
 
     function _beforeTokenTransfer(address from, address to, uint256 id, uint256 amount)

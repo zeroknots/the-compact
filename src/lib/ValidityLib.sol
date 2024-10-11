@@ -63,4 +63,16 @@ library ValidityLib {
     function hasConsumed(address allocator, uint256 nonce) internal view returns (bool) {
         return nonce.isConsumedBy(allocator);
     }
+
+    function excludingNative(address token) internal pure returns (address) {
+        assembly {
+            if iszero(shl(96, token)) {
+                // revert InvalidToken(0);
+                mstore(0x40, 0x961c9a4f)
+                revert(0x5c, 0x24)
+            }
+        }
+
+        return token;
+    }
 }

@@ -130,12 +130,6 @@ interface ITheCompact {
 
     function DOMAIN_SEPARATOR() external view returns (bytes32 domainSeparator);
 
-    function extsload(bytes32 slot) external view returns (bytes32);
-
-    function extsload(bytes32 startSlot, uint256 nSlots) external view returns (bytes32[] memory);
-
-    function extsload(bytes32[] calldata slots) external view returns (bytes32[] memory);
-
     /// @dev Returns the name for the contract.
     function name() external pure returns (string memory);
 }
