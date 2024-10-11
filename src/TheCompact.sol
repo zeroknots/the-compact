@@ -9,6 +9,7 @@ import { ForcedWithdrawalStatus } from "./types/ForcedWithdrawalStatus.sol";
 import { IdLib } from "./lib/IdLib.sol";
 import { ConsumerLib } from "./lib/ConsumerLib.sol";
 import { EfficiencyLib } from "./lib/EfficiencyLib.sol";
+import { HashLib } from "./lib/HashLib.sol";
 import { MetadataLib } from "./lib/MetadataLib.sol";
 import { ERC6909 } from "solady/tokens/ERC6909.sol";
 import { FixedPointMathLib } from "solady/utils/FixedPointMathLib.sol";
@@ -17,20 +18,52 @@ import { SignatureCheckerLib } from "solady/utils/SignatureCheckerLib.sol";
 import { IPermit2 } from "permit2/src/interfaces/IPermit2.sol";
 import { ISignatureTransfer } from "permit2/src/interfaces/ISignatureTransfer.sol";
 import {
-    Allocation,
-    AllocationAuthorization,
-    BatchAllocation,
-    BatchAllocationAuthorization,
-    ALLOCATION_TYPEHASH,
-    ALLOCATION_AUTHORIZATION_TYPEHASH,
-    BATCH_ALLOCATION_TYPEHASH,
-    BATCH_ALLOCATION_AUTHORIZATION_TYPEHASH,
-    TRANSFER_AUTHORIZATION_TYPEHASH,
-    DELEGATED_TRANSFER_TYPEHASH,
-    WITHDRAWAL_AUTHORIZATION_TYPEHASH,
-    DELEGATED_WITHDRAWAL_TYPEHASH
-} from "./types/EIP712Types.sol";
-import { IOracle } from "./interfaces/IOracle.sol";
+    BasicTransfer,
+    SplitTransfer,
+    Claim,
+    QualifiedClaim,
+    ClaimWithWitness,
+    QualifiedClaimWithWitness,
+    SplitClaim,
+    SplitClaimWithWitness,
+    QualifiedSplitClaim,
+    QualifiedSplitClaimWithWitness
+} from "./types/Claims.sol";
+
+import {
+    BatchTransfer,
+    SplitBatchTransfer,
+    BatchClaim,
+    QualifiedBatchClaim,
+    BatchClaimWithWitness,
+    QualifiedBatchClaimWithWitness,
+    SplitBatchClaim,
+    SplitBatchClaimWithWitness,
+    QualifiedSplitBatchClaim,
+    QualifiedSplitBatchClaimWithWitness
+} from "./types/BatchClaims.sol";
+
+import {
+    MultichainClaim,
+    QualifiedMultichainClaim,
+    MultichainClaimWithWitness,
+    QualifiedMultichainClaimWithWitness,
+    SplitMultichainClaim,
+    SplitMultichainClaimWithWitness,
+    QualifiedSplitMultichainClaim,
+    QualifiedSplitMultichainClaimWithWitness,
+    ExogenousMultichainClaim,
+    ExogenousQualifiedMultichainClaim,
+    ExogenousMultichainClaimWithWitness,
+    ExogenousQualifiedMultichainClaimWithWitness,
+    ExogenousSplitMultichainClaim,
+    ExogenousSplitMultichainClaimWithWitness,
+    ExogenousQualifiedSplitMultichainClaim,
+    ExogenousQualifiedSplitMultichainClaimWithWitness
+} from "./types/MultichainClaims.sol";
+
+import { BatchClaimComponent } from "./types/Components.sol";
+
 import { IAllocator } from "./interfaces/IAllocator.sol";
 import { MetadataRenderer } from "./lib/MetadataRenderer.sol";
 
@@ -43,6 +76,43 @@ import { MetadataRenderer } from "./lib/MetadataRenderer.sol";
  *         This contract has not yet been properly tested, audited, or reviewed.
  */
 contract TheCompact is ITheCompact, ERC6909 {
+    using HashLib for bytes32;
+    using HashLib for BasicTransfer;
+    using HashLib for SplitTransfer;
+    using HashLib for Claim;
+    using HashLib for QualifiedClaim;
+    using HashLib for ClaimWithWitness;
+    using HashLib for QualifiedClaimWithWitness;
+    using HashLib for SplitClaim;
+    using HashLib for SplitClaimWithWitness;
+    using HashLib for QualifiedSplitClaim;
+    using HashLib for QualifiedSplitClaimWithWitness;
+    using HashLib for BatchTransfer;
+    using HashLib for SplitBatchTransfer;
+    using HashLib for BatchClaim;
+    using HashLib for QualifiedBatchClaim;
+    using HashLib for BatchClaimWithWitness;
+    using HashLib for QualifiedBatchClaimWithWitness;
+    using HashLib for SplitBatchClaim;
+    using HashLib for SplitBatchClaimWithWitness;
+    using HashLib for QualifiedSplitBatchClaim;
+    using HashLib for QualifiedSplitBatchClaimWithWitness;
+    using HashLib for MultichainClaim;
+    using HashLib for QualifiedMultichainClaim;
+    using HashLib for MultichainClaimWithWitness;
+    using HashLib for QualifiedMultichainClaimWithWitness;
+    using HashLib for SplitMultichainClaim;
+    using HashLib for SplitMultichainClaimWithWitness;
+    using HashLib for QualifiedSplitMultichainClaim;
+    using HashLib for QualifiedSplitMultichainClaimWithWitness;
+    using HashLib for ExogenousMultichainClaim;
+    using HashLib for ExogenousQualifiedMultichainClaim;
+    using HashLib for ExogenousMultichainClaimWithWitness;
+    using HashLib for ExogenousQualifiedMultichainClaimWithWitness;
+    using HashLib for ExogenousSplitMultichainClaim;
+    using HashLib for ExogenousSplitMultichainClaimWithWitness;
+    using HashLib for ExogenousQualifiedSplitMultichainClaim;
+    using HashLib for ExogenousQualifiedSplitMultichainClaimWithWitness;
     using IdLib for uint96;
     using IdLib for uint256;
     using IdLib for address;
@@ -68,18 +138,6 @@ contract TheCompact is ITheCompact, ERC6909 {
     uint256 private constant _TRANSFER_EVENT_SIGNATURE =
         0x1b3d7edb2e9c0b0e7c525b20aaaef0f5940d2ed71663c7d39266ecafac728859;
 
-    /// @dev `keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)")`.
-    bytes32 private constant _DOMAIN_TYPEHASH =
-        0x8b73c3c69bb8fe3d512ecc4cf759cc79239f7b179b0ffacaa9a75d522b39400f;
-
-    /// @dev `keccak256(bytes("The Compact"))`.
-    bytes32 private constant _NAME_HASH =
-        0x5e6f7b4e1ac3d625bac418bc955510b3e054cb6cc23cc27885107f080180b292;
-
-    /// @dev `keccak256("1")`.
-    bytes32 private constant _VERSION_HASH =
-        0xc89efdaa54c0f20c7adf612882df0950f5a951637e0307cdcb4c672f298b8bc6;
-
     // Rage-quit functionality (TODO: optimize storage layout)
     mapping(address => mapping(uint256 => uint256)) private _cutoffTime;
 
@@ -90,7 +148,13 @@ contract TheCompact is ITheCompact, ERC6909 {
     constructor() {
         _INITIAL_CHAIN_ID = block.chainid;
         _INITIAL_DOMAIN_SEPARATOR = keccak256(
-            abi.encode(_DOMAIN_TYPEHASH, _NAME_HASH, _VERSION_HASH, block.chainid, address(this))
+            abi.encode(
+                HashLib._DOMAIN_TYPEHASH,
+                HashLib._NAME_HASH,
+                HashLib._VERSION_HASH,
+                block.chainid,
+                address(this)
+            )
         );
         _METADATA_RENDERER = new MetadataRenderer();
     }
@@ -312,168 +376,46 @@ contract TheCompact is ITheCompact, ERC6909 {
         );
     }
 
-    function claim(
-        Allocation calldata allocation,
-        AllocationAuthorization calldata allocationAuthorization,
-        bytes calldata oracleVariableData,
-        bytes calldata ownerSignature,
-        bytes calldata allocatorSignature
-    ) external returns (address claimant, uint256 claimAmount) {
-        (claimant, claimAmount) = _processClaim(
-            allocation,
-            allocationAuthorization,
-            oracleVariableData,
-            ownerSignature,
-            allocatorSignature
-        );
+    function allocatedTransfer(BasicTransfer memory transfer) external returns (bool) {
+        _assertValidTime(transfer.expires);
 
-        _release(allocation.owner, claimant, allocation.id, claimAmount);
+        address allocator = transfer.id.toAllocator();
+        transfer.nonce.consumeNonce(allocator);
+
+        _assertValidSignature(transfer.toMessageHash(), transfer.allocatorSignature, allocator);
+
+        return _release(msg.sender, transfer.recipient, transfer.id, transfer.amount);
     }
 
-    function claim(
-        BatchAllocation calldata batchAllocation,
-        BatchAllocationAuthorization calldata batchAllocationAuthorization,
-        bytes calldata oracleVariableData,
-        bytes calldata ownerSignature,
-        bytes calldata allocatorSignature
-    ) external returns (address claimant, uint256[] memory claimAmounts) {
-        (claimant, claimAmounts) = _processBatchClaim(
-            batchAllocation,
-            batchAllocationAuthorization,
-            oracleVariableData,
-            ownerSignature,
-            allocatorSignature
-        );
+    function allocatedWithdrawal(BasicTransfer memory transfer) external returns (bool) {
+        _assertValidTime(transfer.expires);
 
-        uint256 totalIds = batchAllocation.ids.length;
-        address owner = batchAllocation.owner;
-        unchecked {
-            for (uint256 i = 0; i < totalIds; ++i) {
-                // TODO: skip bounds checks on array accesses
-                _release(owner, claimant, batchAllocation.ids[i], claimAmounts[i]);
-            }
-        }
-    }
+        address allocator = transfer.id.toAllocator();
+        transfer.nonce.consumeNonce(allocator);
 
-    // Note: this can be frontrun since anyone can call claim
-    function claimAndWithdraw(
-        Allocation calldata allocation,
-        AllocationAuthorization calldata allocationAuthorization,
-        bytes calldata oracleVariableData,
-        bytes calldata ownerSignature,
-        bytes calldata allocatorSignature,
-        address recipient
-    ) external returns (uint256 claimAmount) {
-        address claimant;
-        (claimant, claimAmount) = _processClaim(
-            allocation,
-            allocationAuthorization,
-            oracleVariableData,
-            ownerSignature,
-            allocatorSignature
-        );
+        _assertValidSignature(transfer.toMessageHash(), transfer.allocatorSignature, allocator);
 
-        if (msg.sender != claimant) {
-            revert CallerNotClaimant();
-        }
-
-        _withdraw(allocation.owner, recipient, allocation.id, claimAmount);
-    }
-
-    function allocatedTransfer(
-        uint256 id,
-        uint256 amount,
-        uint256 nonce,
-        uint256 expiration,
-        address recipient,
-        bytes memory allocatorSignature
-    ) external returns (bool) {
-        _assertValidTime(expiration);
-
-        address allocator = id.toAllocator();
-        nonce.consumeNonce(allocator);
-
-        bytes32 messageHash = _getAuthorizedTransferMessageHash(expiration, nonce, id, amount);
-        _assertValidSignature(messageHash, allocatorSignature, allocator);
-
-        return _release(msg.sender, recipient, id, amount);
-    }
-
-    function allocatedTransferFrom(
-        address owner,
-        uint256 id,
-        uint256 amount,
-        uint256 nonce,
-        uint256 startTime,
-        uint256 endTime,
-        address recipient,
-        uint256 pledge,
-        bytes memory ownerSignature,
-        bytes memory allocatorSignature
-    ) external returns (bool) {
-        _assertValidTime(startTime, endTime);
-
-        address allocator = id.toAllocator();
-        nonce.consumeNonce(allocator);
-
-        bytes32 messageHash = _getDelegatedTransferMessageHash(
-            owner, startTime, endTime, nonce, id, amount, recipient, pledge
-        );
-        _assertValidSignature(messageHash, ownerSignature, owner);
-        _assertValidSignature(messageHash, allocatorSignature, allocator);
-
-        _processPledge(owner, id, pledge, startTime, endTime);
-
-        return _release(owner, recipient, id, amount);
-    }
-
-    function allocatedWithdrawal(
-        uint256 id,
-        uint256 amount,
-        uint256 nonce,
-        uint256 expiration,
-        address recipient,
-        bytes memory allocatorSignature
-    ) external returns (bool) {
-        _assertValidTime(expiration);
-
-        address allocator = id.toAllocator();
-        nonce.consumeNonce(allocator);
-
-        bytes32 messageHash = _getAuthorizedWithdrawalMessageHash(expiration, nonce, id, amount);
-        _assertValidSignature(messageHash, allocatorSignature, allocator);
-
-        _withdraw(msg.sender, recipient, id, amount);
+        _withdraw(msg.sender, transfer.recipient, transfer.id, transfer.amount);
 
         return true;
     }
 
-    function allocatedWithdrawalFrom(
-        address owner,
-        uint256 id,
-        uint256 amount,
-        uint256 nonce,
-        uint256 startTime,
-        uint256 endTime,
-        address recipient,
-        uint256 pledge,
-        bytes memory ownerSignature,
-        bytes memory allocatorSignature
-    ) external returns (bool) {
-        _assertValidTime(startTime, endTime);
+    function claim(Claim memory claimPayload) external returns (bool) {
+        _processClaim(claimPayload);
 
-        address allocator = id.toAllocator();
-        nonce.consumeNonce(allocator);
-
-        bytes32 messageHash = _getDelegatedWithdrawalMessageHash(
-            owner, startTime, endTime, nonce, id, amount, recipient, pledge
+        return _release(
+            claimPayload.sponsor, claimPayload.claimant, claimPayload.id, claimPayload.amount
         );
-        _assertValidSignature(messageHash, ownerSignature, owner);
-        _assertValidSignature(messageHash, allocatorSignature, allocator);
+    }
 
-        _processPledge(owner, id, pledge, startTime, endTime);
+    function claim(BatchClaim memory claimPayload) external returns (bool) {
+        return _processBatchClaim(claimPayload);
+    }
 
-        _withdraw(owner, recipient, id, amount);
+    function claimAndWithdraw(Claim memory claimPayload) external returns (bool) {
+        _processClaim(claimPayload);
+
+        _withdraw(claimPayload.sponsor, claimPayload.claimant, claimPayload.id, claimPayload.amount);
 
         return true;
     }
@@ -557,21 +499,7 @@ contract TheCompact is ITheCompact, ERC6909 {
     }
 
     function DOMAIN_SEPARATOR() external view returns (bytes32 domainSeparator) {
-        uint256 initialChainId = _INITIAL_CHAIN_ID;
-        domainSeparator = _INITIAL_DOMAIN_SEPARATOR;
-
-        assembly ("memory-safe") {
-            // Prepare the domain separator, rederiving it if necessary.
-            if xor(chainid(), initialChainId) {
-                let m := mload(0x40) // Grab the free memory pointer.
-                mstore(m, _DOMAIN_TYPEHASH)
-                mstore(add(m, 0x20), _NAME_HASH)
-                mstore(add(m, 0x40), _VERSION_HASH)
-                mstore(add(m, 0x60), chainid())
-                mstore(add(m, 0x80), address())
-                domainSeparator := keccak256(m, 0xa0)
-            }
-        }
+        return _INITIAL_DOMAIN_SEPARATOR.toLatest(_INITIAL_CHAIN_ID);
     }
 
     function extsload(bytes32 slot) external view returns (bytes32) {
@@ -652,97 +580,81 @@ contract TheCompact is ITheCompact, ERC6909 {
         }
     }
 
-    function _processClaim(
-        Allocation calldata allocation,
-        AllocationAuthorization calldata allocationAuthorization,
-        bytes calldata oracleVariableData,
-        bytes calldata ownerSignature,
-        bytes calldata allocatorSignature
-    ) internal returns (address claimant, uint256 claimAmount) {
-        _assertValidTime(allocation.startTime, allocation.endTime);
-        _assertValidTime(allocationAuthorization.startTime, allocationAuthorization.endTime);
-
-        if (allocationAuthorization.amountReduction >= allocation.amount) {
-            revert InvalidAmountReduction(
-                allocation.amount, allocationAuthorization.amountReduction
-            );
+    function _processClaim(Claim memory claimPayload) internal {
+        _assertValidTime(claimPayload.expires);
+        if (claimPayload.allocatedAmount < claimPayload.amount) {
+            revert AllocatedAmountExceeded(claimPayload.allocatedAmount, claimPayload.amount);
         }
 
-        address allocator = allocation.id.toAllocator();
-        allocation.nonce.consumeNonce(allocator);
-        bytes32 allocationMessageHash = _getAllocationMessageHash(allocation);
-        _assertValidSignature(allocationMessageHash, ownerSignature, allocation.owner);
-        bytes32 allocationAuthorizationMessageHash =
-            _getAllocationAuthorizationMessageHash(allocationAuthorization, allocationMessageHash);
-        _assertValidSignature(allocationAuthorizationMessageHash, allocatorSignature, allocator);
-        (address oracleClaimant, uint256 oracleClaimAmount) = IOracle(allocation.oracle).attest(
-            allocationMessageHash, allocation.oracleFixedData, oracleVariableData
+        address allocator = claimPayload.id.toAllocator();
+        claimPayload.nonce.consumeNonce(allocator);
+
+        bytes32 messageHash = claimPayload.toMessageHash();
+        _assertValidSignature(messageHash, claimPayload.sponsorSignature, claimPayload.sponsor);
+        _assertValidSignature(messageHash, claimPayload.allocatorSignature, allocator);
+
+        emit Claimed(
+            claimPayload.sponsor,
+            claimPayload.claimant,
+            claimPayload.id,
+            messageHash,
+            claimPayload.amount
         );
-
-        claimant =
-            _deriveClaimant(allocation.claimant, allocationAuthorization.claimant, oracleClaimant);
-
-        unchecked {
-            claimAmount =
-                oracleClaimAmount.min(allocation.amount - allocationAuthorization.amountReduction);
-        }
-
-        emit Claim(allocation.owner, claimant, allocation.id, allocationMessageHash, claimAmount);
     }
 
-    function _processBatchClaim(
-        BatchAllocation calldata batchAllocation,
-        BatchAllocationAuthorization calldata batchAllocationAuthorization,
-        bytes calldata oracleVariableData,
-        bytes calldata ownerSignature,
-        bytes calldata allocatorSignature
-    ) internal returns (address claimant, uint256[] memory claimAmounts) {
-        _assertValidTime(batchAllocation.startTime, batchAllocation.endTime);
-        _assertValidTime(
-            batchAllocationAuthorization.startTime, batchAllocationAuthorization.endTime
-        );
+    function _processBatchClaim(BatchClaim memory batchClaim) internal returns (bool) {
+        _assertValidTime(batchClaim.expires);
 
-        uint256 totalIds = batchAllocation.ids.length;
-        if (
-            (totalIds == 0).or(totalIds != batchAllocation.amounts.length).or(
-                totalIds != batchAllocationAuthorization.amountReductions.length
-            )
-        ) {
+        uint256 totalClaims = batchClaim.claims.length;
+        if (totalClaims == 0) {
             revert InvalidBatchAllocation();
         }
 
         // TODO: skip the bounds check on this array access
-        uint96 allocatorId = batchAllocation.ids[0].toAllocatorId();
+        uint96 allocatorId = batchClaim.claims[0].id.toAllocatorId();
         address allocator = allocatorId.toRegisteredAllocator();
-        batchAllocation.nonce.consumeNonce(allocator);
-        bytes32 batchAllocationMessageHash = _getBatchAllocationMessageHash(batchAllocation);
-        _assertValidSignature(batchAllocationMessageHash, ownerSignature, batchAllocation.owner);
-        bytes32 batchAllocationAuthorizationMessageHash =
-        _getBatchAllocationAuthorizationMessageHash(
-            batchAllocationAuthorization, batchAllocationMessageHash
-        );
-        _assertValidSignature(
-            batchAllocationAuthorizationMessageHash, allocatorSignature, allocator
-        );
-        (address oracleClaimant, uint256[] memory oracleClaimAmounts) = IOracle(
-            batchAllocation.oracle
-        ).attestBatch(
-            batchAllocationMessageHash, batchAllocation.oracleFixedData, oracleVariableData
-        );
+        batchClaim.nonce.consumeNonce(allocator);
+        bytes32 messageHash = batchClaim.toMessageHash();
+        _assertValidSignature(messageHash, batchClaim.sponsorSignature, batchClaim.sponsor);
+        _assertValidSignature(messageHash, batchClaim.allocatorSignature, allocator);
 
-        claimant = _deriveClaimant(
-            batchAllocation.claimant, batchAllocationAuthorization.claimant, oracleClaimant
-        );
+        // TODO: many of the bounds checks on these array accesses can be skipped as an optimization
+        BatchClaimComponent memory component = batchClaim.claims[0];
+        uint256 errorBuffer = (component.allocatedAmount < component.amount).asUint256();
+        uint256 id = component.id;
+        emit Claimed(batchClaim.sponsor, component.claimant, id, messageHash, component.amount);
+        _release(batchClaim.sponsor, component.claimant, component.id, component.amount);
 
-        claimAmounts = _deriveClaimAmountsAndEmitEvents(
-            batchAllocation,
-            batchAllocationAuthorization,
-            batchAllocationMessageHash,
-            totalIds,
-            allocatorId,
-            claimant,
-            oracleClaimAmounts
-        );
+        unchecked {
+            for (uint256 i = 1; i < totalClaims; ++i) {
+                component = batchClaim.claims[i];
+                id = component.id;
+                errorBuffer |= (id.toAllocatorId() != allocatorId).or(
+                    component.allocatedAmount < component.amount
+                ).asUint256();
+                emit Claimed(
+                    batchClaim.sponsor,
+                    component.claimant,
+                    component.id,
+                    messageHash,
+                    component.amount
+                );
+                _release(batchClaim.sponsor, component.claimant, component.id, component.amount);
+            }
+        }
+        if (errorBuffer.asBool()) {
+            for (uint256 i = 0; i < totalClaims; ++i) {
+                component = batchClaim.claims[i];
+                if (component.allocatedAmount < component.amount) {
+                    revert AllocatedAmountExceeded(component.allocatedAmount, component.amount);
+                }
+            }
+
+            // TODO: extract more informative error by deriving the reason for the failure
+            revert InvalidBatchAllocation();
+        }
+
+        return true;
     }
 
     function _processBatchPermit2Deposits(
@@ -807,48 +719,6 @@ contract TheCompact is ITheCompact, ERC6909 {
                 "CompactDeposit witness)CompactDeposit(address depositor,address allocator,uint8 resetPeriod,uint8 scope,address recipient)TokenPermissions(address token,uint256 amount)",
                 signature
             );
-        }
-    }
-
-    function _deriveClaimAmountsAndEmitEvents(
-        BatchAllocation calldata batchAllocation,
-        BatchAllocationAuthorization calldata batchAllocationAuthorization,
-        bytes32 batchAllocationMessageHash,
-        uint256 totalIds,
-        uint96 allocatorId,
-        address claimant,
-        uint256[] memory oracleClaimAmounts
-    ) internal returns (uint256[] memory claimAmounts) {
-        claimAmounts = new uint256[](totalIds);
-
-        // TODO: many of the bounds checks on these array accesses can be skipped as an optimization
-        uint256 id = batchAllocation.ids[0];
-        uint256 originalAmount = batchAllocation.amounts[0];
-        uint256 amountReduction = batchAllocationAuthorization.amountReductions[0];
-        uint256 claimAmount = oracleClaimAmounts[0].min(originalAmount - amountReduction);
-        claimAmounts[0] = claimAmount;
-        emit Claim(batchAllocation.owner, claimant, id, batchAllocationMessageHash, claimAmount);
-        uint256 errorBuffer = (
-            batchAllocationAuthorization.amountReductions[0] >= batchAllocation.amounts[0]
-        ).or(totalIds != oracleClaimAmounts.length).asUint256();
-        unchecked {
-            for (uint256 i = 1; i < totalIds; ++i) {
-                id = batchAllocation.ids[i];
-                originalAmount = batchAllocation.amounts[i];
-                amountReduction = batchAllocationAuthorization.amountReductions[i];
-                errorBuffer |= (amountReduction >= originalAmount).or(
-                    id.toAllocatorId() != allocatorId
-                ).asUint256();
-                claimAmount = oracleClaimAmounts[i].min(originalAmount - amountReduction);
-                claimAmounts[i] = claimAmount;
-                emit Claim(
-                    batchAllocation.owner, claimant, id, batchAllocationMessageHash, claimAmount
-                );
-            }
-        }
-        if (errorBuffer.asBool()) {
-            // TODO: extract more informative error by deriving the reason for the failure
-            revert InvalidBatchAllocation();
         }
     }
 
@@ -1032,24 +902,13 @@ contract TheCompact is ITheCompact, ERC6909 {
     }
 
     function _getDomainHash(bytes32 messageHash) internal view returns (bytes32 domainHash) {
-        uint256 initialChainId = _INITIAL_CHAIN_ID;
-        bytes32 domainSeparator = _INITIAL_DOMAIN_SEPARATOR;
+        bytes32 domainSeparator = _INITIAL_DOMAIN_SEPARATOR.toLatest(_INITIAL_CHAIN_ID);
 
         assembly ("memory-safe") {
             let m := mload(0x40) // Grab the free memory pointer.
 
             // Prepare the 712 prefix.
             mstore(0, 0x1901)
-
-            // Prepare the domain separator, rederiving it if necessary.
-            if xor(chainid(), initialChainId) {
-                mstore(m, _DOMAIN_TYPEHASH)
-                mstore(add(m, 0x20), _NAME_HASH)
-                mstore(add(m, 0x40), _VERSION_HASH)
-                mstore(add(m, 0x60), chainid())
-                mstore(add(m, 0x80), address())
-                domainSeparator := keccak256(m, 0xa0)
-            }
 
             mstore(0x20, domainSeparator)
 
@@ -1061,20 +920,6 @@ contract TheCompact is ITheCompact, ERC6909 {
         }
     }
 
-    function _processPledge(
-        address owner,
-        uint256 id,
-        uint256 maxPledge,
-        uint256 startTime,
-        uint256 endTime
-    ) internal {
-        uint256 currentPledge = _deriveCurrentPledgeAmount(maxPledge, startTime, endTime);
-
-        if (currentPledge != 0) {
-            _release(owner, msg.sender, id, currentPledge);
-        }
-    }
-
     function _beforeTokenTransfer(address from, address to, uint256 id, uint256 amount)
         internal
         virtual
@@ -1083,178 +928,6 @@ contract TheCompact is ITheCompact, ERC6909 {
         if (IAllocator(id.toAllocator()).attest(from, to, id, amount) != IAllocator.attest.selector)
         {
             revert UnallocatedTransfer(from, to, id, amount);
-        }
-    }
-
-    function _deriveCurrentPledgeAmount(uint256 maxPledge, uint256 startTime, uint256 endTime)
-        internal
-        view
-        returns (uint256)
-    {
-        return (maxPledge * (block.timestamp - startTime)) / (endTime - startTime);
-    }
-
-    function _getAllocationMessageHash(Allocation memory allocation)
-        internal
-        pure
-        returns (bytes32 messageHash)
-    {
-        messageHash = keccak256(
-            abi.encode(
-                ALLOCATION_TYPEHASH,
-                allocation.owner,
-                allocation.startTime,
-                allocation.endTime,
-                allocation.nonce,
-                allocation.id,
-                allocation.amount,
-                allocation.claimant,
-                allocation.oracle,
-                keccak256(allocation.oracleFixedData)
-            )
-        );
-    }
-
-    function _getBatchAllocationMessageHash(BatchAllocation memory batchAllocation)
-        internal
-        pure
-        returns (bytes32 messageHash)
-    {
-        messageHash = keccak256(
-            abi.encode(
-                BATCH_ALLOCATION_TYPEHASH,
-                batchAllocation.owner,
-                batchAllocation.startTime,
-                batchAllocation.endTime,
-                batchAllocation.nonce,
-                keccak256(abi.encode(batchAllocation.ids)),
-                keccak256(abi.encode(batchAllocation.amounts)),
-                batchAllocation.claimant,
-                batchAllocation.oracle,
-                keccak256(batchAllocation.oracleFixedData)
-            )
-        );
-    }
-
-    function _getAllocationAuthorizationMessageHash(
-        AllocationAuthorization memory allocationAuthorization,
-        bytes32 allocationMessageHash
-    ) internal pure returns (bytes32 messageHash) {
-        messageHash = keccak256(
-            abi.encode(
-                ALLOCATION_AUTHORIZATION_TYPEHASH,
-                allocationMessageHash,
-                allocationAuthorization.startTime,
-                allocationAuthorization.endTime,
-                allocationAuthorization.claimant,
-                allocationAuthorization.amountReduction
-            )
-        );
-    }
-
-    function _getBatchAllocationAuthorizationMessageHash(
-        BatchAllocationAuthorization memory batchAllocationAuthorization,
-        bytes32 batchAllocationMessageHash
-    ) internal pure returns (bytes32 messageHash) {
-        messageHash = keccak256(
-            abi.encode(
-                BATCH_ALLOCATION_AUTHORIZATION_TYPEHASH,
-                batchAllocationMessageHash,
-                batchAllocationAuthorization.startTime,
-                batchAllocationAuthorization.endTime,
-                batchAllocationAuthorization.claimant,
-                keccak256(abi.encode(batchAllocationAuthorization.amountReductions))
-            )
-        );
-    }
-
-    function _getAuthorizedTransferMessageHash(
-        uint256 expiration,
-        uint256 nonce,
-        uint256 id,
-        uint256 amount
-    ) internal view returns (bytes32 messageHash) {
-        assembly ("memory-safe") {
-            let m := mload(0x40) // Grab the free memory pointer; memory will be left dirtied.
-
-            mstore(m, TRANSFER_AUTHORIZATION_TYPEHASH)
-            mstore(add(m, 0x20), caller())
-            mstore(add(m, 0x40), expiration)
-            mstore(add(m, 0x60), nonce)
-            mstore(add(m, 0x80), id)
-            mstore(add(m, 0xa0), amount)
-            messageHash := keccak256(m, 0xc0)
-        }
-    }
-
-    function _getDelegatedTransferMessageHash(
-        address owner,
-        uint256 startTime,
-        uint256 endTime,
-        uint256 nonce,
-        uint256 id,
-        uint256 amount,
-        address recipient,
-        uint256 pledge
-    ) internal pure returns (bytes32 messageHash) {
-        assembly ("memory-safe") {
-            let m := mload(0x40) // Grab the free memory pointer; memory will be left dirtied.
-
-            mstore(m, DELEGATED_TRANSFER_TYPEHASH)
-            mstore(add(m, 0x20), shr(0x60, shl(0x60, owner)))
-            mstore(add(m, 0x40), startTime)
-            mstore(add(m, 0x60), endTime)
-            mstore(add(m, 0x80), nonce)
-            mstore(add(m, 0xa0), id)
-            mstore(add(m, 0xc0), amount)
-            mstore(add(m, 0xe0), shr(0x60, shl(0x60, recipient)))
-            mstore(add(m, 0x100), pledge)
-            messageHash := keccak256(m, 0x120)
-        }
-    }
-
-    function _getAuthorizedWithdrawalMessageHash(
-        uint256 expiration,
-        uint256 nonce,
-        uint256 id,
-        uint256 amount
-    ) internal view returns (bytes32 messageHash) {
-        assembly ("memory-safe") {
-            let m := mload(0x40) // Grab the free memory pointer; memory will be left dirtied.
-
-            mstore(m, WITHDRAWAL_AUTHORIZATION_TYPEHASH)
-            mstore(add(m, 0x20), caller())
-            mstore(add(m, 0x40), expiration)
-            mstore(add(m, 0x60), nonce)
-            mstore(add(m, 0x80), id)
-            mstore(add(m, 0xa0), amount)
-            messageHash := keccak256(m, 0xc0)
-        }
-    }
-
-    function _getDelegatedWithdrawalMessageHash(
-        address owner,
-        uint256 startTime,
-        uint256 endTime,
-        uint256 nonce,
-        uint256 id,
-        uint256 amount,
-        address recipient,
-        uint256 pledge
-    ) internal pure returns (bytes32 messageHash) {
-        assembly ("memory-safe") {
-            let m := mload(0x40) // Grab the free memory pointer; memory will be left dirtied.
-
-            mstore(m, DELEGATED_WITHDRAWAL_TYPEHASH)
-            mstore(add(m, 0x20), shr(0x60, shl(0x60, owner)))
-            mstore(add(m, 0x40), startTime)
-            mstore(add(m, 0x60), endTime)
-            mstore(add(m, 0x80), nonce)
-            mstore(add(m, 0xa0), id)
-            mstore(add(m, 0xc0), amount)
-            mstore(add(m, 0xe0), shr(0x60, shl(0x60, recipient)))
-            mstore(add(m, 0x100), pledge)
-            messageHash := keccak256(m, 0x120)
         }
     }
 }

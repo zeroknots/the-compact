@@ -4,12 +4,8 @@ pragma solidity ^0.8.27;
 import { ForcedWithdrawalStatus } from "../types/ForcedWithdrawalStatus.sol";
 import { ResetPeriod } from "../types/ResetPeriod.sol";
 import { Scope } from "../types/Scope.sol";
-import {
-    Allocation,
-    AllocationAuthorization,
-    BatchAllocation,
-    BatchAllocationAuthorization
-} from "../types/EIP712Types.sol";
+import { Claim, BasicTransfer } from "../types/Claims.sol";
+import { BatchClaim } from "../types/BatchClaims.sol";
 import { ISignatureTransfer } from "permit2/src/interfaces/ISignatureTransfer.sol";
 
 /**
@@ -27,11 +23,11 @@ interface ITheCompact {
         uint256 indexed id,
         uint256 depositedAmount
     );
-    event Claim(
-        address indexed provider,
+    event Claimed(
+        address indexed sponsor,
         address indexed claimant,
         uint256 indexed id,
-        bytes32 allocationHash,
+        bytes32 claimHash,
         uint256 claimAmount
     );
     event Withdrawal(
@@ -61,6 +57,7 @@ interface ITheCompact {
     error InvalidBatchAllocation();
     error InvalidRegistrationProof(address allocator);
     error InvalidBatchDepositStructure();
+    error AllocatedAmountExceeded(uint256 allocatedAmount, uint256 providedAmount);
 
     function deposit(address allocator, ResetPeriod resetPeriod, Scope scope, address recipient)
         external
@@ -101,75 +98,15 @@ interface ITheCompact {
         bytes calldata signature
     ) external payable returns (uint256[] memory ids);
 
-    function claim(
-        Allocation calldata allocation,
-        AllocationAuthorization calldata allocationAuthorization,
-        bytes calldata oracleVariableData,
-        bytes calldata ownerSignature,
-        bytes calldata allocatorSignature
-    ) external returns (address claimant, uint256 claimAmount);
+    function allocatedTransfer(BasicTransfer memory transfer) external returns (bool);
 
-    function claim(
-        BatchAllocation calldata batchAllocation,
-        BatchAllocationAuthorization calldata batchAllocationAuthorization,
-        bytes calldata oracleVariableData,
-        bytes calldata ownerSignature,
-        bytes calldata allocatorSignature
-    ) external returns (address claimant, uint256[] memory claimAmounts);
+    function allocatedWithdrawal(BasicTransfer memory transfer) external returns (bool);
 
-    // Note: this can be frontrun since anyone can call claim
-    function claimAndWithdraw(
-        Allocation calldata allocation,
-        AllocationAuthorization calldata allocationAuthorization,
-        bytes calldata oracleVariableData,
-        bytes calldata ownerSignature,
-        bytes calldata allocatorSignature,
-        address recipient
-    ) external returns (uint256 claimAmount);
+    function claim(Claim memory claim) external returns (bool);
 
-    function allocatedTransfer(
-        uint256 id,
-        uint256 amount,
-        uint256 nonce,
-        uint256 expiration,
-        address recipient,
-        bytes memory allocatorSignature
-    ) external returns (bool);
+    function claim(BatchClaim memory claim) external returns (bool);
 
-    function allocatedTransferFrom(
-        address owner,
-        uint256 id,
-        uint256 amount,
-        uint256 nonce,
-        uint256 startTime,
-        uint256 endTime,
-        address recipient,
-        uint256 pledge,
-        bytes memory ownerSignature,
-        bytes memory allocatorSignature
-    ) external returns (bool);
-
-    function allocatedWithdrawal(
-        uint256 id,
-        uint256 amount,
-        uint256 nonce,
-        uint256 expiration,
-        address recipient,
-        bytes memory allocatorSignature
-    ) external returns (bool);
-
-    function allocatedWithdrawalFrom(
-        address owner,
-        uint256 id,
-        uint256 amount,
-        uint256 nonce,
-        uint256 startTime,
-        uint256 endTime,
-        address recipient,
-        uint256 pledge,
-        bytes memory ownerSignature,
-        bytes memory allocatorSignature
-    ) external returns (bool);
+    function claimAndWithdraw(Claim memory claim) external returns (bool);
 
     function __register(address allocator, bytes calldata proof)
         external
