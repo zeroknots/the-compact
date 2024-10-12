@@ -668,7 +668,9 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         (bytes32 messageHash, bytes32 qualificationMessageHash) = claimPayload.toMessageHash();
         bytes32 domainSeparator = _INITIAL_DOMAIN_SEPARATOR.toLatest(_INITIAL_CHAIN_ID);
         messageHash.signedBy(claimPayload.sponsor, claimPayload.sponsorSignature, domainSeparator);
-        qualificationMessageHash.signedBy(allocator, claimPayload.allocatorSignature, domainSeparator);
+        qualificationMessageHash.signedBy(
+            allocator, claimPayload.allocatorSignature, domainSeparator
+        );
 
         emit Claimed(
             claimPayload.sponsor,
@@ -796,7 +798,6 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
             ids[0] = initialId;
         }
 
-
         (
             ISignatureTransfer.SignatureTransferDetails[] memory details,
             ISignatureTransfer.TokenPermissions[] memory permittedTokens
@@ -810,12 +811,8 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
             depositor
         );
 
-        ISignatureTransfer.PermitBatchTransferFrom memory permitTransferFrom =
-        ISignatureTransfer.PermitBatchTransferFrom({
-            permitted: permittedTokens,
-            nonce: nonce,
-            deadline: deadline
-        });
+        ISignatureTransfer.PermitBatchTransferFrom memory permitTransferFrom = ISignatureTransfer
+            .PermitBatchTransferFrom({ permitted: permittedTokens, nonce: nonce, deadline: deadline });
 
         _PERMIT2.permitWitnessTransferFrom(
             permitTransferFrom,
@@ -825,7 +822,6 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
             "CompactDeposit witness)CompactDeposit(address depositor,address allocator,uint8 resetPeriod,uint8 scope,address recipient)TokenPermissions(address token,uint256 amount)",
             signature
         );
-
     }
 
     function _preparePermit2ArraysAndPerformDeposits(
@@ -836,10 +832,13 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         uint256 initialId,
         address recipient,
         address depositor
-    ) internal returns (
-        ISignatureTransfer.SignatureTransferDetails[] memory details,
-        ISignatureTransfer.TokenPermissions[] memory permittedTokens
-    ) {
+    )
+        internal
+        returns (
+            ISignatureTransfer.SignatureTransferDetails[] memory details,
+            ISignatureTransfer.TokenPermissions[] memory permittedTokens
+        )
+    {
         unchecked {
             details =
                 new ISignatureTransfer.SignatureTransferDetails[](totalTokensLessInitialNative);
