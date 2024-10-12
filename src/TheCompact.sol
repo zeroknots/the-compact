@@ -594,7 +594,7 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
     }
 
     function _processSplitBatchTransfer(
-        SplitBatchTransfer memory transfer,
+        SplitBatchTransfer calldata transfer,
         function(address, address, uint256, uint256) internal returns (bool) operation
     ) internal returns (bool) {
         transfer.expires.later();
