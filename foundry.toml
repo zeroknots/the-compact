@@ -1,5 +1,5 @@
 [profile.default]
-solc = '0.8.27'
+solc = '0.8.28'
 evm_version='cancun'
 via_ir = true
 optimizer_runs = 4_294_967_295
@@ -8,6 +8,10 @@ src = "src"
 out = "out"
 libs = ["lib"]
 extra_output_files = ["irOptimized"]
+
+[profile.default.optimizer_details.yulDetails]
+# optimizerSteps = "dhfoD[xarrscLMcCTU]uljmul:fDnTOcmu"
+# TODO: use default with everything but FunctionSpecializer (F)
 
 [fmt]
 line_length = 100

@@ -361,12 +361,12 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         return _processBasic(transfer, _release);
     }
 
-    function allocatedTransfer(SplitTransfer memory transfer) external returns (bool) {
-        return _processSplit(transfer, _release);
-    }
-
     function allocatedWithdrawal(BasicTransfer memory withdrawal) external returns (bool) {
         return _processBasic(withdrawal, _withdraw);
+    }
+
+    function allocatedTransfer(SplitTransfer memory transfer) external returns (bool) {
+        return _processSplit(transfer, _release);
     }
 
     function allocatedWithdrawal(SplitTransfer memory withdrawal) external returns (bool) {
@@ -393,12 +393,32 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         return _processClaim(claimPayload, _release);
     }
 
-    function claim(BatchClaim memory claimPayload) external returns (bool) {
-        return _processBatchClaim(claimPayload);
-    }
-
     function claimAndWithdraw(Claim memory claimPayload) external returns (bool) {
         return _processClaim(claimPayload, _withdraw);
+    }
+
+    function claim(QualifiedClaim memory claimPayload) external returns (bool) {
+        return _processQualifiedClaim(claimPayload, _release);
+    }
+
+    function claimAndWithdraw(QualifiedClaim memory claimPayload) external returns (bool) {
+        return _processQualifiedClaim(claimPayload, _withdraw);
+    }
+
+    function claim(ClaimWithWitness memory claimPayload) external returns (bool) {
+        return _processClaimWithWitness(claimPayload, _release);
+    }
+
+    function claimAndWithdraw(ClaimWithWitness memory claimPayload) external returns (bool) {
+        return _processClaimWithWitness(claimPayload, _withdraw);
+    }
+
+    function claim(BatchClaim memory claimPayload) external returns (bool) {
+        return _processBatchClaim(claimPayload, _release);
+    }
+
+    function claimAndWithdraw(BatchClaim memory claimPayload) external returns (bool) {
+        return _processBatchClaim(claimPayload, _release);
     }
 
     function enableForcedWithdrawal(uint256 id) external returns (uint256 withdrawableAt) {
@@ -634,7 +654,68 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         );
     }
 
-    function _processBatchClaim(BatchClaim memory batchClaim) internal returns (bool) {
+    function _processQualifiedClaim(
+        QualifiedClaim memory claimPayload,
+        function(address, address, uint256, uint256) internal returns (bool) operation
+    ) internal returns (bool) {
+        claimPayload.expires.later();
+        if (claimPayload.allocatedAmount < claimPayload.amount) {
+            revert AllocatedAmountExceeded(claimPayload.allocatedAmount, claimPayload.amount);
+        }
+
+        address allocator = claimPayload.id.toRegisteredAllocatorWithConsumed(claimPayload.nonce);
+
+        (bytes32 messageHash, bytes32 qualificationMessageHash) = claimPayload.toMessageHash();
+        bytes32 domainSeparator = _INITIAL_DOMAIN_SEPARATOR.toLatest(_INITIAL_CHAIN_ID);
+        messageHash.signedBy(claimPayload.sponsor, claimPayload.sponsorSignature, domainSeparator);
+        qualificationMessageHash.signedBy(allocator, claimPayload.allocatorSignature, domainSeparator);
+
+        emit Claimed(
+            claimPayload.sponsor,
+            claimPayload.claimant,
+            claimPayload.id,
+            messageHash,
+            claimPayload.amount
+        );
+
+        return operation(
+            claimPayload.sponsor, claimPayload.claimant, claimPayload.id, claimPayload.amount
+        );
+    }
+
+    function _processClaimWithWitness(
+        ClaimWithWitness memory claimPayload,
+        function(address, address, uint256, uint256) internal returns (bool) operation
+    ) internal returns (bool) {
+        claimPayload.expires.later();
+        if (claimPayload.allocatedAmount < claimPayload.amount) {
+            revert AllocatedAmountExceeded(claimPayload.allocatedAmount, claimPayload.amount);
+        }
+
+        address allocator = claimPayload.id.toRegisteredAllocatorWithConsumed(claimPayload.nonce);
+
+        bytes32 messageHash = claimPayload.toMessageHash();
+        bytes32 domainSeparator = _INITIAL_DOMAIN_SEPARATOR.toLatest(_INITIAL_CHAIN_ID);
+        messageHash.signedBy(claimPayload.sponsor, claimPayload.sponsorSignature, domainSeparator);
+        messageHash.signedBy(allocator, claimPayload.allocatorSignature, domainSeparator);
+
+        emit Claimed(
+            claimPayload.sponsor,
+            claimPayload.claimant,
+            claimPayload.id,
+            messageHash,
+            claimPayload.amount
+        );
+
+        return operation(
+            claimPayload.sponsor, claimPayload.claimant, claimPayload.id, claimPayload.amount
+        );
+    }
+
+    function _processBatchClaim(
+        BatchClaim memory batchClaim,
+        function(address, address, uint256, uint256) internal returns (bool) operation
+    ) internal returns (bool) {
         batchClaim.expires.later();
 
         uint256 totalClaims = batchClaim.claims.length;
@@ -657,7 +738,7 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         uint256 errorBuffer = (component.allocatedAmount < component.amount).asUint256();
         uint256 id = component.id;
         emit Claimed(batchClaim.sponsor, component.claimant, id, messageHash, component.amount);
-        _release(batchClaim.sponsor, component.claimant, component.id, component.amount);
+        operation(batchClaim.sponsor, component.claimant, component.id, component.amount);
 
         unchecked {
             for (uint256 i = 1; i < totalClaims; ++i) {
@@ -673,7 +754,7 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
                     messageHash,
                     component.amount
                 );
-                _release(batchClaim.sponsor, component.claimant, component.id, component.amount);
+                operation(batchClaim.sponsor, component.claimant, component.id, component.amount);
             }
         }
         if (errorBuffer.asBool()) {
@@ -715,11 +796,55 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
             ids[0] = initialId;
         }
 
+
+        (
+            ISignatureTransfer.SignatureTransferDetails[] memory details,
+            ISignatureTransfer.TokenPermissions[] memory permittedTokens
+        ) = _preparePermit2ArraysAndPerformDeposits(
+            ids,
+            totalTokensLessInitialNative,
+            firstUnderlyingTokenIsNative,
+            permitted,
+            initialId,
+            recipient,
+            depositor
+        );
+
+        ISignatureTransfer.PermitBatchTransferFrom memory permitTransferFrom =
+        ISignatureTransfer.PermitBatchTransferFrom({
+            permitted: permittedTokens,
+            nonce: nonce,
+            deadline: deadline
+        });
+
+        _PERMIT2.permitWitnessTransferFrom(
+            permitTransferFrom,
+            details,
+            depositor,
+            witness,
+            "CompactDeposit witness)CompactDeposit(address depositor,address allocator,uint8 resetPeriod,uint8 scope,address recipient)TokenPermissions(address token,uint256 amount)",
+            signature
+        );
+
+    }
+
+    function _preparePermit2ArraysAndPerformDeposits(
+        uint256[] memory ids,
+        uint256 totalTokensLessInitialNative,
+        bool firstUnderlyingTokenIsNative,
+        ISignatureTransfer.TokenPermissions[] calldata permitted,
+        uint256 initialId,
+        address recipient,
+        address depositor
+    ) internal returns (
+        ISignatureTransfer.SignatureTransferDetails[] memory details,
+        ISignatureTransfer.TokenPermissions[] memory permittedTokens
+    ) {
         unchecked {
-            ISignatureTransfer.SignatureTransferDetails[] memory details =
+            details =
                 new ISignatureTransfer.SignatureTransferDetails[](totalTokensLessInitialNative);
 
-            ISignatureTransfer.TokenPermissions[] memory permittedTokens =
+            permittedTokens =
                 new ISignatureTransfer.TokenPermissions[](totalTokensLessInitialNative);
 
             for (uint256 i = 0; i < totalTokensLessInitialNative; ++i) {
@@ -737,22 +862,6 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
 
                 _deposit(depositor, recipient, id, permittedToken.amount);
             }
-
-            ISignatureTransfer.PermitBatchTransferFrom memory permitTransferFrom =
-            ISignatureTransfer.PermitBatchTransferFrom({
-                permitted: permittedTokens,
-                nonce: nonce,
-                deadline: deadline
-            });
-
-            _PERMIT2.permitWitnessTransferFrom(
-                permitTransferFrom,
-                details,
-                depositor,
-                witness,
-                "CompactDeposit witness)CompactDeposit(address depositor,address allocator,uint8 resetPeriod,uint8 scope,address recipient)TokenPermissions(address token,uint256 amount)",
-                signature
-            );
         }
     }
 
