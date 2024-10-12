@@ -6,59 +6,59 @@ pragma solidity ^0.8.27;
 // have been met and specifies a set of beneficiaries that will receive up to the
 // specified amount of tokens.
 struct Compact {
-    address sponsor; // The account to source the tokens from.
-    uint256 expires; // The time at which the claim expires.
-    uint256 nonce; // A parameter to enforce replay protection, scoped to allocator.
     address arbiter; // The account tasked with verifying and submitting the claim.
+    address sponsor; // The account to source the tokens from.
+    uint256 nonce; // A parameter to enforce replay protection, scoped to allocator.
+    uint256 expires; // The time at which the claim expires.
     uint256 id; // The token ID of the ERC6909 token to allocate.
     uint256 amount; // The amount of ERC6909 tokens to allocate.
-        // Optional witness may follow.
+    // Optional witness may follow.
 }
 
-// keccak256("Compact(address sponsor,uint256 expires,uint256 nonce,address arbiter,uint256 id,uint256 amount)")
+// keccak256("Compact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256 id,uint256 amount)")
 bytes32 constant COMPACT_TYPEHASH =
-    0x785a1adffe0b8aa759a74fc3f1bfc82ce28cdab56907a9e1251400181de85b7a;
+    0xcdca950b17b5efc016b74b912d8527dfba5e404a688cbc3dab16cb943287fec2;
 
-// abi.decode(bytes("Compact(address sponsor,uint256 "), (bytes32))
+// abi.decode(bytes("Compact(address arbiter,address "), (bytes32))
 bytes32 constant COMPACT_TYPESTRING_FRAGMENT_ONE =
-    0x436f6d7061637428616464726573732073706f6e736f722c75696e7432353620;
+    abi.decode(bytes("Compact(address arbiter,address "), (bytes32));
 
-// abi.decode(bytes("expires,uint256 nonce,address ar"), (bytes32))
+// abi.decode(bytes("sponsor,uint256 nonce,uint256 ex"), (bytes32))
 bytes32 constant COMPACT_TYPESTRING_FRAGMENT_TWO =
-    0x657870697265732c75696e74323536206e6f6e63652c61646472657373206172;
+    abi.decode(bytes("sponsor,uint256 nonce,uint256 ex"), (bytes32));
 
-// abi.decode(bytes("biter,uint256 id,uint256 amount,"), (bytes32))
+// abi.decode(bytes("pires,uint256 id,uint256 amount,"), (bytes32))
 bytes32 constant COMPACT_TYPESTRING_FRAGMENT_THREE =
-    0x62697465722c75696e743235362069642c75696e7432353620616d6f756e742c;
+    abi.decode(bytes("pires,uint256 id,uint256 amount,"), (bytes32));
 
 // Message signed by the sponsor that specifies the conditions under which a set of
 // tokens, each sharing an allocator, can be claimed; the specified arbiter verifies
 // that those conditions have been met and specifies a set of beneficiaries that will
 // receive up to the specified amounts of each token.
 struct BatchCompact {
-    address sponsor; // The account to source the tokens from.
-    uint256 expires; // The time at which the claim expires.
-    uint256 nonce; // A parameter to enforce replay protection, scoped to allocator.
     address arbiter; // The account tasked with verifying and submitting the claim.
+    address sponsor; // The account to source the tokens from.
+    uint256 nonce; // A parameter to enforce replay protection, scoped to allocator.
+    uint256 expires; // The time at which the claim expires.
     uint256[2][] idsAndAmounts; // The allocated token IDs and amounts.
-        // Optional witness may follow.
+    // Optional witness may follow.
 }
 
-// keccak256("BatchCompact(address sponsor,uint256 expires,uint256 nonce,address arbiter,uint256[2][] idsAndAmounts)")
+// keccak256("BatchCompact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256[2][] idsAndAmounts)")
 bytes32 constant BATCH_COMPACT_TYPEHASH =
-    0xfbab4df27768e9704f32c4acc9aa5196346c45840cdbcfd357b10b8eedab9547;
+    0x5a7fee8000a237929ef9be08f2933c4b4f320b00b38809f3c7aa104d5421049f;
 
-// abi.decode(bytes("BatchCompact(address sponsor,uin"), (bytes32))
+// abi.decode(bytes("BatchCompact(address arbiter,add"), (bytes32))
 bytes32 constant BATCH_COMPACT_TYPESTRING_FRAGMENT_ONE =
-    0x4261746368436f6d7061637428616464726573732073706f6e736f722c75696e;
+    abi.decode(bytes("BatchCompact(address arbiter,add"), (bytes32));
 
-// abi.decode(bytes("t256 expires,uint256 nonce,addre"), (bytes32))
+// abi.decode(bytes("ress sponsor,uint256 nonce,uint2"), (bytes32))
 bytes32 constant BATCH_COMPACT_TYPESTRING_FRAGMENT_TWO =
-    0x7432353620657870697265732c75696e74323536206e6f6e63652c6164647265;
+    abi.decode(bytes("ress sponsor,uint256 nonce,uint2"), (bytes32));
 
-// abi.decode(bytes("ss arbiter,uint256[2][] idsAndAm"), (bytes32))
+// abi.decode(bytes("56 expires,uint256[2][] idsAndAm"), (bytes32))
 bytes32 constant BATCH_COMPACT_TYPESTRING_FRAGMENT_THREE =
-    0x737320617262697465722c75696e743235365b325d5b5d20696473416e64416d;
+    abi.decode(bytes("56 expires,uint256[2][] idsAndAm"), (bytes32));
 
 // abi.decode(bytes("ounts,"), (bytes6))
 bytes6 constant BATCH_COMPACT_TYPESTRING_FRAGMENT_FOUR = 0x6f756e74732c;
@@ -67,23 +67,23 @@ bytes6 constant BATCH_COMPACT_TYPESTRING_FRAGMENT_FOUR = 0x6f756e74732c;
 // each designated by their chainId. Any allocated tokens must designate the Multichain
 // scope. Each allocation may designate a unique arbiter for the chain in question.
 struct Allocation {
-    uint256 chainId;
     address arbiter; // The account tasked with verifying and submitting the claim.
+    uint256 chainId;
     uint256[2][] idsAndAmounts; // The allocated token IDs and amounts.
-        // Optional witness may follow.
+    // Optional witness may follow.
 }
 
-// keccak256("Allocation(uint256 chainId,address arbiter,uint256[2][] idsAndAmounts)")
+// keccak256("Allocation(address arbiter,uint256 chainId,uint256[2][] idsAndAmounts)")
 bytes32 constant ALLOCATION_TYPEHASH =
-    0xa91c511929d172f286631ee8926f8c5d9398d508f3b0aa4939740713f10b72c8;
+    0x0f45f7853f78f307081d912de4b372d85725f696a9b9a4b5138a5a1d72b340e0;
 
-// abi.decode(bytes("Allocation(uint256 chainId,addre"), (bytes32))
+// abi.decode(bytes("Allocation(address arbiter,uint2"), (bytes32))
 bytes32 constant ALLOCATION_TYPESTRING_FRAGMENT_ONE =
-    0x416c6c6f636174696f6e2875696e7432353620636861696e49642c6164647265;
+    abi.decode(bytes("Allocation(address arbiter,uint2"), (bytes32));
 
-// abi.decode(bytes("ss arbiter,uint256[2][] idsAndAm"), (bytes32))
+// abi.decode(bytes("56 chainId,uint256[2][] idsAndAm"), (bytes32))
 bytes32 constant ALLOCATION_TYPESTRING_FRAGMENT_TWO =
-    0x737320617262697465722c75696e743235365b325d5b5d20696473416e64416d;
+    abi.decode(bytes("56 chainId,uint256[2][] idsAndAm"), (bytes32));
 
 // abi.decode(bytes("ounts,"), (bytes6))
 bytes6 constant ALLOCATION_TYPESTRING_FRAGMENT_THREE = 0x6f756e74732c;
@@ -94,22 +94,22 @@ bytes6 constant ALLOCATION_TYPESTRING_FRAGMENT_THREE = 0x6f756e74732c;
 // beneficiaries that will receive up to the specified amounts of each token.
 struct MultichainCompact {
     address sponsor; // The account to source the tokens from.
-    uint256 expires; // The time at which the claim expires.
     uint256 nonce; // A parameter to enforce replay protection, scoped to allocator.
+    uint256 expires; // The time at which the claim expires.
     Allocation[] allocations;
 }
 
-// keccak256("MultichainCompact(address sponsor,uint256 expires,uint256 nonce,Allocation[] allocations)Allocation(uint256 chainId,address arbiter,uint256[2][] idsAndAmounts)")
+// keccak256("MultichainCompact(address sponsor,uint256 nonce,uint256 expires,Allocation[] allocations)Allocation(address arbiter,uint256 chainId,uint256[2][] idsAndAmounts)")
 bytes32 constant MULTICHAIN_COMPACT_TYPEHASH =
-    0x161e4c356136a00b95b614d3f6c15b3cee016a1565506416db570225e92e9e83;
+    0x99704ffe7f2b23b270b03ab25ea2e37b1694622eb999ddcbf45d32d9b1a38c9c;
 
 // abi.decode(bytes("MultichainCompact(address sponso"), (bytes32))
 bytes32 constant MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_ONE =
     0x4d756c7469636861696e436f6d7061637428616464726573732073706f6e736f;
 
-// abi.decode(bytes("r,uint256 expires,uint256 nonce,"), (bytes32))
+// abi.decode(bytes("r,uint256 nonce,uint256 expires,"), (bytes32))
 bytes32 constant MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_TWO =
-    0x722c75696e7432353620657870697265732c75696e74323536206e6f6e63652c;
+    abi.decode(bytes("r,uint256 nonce,uint256 expires,"), (bytes32));
 
 // abi.decode(bytes("Allocation[] allocations)"), (bytes25))
 bytes25 constant MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_THREE =

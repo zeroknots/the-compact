@@ -76,6 +76,8 @@ import { Scope } from "../types/Scope.sol";
 
 // TODO: make calldata versions of these where useful
 library HashLib {
+    error Debug(bytes data);
+
     /// @dev `keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)")`.
     bytes32 internal constant _DOMAIN_TYPEHASH =
         0x8b73c3c69bb8fe3d512ecc4cf759cc79239f7b179b0ffacaa9a75d522b39400f;
@@ -88,7 +90,7 @@ library HashLib {
     bytes32 internal constant _VERSION_HASH =
         0xc89efdaa54c0f20c7adf612882df0950f5a951637e0307cdcb4c672f298b8bc6;
 
-    function toMessageHash(BasicTransfer memory transfer)
+    function toMessageHash(BasicTransfer calldata transfer)
         internal
         view
         returns (bytes32 messageHash)
@@ -96,23 +98,15 @@ library HashLib {
         assembly ("memory-safe") {
             let m := mload(0x40) // Grab the free memory pointer; memory will be left dirtied.
 
-            let expires := mload(transfer)
-            let nonce := mload(add(transfer, 0x20))
-            let id := mload(add(transfer, 0x40))
-            let amount := mload(add(transfer, 0x60))
-
             mstore(m, COMPACT_TYPEHASH)
-            mstore(add(m, 0x20), caller()) // sponsor: msg.sender
-            mstore(add(m, 0x40), expires)
-            mstore(add(m, 0x60), nonce)
-            mstore(add(m, 0x80), caller()) // arbiter: msg.sender
-            mstore(add(m, 0xa0), id)
-            mstore(add(m, 0xc0), amount)
+            mstore(add(m, 0x20), caller()) // arbiter: msg.sender
+            mstore(add(m, 0x40), caller()) // sponsor: msg.sender
+            calldatacopy(add(m, 0x60), add(transfer, 0x20), 0x80)
             messageHash := keccak256(m, 0xe0)
         }
     }
 
-    function toMessageHash(SplitTransfer memory transfer)
+    function toMessageHash(SplitTransfer calldata transfer)
         internal
         view
         returns (bytes32 messageHash)
@@ -120,22 +114,16 @@ library HashLib {
         // TODO: optimize this part (but remember to watch out for an amount overflow)
         uint256 amount = 0;
         for (uint256 i = 0; i < transfer.recipients.length; ++i) {
-            amount += transfer.recipients[0].amount;
+            amount += transfer.recipients[i].amount;
         }
 
         assembly ("memory-safe") {
             let m := mload(0x40) // Grab the free memory pointer; memory will be left dirtied.
 
-            let expires := mload(transfer)
-            let nonce := mload(add(transfer, 0x20))
-            let id := mload(add(transfer, 0x40))
-
             mstore(m, COMPACT_TYPEHASH)
-            mstore(add(m, 0x20), caller()) // sponsor: msg.sender
-            mstore(add(m, 0x40), expires)
-            mstore(add(m, 0x60), nonce)
-            mstore(add(m, 0x80), caller()) // arbiter: msg.sender
-            mstore(add(m, 0xa0), id)
+            mstore(add(m, 0x20), caller()) // arbiter: msg.sender
+            mstore(add(m, 0x40), caller()) // sponsor: msg.sender
+            calldatacopy(add(m, 0x60), add(transfer, 0x20), 0x60)
             mstore(add(m, 0xc0), amount)
             messageHash := keccak256(m, 0xe0)
         }

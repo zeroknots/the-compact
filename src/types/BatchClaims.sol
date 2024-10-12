@@ -5,30 +5,29 @@ import {
     SplitByIdComponent,
     TransferComponent,
     BatchClaimComponent,
-    SplitTransferComponent,
     SplitBatchClaimComponent
 } from "./Components.sol";
 
 struct BatchTransfer {
+    bytes allocatorSignature; // Authorization from the allocator.
     uint256 nonce; // A parameter to enforce replay protection, scoped to allocator.
     uint256 expires; // The time at which the transfer or withdrawal expires.
-    bytes allocatorSignature; // Authorization from the allocator.
     TransferComponent[] transfers; // The token IDs, amounts, and recipients.
 }
 
 struct SplitBatchTransfer {
+    bytes allocatorSignature; // Authorization from the allocator.
     uint256 nonce; // A parameter to enforce replay protection, scoped to allocator.
     uint256 expires; // The time at which the transfer or withdrawal expires.
-    bytes allocatorSignature; // Authorization from the allocator.
     SplitByIdComponent[] transfers; // The recipients and amounts of each transfer for each ID.
 }
 
 struct BatchClaim {
+    bytes allocatorSignature; // Authorization from the allocator.
+    bytes sponsorSignature; // Authorization from the sponsor.
+    address sponsor; // The account to source the tokens from.
     uint256 nonce; // A parameter to enforce replay protection, scoped to allocator.
     uint256 expires; // The time at which the claim expires.
-    bytes allocatorSignature; // Authorization from the allocator.
-    address sponsor; // The account to source the tokens from.
-    bytes sponsorSignature; // Authorization from the sponsor.
     BatchClaimComponent[] claims; // IDs, amounts, and claimants.
 }
 

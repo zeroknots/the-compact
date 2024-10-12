@@ -357,67 +357,67 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         );
     }
 
-    function allocatedTransfer(BasicTransfer memory transfer) external returns (bool) {
+    function allocatedTransfer(BasicTransfer calldata transfer) external returns (bool) {
         return _processBasicTransfer(transfer, _release);
     }
 
-    function allocatedWithdrawal(BasicTransfer memory withdrawal) external returns (bool) {
+    function allocatedWithdrawal(BasicTransfer calldata withdrawal) external returns (bool) {
         return _processBasicTransfer(withdrawal, _withdraw);
     }
 
-    function allocatedTransfer(SplitTransfer memory transfer) external returns (bool) {
+    function allocatedTransfer(SplitTransfer calldata transfer) external returns (bool) {
         return _processSplitTransfer(transfer, _release);
     }
 
-    function allocatedWithdrawal(SplitTransfer memory withdrawal) external returns (bool) {
+    function allocatedWithdrawal(SplitTransfer calldata withdrawal) external returns (bool) {
         return _processSplitTransfer(withdrawal, _withdraw);
     }
 
-    function allocatedTransfer(BatchTransfer memory transfer) external returns (bool) {
+    function allocatedTransfer(BatchTransfer calldata transfer) external returns (bool) {
         return _processBatchTransfer(transfer, _release);
     }
 
-    function allocatedWithdrawal(BatchTransfer memory withdrawal) external returns (bool) {
+    function allocatedWithdrawal(BatchTransfer calldata withdrawal) external returns (bool) {
         return _processBatchTransfer(withdrawal, _withdraw);
     }
 
-    function allocatedTransfer(SplitBatchTransfer memory transfer) external returns (bool) {
+    function allocatedTransfer(SplitBatchTransfer calldata transfer) external returns (bool) {
         return _processSplitBatchTransfer(transfer, _release);
     }
 
-    function allocatedWithdrawal(SplitBatchTransfer memory withdrawal) external returns (bool) {
+    function allocatedWithdrawal(SplitBatchTransfer calldata withdrawal) external returns (bool) {
         return _processSplitBatchTransfer(withdrawal, _withdraw);
     }
 
-    function claim(Claim memory claimPayload) external returns (bool) {
+    function claim(Claim calldata claimPayload) external returns (bool) {
         return _processClaim(claimPayload, _release);
     }
 
-    function claimAndWithdraw(Claim memory claimPayload) external returns (bool) {
+    function claimAndWithdraw(Claim calldata claimPayload) external returns (bool) {
         return _processClaim(claimPayload, _withdraw);
     }
 
-    function claim(QualifiedClaim memory claimPayload) external returns (bool) {
+    function claim(QualifiedClaim calldata claimPayload) external returns (bool) {
         return _processQualifiedClaim(claimPayload, _release);
     }
 
-    function claimAndWithdraw(QualifiedClaim memory claimPayload) external returns (bool) {
+    function claimAndWithdraw(QualifiedClaim calldata claimPayload) external returns (bool) {
         return _processQualifiedClaim(claimPayload, _withdraw);
     }
 
-    function claim(ClaimWithWitness memory claimPayload) external returns (bool) {
+    function claim(ClaimWithWitness calldata claimPayload) external returns (bool) {
         return _processClaimWithWitness(claimPayload, _release);
     }
 
-    function claimAndWithdraw(ClaimWithWitness memory claimPayload) external returns (bool) {
+    function claimAndWithdraw(ClaimWithWitness calldata claimPayload) external returns (bool) {
         return _processClaimWithWitness(claimPayload, _withdraw);
     }
 
-    function claim(BatchClaim memory claimPayload) external returns (bool) {
+    function claim(BatchClaim calldata claimPayload) external returns (bool) {
         return _processBatchClaim(claimPayload, _release);
     }
 
-    function claimAndWithdraw(BatchClaim memory claimPayload) external returns (bool) {
+    function claimAndWithdraw(BatchClaim calldata claimPayload) external returns (bool) {
         return _processBatchClaim(claimPayload, _release);
     }
 
@@ -529,7 +529,7 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
     }
 
     function _processBasicTransfer(
-        BasicTransfer memory transfer,
+        BasicTransfer calldata transfer,
         function(address, address, uint256, uint256) internal returns (bool) operation
     ) internal returns (bool) {
         transfer.expires.later();
@@ -544,7 +544,7 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
     }
 
     function _processSplitTransfer(
-        SplitTransfer memory transfer,
+        SplitTransfer calldata transfer,
         function(address, address, uint256, uint256) internal returns (bool) operation
     ) internal returns (bool) {
         transfer.expires.later();

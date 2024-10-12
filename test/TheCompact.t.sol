@@ -9,6 +9,15 @@ import { ResetPeriod } from "../src/types/ResetPeriod.sol";
 import { Scope } from "../src/types/Scope.sol";
 import { ISignatureTransfer } from "permit2/src/interfaces/ISignatureTransfer.sol";
 
+import {
+    BasicTransfer,
+    SplitTransfer
+} from "../src/types/Claims.sol";
+
+import {
+    SplitComponent
+} from "../src/types/Components.sol";
+
 interface EIP712 {
     function DOMAIN_SEPARATOR() external view returns (bytes32);
 }
@@ -508,6 +517,140 @@ contract TheCompactTest is Test {
         assert(bytes(theCompact.tokenURI(ids[0])).length > 0);
     }
 
+    function test_basicTransfer() public {
+        ResetPeriod resetPeriod = ResetPeriod.TenMinutes;
+        Scope scope = Scope.Multichain;
+        uint256 amount = 1e18;
+        uint256 nonce = 0;
+        uint256 expiration = block.timestamp + 1000;
+        address recipient = 0x1111111111111111111111111111111111111111;
+
+        vm.prank(allocator);
+        uint96 allocatorId = theCompact.__register(allocator, "");
+
+        vm.prank(swapper);
+        uint256 id =
+            theCompact.deposit(address(token), allocator, resetPeriod, scope, amount, swapper);
+        assertEq(theCompact.balanceOf(swapper, id), amount);
+
+        bytes32 digest = keccak256(
+            abi.encodePacked(
+                bytes2(0x1901),
+                theCompact.DOMAIN_SEPARATOR(),
+                keccak256(
+                    abi.encode(
+                        keccak256(
+                            "Compact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256 id,uint256 amount)"
+                        ),
+                        swapper,
+                        swapper,
+                        nonce,
+                        expiration,
+                        id,
+                        amount
+                    )
+                )
+            )
+        );
+
+        (bytes32 r, bytes32 vs) = vm.signCompact(allocatorPrivateKey, digest);
+        bytes memory allocatorSignature = abi.encodePacked(r, vs);
+
+        BasicTransfer memory transfer = BasicTransfer({
+            nonce: nonce,
+            expires: expiration,
+            allocatorSignature: allocatorSignature,
+            id: id,
+            amount: amount,
+            recipient: recipient
+        });
+
+        vm.prank(swapper);
+        bool status = theCompact.allocatedTransfer(transfer);
+        assert(status);
+
+        assertEq(token.balanceOf(address(theCompact)), amount);
+        assertEq(token.balanceOf(recipient), 0);
+        assertEq(theCompact.balanceOf(swapper, id), 0);
+        assertEq(theCompact.balanceOf(recipient, id), amount);
+    }
+
+    function test_splitTransfer() public {
+        ResetPeriod resetPeriod = ResetPeriod.TenMinutes;
+        Scope scope = Scope.Multichain;
+        uint256 amount = 1e18;
+        uint256 nonce = 0;
+        uint256 expiration = block.timestamp + 1000;
+        address recipientOne = 0x1111111111111111111111111111111111111111;
+        address recipientTwo = 0x2222222222222222222222222222222222222222;
+        uint256 amountOne = 4e17;
+        uint256 amountTwo = 6e17;
+        
+
+        vm.prank(allocator);
+        uint96 allocatorId = theCompact.__register(allocator, "");
+
+        vm.prank(swapper);
+        uint256 id =
+            theCompact.deposit(address(token), allocator, resetPeriod, scope, amount, swapper);
+        assertEq(theCompact.balanceOf(swapper, id), amount);
+
+        bytes32 digest = keccak256(
+            abi.encodePacked(
+                bytes2(0x1901),
+                theCompact.DOMAIN_SEPARATOR(),
+                keccak256(
+                    abi.encode(
+                        keccak256(
+                            "Compact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256 id,uint256 amount)"
+                        ),
+                        swapper,
+                        swapper,
+                        nonce,
+                        expiration,
+                        id,
+                        amount
+                    )
+                )
+            )
+        );
+
+        (bytes32 r, bytes32 vs) = vm.signCompact(allocatorPrivateKey, digest);
+        bytes memory allocatorSignature = abi.encodePacked(r, vs);
+
+        SplitComponent memory splitOne = SplitComponent({
+            claimant: recipientOne,
+            amount: amountOne
+        });
+
+        SplitComponent memory splitTwo = SplitComponent({
+            claimant: recipientTwo,
+            amount: amountTwo
+        });
+
+        SplitComponent[] memory recipients = new SplitComponent[](2);
+        recipients[0] = splitOne;
+        recipients[1] = splitTwo;
+
+        SplitTransfer memory transfer = SplitTransfer({
+            nonce: nonce,
+            expires: expiration,
+            allocatorSignature: allocatorSignature,
+            id: id,
+            recipients: recipients
+        });
+
+        vm.prank(swapper);
+        bool status = theCompact.allocatedTransfer(transfer);
+        assert(status);
+
+        assertEq(token.balanceOf(address(theCompact)), amount);
+        assertEq(token.balanceOf(recipientOne), 0);
+        assertEq(theCompact.balanceOf(swapper, id), 0);
+        assertEq(theCompact.balanceOf(recipientOne, id), amountOne);
+        assertEq(theCompact.balanceOf(recipientTwo, id), amountTwo);
+    }
+
     /* TODO: TURN THESE BACK ON ASAP
     function test_delegatedWithdrawal() public {
         ResetPeriod resetPeriod = ResetPeriod.TenMinutes;
@@ -683,56 +826,6 @@ contract TheCompactTest is Test {
 
         assertEq(address(theCompact).balance, amount);
         assertEq(recipient.balance, 0);
-        assertEq(theCompact.balanceOf(swapper, id), 0);
-        assertEq(theCompact.balanceOf(recipient, id), amount);
-    }
-
-    function test_TransferViaAuthorization() public {
-        ResetPeriod resetPeriod = ResetPeriod.TenMinutes;
-        Scope scope = Scope.Multichain;
-        uint256 amount = 1e18;
-        uint256 nonce = 0;
-        uint256 expiration = block.timestamp + 1000;
-        address recipient = 0x1111111111111111111111111111111111111111;
-
-        vm.prank(allocator);
-        uint96 allocatorId = theCompact.__register(allocator, "");
-
-        vm.prank(swapper);
-        uint256 id =
-            theCompact.deposit(address(token), allocator, resetPeriod, scope, amount, swapper);
-        assertEq(theCompact.balanceOf(swapper, id), amount);
-
-        bytes32 digest = keccak256(
-            abi.encodePacked(
-                bytes2(0x1901),
-                theCompact.DOMAIN_SEPARATOR(),
-                keccak256(
-                    abi.encode(
-                        keccak256(
-                            "TransferAuthorization(address owner,uint256 expiration,uint256 nonce,uint256 id,uint256 amount)"
-                        ),
-                        swapper,
-                        expiration,
-                        nonce,
-                        id,
-                        amount
-                    )
-                )
-            )
-        );
-
-        (bytes32 r, bytes32 vs) = vm.signCompact(allocatorPrivateKey, digest);
-        bytes memory allocatorSignature = abi.encodePacked(r, vs);
-
-        vm.prank(swapper);
-        bool status = theCompact.allocatedTransfer(
-            id, amount, nonce, expiration, recipient, allocatorSignature
-        );
-        assert(status);
-
-        assertEq(token.balanceOf(address(theCompact)), amount);
-        assertEq(token.balanceOf(recipient), 0);
         assertEq(theCompact.balanceOf(swapper, id), 0);
         assertEq(theCompact.balanceOf(recipient, id), amount);
     }
