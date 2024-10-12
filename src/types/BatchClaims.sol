@@ -10,103 +10,103 @@ import {
 } from "./Components.sol";
 
 struct BatchTransfer {
-    uint256 expires; // The time at which the transfer or withdrawal expires.
     uint256 nonce; // A parameter to enforce replay protection, scoped to allocator.
+    uint256 expires; // The time at which the transfer or withdrawal expires.
     bytes allocatorSignature; // Authorization from the allocator.
     TransferComponent[] transfers; // The token IDs, amounts, and recipients.
 }
 
 struct SplitBatchTransfer {
-    uint256 expires; // The time at which the transfer or withdrawal expires.
     uint256 nonce; // A parameter to enforce replay protection, scoped to allocator.
+    uint256 expires; // The time at which the transfer or withdrawal expires.
     bytes allocatorSignature; // Authorization from the allocator.
     SplitByIdComponent[] transfers; // The recipients and amounts of each transfer for each ID.
 }
 
 struct BatchClaim {
-    address sponsor; // The account to source the tokens from.
-    uint256 expires; // The time at which the claim expires.
     uint256 nonce; // A parameter to enforce replay protection, scoped to allocator.
-    bytes sponsorSignature; // Authorization from the sponsor.
+    uint256 expires; // The time at which the claim expires.
     bytes allocatorSignature; // Authorization from the allocator.
+    address sponsor; // The account to source the tokens from.
+    bytes sponsorSignature; // Authorization from the sponsor.
     BatchClaimComponent[] claims; // IDs, amounts, and claimants.
 }
 
 struct QualifiedBatchClaim {
-    address sponsor; // The account to source the tokens from.
-    uint256 expires; // The time at which the claim expires.
     uint256 nonce; // A parameter to enforce replay protection, scoped to allocator.
-    bytes sponsorSignature; // Authorization from the sponsor.
+    uint256 expires; // The time at which the claim expires.
     bytes allocatorSignature; // Authorization from the allocator.
-    BatchClaimComponent[] claims; // IDs, amounts, and claimants.
+    address sponsor; // The account to source the tokens from.
+    bytes sponsorSignature; // Authorization from the sponsor.
     bytes32 qualificationTypehash; // Typehash of the qualification payload.
     bytes qualificationPayload; // Data used to derive qualification hash.
+    BatchClaimComponent[] claims; // IDs, amounts, and claimants.
 }
 
 struct BatchClaimWithWitness {
-    address sponsor; // The account to source the tokens from.
-    uint256 expires; // The time at which the claim expires.
     uint256 nonce; // A parameter to enforce replay protection, scoped to allocator.
-    bytes sponsorSignature; // Authorization from the sponsor.
+    uint256 expires; // The time at which the claim expires.
     bytes allocatorSignature; // Authorization from the allocator.
-    BatchClaimComponent[] claims; // IDs, amounts, and claimants.
+    address sponsor; // The account to source the tokens from.
+    bytes sponsorSignature; // Authorization from the sponsor.
     bytes32 witness; // Hash of the witness data.
     string witnessTypeString; // Witness typestring appended to existing typestring.
+    BatchClaimComponent[] claims; // IDs, amounts, and claimants.
 }
 
 struct QualifiedBatchClaimWithWitness {
-    address sponsor; // The account to source the tokens from.
-    uint256 expires; // The time at which the claim expires.
     uint256 nonce; // A parameter to enforce replay protection, scoped to allocator.
-    bytes sponsorSignature; // Authorization from the sponsor.
+    uint256 expires; // The time at which the claim expires.
     bytes allocatorSignature; // Authorization from the allocator.
-    BatchClaimComponent[] claims; // IDs, amounts, and claimants.
+    address sponsor; // The account to source the tokens from.
+    bytes sponsorSignature; // Authorization from the sponsor.
     bytes32 witness; // Hash of the witness data.
     string witnessTypeString; // Witness typestring appended to existing typestring.
     bytes32 qualificationTypehash; // Typehash of the qualification payload.
     bytes qualificationPayload; // Data used to derive qualification hash.
+    BatchClaimComponent[] claims; // IDs, amounts, and claimants.
 }
 
 struct SplitBatchClaim {
-    address sponsor; // The account to source the tokens from.
-    uint256 expires; // The time at which the claim expires.
     uint256 nonce; // A parameter to enforce replay protection, scoped to allocator.
-    bytes sponsorSignature; // Authorization from the sponsor.
+    uint256 expires; // The time at which the claim expires.
     bytes allocatorSignature; // Authorization from the allocator.
+    address sponsor; // The account to source the tokens from.
+    bytes sponsorSignature; // Authorization from the sponsor.
     SplitBatchClaimComponent[] claims; // The claim token IDs, recipients and amounts.
 }
 
 struct SplitBatchClaimWithWitness {
-    address sponsor; // The account to source the tokens from.
-    uint256 expires; // The time at which the claim expires.
     uint256 nonce; // A parameter to enforce replay protection, scoped to allocator.
-    bytes sponsorSignature; // Authorization from the sponsor.
+    uint256 expires; // The time at which the claim expires.
     bytes allocatorSignature; // Authorization from the allocator.
-    SplitBatchClaimComponent[] claims; // The claim token IDs, recipients and amounts.
+    address sponsor; // The account to source the tokens from.
+    bytes sponsorSignature; // Authorization from the sponsor.
     bytes32 witness; // Hash of the witness data.
     string witnessTypeString; // Witness typestring appended to existing typestring.
+    SplitBatchClaimComponent[] claims; // The claim token IDs, recipients and amounts.
 }
 
 struct QualifiedSplitBatchClaim {
-    address sponsor; // The account to source the tokens from.
-    uint256 expires; // The time at which the claim expires.
     uint256 nonce; // A parameter to enforce replay protection, scoped to allocator.
-    bytes sponsorSignature; // Authorization from the sponsor.
+    uint256 expires; // The time at which the claim expires.
     bytes allocatorSignature; // Authorization from the allocator.
-    SplitBatchClaimComponent[] claims; // The claim token IDs, recipients and amounts.
+    address sponsor; // The account to source the tokens from.
+    bytes sponsorSignature; // Authorization from the sponsor.
     bytes32 qualificationTypehash; // Typehash of the qualification payload.
     bytes qualificationPayload; // Data used to derive qualification hash.
+    SplitBatchClaimComponent[] claims; // The claim token IDs, recipients and amounts.
 }
 
 struct QualifiedSplitBatchClaimWithWitness {
-    address sponsor; // The account to source the tokens from.
-    uint256 expires; // The time at which the claim expires.
     uint256 nonce; // A parameter to enforce replay protection, scoped to allocator.
-    bytes sponsorSignature; // Authorization from the sponsor.
+    uint256 expires; // The time at which the claim expires.
     bytes allocatorSignature; // Authorization from the allocator.
-    SplitBatchClaimComponent[] claims; // The claim token IDs, recipients and amounts.
+    address sponsor; // The account to source the tokens from.
+    bytes sponsorSignature; // Authorization from the sponsor.
     bytes32 witness; // Hash of the witness data.
     string witnessTypeString; // Witness typestring appended to existing typestring.
     bytes32 qualificationTypehash; // Typehash of the qualification payload.
     bytes qualificationPayload; // Data used to derive qualification hash.
+    SplitBatchClaimComponent[] claims; // The claim token IDs, recipients and amounts.
 }
