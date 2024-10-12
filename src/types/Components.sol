@@ -14,7 +14,6 @@ struct SplitByIdComponent {
 struct TransferComponent {
     uint256 id; // The token ID of the ERC6909 token to transfer or withdraw.
     uint256 amount; // The token amount to transfer or withdraw.
-    address recipient; // The recipient of the transfer or withdrawal.
 }
 
 struct BatchClaimComponent {

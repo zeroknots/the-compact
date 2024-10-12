@@ -12,7 +12,7 @@ struct Compact {
     uint256 expires; // The time at which the claim expires.
     uint256 id; // The token ID of the ERC6909 token to allocate.
     uint256 amount; // The amount of ERC6909 tokens to allocate.
-    // Optional witness may follow.
+        // Optional witness may follow.
 }
 
 // keccak256("Compact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256 id,uint256 amount)")
@@ -41,7 +41,7 @@ struct BatchCompact {
     uint256 nonce; // A parameter to enforce replay protection, scoped to allocator.
     uint256 expires; // The time at which the claim expires.
     uint256[2][] idsAndAmounts; // The allocated token IDs and amounts.
-    // Optional witness may follow.
+        // Optional witness may follow.
 }
 
 // keccak256("BatchCompact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256[2][] idsAndAmounts)")
@@ -70,7 +70,7 @@ struct Allocation {
     address arbiter; // The account tasked with verifying and submitting the claim.
     uint256 chainId;
     uint256[2][] idsAndAmounts; // The allocated token IDs and amounts.
-    // Optional witness may follow.
+        // Optional witness may follow.
 }
 
 // keccak256("Allocation(address arbiter,uint256 chainId,uint256[2][] idsAndAmounts)")

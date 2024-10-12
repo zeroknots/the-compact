@@ -401,7 +401,7 @@ library HashLib {
         );
     }
 
-    function toMessageHash(BatchTransfer memory transfer)
+    function toMessageHash(BatchTransfer calldata transfer)
         internal
         view
         returns (bytes32 messageHash)
@@ -416,14 +416,11 @@ library HashLib {
         assembly ("memory-safe") {
             let m := mload(0x40) // Grab the free memory pointer; memory will be left dirtied.
 
-            let expires := mload(transfer)
-            let nonce := mload(add(transfer, 0x20))
-
             mstore(m, BATCH_COMPACT_TYPEHASH)
-            mstore(add(m, 0x20), caller()) // sponsor: msg.sender
-            mstore(add(m, 0x40), expires)
-            mstore(add(m, 0x60), nonce)
-            mstore(add(m, 0x80), caller()) // arbiter: msg.sender
+            mstore(add(m, 0x20), caller()) // arbiter: msg.sender
+            mstore(add(m, 0x40), caller()) // sponsor: msg.sender
+            mstore(add(m, 0x60), calldataload(add(transfer, 0x20))) // nonce
+            mstore(add(m, 0x80), calldataload(add(transfer, 0x40))) // expires
             mstore(add(m, 0xa0), idsAndAmountsHash)
             messageHash := keccak256(m, 0xc0)
         }

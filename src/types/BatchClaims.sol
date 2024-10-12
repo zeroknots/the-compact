@@ -12,7 +12,8 @@ struct BatchTransfer {
     bytes allocatorSignature; // Authorization from the allocator.
     uint256 nonce; // A parameter to enforce replay protection, scoped to allocator.
     uint256 expires; // The time at which the transfer or withdrawal expires.
-    TransferComponent[] transfers; // The token IDs, amounts, and recipients.
+    TransferComponent[] transfers; // The token IDs and amounts to transfer.
+    address recipient; // The recipient of the batch transfers.
 }
 
 struct SplitBatchTransfer {

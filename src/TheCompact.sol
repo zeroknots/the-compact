@@ -568,7 +568,7 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
     }
 
     function _processBatchTransfer(
-        BatchTransfer memory transfer,
+        BatchTransfer calldata transfer,
         function(address, address, uint256, uint256) internal returns (bool) operation
     ) internal returns (bool) {
         transfer.expires.later();
@@ -586,7 +586,7 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
             uint256 totalTransfers = transfer.transfers.length;
             for (uint256 i = 0; i < totalTransfers; ++i) {
                 TransferComponent memory component = transfer.transfers[i];
-                operation(msg.sender, component.recipient, component.id, component.amount);
+                operation(msg.sender, transfer.recipient, component.id, component.amount);
             }
         }
 
