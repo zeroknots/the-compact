@@ -358,19 +358,19 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
     }
 
     function allocatedTransfer(BasicTransfer memory transfer) external returns (bool) {
-        return _processBasic(transfer, _release);
+        return _processBasicTransfer(transfer, _release);
     }
 
     function allocatedWithdrawal(BasicTransfer memory withdrawal) external returns (bool) {
-        return _processBasic(withdrawal, _withdraw);
+        return _processBasicTransfer(withdrawal, _withdraw);
     }
 
     function allocatedTransfer(SplitTransfer memory transfer) external returns (bool) {
-        return _processSplit(transfer, _release);
+        return _processSplitTransfer(transfer, _release);
     }
 
     function allocatedWithdrawal(SplitTransfer memory withdrawal) external returns (bool) {
-        return _processSplit(withdrawal, _withdraw);
+        return _processSplitTransfer(withdrawal, _withdraw);
     }
 
     function allocatedTransfer(BatchTransfer memory transfer) external returns (bool) {
@@ -528,7 +528,7 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         }
     }
 
-    function _processBasic(
+    function _processBasicTransfer(
         BasicTransfer memory transfer,
         function(address, address, uint256, uint256) internal returns (bool) operation
     ) internal returns (bool) {
@@ -543,7 +543,7 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         return operation(msg.sender, transfer.recipient, transfer.id, transfer.amount);
     }
 
-    function _processSplit(
+    function _processSplitTransfer(
         SplitTransfer memory transfer,
         function(address, address, uint256, uint256) internal returns (bool) operation
     ) internal returns (bool) {
