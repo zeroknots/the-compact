@@ -129,25 +129,13 @@ library HashLib {
         }
     }
 
-    function toMessageHash(Claim memory claim) internal view returns (bytes32 messageHash) {
+    function toMessageHash(Claim calldata claim) internal view returns (bytes32 messageHash) {
         assembly ("memory-safe") {
             let m := mload(0x40) // Grab the free memory pointer; memory will be left dirtied.
 
-            // TODO: calldatacopy this whole chunk at once as part of calldata implementation
-            let sponsor := mload(claim)
-            let expires := mload(add(claim, 0x20))
-            let nonce := mload(add(claim, 0x40))
-
-            let id := mload(add(claim, 0x60))
-            let amount := mload(add(claim, 0x80))
-
             mstore(m, COMPACT_TYPEHASH)
-            mstore(add(m, 0x20), sponsor)
-            mstore(add(m, 0x40), expires)
-            mstore(add(m, 0x60), nonce)
-            mstore(add(m, 0x80), caller()) // arbiter: msg.sender
-            mstore(add(m, 0xa0), id)
-            mstore(add(m, 0xc0), amount)
+            mstore(add(m, 0x20), caller())
+            calldatacopy(add(m, 0x40), add(claim, 0x40), 0xa0)
             messageHash := keccak256(m, 0xe0)
         }
     }

@@ -626,7 +626,7 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
     }
 
     function _processClaim(
-        Claim memory claimPayload,
+        Claim calldata claimPayload,
         function(address, address, uint256, uint256) internal returns (bool) operation
     ) internal returns (bool) {
         claimPayload.expires.later();
