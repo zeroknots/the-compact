@@ -14,7 +14,8 @@ import {
     SplitTransfer,
     Claim,
     QualifiedClaim,
-    ClaimWithWitness
+    ClaimWithWitness,
+    QualifiedClaimWithWitness
 } from "../src/types/Claims.sol";
 import { BatchTransfer, SplitBatchTransfer } from "../src/types/BatchClaims.sol";
 
@@ -988,6 +989,89 @@ contract TheCompactTest is Test {
             expires,
             witness,
             witnessTypestring,
+            id,
+            amount,
+            claimant,
+            amount
+        );
+
+        vm.prank(arbiter);
+        (bool status) = theCompact.claim(claim);
+        assert(status);
+
+        assertEq(address(theCompact).balance, amount);
+        assertEq(claimant.balance, 0);
+        assertEq(theCompact.balanceOf(swapper, id), 0);
+        assertEq(theCompact.balanceOf(claimant, id), amount);
+    }
+
+    function test_qualifiedClaimWithWitness() public {
+        ResetPeriod resetPeriod = ResetPeriod.TenMinutes;
+        Scope scope = Scope.Multichain;
+        uint256 amount = 1e18;
+        uint256 nonce = 0;
+        uint256 expires = block.timestamp + 1000;
+        address claimant = 0x1111111111111111111111111111111111111111;
+        address arbiter = 0x2222222222222222222222222222222222222222;
+
+        vm.prank(allocator);
+        theCompact.__register(allocator, "");
+
+        vm.prank(swapper);
+        uint256 id = theCompact.deposit{ value: amount }(allocator, resetPeriod, scope, swapper);
+        assertEq(theCompact.balanceOf(swapper, id), amount);
+
+        string memory witnessTypestring = "Witness witness)Witness(uint256 witnessArgument)";
+        uint256 witnessArgument = 234;
+        bytes32 witness = keccak256(abi.encode(witnessArgument));
+
+        bytes32 claimHash = keccak256(
+            abi.encode(
+                keccak256(
+                    "Compact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256 id,uint256 amount,Witness witness)Witness(uint256 witnessArgument)"
+                ),
+                arbiter,
+                swapper,
+                nonce,
+                expires,
+                id,
+                amount,
+                witness
+            )
+        );
+
+        bytes32 digest =
+            keccak256(abi.encodePacked(bytes2(0x1901), theCompact.DOMAIN_SEPARATOR(), claimHash));
+
+        bytes32 qualificationTypehash =
+            keccak256("ExampleQualifiedClaim(bytes32 claimHash,uint256 qualifiedClaimArgument)");
+
+        uint256 qualifiedClaimArgument = 123;
+        bytes memory qualificationPayload = abi.encode(qualifiedClaimArgument);
+
+        bytes32 qualifiedClaimHash =
+            keccak256(abi.encode(qualificationTypehash, claimHash, qualifiedClaimArgument));
+
+        (bytes32 r, bytes32 vs) = vm.signCompact(swapperPrivateKey, digest);
+        bytes memory sponsorSignature = abi.encodePacked(r, vs);
+
+        digest = keccak256(
+            abi.encodePacked(bytes2(0x1901), theCompact.DOMAIN_SEPARATOR(), qualifiedClaimHash)
+        );
+
+        (r, vs) = vm.signCompact(allocatorPrivateKey, digest);
+        bytes memory allocatorSignature = abi.encodePacked(r, vs);
+
+        QualifiedClaimWithWitness memory claim = QualifiedClaimWithWitness(
+            allocatorSignature,
+            sponsorSignature,
+            swapper,
+            nonce,
+            expires,
+            witness,
+            witnessTypestring,
+            qualificationTypehash,
+            qualificationPayload,
             id,
             amount,
             claimant,

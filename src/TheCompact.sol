@@ -413,6 +413,17 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         return _processClaimWithWitness(claimPayload, _withdraw);
     }
 
+    function claim(QualifiedClaimWithWitness calldata claimPayload) external returns (bool) {
+        return _processQualifiedClaimWithWitness(claimPayload, _release);
+    }
+
+    function claimAndWithdraw(QualifiedClaimWithWitness calldata claimPayload)
+        external
+        returns (bool)
+    {
+        return _processQualifiedClaimWithWitness(claimPayload, _withdraw);
+    }
+
     function claim(BatchClaim calldata claimPayload) external returns (bool) {
         return _processBatchClaim(claimPayload, _release);
     }
@@ -700,6 +711,37 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         bytes32 domainSeparator = _INITIAL_DOMAIN_SEPARATOR.toLatest(_INITIAL_CHAIN_ID);
         messageHash.signedBy(claimPayload.sponsor, claimPayload.sponsorSignature, domainSeparator);
         messageHash.signedBy(allocator, claimPayload.allocatorSignature, domainSeparator);
+
+        emit Claimed(
+            claimPayload.sponsor,
+            claimPayload.claimant,
+            claimPayload.id,
+            messageHash,
+            claimPayload.amount
+        );
+
+        return operation(
+            claimPayload.sponsor, claimPayload.claimant, claimPayload.id, claimPayload.amount
+        );
+    }
+
+    function _processQualifiedClaimWithWitness(
+        QualifiedClaimWithWitness calldata claimPayload,
+        function(address, address, uint256, uint256) internal returns (bool) operation
+    ) internal returns (bool) {
+        claimPayload.expires.later();
+        if (claimPayload.allocatedAmount < claimPayload.amount) {
+            revert AllocatedAmountExceeded(claimPayload.allocatedAmount, claimPayload.amount);
+        }
+
+        address allocator = claimPayload.id.toRegisteredAllocatorWithConsumed(claimPayload.nonce);
+
+        (bytes32 messageHash, bytes32 qualificationMessageHash) = claimPayload.toMessageHash();
+        bytes32 domainSeparator = _INITIAL_DOMAIN_SEPARATOR.toLatest(_INITIAL_CHAIN_ID);
+        messageHash.signedBy(claimPayload.sponsor, claimPayload.sponsorSignature, domainSeparator);
+        qualificationMessageHash.signedBy(
+            allocator, claimPayload.allocatorSignature, domainSeparator
+        );
 
         emit Claimed(
             claimPayload.sponsor,
