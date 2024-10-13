@@ -424,6 +424,14 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         return _processQualifiedClaimWithWitness(claimPayload, _withdraw);
     }
 
+    function claim(SplitClaim calldata claimPayload) external returns (bool) {
+        return _processSplitClaim(claimPayload, _release);
+    }
+
+    function claimAndWithdraw(SplitClaim calldata claimPayload) external returns (bool) {
+        return _processSplitClaim(claimPayload, _withdraw);
+    }
+
     function claim(BatchClaim calldata claimPayload) external returns (bool) {
         return _processBatchClaim(claimPayload, _release);
     }
@@ -658,6 +666,54 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
             claimPayload.amount,
             operation
         );
+    }
+
+    function _processSplitClaim(
+        SplitClaim calldata claimPayload,
+        function(address, address, uint256, uint256) internal returns (bool) operation
+    ) internal returns (bool) {
+        claimPayload.expires.later();
+
+        uint256 id = claimPayload.id;
+        address allocator = id.toRegisteredAllocatorWithConsumed(claimPayload.nonce);
+
+        bytes32 messageHash = claimPayload.toMessageHash();
+        bytes32 domainSeparator = _INITIAL_DOMAIN_SEPARATOR.toLatest(_INITIAL_CHAIN_ID);
+        messageHash.signedBy(claimPayload.sponsor, claimPayload.sponsorSignature, domainSeparator);
+        messageHash.signedBy(allocator, claimPayload.allocatorSignature, domainSeparator);
+
+        uint256 totalClaims = claimPayload.claimants.length;
+        uint256 allocatedAmount = claimPayload.allocatedAmount;
+        uint256 spentAmount = 0;
+        uint256 errorBuffer = (totalClaims == 0).asUint256();
+
+        unchecked {
+            for (uint256 i = 0; i < totalClaims; ++i) {
+                SplitComponent calldata component = claimPayload.claimants[i];
+                uint256 amount = component.amount;
+
+                uint256 updatedSpentAmount = amount + spentAmount;
+                errorBuffer |= (updatedSpentAmount < spentAmount).asUint256();
+                spentAmount = updatedSpentAmount;
+
+                emitAndOperate(
+                    claimPayload.sponsor, component.claimant, id, messageHash, amount, operation
+                );
+            }
+        }
+
+        errorBuffer |= (allocatedAmount < spentAmount).asUint256();
+        assembly ("memory-safe") {
+            if errorBuffer {
+                // revert AllocatedAmountExceeded(allocatedAmount, amount);
+                mstore(0, 0x3078b2f6)
+                mstore(0x20, allocatedAmount)
+                mstore(0x40, spentAmount)
+                revert(0x1c, 0x44)
+            }
+        }
+
+        return true;
     }
 
     function _processQualifiedClaim(
