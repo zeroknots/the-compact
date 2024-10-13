@@ -650,16 +650,13 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         messageHash.signedBy(claimPayload.sponsor, claimPayload.sponsorSignature, domainSeparator);
         messageHash.signedBy(allocator, claimPayload.allocatorSignature, domainSeparator);
 
-        emit Claimed(
+        return emitAndOperate(
             claimPayload.sponsor,
             claimPayload.claimant,
             claimPayload.id,
             messageHash,
-            claimPayload.amount
-        );
-
-        return operation(
-            claimPayload.sponsor, claimPayload.claimant, claimPayload.id, claimPayload.amount
+            claimPayload.amount,
+            operation
         );
     }
 
@@ -679,16 +676,13 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
             allocator, claimPayload.allocatorSignature, domainSeparator
         );
 
-        emit Claimed(
+        return emitAndOperate(
             claimPayload.sponsor,
             claimPayload.claimant,
             claimPayload.id,
             messageHash,
-            claimPayload.amount
-        );
-
-        return operation(
-            claimPayload.sponsor, claimPayload.claimant, claimPayload.id, claimPayload.amount
+            claimPayload.amount,
+            operation
         );
     }
 
@@ -706,17 +700,27 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         messageHash.signedBy(claimPayload.sponsor, claimPayload.sponsorSignature, domainSeparator);
         messageHash.signedBy(allocator, claimPayload.allocatorSignature, domainSeparator);
 
-        emit Claimed(
+        return emitAndOperate(
             claimPayload.sponsor,
             claimPayload.claimant,
             claimPayload.id,
             messageHash,
-            claimPayload.amount
+            claimPayload.amount,
+            operation
         );
+    }
 
-        return operation(
-            claimPayload.sponsor, claimPayload.claimant, claimPayload.id, claimPayload.amount
-        );
+    function emitAndOperate(
+        address sponsor,
+        address claimant,
+        uint256 id,
+        bytes32 messageHash,
+        uint256 amount,
+        function(address, address, uint256, uint256) internal returns (bool) operation
+    ) internal returns (bool) {
+        emit Claimed(sponsor, claimant, id, messageHash, amount);
+
+        return operation(sponsor, claimant, id, amount);
     }
 
     function _processQualifiedClaimWithWitness(
@@ -735,16 +739,13 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
             allocator, claimPayload.allocatorSignature, domainSeparator
         );
 
-        emit Claimed(
+        return emitAndOperate(
             claimPayload.sponsor,
             claimPayload.claimant,
             claimPayload.id,
             messageHash,
-            claimPayload.amount
-        );
-
-        return operation(
-            claimPayload.sponsor, claimPayload.claimant, claimPayload.id, claimPayload.amount
+            claimPayload.amount,
+            operation
         );
     }
 
@@ -773,8 +774,10 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         BatchClaimComponent memory component = batchClaim.claims[0];
         uint256 errorBuffer = (component.allocatedAmount < component.amount).asUint256();
         uint256 id = component.id;
-        emit Claimed(batchClaim.sponsor, component.claimant, id, messageHash, component.amount);
-        operation(batchClaim.sponsor, component.claimant, component.id, component.amount);
+
+        emitAndOperate(
+            batchClaim.sponsor, component.claimant, id, messageHash, component.amount, operation
+        );
 
         unchecked {
             for (uint256 i = 1; i < totalClaims; ++i) {
@@ -783,14 +786,15 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
                 errorBuffer |= (id.toAllocatorId() != allocatorId).or(
                     component.allocatedAmount < component.amount
                 ).asUint256();
-                emit Claimed(
+
+                emitAndOperate(
                     batchClaim.sponsor,
                     component.claimant,
-                    component.id,
+                    id,
                     messageHash,
-                    component.amount
+                    component.amount,
+                    operation
                 );
-                operation(batchClaim.sponsor, component.claimant, component.id, component.amount);
             }
         }
         if (errorBuffer.asBool()) {
