@@ -34,7 +34,7 @@ struct MultichainClaimWithWitness {
     address sponsor; // The account to source the tokens from.
     bytes sponsorSignature; // Authorization from the sponsor.
     bytes32 witness; // Hash of the witness data.
-    string witnessTypeString; // Witness typestring appended to existing typestring.
+    string witnessTypestring; // Witness typestring appended to existing typestring.
     uint256 chainIndex;
     bytes32[] otherChains;
     BatchClaimComponent[] claims;
@@ -47,7 +47,7 @@ struct QualifiedMultichainClaimWithWitness {
     address sponsor; // The account to source the tokens from.
     bytes sponsorSignature; // Authorization from the sponsor.
     bytes32 witness; // Hash of the witness data.
-    string witnessTypeString; // Witness typestring appended to existing typestring.
+    string witnessTypestring; // Witness typestring appended to existing typestring.
     bytes32 qualificationTypehash; // Typehash of the qualification payload.
     bytes qualificationPayload; // Data used to derive qualification hash.
     uint256 chainIndex;
@@ -73,7 +73,7 @@ struct SplitMultichainClaimWithWitness {
     address sponsor; // The account to source the tokens from.
     bytes sponsorSignature; // Authorization from the sponsor.
     bytes32 witness; // Hash of the witness data.
-    string witnessTypeString; // Witness typestring appended to existing typestring.
+    string witnessTypestring; // Witness typestring appended to existing typestring.
     uint256 chainIndex;
     bytes32[] otherChains;
     SplitBatchClaimComponent[] claims; // The claim token IDs, recipients and amounts.
@@ -99,7 +99,7 @@ struct QualifiedSplitMultichainClaimWithWitness {
     address sponsor; // The account to source the tokens from.
     bytes sponsorSignature; // Authorization from the sponsor.
     bytes32 witness; // Hash of the witness data.
-    string witnessTypeString; // Witness typestring appended to existing typestring.
+    string witnessTypestring; // Witness typestring appended to existing typestring.
     bytes32 qualificationTypehash; // Typehash of the qualification payload.
     bytes qualificationPayload; // Data used to derive qualification hash.
     uint256 chainIndex;
@@ -140,7 +140,7 @@ struct ExogenousMultichainClaimWithWitness {
     address sponsor; // The account to source the tokens from.
     bytes sponsorSignature; // Authorization from the sponsor.
     bytes32 witness; // Hash of the witness data.
-    string witnessTypeString; // Witness typestring appended to existing typestring.
+    string witnessTypestring; // Witness typestring appended to existing typestring.
     uint256 chainIndex;
     bytes32[] otherChains;
     uint256 notarizedChainId;
@@ -154,7 +154,7 @@ struct ExogenousQualifiedMultichainClaimWithWitness {
     address sponsor; // The account to source the tokens from.
     bytes sponsorSignature; // Authorization from the sponsor.
     bytes32 witness; // Hash of the witness data.
-    string witnessTypeString; // Witness typestring appended to existing typestring.
+    string witnessTypestring; // Witness typestring appended to existing typestring.
     bytes32 qualificationTypehash; // Typehash of the qualification payload.
     bytes qualificationPayload; // Data used to derive qualification hash.
     uint256 chainIndex;
@@ -182,7 +182,7 @@ struct ExogenousSplitMultichainClaimWithWitness {
     address sponsor; // The account to source the tokens from.
     bytes sponsorSignature; // Authorization from the sponsor.
     bytes32 witness; // Hash of the witness data.
-    string witnessTypeString; // Witness typestring appended to existing typestring.
+    string witnessTypestring; // Witness typestring appended to existing typestring.
     uint256 chainIndex;
     bytes32[] otherChains;
     uint256 notarizedChainId;
@@ -210,7 +210,7 @@ struct ExogenousQualifiedSplitMultichainClaimWithWitness {
     address sponsor; // The account to source the tokens from.
     bytes sponsorSignature; // Authorization from the sponsor.
     bytes32 witness; // Hash of the witness data.
-    string witnessTypeString; // Witness typestring appended to existing typestring.
+    string witnessTypestring; // Witness typestring appended to existing typestring.
     bytes32 qualificationTypehash; // Typehash of the qualification payload.
     bytes qualificationPayload; // Data used to derive qualification hash.
     uint256 chainIndex;

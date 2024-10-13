@@ -21,15 +21,15 @@ bytes32 constant COMPACT_TYPEHASH =
 
 // abi.decode(bytes("Compact(address arbiter,address "), (bytes32))
 bytes32 constant COMPACT_TYPESTRING_FRAGMENT_ONE =
-    abi.decode(bytes("Compact(address arbiter,address "), (bytes32));
+    0x436f6d70616374286164647265737320617262697465722c6164647265737320;
 
 // abi.decode(bytes("sponsor,uint256 nonce,uint256 ex"), (bytes32))
 bytes32 constant COMPACT_TYPESTRING_FRAGMENT_TWO =
-    abi.decode(bytes("sponsor,uint256 nonce,uint256 ex"), (bytes32));
+    0x73706f6e736f722c75696e74323536206e6f6e63652c75696e74323536206578;
 
 // abi.decode(bytes("pires,uint256 id,uint256 amount,"), (bytes32))
 bytes32 constant COMPACT_TYPESTRING_FRAGMENT_THREE =
-    abi.decode(bytes("pires,uint256 id,uint256 amount,"), (bytes32));
+    0x70697265732c75696e743235362069642c75696e7432353620616d6f756e742c;
 
 // Message signed by the sponsor that specifies the conditions under which a set of
 // tokens, each sharing an allocator, can be claimed; the specified arbiter verifies

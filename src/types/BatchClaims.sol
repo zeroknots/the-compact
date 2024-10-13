@@ -50,7 +50,7 @@ struct BatchClaimWithWitness {
     address sponsor; // The account to source the tokens from.
     bytes sponsorSignature; // Authorization from the sponsor.
     bytes32 witness; // Hash of the witness data.
-    string witnessTypeString; // Witness typestring appended to existing typestring.
+    string witnessTypestring; // Witness typestring appended to existing typestring.
     BatchClaimComponent[] claims; // IDs, amounts, and claimants.
 }
 
@@ -61,7 +61,7 @@ struct QualifiedBatchClaimWithWitness {
     address sponsor; // The account to source the tokens from.
     bytes sponsorSignature; // Authorization from the sponsor.
     bytes32 witness; // Hash of the witness data.
-    string witnessTypeString; // Witness typestring appended to existing typestring.
+    string witnessTypestring; // Witness typestring appended to existing typestring.
     bytes32 qualificationTypehash; // Typehash of the qualification payload.
     bytes qualificationPayload; // Data used to derive qualification hash.
     BatchClaimComponent[] claims; // IDs, amounts, and claimants.
@@ -83,7 +83,7 @@ struct SplitBatchClaimWithWitness {
     address sponsor; // The account to source the tokens from.
     bytes sponsorSignature; // Authorization from the sponsor.
     bytes32 witness; // Hash of the witness data.
-    string witnessTypeString; // Witness typestring appended to existing typestring.
+    string witnessTypestring; // Witness typestring appended to existing typestring.
     SplitBatchClaimComponent[] claims; // The claim token IDs, recipients and amounts.
 }
 
@@ -105,7 +105,7 @@ struct QualifiedSplitBatchClaimWithWitness {
     address sponsor; // The account to source the tokens from.
     bytes sponsorSignature; // Authorization from the sponsor.
     bytes32 witness; // Hash of the witness data.
-    string witnessTypeString; // Witness typestring appended to existing typestring.
+    string witnessTypestring; // Witness typestring appended to existing typestring.
     bytes32 qualificationTypehash; // Typehash of the qualification payload.
     bytes qualificationPayload; // Data used to derive qualification hash.
     SplitBatchClaimComponent[] claims; // The claim token IDs, recipients and amounts.

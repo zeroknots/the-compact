@@ -53,7 +53,7 @@ struct ClaimWithWitness {
     uint256 nonce; // A parameter to enforce replay protection, scoped to allocator.
     uint256 expires; // The time at which the claim expires.
     bytes32 witness; // Hash of the witness data.
-    string witnessTypeString; // Witness typestring appended to existing typestring.
+    string witnessTypestring; // Witness typestring appended to existing typestring.
     uint256 id; // The token ID of the ERC6909 token to allocate.
     uint256 allocatedAmount; // The original allocated amount of ERC6909 tokens.
     address claimant; // The claim recipient; specified by the arbiter.
@@ -67,7 +67,7 @@ struct QualifiedClaimWithWitness {
     uint256 nonce; // A parameter to enforce replay protection, scoped to allocator.
     uint256 expires; // The time at which the claim expires.
     bytes32 witness; // Hash of the witness data.
-    string witnessTypeString; // Witness typestring appended to existing typestring.
+    string witnessTypestring; // Witness typestring appended to existing typestring.
     bytes32 qualificationTypehash; // Typehash of the qualification payload.
     bytes qualificationPayload; // Data used to derive qualification hash.
     uint256 id; // The token ID of the ERC6909 token to allocate.
@@ -94,7 +94,7 @@ struct SplitClaimWithWitness {
     uint256 nonce; // A parameter to enforce replay protection, scoped to allocator.
     uint256 expires; // The time at which the claim expires.
     bytes32 witness; // Hash of the witness data.
-    string witnessTypeString; // Witness typestring appended to existing typestring.
+    string witnessTypestring; // Witness typestring appended to existing typestring.
     uint256 id; // The token ID of the ERC6909 token to allocate.
     uint256 allocatedAmount; // The original allocated amount of ERC6909 tokens.
     SplitComponent[] claimants; // The claim recipients and amounts; specified by the arbiter.
@@ -120,7 +120,7 @@ struct QualifiedSplitClaimWithWitness {
     uint256 nonce; // A parameter to enforce replay protection, scoped to allocator.
     uint256 expires; // The time at which the claim expires.
     bytes32 witness; // Hash of the witness data.
-    string witnessTypeString; // Witness typestring appended to existing typestring.
+    string witnessTypestring; // Witness typestring appended to existing typestring.
     bytes32 qualificationTypehash; // Typehash of the qualification payload.
     bytes qualificationPayload; // Data used to derive qualification hash.
     uint256 id; // The token ID of the ERC6909 token to allocate.

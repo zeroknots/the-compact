@@ -101,7 +101,7 @@ library HashLib {
             mstore(m, COMPACT_TYPEHASH)
             mstore(add(m, 0x20), caller()) // arbiter: msg.sender
             mstore(add(m, 0x40), caller()) // sponsor: msg.sender
-            calldatacopy(add(m, 0x60), add(transfer, 0x20), 0x80)
+            calldatacopy(add(m, 0x60), add(transfer, 0x20), 0x80) // nonce, expires, id, amount
             messageHash := keccak256(m, 0xe0)
         }
     }
@@ -123,7 +123,7 @@ library HashLib {
             mstore(m, COMPACT_TYPEHASH)
             mstore(add(m, 0x20), caller()) // arbiter: msg.sender
             mstore(add(m, 0x40), caller()) // sponsor: msg.sender
-            calldatacopy(add(m, 0x60), add(transfer, 0x20), 0x60)
+            calldatacopy(add(m, 0x60), add(transfer, 0x20), 0x60) // nonce, expires, id
             mstore(add(m, 0xc0), amount)
             messageHash := keccak256(m, 0xe0)
         }
@@ -135,7 +135,7 @@ library HashLib {
 
             mstore(m, COMPACT_TYPEHASH)
             mstore(add(m, 0x20), caller()) // arbiter: msg.sender
-            calldatacopy(add(m, 0x40), add(claim, 0x40), 0xa0)
+            calldatacopy(add(m, 0x40), add(claim, 0x40), 0xa0) // sponsor, nonce, expires, id, amount
             messageHash := keccak256(m, 0xe0)
         }
     }
@@ -150,63 +150,46 @@ library HashLib {
 
             mstore(m, COMPACT_TYPEHASH)
             mstore(add(m, 0x20), caller()) // arbiter: msg.sender
-            calldatacopy(add(m, 0x40), add(claim, 0x40), 0x60)
-            mstore(add(m, 0xa0), calldataload(add(claim, 0xe0)))
-            mstore(add(m, 0xc0), calldataload(add(claim, 0x100)))
+            calldatacopy(add(m, 0x40), add(claim, 0x40), 0x60) // sponsor, nonce, expires
+            mstore(add(m, 0xa0), calldataload(add(claim, 0xe0))) // id
+            mstore(add(m, 0xc0), calldataload(add(claim, 0x100))) // amount
             messageHash := keccak256(m, 0xe0)
 
             let qualificationPayloadPtr := add(0x24, calldataload(add(claim, 0xc0)))
+            let qualificationPayloadLength := calldataload(qualificationPayloadPtr)
 
-            mstore(m, calldataload(add(claim, 0xa0)))
+            mstore(m, calldataload(add(claim, 0xa0))) // qualificationTypehash
             mstore(add(m, 0x20), messageHash)
             calldatacopy(
-                add(m, 0x40),
-                add(0x20, qualificationPayloadPtr),
-                calldataload(qualificationPayloadPtr)
+                add(m, 0x40), add(0x20, qualificationPayloadPtr), qualificationPayloadLength
             )
-        }
 
-        // TODO: optimize once we're using calldata
-        qualificationMessageHash = keccak256(
-            abi.encodePacked(claim.qualificationTypehash, messageHash, claim.qualificationPayload)
-        );
+            qualificationMessageHash := keccak256(m, add(0x40, qualificationPayloadLength))
+        }
     }
 
-    function toMessageHash(ClaimWithWitness memory claim)
+    function toMessageHash(ClaimWithWitness calldata claim)
         internal
         view
         returns (bytes32 messageHash)
     {
-        // derive the typehash (TODO: make this more efficient especially once using calldata)
-        bytes32 typehash = keccak256(
-            abi.encodePacked(
-                COMPACT_TYPESTRING_FRAGMENT_ONE,
-                COMPACT_TYPESTRING_FRAGMENT_TWO,
-                COMPACT_TYPESTRING_FRAGMENT_THREE,
-                claim.witnessTypeString
-            )
-        );
-        bytes32 witness = claim.witness;
-
         assembly ("memory-safe") {
             let m := mload(0x40) // Grab the free memory pointer; memory will be left dirtied.
 
-            // TODO: calldatacopy this whole chunk at once as part of calldata implementation
-            let sponsor := mload(claim)
-            let expires := mload(add(claim, 0x20))
-            let nonce := mload(add(claim, 0x40))
+            // prepare full typestring
+            let witnessTypestringPtr := add(0x24, calldataload(add(claim, 0xc0)))
+            let witnessTypestringLength := calldataload(witnessTypestringPtr)
+            mstore(m, COMPACT_TYPESTRING_FRAGMENT_ONE)
+            mstore(add(m, 0x20), COMPACT_TYPESTRING_FRAGMENT_TWO)
+            mstore(add(m, 0x40), COMPACT_TYPESTRING_FRAGMENT_THREE)
+            calldatacopy(add(m, 0x60), add(0x20, witnessTypestringPtr), witnessTypestringLength)
 
-            let id := mload(add(claim, 0x60))
-            let amount := mload(add(claim, 0x80))
-
-            mstore(m, typehash)
-            mstore(add(m, 0x20), sponsor)
-            mstore(add(m, 0x40), expires)
-            mstore(add(m, 0x60), nonce)
-            mstore(add(m, 0x80), caller()) // arbiter: msg.sender
-            mstore(add(m, 0xa0), id)
-            mstore(add(m, 0xc0), amount)
-            mstore(add(m, 0xc0), witness)
+            mstore(m, keccak256(m, add(0x60, witnessTypestringLength))) // typehash
+            mstore(add(m, 0x20), caller()) // arbiter: msg.sender
+            calldatacopy(add(m, 0x40), add(claim, 0x40), 0x60) // sponsor, nonce, expires
+            mstore(add(m, 0xa0), calldataload(add(claim, 0xe0))) // id
+            mstore(add(m, 0xc0), calldataload(add(claim, 0x100))) // amount
+            mstore(add(m, 0xe0), calldataload(add(claim, 0xa0))) // witness
             messageHash := keccak256(m, 0x100)
         }
     }
@@ -222,7 +205,7 @@ library HashLib {
                 COMPACT_TYPESTRING_FRAGMENT_ONE,
                 COMPACT_TYPESTRING_FRAGMENT_TWO,
                 COMPACT_TYPESTRING_FRAGMENT_THREE,
-                claim.witnessTypeString
+                claim.witnessTypestring
             )
         );
         bytes32 witness = claim.witness;
@@ -288,7 +271,7 @@ library HashLib {
                 COMPACT_TYPESTRING_FRAGMENT_ONE,
                 COMPACT_TYPESTRING_FRAGMENT_TWO,
                 COMPACT_TYPESTRING_FRAGMENT_THREE,
-                claim.witnessTypeString
+                claim.witnessTypestring
             )
         );
         bytes32 witness = claim.witness;
@@ -357,7 +340,7 @@ library HashLib {
                 COMPACT_TYPESTRING_FRAGMENT_ONE,
                 COMPACT_TYPESTRING_FRAGMENT_TWO,
                 COMPACT_TYPESTRING_FRAGMENT_THREE,
-                claim.witnessTypeString
+                claim.witnessTypestring
             )
         );
         bytes32 witness = claim.witness;
@@ -522,7 +505,7 @@ library HashLib {
                 BATCH_COMPACT_TYPESTRING_FRAGMENT_TWO,
                 BATCH_COMPACT_TYPESTRING_FRAGMENT_THREE,
                 BATCH_COMPACT_TYPESTRING_FRAGMENT_FOUR,
-                claim.witnessTypeString
+                claim.witnessTypestring
             )
         );
         bytes32 witness = claim.witness;
@@ -568,7 +551,7 @@ library HashLib {
                 BATCH_COMPACT_TYPESTRING_FRAGMENT_TWO,
                 BATCH_COMPACT_TYPESTRING_FRAGMENT_THREE,
                 BATCH_COMPACT_TYPESTRING_FRAGMENT_FOUR,
-                claim.witnessTypeString
+                claim.witnessTypestring
             )
         );
         bytes32 witness = claim.witness;
@@ -654,7 +637,7 @@ library HashLib {
                 BATCH_COMPACT_TYPESTRING_FRAGMENT_TWO,
                 BATCH_COMPACT_TYPESTRING_FRAGMENT_THREE,
                 BATCH_COMPACT_TYPESTRING_FRAGMENT_FOUR,
-                claim.witnessTypeString
+                claim.witnessTypestring
             )
         );
         bytes32 witness = claim.witness;
@@ -738,7 +721,7 @@ library HashLib {
                 BATCH_COMPACT_TYPESTRING_FRAGMENT_TWO,
                 BATCH_COMPACT_TYPESTRING_FRAGMENT_THREE,
                 BATCH_COMPACT_TYPESTRING_FRAGMENT_FOUR,
-                claim.witnessTypeString
+                claim.witnessTypestring
             )
         );
         bytes32 witness = claim.witness;
@@ -894,7 +877,7 @@ library HashLib {
             ALLOCATION_TYPESTRING_FRAGMENT_ONE,
             ALLOCATION_TYPESTRING_FRAGMENT_TWO,
             ALLOCATION_TYPESTRING_FRAGMENT_THREE,
-            claim.witnessTypeString
+            claim.witnessTypestring
         );
 
         bytes32 allocationTypehash = keccak256(allocationTypestring);
@@ -965,7 +948,7 @@ library HashLib {
             ALLOCATION_TYPESTRING_FRAGMENT_ONE,
             ALLOCATION_TYPESTRING_FRAGMENT_TWO,
             ALLOCATION_TYPESTRING_FRAGMENT_THREE,
-            claim.witnessTypeString
+            claim.witnessTypestring
         );
 
         bytes32 allocationTypehash = keccak256(allocationTypestring);
@@ -1148,7 +1131,7 @@ library HashLib {
             ALLOCATION_TYPESTRING_FRAGMENT_ONE,
             ALLOCATION_TYPESTRING_FRAGMENT_TWO,
             ALLOCATION_TYPESTRING_FRAGMENT_THREE,
-            claim.witnessTypeString
+            claim.witnessTypestring
         );
 
         bytes32 allocationTypehash = keccak256(allocationTypestring);
@@ -1219,7 +1202,7 @@ library HashLib {
             ALLOCATION_TYPESTRING_FRAGMENT_ONE,
             ALLOCATION_TYPESTRING_FRAGMENT_TWO,
             ALLOCATION_TYPESTRING_FRAGMENT_THREE,
-            claim.witnessTypeString
+            claim.witnessTypestring
         );
 
         bytes32 allocationTypehash = keccak256(allocationTypestring);
@@ -1402,7 +1385,7 @@ library HashLib {
             ALLOCATION_TYPESTRING_FRAGMENT_ONE,
             ALLOCATION_TYPESTRING_FRAGMENT_TWO,
             ALLOCATION_TYPESTRING_FRAGMENT_THREE,
-            claim.witnessTypeString
+            claim.witnessTypestring
         );
 
         bytes32 allocationTypehash = keccak256(allocationTypestring);
@@ -1473,7 +1456,7 @@ library HashLib {
             ALLOCATION_TYPESTRING_FRAGMENT_ONE,
             ALLOCATION_TYPESTRING_FRAGMENT_TWO,
             ALLOCATION_TYPESTRING_FRAGMENT_THREE,
-            claim.witnessTypeString
+            claim.witnessTypestring
         );
 
         bytes32 allocationTypehash = keccak256(allocationTypestring);
@@ -1656,7 +1639,7 @@ library HashLib {
             ALLOCATION_TYPESTRING_FRAGMENT_ONE,
             ALLOCATION_TYPESTRING_FRAGMENT_TWO,
             ALLOCATION_TYPESTRING_FRAGMENT_THREE,
-            claim.witnessTypeString
+            claim.witnessTypestring
         );
 
         bytes32 allocationTypehash = keccak256(allocationTypestring);
@@ -1727,7 +1710,7 @@ library HashLib {
             ALLOCATION_TYPESTRING_FRAGMENT_ONE,
             ALLOCATION_TYPESTRING_FRAGMENT_TWO,
             ALLOCATION_TYPESTRING_FRAGMENT_THREE,
-            claim.witnessTypeString
+            claim.witnessTypestring
         );
 
         bytes32 allocationTypehash = keccak256(allocationTypestring);
