@@ -667,11 +667,11 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         unchecked {
             uint256 totalIds = transfer.transfers.length;
             for (uint256 i = 0; i < totalIds; ++i) {
-                SplitByIdComponent memory component = transfer.transfers[i];
-                SplitComponent[] memory portions = component.portions;
+                SplitByIdComponent calldata component = transfer.transfers[i];
+                SplitComponent[] calldata portions = component.portions;
                 uint256 totalPortions = portions.length;
                 for (uint256 j = 0; j < totalPortions; ++j) {
-                    SplitComponent memory portion = portions[j];
+                    SplitComponent calldata portion = portions[j];
                     operation(msg.sender, portion.claimant, component.id, portion.amount);
                 }
             }
