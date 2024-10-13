@@ -6,7 +6,7 @@
 > :warning: This is an early-stage contract under active development; it has not yet been properly tested, reviewed, or audited.
 
 ## Summary
-The Compact is an ownerless ERC6909 contract that facilitates the voluntary formation (and, if necessary, involuntary dissolution) of "resource locks."
+The Compact is an ownerless ERC6909 contract that facilitates the voluntary formation (and, if necessary, eventual dissolution) of "resource locks."
 
 Resource locks are entered into by ERC20 or native token holders, called the "sponsor". Once a resource lock has been established, sponsors can commit to allow interested parties to claim their tokens through an "arbiter" indicated by the sponsor that attests to the specified conditions having been met.
 
