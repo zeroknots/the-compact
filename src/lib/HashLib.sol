@@ -436,7 +436,7 @@ library HashLib {
         }
     }
 
-    function toMessageHash(BatchClaim memory claim) internal view returns (bytes32 messageHash) {
+    function toMessageHash(BatchClaim calldata claim) internal view returns (bytes32 messageHash) {
         // TODO: make this more efficient especially once using calldata
         uint256[2][] memory idsAndAmounts = new uint256[2][](claim.claims.length);
         for (uint256 i = 0; i < claim.claims.length; ++i) {
@@ -447,19 +447,9 @@ library HashLib {
         assembly ("memory-safe") {
             let m := mload(0x40) // Grab the free memory pointer; memory will be left dirtied.
 
-            // TODO: calldatacopy this whole chunk at once as part of calldata implementation
-            let sponsor := mload(claim)
-            let expires := mload(add(claim, 0x20))
-            let nonce := mload(add(claim, 0x40))
-
-            let id := mload(add(claim, 0x60))
-            let amount := mload(add(claim, 0x80))
-
             mstore(m, BATCH_COMPACT_TYPEHASH)
-            mstore(add(m, 0x20), sponsor)
-            mstore(add(m, 0x40), expires)
-            mstore(add(m, 0x60), nonce)
-            mstore(add(m, 0x80), caller()) // arbiter: msg.sender
+            mstore(add(m, 0x20), caller()) // arbiter: msg.sender
+            calldatacopy(add(m, 0x40), add(claim, 0x40), 0x60) // sponsor, nonce, expires
             mstore(add(m, 0xa0), idsAndAmountsHash)
             messageHash := keccak256(m, 0xc0)
         }

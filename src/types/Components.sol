@@ -19,7 +19,6 @@ struct TransferComponent {
 struct BatchClaimComponent {
     uint256 id; // The token ID of the ERC6909 token to allocate.
     uint256 allocatedAmount; // The original allocated amount of ERC6909 tokens.
-    address claimant; // The claim recipient; specified by the arbiter.
     uint256 amount; // The claimed token amount; specified by the arbiter.
 }
 

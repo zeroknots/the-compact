@@ -27,11 +27,12 @@ library ValidityLib {
     function signedBy(
         bytes32 messageHash,
         address expectedSigner,
-        bytes memory signature,
+        bytes calldata signature,
         bytes32 domainSeparator
     ) internal view {
-        bool hasValidSigner =
-            expectedSigner.isValidSignatureNow(messageHash.withDomain(domainSeparator), signature);
+        bool hasValidSigner = expectedSigner.isValidSignatureNowCalldata(
+            messageHash.withDomain(domainSeparator), signature
+        );
 
         assembly ("memory-safe") {
             // NOTE: analyze whether the signature check can safely be skipped in all

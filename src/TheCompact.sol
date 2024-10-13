@@ -547,16 +547,64 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         }
     }
 
+    function usingSplitTransfer(
+        function (bytes32, address, BasicTransfer calldata) internal view fnIn
+    )
+        internal
+        pure
+        returns (function (bytes32, address, SplitTransfer calldata) internal view fnOut)
+    {
+        assembly {
+            fnOut := fnIn
+        }
+    }
+
+    function usingBatchTransfer(
+        function (bytes32, address, BasicTransfer calldata) internal view fnIn
+    )
+        internal
+        pure
+        returns (function (bytes32, address, BatchTransfer calldata) internal view fnOut)
+    {
+        assembly {
+            fnOut := fnIn
+        }
+    }
+
+    function usingSplitBatchTransfer(
+        function (bytes32, address, BasicTransfer calldata) internal view fnIn
+    )
+        internal
+        pure
+        returns (function (bytes32, address, SplitBatchTransfer calldata) internal view fnOut)
+    {
+        assembly {
+            fnOut := fnIn
+        }
+    }
+
+    function notExpiredAndSignedByAllocator(
+        bytes32 messageHash,
+        address allocator,
+        BasicTransfer calldata transferPayload
+    ) internal view {
+        transferPayload.expires.later();
+
+        messageHash.signedBy(
+            allocator,
+            transferPayload.allocatorSignature,
+            _INITIAL_DOMAIN_SEPARATOR.toLatest(_INITIAL_CHAIN_ID)
+        );
+    }
+
     function _processBasicTransfer(
         BasicTransfer calldata transfer,
         function(address, address, uint256, uint256) internal returns (bool) operation
     ) internal returns (bool) {
-        transfer.expires.later();
-
-        transfer.toMessageHash().signedBy(
+        notExpiredAndSignedByAllocator(
+            transfer.toMessageHash(),
             transfer.id.toRegisteredAllocatorWithConsumed(transfer.nonce),
-            transfer.allocatorSignature,
-            _INITIAL_DOMAIN_SEPARATOR.toLatest(_INITIAL_CHAIN_ID)
+            transfer
         );
 
         return operation(msg.sender, transfer.recipient, transfer.id, transfer.amount);
@@ -566,19 +614,16 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         SplitTransfer calldata transfer,
         function(address, address, uint256, uint256) internal returns (bool) operation
     ) internal returns (bool) {
-        transfer.expires.later();
-
-        transfer.toMessageHash().signedBy(
+        usingSplitTransfer(notExpiredAndSignedByAllocator)(
+            transfer.toMessageHash(),
             transfer.id.toRegisteredAllocatorWithConsumed(transfer.nonce),
-            transfer.allocatorSignature,
-            _INITIAL_DOMAIN_SEPARATOR.toLatest(_INITIAL_CHAIN_ID)
+            transfer
         );
 
         uint256 totalSplits = transfer.recipients.length;
-        SplitComponent memory component;
         unchecked {
             for (uint256 i = 0; i < totalSplits; ++i) {
-                component = transfer.recipients[i];
+                SplitComponent calldata component = transfer.recipients[i];
                 operation(msg.sender, component.claimant, transfer.id, component.amount);
             }
         }
@@ -590,21 +635,16 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         BatchTransfer calldata transfer,
         function(address, address, uint256, uint256) internal returns (bool) operation
     ) internal returns (bool) {
-        transfer.expires.later();
-
-        address allocator =
-            _deriveConsistentAllocatorAndConsumeNonce(transfer.transfers, transfer.nonce);
-
-        transfer.toMessageHash().signedBy(
-            allocator,
-            transfer.allocatorSignature,
-            _INITIAL_DOMAIN_SEPARATOR.toLatest(_INITIAL_CHAIN_ID)
+        usingBatchTransfer(notExpiredAndSignedByAllocator)(
+            transfer.toMessageHash(),
+            _deriveConsistentAllocatorAndConsumeNonce(transfer.transfers, transfer.nonce),
+            transfer
         );
 
         unchecked {
             uint256 totalTransfers = transfer.transfers.length;
             for (uint256 i = 0; i < totalTransfers; ++i) {
-                TransferComponent memory component = transfer.transfers[i];
+                TransferComponent calldata component = transfer.transfers[i];
                 operation(msg.sender, transfer.recipient, component.id, component.amount);
             }
         }
@@ -616,16 +656,12 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         SplitBatchTransfer calldata transfer,
         function(address, address, uint256, uint256) internal returns (bool) operation
     ) internal returns (bool) {
-        transfer.expires.later();
-
-        address allocator = usingSplitByIdComponent(_deriveConsistentAllocatorAndConsumeNonce)(
-            transfer.transfers, transfer.nonce
-        );
-
-        transfer.toMessageHash().signedBy(
-            allocator,
-            transfer.allocatorSignature,
-            _INITIAL_DOMAIN_SEPARATOR.toLatest(_INITIAL_CHAIN_ID)
+        usingSplitBatchTransfer(notExpiredAndSignedByAllocator)(
+            transfer.toMessageHash(),
+            usingSplitByIdComponent(_deriveConsistentAllocatorAndConsumeNonce)(
+                transfer.transfers, transfer.nonce
+            ),
+            transfer
         );
 
         unchecked {
@@ -806,7 +842,7 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
     }
 
     function _processBatchClaim(
-        BatchClaim memory batchClaim,
+        BatchClaim calldata batchClaim,
         function(address, address, uint256, uint256) internal returns (bool) operation
     ) internal returns (bool) {
         batchClaim.expires.later();
@@ -832,7 +868,7 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         uint256 id = component.id;
 
         emitAndOperate(
-            batchClaim.sponsor, component.claimant, id, messageHash, component.amount, operation
+            batchClaim.sponsor, batchClaim.claimant, id, messageHash, component.amount, operation
         );
 
         unchecked {
@@ -845,7 +881,7 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
 
                 emitAndOperate(
                     batchClaim.sponsor,
-                    component.claimant,
+                    batchClaim.claimant,
                     id,
                     messageHash,
                     component.amount,

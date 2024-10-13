@@ -29,7 +29,8 @@ struct BatchClaim {
     address sponsor; // The account to source the tokens from.
     uint256 nonce; // A parameter to enforce replay protection, scoped to allocator.
     uint256 expires; // The time at which the claim expires.
-    BatchClaimComponent[] claims; // IDs, amounts, and claimants.
+    BatchClaimComponent[] claims; // IDs and amounts.
+    address claimant; // The claim recipient; specified by the arbiter.
 }
 
 struct QualifiedBatchClaim {
@@ -40,7 +41,8 @@ struct QualifiedBatchClaim {
     bytes sponsorSignature; // Authorization from the sponsor.
     bytes32 qualificationTypehash; // Typehash of the qualification payload.
     bytes qualificationPayload; // Data used to derive qualification hash.
-    BatchClaimComponent[] claims; // IDs, amounts, and claimants.
+    BatchClaimComponent[] claims; // IDs and amounts.
+    address claimant; // The claim recipient; specified by the arbiter.
 }
 
 struct BatchClaimWithWitness {
@@ -51,7 +53,8 @@ struct BatchClaimWithWitness {
     bytes sponsorSignature; // Authorization from the sponsor.
     bytes32 witness; // Hash of the witness data.
     string witnessTypestring; // Witness typestring appended to existing typestring.
-    BatchClaimComponent[] claims; // IDs, amounts, and claimants.
+    BatchClaimComponent[] claims; // IDs and amounts.
+    address claimant; // The claim recipient; specified by the arbiter.
 }
 
 struct QualifiedBatchClaimWithWitness {
@@ -64,7 +67,8 @@ struct QualifiedBatchClaimWithWitness {
     string witnessTypestring; // Witness typestring appended to existing typestring.
     bytes32 qualificationTypehash; // Typehash of the qualification payload.
     bytes qualificationPayload; // Data used to derive qualification hash.
-    BatchClaimComponent[] claims; // IDs, amounts, and claimants.
+    BatchClaimComponent[] claims; // IDs and amounts.
+    address claimant; // The claim recipient; specified by the arbiter.
 }
 
 struct SplitBatchClaim {

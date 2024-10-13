@@ -11,7 +11,8 @@ struct MultichainClaim {
     bytes sponsorSignature; // Authorization from the sponsor.
     uint256 chainIndex;
     bytes32[] otherChains;
-    BatchClaimComponent[] claims;
+    BatchClaimComponent[] claims; // IDs and amounts.
+    address claimant; // The claim recipient; specified by the arbiter.
 }
 
 struct QualifiedMultichainClaim {
@@ -24,7 +25,8 @@ struct QualifiedMultichainClaim {
     bytes qualificationPayload; // Data used to derive qualification hash.
     uint256 chainIndex;
     bytes32[] otherChains;
-    BatchClaimComponent[] claims;
+    BatchClaimComponent[] claims; // IDs and amounts.
+    address claimant; // The claim recipient; specified by the arbiter.
 }
 
 struct MultichainClaimWithWitness {
@@ -37,7 +39,8 @@ struct MultichainClaimWithWitness {
     string witnessTypestring; // Witness typestring appended to existing typestring.
     uint256 chainIndex;
     bytes32[] otherChains;
-    BatchClaimComponent[] claims;
+    BatchClaimComponent[] claims; // IDs and amounts.
+    address claimant; // The claim recipient; specified by the arbiter.
 }
 
 struct QualifiedMultichainClaimWithWitness {
@@ -52,7 +55,8 @@ struct QualifiedMultichainClaimWithWitness {
     bytes qualificationPayload; // Data used to derive qualification hash.
     uint256 chainIndex;
     bytes32[] otherChains;
-    BatchClaimComponent[] claims; // IDs, amounts, and claimants.
+    BatchClaimComponent[] claims; // IDs and amounts.
+    address claimant; // The claim recipient; specified by the arbiter.
 }
 
 struct SplitMultichainClaim {
@@ -116,7 +120,8 @@ struct ExogenousMultichainClaim {
     uint256 chainIndex;
     bytes32[] otherChains;
     uint256 notarizedChainId;
-    BatchClaimComponent[] claims;
+    BatchClaimComponent[] claims; // IDs and amounts.
+    address claimant; // The claim recipient; specified by the arbiter.
 }
 
 struct ExogenousQualifiedMultichainClaim {
@@ -130,7 +135,8 @@ struct ExogenousQualifiedMultichainClaim {
     uint256 chainIndex;
     bytes32[] otherChains;
     uint256 notarizedChainId;
-    BatchClaimComponent[] claims;
+    BatchClaimComponent[] claims; // IDs and amounts.
+    address claimant; // The claim recipient; specified by the arbiter.
 }
 
 struct ExogenousMultichainClaimWithWitness {
@@ -144,7 +150,8 @@ struct ExogenousMultichainClaimWithWitness {
     uint256 chainIndex;
     bytes32[] otherChains;
     uint256 notarizedChainId;
-    BatchClaimComponent[] claims;
+    BatchClaimComponent[] claims; // IDs and amounts.
+    address claimant; // The claim recipient; specified by the arbiter.
 }
 
 struct ExogenousQualifiedMultichainClaimWithWitness {
@@ -160,7 +167,8 @@ struct ExogenousQualifiedMultichainClaimWithWitness {
     uint256 chainIndex;
     bytes32[] otherChains;
     uint256 notarizedChainId;
-    BatchClaimComponent[] claims; // IDs, amounts, and claimants.
+    BatchClaimComponent[] claims; // IDs and amounts.
+    address claimant; // The claim recipient; specified by the arbiter.
 }
 
 struct ExogenousSplitMultichainClaim {
