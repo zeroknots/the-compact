@@ -75,4 +75,16 @@ library ValidityLib {
 
         return token;
     }
+
+    function withinAllocated(uint256 amount, uint256 allocatedAmount) internal pure {
+        assembly ("memory-safe") {
+            if lt(allocatedAmount, amount) {
+                // revert AllocatedAmountExceeded(allocatedAmount, amount);
+                mstore(0, 0x3078b2f6)
+                mstore(0x20, allocatedAmount)
+                mstore(0x40, amount)
+                revert(0x1c, 0x44)
+            }
+        }
+    }
 }

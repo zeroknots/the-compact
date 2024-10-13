@@ -641,9 +641,7 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         function(address, address, uint256, uint256) internal returns (bool) operation
     ) internal returns (bool) {
         claimPayload.expires.later();
-        if (claimPayload.allocatedAmount < claimPayload.amount) {
-            revert AllocatedAmountExceeded(claimPayload.allocatedAmount, claimPayload.amount);
-        }
+        claimPayload.amount.withinAllocated(claimPayload.allocatedAmount);
 
         address allocator = claimPayload.id.toRegisteredAllocatorWithConsumed(claimPayload.nonce);
 
@@ -670,9 +668,7 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         function(address, address, uint256, uint256) internal returns (bool) operation
     ) internal returns (bool) {
         claimPayload.expires.later();
-        if (claimPayload.allocatedAmount < claimPayload.amount) {
-            revert AllocatedAmountExceeded(claimPayload.allocatedAmount, claimPayload.amount);
-        }
+        claimPayload.amount.withinAllocated(claimPayload.allocatedAmount);
 
         address allocator = claimPayload.id.toRegisteredAllocatorWithConsumed(claimPayload.nonce);
 
@@ -701,9 +697,7 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         function(address, address, uint256, uint256) internal returns (bool) operation
     ) internal returns (bool) {
         claimPayload.expires.later();
-        if (claimPayload.allocatedAmount < claimPayload.amount) {
-            revert AllocatedAmountExceeded(claimPayload.allocatedAmount, claimPayload.amount);
-        }
+        claimPayload.amount.withinAllocated(claimPayload.allocatedAmount);
 
         address allocator = claimPayload.id.toRegisteredAllocatorWithConsumed(claimPayload.nonce);
 
@@ -730,9 +724,7 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         function(address, address, uint256, uint256) internal returns (bool) operation
     ) internal returns (bool) {
         claimPayload.expires.later();
-        if (claimPayload.allocatedAmount < claimPayload.amount) {
-            revert AllocatedAmountExceeded(claimPayload.allocatedAmount, claimPayload.amount);
-        }
+        claimPayload.amount.withinAllocated(claimPayload.allocatedAmount);
 
         address allocator = claimPayload.id.toRegisteredAllocatorWithConsumed(claimPayload.nonce);
 
@@ -804,9 +796,7 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         if (errorBuffer.asBool()) {
             for (uint256 i = 0; i < totalClaims; ++i) {
                 component = batchClaim.claims[i];
-                if (component.allocatedAmount < component.amount) {
-                    revert AllocatedAmountExceeded(component.allocatedAmount, component.amount);
-                }
+                component.amount.withinAllocated(component.allocatedAmount);
             }
 
             // TODO: extract more informative error by deriving the reason for the failure
