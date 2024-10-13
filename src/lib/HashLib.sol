@@ -134,13 +134,13 @@ library HashLib {
             let m := mload(0x40) // Grab the free memory pointer; memory will be left dirtied.
 
             mstore(m, COMPACT_TYPEHASH)
-            mstore(add(m, 0x20), caller())
+            mstore(add(m, 0x20), caller()) // arbiter: msg.sender
             calldatacopy(add(m, 0x40), add(claim, 0x40), 0xa0)
             messageHash := keccak256(m, 0xe0)
         }
     }
 
-    function toMessageHash(QualifiedClaim memory claim)
+    function toMessageHash(QualifiedClaim calldata claim)
         internal
         view
         returns (bytes32 messageHash, bytes32 qualificationMessageHash)
@@ -148,22 +148,22 @@ library HashLib {
         assembly ("memory-safe") {
             let m := mload(0x40) // Grab the free memory pointer; memory will be left dirtied.
 
-            // TODO: calldatacopy this whole chunk at once as part of calldata implementation
-            let sponsor := mload(claim)
-            let expires := mload(add(claim, 0x20))
-            let nonce := mload(add(claim, 0x40))
-
-            let id := mload(add(claim, 0x60))
-            let amount := mload(add(claim, 0x80))
-
             mstore(m, COMPACT_TYPEHASH)
-            mstore(add(m, 0x20), sponsor)
-            mstore(add(m, 0x40), expires)
-            mstore(add(m, 0x60), nonce)
-            mstore(add(m, 0x80), caller()) // arbiter: msg.sender
-            mstore(add(m, 0xa0), id)
-            mstore(add(m, 0xc0), amount)
+            mstore(add(m, 0x20), caller()) // arbiter: msg.sender
+            calldatacopy(add(m, 0x40), add(claim, 0x40), 0x60)
+            mstore(add(m, 0xa0), calldataload(add(claim, 0xe0)))
+            mstore(add(m, 0xc0), calldataload(add(claim, 0x100)))
             messageHash := keccak256(m, 0xe0)
+
+            let qualificationPayloadPtr := add(0x24, calldataload(add(claim, 0xc0)))
+
+            mstore(m, calldataload(add(claim, 0xa0)))
+            mstore(add(m, 0x20), messageHash)
+            calldatacopy(
+                add(m, 0x40),
+                add(0x20, qualificationPayloadPtr),
+                calldataload(qualificationPayloadPtr)
+            )
         }
 
         // TODO: optimize once we're using calldata
