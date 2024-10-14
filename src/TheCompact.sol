@@ -424,17 +424,6 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         return _processQualifiedClaimWithWitness(claimPayload, _withdraw);
     }
 
-    function claim(QualifiedSplitClaimWithWitness calldata claimPayload) external returns (bool) {
-        return _processQualifiedSplitClaimWithWitness(claimPayload, _release);
-    }
-
-    function claimAndWithdraw(QualifiedSplitClaimWithWitness calldata claimPayload)
-        external
-        returns (bool)
-    {
-        return _processQualifiedSplitClaimWithWitness(claimPayload, _withdraw);
-    }
-
     function claim(SplitClaim calldata claimPayload) external returns (bool) {
         return _processSplitClaim(claimPayload, _release);
     }
@@ -460,6 +449,17 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         returns (bool)
     {
         return _processSplitClaimWithWitness(claimPayload, _withdraw);
+    }
+
+    function claim(QualifiedSplitClaimWithWitness calldata claimPayload) external returns (bool) {
+        return _processQualifiedSplitClaimWithWitness(claimPayload, _release);
+    }
+
+    function claimAndWithdraw(QualifiedSplitClaimWithWitness calldata claimPayload)
+        external
+        returns (bool)
+    {
+        return _processQualifiedSplitClaimWithWitness(claimPayload, _withdraw);
     }
 
     function claim(BatchClaim calldata claimPayload) external returns (bool) {
