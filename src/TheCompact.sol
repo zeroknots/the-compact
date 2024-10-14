@@ -629,6 +629,25 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         );
     }
 
+    // NOTE: this function assumes that there's at least one array element
+    function _notExpiredAndWithValidSignaturesBatch(BatchClaim calldata claimPayload)
+        internal
+        returns (bytes32 messageHash, uint96 allocatorId)
+    {
+        claimPayload.expires.later();
+
+        allocatorId = claimPayload.claims[0].id.toAllocatorId();
+
+        messageHash = claimPayload.toMessageHash();
+        bytes32 domainSeparator = _INITIAL_DOMAIN_SEPARATOR.toLatest(_INITIAL_CHAIN_ID);
+        messageHash.signedBy(claimPayload.sponsor, claimPayload.sponsorSignature, domainSeparator);
+        messageHash.signedBy(
+            allocatorId.fromRegisteredAllocatorIdWithConsumed(claimPayload.nonce),
+            claimPayload.allocatorSignature,
+            domainSeparator
+        );
+    }
+
     function _notExpiredAndWithValidSignaturesQualified(QualifiedClaim calldata claimPayload)
         internal
         returns (bytes32 messageHash)
@@ -997,57 +1016,40 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         );
     }
 
-    function _processBatchClaim(
-        BatchClaim calldata batchClaim,
+    function _verifyAndProcessBatchComponents(
+        uint96 allocatorId,
+        address sponsor,
+        address claimant,
+        bytes32 messageHash,
+        BatchClaimComponent[] calldata claims,
         function(address, address, uint256, uint256) internal returns (bool) operation
     ) internal returns (bool) {
-        batchClaim.expires.later();
-
-        uint256 totalClaims = batchClaim.claims.length;
+        uint256 totalClaims = claims.length;
         if (totalClaims == 0) {
             revert InvalidBatchAllocation();
         }
 
-        // TODO: skip the bounds check on this array access
-        uint96 allocatorId = batchClaim.claims[0].id.toAllocatorId();
-
-        address allocator = allocatorId.fromRegisteredAllocatorIdWithConsumed(batchClaim.nonce);
-
-        bytes32 messageHash = batchClaim.toMessageHash();
-        bytes32 domainSeparator = _INITIAL_DOMAIN_SEPARATOR.toLatest(_INITIAL_CHAIN_ID);
-        messageHash.signedBy(batchClaim.sponsor, batchClaim.sponsorSignature, domainSeparator);
-        messageHash.signedBy(allocator, batchClaim.allocatorSignature, domainSeparator);
-
         // TODO: many of the bounds checks on these array accesses can be skipped as an optimization
-        BatchClaimComponent memory component = batchClaim.claims[0];
+        BatchClaimComponent calldata component = claims[0];
         uint256 errorBuffer = (component.allocatedAmount < component.amount).asUint256();
-        uint256 id = component.id;
 
-        _emitAndOperate(
-            batchClaim.sponsor, batchClaim.claimant, id, messageHash, component.amount, operation
-        );
+        _emitAndOperate(sponsor, claimant, component.id, messageHash, component.amount, operation);
 
         unchecked {
             for (uint256 i = 1; i < totalClaims; ++i) {
-                component = batchClaim.claims[i];
-                id = component.id;
-                errorBuffer |= (id.toAllocatorId() != allocatorId).or(
+                component = claims[i];
+                errorBuffer |= (component.id.toAllocatorId() != allocatorId).or(
                     component.allocatedAmount < component.amount
                 ).asUint256();
 
                 _emitAndOperate(
-                    batchClaim.sponsor,
-                    batchClaim.claimant,
-                    id,
-                    messageHash,
-                    component.amount,
-                    operation
+                    sponsor, claimant, component.id, messageHash, component.amount, operation
                 );
             }
         }
         if (errorBuffer.asBool()) {
             for (uint256 i = 0; i < totalClaims; ++i) {
-                component = batchClaim.claims[i];
+                component = claims[i];
                 component.amount.withinAllocated(component.allocatedAmount);
             }
 
@@ -1056,6 +1058,23 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         }
 
         return true;
+    }
+
+    function _processBatchClaim(
+        BatchClaim calldata batchClaim,
+        function(address, address, uint256, uint256) internal returns (bool) operation
+    ) internal returns (bool) {
+        (bytes32 messageHash, uint96 allocatorId) =
+            _notExpiredAndWithValidSignaturesBatch(batchClaim);
+
+        return _verifyAndProcessBatchComponents(
+            allocatorId,
+            batchClaim.sponsor,
+            batchClaim.claimant,
+            messageHash,
+            batchClaim.claims,
+            operation
+        );
     }
 
     function _processBatchPermit2Deposits(
