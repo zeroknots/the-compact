@@ -432,6 +432,14 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         return _processSplitClaim(claimPayload, _withdraw);
     }
 
+    function claim(QualifiedSplitClaim calldata claimPayload) external returns (bool) {
+        return _processQualifiedSplitClaim(claimPayload, _release);
+    }
+
+    function claimAndWithdraw(QualifiedSplitClaim calldata claimPayload) external returns (bool) {
+        return _processQualifiedSplitClaim(claimPayload, _withdraw);
+    }
+
     function claim(BatchClaim calldata claimPayload) external returns (bool) {
         return _processBatchClaim(claimPayload, _release);
     }
@@ -704,37 +712,28 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         );
     }
 
-    function _processSplitClaim(
-        SplitClaim calldata claimPayload,
+    function _verifyAndProcessSplitComponents(
+        address sponsor,
+        bytes32 messageHash,
+        uint256 id,
+        uint256 allocatedAmount,
+        SplitComponent[] calldata claimants,
         function(address, address, uint256, uint256) internal returns (bool) operation
     ) internal returns (bool) {
-        claimPayload.expires.later();
-
-        uint256 id = claimPayload.id;
-        address allocator = id.toRegisteredAllocatorWithConsumed(claimPayload.nonce);
-
-        bytes32 messageHash = claimPayload.toMessageHash();
-        bytes32 domainSeparator = _INITIAL_DOMAIN_SEPARATOR.toLatest(_INITIAL_CHAIN_ID);
-        messageHash.signedBy(claimPayload.sponsor, claimPayload.sponsorSignature, domainSeparator);
-        messageHash.signedBy(allocator, claimPayload.allocatorSignature, domainSeparator);
-
-        uint256 totalClaims = claimPayload.claimants.length;
-        uint256 allocatedAmount = claimPayload.allocatedAmount;
+        uint256 totalClaims = claimants.length;
         uint256 spentAmount = 0;
         uint256 errorBuffer = (totalClaims == 0).asUint256();
 
         unchecked {
             for (uint256 i = 0; i < totalClaims; ++i) {
-                SplitComponent calldata component = claimPayload.claimants[i];
+                SplitComponent calldata component = claimants[i];
                 uint256 amount = component.amount;
 
                 uint256 updatedSpentAmount = amount + spentAmount;
                 errorBuffer |= (updatedSpentAmount < spentAmount).asUint256();
                 spentAmount = updatedSpentAmount;
 
-                emitAndOperate(
-                    claimPayload.sponsor, component.claimant, id, messageHash, amount, operation
-                );
+                emitAndOperate(sponsor, component.claimant, id, messageHash, amount, operation);
             }
         }
 
@@ -750,6 +749,30 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         }
 
         return true;
+    }
+
+    function _processSplitClaim(
+        SplitClaim calldata claimPayload,
+        function(address, address, uint256, uint256) internal returns (bool) operation
+    ) internal returns (bool) {
+        claimPayload.expires.later();
+
+        uint256 id = claimPayload.id;
+        address allocator = id.toRegisteredAllocatorWithConsumed(claimPayload.nonce);
+
+        bytes32 messageHash = claimPayload.toMessageHash();
+        bytes32 domainSeparator = _INITIAL_DOMAIN_SEPARATOR.toLatest(_INITIAL_CHAIN_ID);
+        messageHash.signedBy(claimPayload.sponsor, claimPayload.sponsorSignature, domainSeparator);
+        messageHash.signedBy(allocator, claimPayload.allocatorSignature, domainSeparator);
+
+        return _verifyAndProcessSplitComponents(
+            claimPayload.sponsor,
+            messageHash,
+            id,
+            claimPayload.allocatedAmount,
+            claimPayload.claimants,
+            operation
+        );
     }
 
     function _processQualifiedClaim(
@@ -774,6 +797,32 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
             claimPayload.id,
             messageHash,
             claimPayload.amount,
+            operation
+        );
+    }
+
+    function _processQualifiedSplitClaim(
+        QualifiedSplitClaim calldata claimPayload,
+        function(address, address, uint256, uint256) internal returns (bool) operation
+    ) internal returns (bool) {
+        claimPayload.expires.later();
+
+        uint256 id = claimPayload.id;
+        address allocator = id.toRegisteredAllocatorWithConsumed(claimPayload.nonce);
+
+        (bytes32 messageHash, bytes32 qualificationMessageHash) = claimPayload.toMessageHash();
+        bytes32 domainSeparator = _INITIAL_DOMAIN_SEPARATOR.toLatest(_INITIAL_CHAIN_ID);
+        messageHash.signedBy(claimPayload.sponsor, claimPayload.sponsorSignature, domainSeparator);
+        qualificationMessageHash.signedBy(
+            allocator, claimPayload.allocatorSignature, domainSeparator
+        );
+
+        return _verifyAndProcessSplitComponents(
+            claimPayload.sponsor,
+            messageHash,
+            id,
+            claimPayload.allocatedAmount,
+            claimPayload.claimants,
             operation
         );
     }

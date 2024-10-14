@@ -16,7 +16,8 @@ import {
     QualifiedClaim,
     ClaimWithWitness,
     QualifiedClaimWithWitness,
-    SplitClaim
+    SplitClaim,
+    QualifiedSplitClaim
 } from "../src/types/Claims.sol";
 import { BatchTransfer, SplitBatchTransfer, BatchClaim } from "../src/types/BatchClaims.sol";
 
@@ -40,8 +41,6 @@ contract TheCompactTest is Test {
     address swapper;
     uint256 allocatorPrivateKey;
     address allocator;
-    address dummyOracle;
-    address dummyBatchOracle;
     bytes32 compactEIP712DomainHash = keccak256(
         "EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"
     );
@@ -49,31 +48,6 @@ contract TheCompactTest is Test {
         keccak256("EIP712Domain(string name,uint256 chainId,address verifyingContract)");
 
     function setUp() public {
-        address deployedDummyOracle;
-        address deployedDummyBatchOracle;
-        assembly {
-            // deploy a contract that always returns one word of 0's followed by one word of f's
-            // minimal "constructor" 0x600b5981380380925939f3... (11 bytes)
-            // runtime code (9 bytes):
-            // Op       Opcode Name     Stack
-            // 60 40	PUSH1 0x40	    [0x40]
-            // 3D	    RETURNDATASIZE	[0, 0x40]
-            // 3D	    RETURNDATASIZE	[0, 0, 0x40]
-            // 19	    NOT	            [type(uint256).max, 0, 0x40]
-            // 60 20    PUSH1 0x20	    [0x20, type(uint256).max, 0, 0x40]
-            // 52	    MSTORE	        [0, 0x40] (Memory at 0x20 set to type(uint256).max)
-            // F3	    RETURN	        [] (Returns 0x40 bytes from memory starting at 0x00)
-            mstore(0, 0x600b5981380380925939f360403d3d19602052f3)
-            deployedDummyOracle := create(0, 12, 20)
-
-            // and this one returns [0, 0x40, 3, 0xfff, 0xfff, 0xfff]
-            mstore(0, 0x600b598138038092)
-            mstore(0x20, 0x5939f360c03d60406020600360403d1960603d1960803d1960a05252525252f3)
-            deployedDummyBatchOracle := create(0, 24, 40)
-        }
-        dummyOracle = deployedDummyOracle;
-        dummyBatchOracle = deployedDummyBatchOracle;
-
         address permit2Deployer = address(0x4e59b44847b379578588920cA78FbF26c0B4956C);
         address deployedPermit2Deployer;
         address permit2DeployerDeployer = address(0x3fAB184622Dc19b6109349B94811493BF2a45362);
@@ -1148,6 +1122,96 @@ contract TheCompactTest is Test {
 
         SplitClaim memory claim = SplitClaim(
             allocatorSignature, sponsorSignature, swapper, nonce, expires, id, amount, recipients
+        );
+
+        vm.prank(arbiter);
+        (bool status) = theCompact.claim(claim);
+        assert(status);
+
+        assertEq(address(theCompact).balance, amount);
+        assertEq(recipientOne.balance, 0);
+        assertEq(recipientTwo.balance, 0);
+        assertEq(theCompact.balanceOf(swapper, id), 0);
+        assertEq(theCompact.balanceOf(recipientOne, id), amountOne);
+        assertEq(theCompact.balanceOf(recipientTwo, id), amountTwo);
+    }
+
+    function test_qualifiedSplitClaim() public {
+        ResetPeriod resetPeriod = ResetPeriod.TenMinutes;
+        Scope scope = Scope.Multichain;
+        uint256 amount = 1e18;
+        uint256 nonce = 0;
+        uint256 expires = block.timestamp + 1000;
+        address arbiter = 0x2222222222222222222222222222222222222222;
+        address recipientOne = 0x1111111111111111111111111111111111111111;
+        address recipientTwo = 0x3333333333333333333333333333333333333333;
+        uint256 amountOne = 4e17;
+        uint256 amountTwo = 6e17;
+
+        vm.prank(allocator);
+        theCompact.__register(allocator, "");
+
+        vm.prank(swapper);
+        uint256 id = theCompact.deposit{ value: amount }(allocator, resetPeriod, scope, swapper);
+        assertEq(theCompact.balanceOf(swapper, id), amount);
+
+        bytes32 claimHash = keccak256(
+            abi.encode(
+                keccak256(
+                    "Compact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256 id,uint256 amount)"
+                ),
+                arbiter,
+                swapper,
+                nonce,
+                expires,
+                id,
+                amount
+            )
+        );
+
+        bytes32 qualificationTypehash =
+            keccak256("ExampleQualifiedClaim(bytes32 claimHash,uint256 qualifiedClaimArgument)");
+
+        uint256 qualifiedClaimArgument = 123;
+        bytes memory qualificationPayload = abi.encode(qualifiedClaimArgument);
+
+        bytes32 qualifiedClaimHash =
+            keccak256(abi.encode(qualificationTypehash, claimHash, qualifiedClaimArgument));
+
+        bytes32 digest =
+            keccak256(abi.encodePacked(bytes2(0x1901), theCompact.DOMAIN_SEPARATOR(), claimHash));
+
+        (bytes32 r, bytes32 vs) = vm.signCompact(swapperPrivateKey, digest);
+        bytes memory sponsorSignature = abi.encodePacked(r, vs);
+
+        digest = keccak256(
+            abi.encodePacked(bytes2(0x1901), theCompact.DOMAIN_SEPARATOR(), qualifiedClaimHash)
+        );
+
+        (r, vs) = vm.signCompact(allocatorPrivateKey, digest);
+        bytes memory allocatorSignature = abi.encodePacked(r, vs);
+
+        SplitComponent memory splitOne =
+            SplitComponent({ claimant: recipientOne, amount: amountOne });
+
+        SplitComponent memory splitTwo =
+            SplitComponent({ claimant: recipientTwo, amount: amountTwo });
+
+        SplitComponent[] memory recipients = new SplitComponent[](2);
+        recipients[0] = splitOne;
+        recipients[1] = splitTwo;
+
+        QualifiedSplitClaim memory claim = QualifiedSplitClaim(
+            allocatorSignature,
+            sponsorSignature,
+            swapper,
+            nonce,
+            expires,
+            qualificationTypehash,
+            qualificationPayload,
+            id,
+            amount,
+            recipients
         );
 
         vm.prank(arbiter);
