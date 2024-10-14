@@ -71,6 +71,8 @@ import {
     ExogenousQualifiedSplitMultichainClaimWithWitness
 } from "../types/MultichainClaims.sol";
 
+import { BatchClaimComponent } from "../types/Components.sol";
+
 import { ResetPeriod } from "../types/ResetPeriod.sol";
 import { Scope } from "../types/Scope.sol";
 
@@ -347,13 +349,21 @@ library HashLib {
             _usingSplitBatchTransfer(_deriveBatchCompactMessageHash)(transfer, idsAndAmountsHash);
     }
 
-    function toMessageHash(BatchClaim calldata claim) internal view returns (bytes32 messageHash) {
-        // TODO: make this more efficient especially once using calldata
-        uint256[2][] memory idsAndAmounts = new uint256[2][](claim.claims.length);
-        for (uint256 i = 0; i < claim.claims.length; ++i) {
-            idsAndAmounts[i] = [claim.claims[i].id, claim.claims[i].allocatedAmount];
+    function toIdsAndAmountsHash(BatchClaimComponent[] calldata claims)
+        internal
+        pure
+        returns (bytes32 idsAndAmountsHash)
+    {
+        // TODO: make this more efficient ASAP
+        uint256[2][] memory idsAndAmounts = new uint256[2][](claims.length);
+        for (uint256 i = 0; i < claims.length; ++i) {
+            idsAndAmounts[i] = [claims[i].id, claims[i].allocatedAmount];
         }
-        bytes32 idsAndAmountsHash = keccak256(abi.encodePacked(idsAndAmounts));
+        idsAndAmountsHash = keccak256(abi.encodePacked(idsAndAmounts));
+    }
+
+    function toMessageHash(BatchClaim calldata claim) internal view returns (bytes32 messageHash) {
+        bytes32 idsAndAmountsHash = toIdsAndAmountsHash(claim.claims);
 
         assembly ("memory-safe") {
             let m := mload(0x40) // Grab the free memory pointer; memory will be left dirtied.
@@ -371,12 +381,7 @@ library HashLib {
         view
         returns (bytes32 messageHash, bytes32 qualificationMessageHash)
     {
-        // TODO: make this more efficient especially once using calldata
-        uint256[2][] memory idsAndAmounts = new uint256[2][](claim.claims.length);
-        for (uint256 i = 0; i < claim.claims.length; ++i) {
-            idsAndAmounts[i] = [claim.claims[i].id, claim.claims[i].allocatedAmount];
-        }
-        bytes32 idsAndAmountsHash = keccak256(abi.encodePacked(idsAndAmounts));
+        bytes32 idsAndAmountsHash = toIdsAndAmountsHash(claim.claims);
 
         assembly ("memory-safe") {
             let m := mload(0x40) // Grab the free memory pointer; memory will be left dirtied.
