@@ -424,6 +424,17 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         return _processQualifiedClaimWithWitness(claimPayload, _withdraw);
     }
 
+    function claim(QualifiedSplitClaimWithWitness calldata claimPayload) external returns (bool) {
+        return _processQualifiedSplitClaimWithWitness(claimPayload, _release);
+    }
+
+    function claimAndWithdraw(QualifiedSplitClaimWithWitness calldata claimPayload)
+        external
+        returns (bool)
+    {
+        return _processQualifiedSplitClaimWithWitness(claimPayload, _withdraw);
+    }
+
     function claim(SplitClaim calldata claimPayload) external returns (bool) {
         return _processSplitClaim(claimPayload, _release);
     }
@@ -651,6 +662,34 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         );
     }
 
+    function _notExpiredAndWithValidSignaturesQualifiedWithWitness(
+        QualifiedClaimWithWitness calldata claimPayload
+    ) internal returns (bytes32 messageHash) {
+        bytes32 qualificationMessageHash;
+        claimPayload.expires.later();
+
+        (messageHash, qualificationMessageHash) = claimPayload.toMessageHash();
+        bytes32 domainSeparator = _INITIAL_DOMAIN_SEPARATOR.toLatest(_INITIAL_CHAIN_ID);
+        messageHash.signedBy(claimPayload.sponsor, claimPayload.sponsorSignature, domainSeparator);
+        qualificationMessageHash.signedBy(
+            claimPayload.id.toRegisteredAllocatorWithConsumed(claimPayload.nonce),
+            claimPayload.allocatorSignature,
+            domainSeparator
+        );
+    }
+
+    function _usingSplitClaimQualifiedWithWitness(
+        function(QualifiedClaimWithWitness calldata) internal returns (bytes32) fnIn
+    )
+        internal
+        pure
+        returns (function(QualifiedSplitClaimWithWitness calldata) internal returns (bytes32) fnOut)
+    {
+        assembly {
+            fnOut := fnIn
+        }
+    }
+
     function _usingSplitClaimWithWitness(
         function(ClaimWithWitness calldata) internal returns (bytes32) fnIn
     )
@@ -790,7 +829,7 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
 
         claimPayload.amount.withinAllocated(claimPayload.allocatedAmount);
 
-        return emitAndOperate(
+        return _emitAndOperate(
             claimPayload.sponsor,
             claimPayload.claimant,
             claimPayload.id,
@@ -821,7 +860,7 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
                 errorBuffer |= (updatedSpentAmount < spentAmount).asUint256();
                 spentAmount = updatedSpentAmount;
 
-                emitAndOperate(sponsor, component.claimant, id, messageHash, amount, operation);
+                _emitAndOperate(sponsor, component.claimant, id, messageHash, amount, operation);
             }
         }
 
@@ -859,7 +898,7 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
     ) internal returns (bool) {
         claimPayload.amount.withinAllocated(claimPayload.allocatedAmount);
 
-        return emitAndOperate(
+        return _emitAndOperate(
             claimPayload.sponsor,
             claimPayload.claimant,
             claimPayload.id,
@@ -889,7 +928,7 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
     ) internal returns (bool) {
         claimPayload.amount.withinAllocated(claimPayload.allocatedAmount);
 
-        return emitAndOperate(
+        return _emitAndOperate(
             claimPayload.sponsor,
             claimPayload.claimant,
             claimPayload.id,
@@ -913,7 +952,7 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         );
     }
 
-    function emitAndOperate(
+    function _emitAndOperate(
         address sponsor,
         address claimant,
         uint256 id,
@@ -930,24 +969,30 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         QualifiedClaimWithWitness calldata claimPayload,
         function(address, address, uint256, uint256) internal returns (bool) operation
     ) internal returns (bool) {
-        claimPayload.expires.later();
         claimPayload.amount.withinAllocated(claimPayload.allocatedAmount);
 
-        address allocator = claimPayload.id.toRegisteredAllocatorWithConsumed(claimPayload.nonce);
-
-        (bytes32 messageHash, bytes32 qualificationMessageHash) = claimPayload.toMessageHash();
-        bytes32 domainSeparator = _INITIAL_DOMAIN_SEPARATOR.toLatest(_INITIAL_CHAIN_ID);
-        messageHash.signedBy(claimPayload.sponsor, claimPayload.sponsorSignature, domainSeparator);
-        qualificationMessageHash.signedBy(
-            allocator, claimPayload.allocatorSignature, domainSeparator
-        );
-
-        return emitAndOperate(
+        return _emitAndOperate(
             claimPayload.sponsor,
             claimPayload.claimant,
             claimPayload.id,
-            messageHash,
+            _notExpiredAndWithValidSignaturesQualifiedWithWitness(claimPayload),
             claimPayload.amount,
+            operation
+        );
+    }
+
+    function _processQualifiedSplitClaimWithWitness(
+        QualifiedSplitClaimWithWitness calldata claimPayload,
+        function(address, address, uint256, uint256) internal returns (bool) operation
+    ) internal returns (bool) {
+        return _verifyAndProcessSplitComponents(
+            claimPayload.sponsor,
+            _usingSplitClaimQualifiedWithWitness(
+                _notExpiredAndWithValidSignaturesQualifiedWithWitness
+            )(claimPayload),
+            claimPayload.id,
+            claimPayload.allocatedAmount,
+            claimPayload.claimants,
             operation
         );
     }
@@ -978,7 +1023,7 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         uint256 errorBuffer = (component.allocatedAmount < component.amount).asUint256();
         uint256 id = component.id;
 
-        emitAndOperate(
+        _emitAndOperate(
             batchClaim.sponsor, batchClaim.claimant, id, messageHash, component.amount, operation
         );
 
@@ -990,7 +1035,7 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
                     component.allocatedAmount < component.amount
                 ).asUint256();
 
-                emitAndOperate(
+                _emitAndOperate(
                     batchClaim.sponsor,
                     batchClaim.claimant,
                     id,

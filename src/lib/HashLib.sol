@@ -281,118 +281,6 @@ library HashLib {
             usingQualifiedClaimWithWitness(toQualificationMessageHash)(claim, messageHash, 0x40);
     }
 
-    function toMessageHash(SplitClaim calldata claim) internal view returns (bytes32 messageHash) {
-        assembly ("memory-safe") {
-            let m := mload(0x40) // Grab the free memory pointer; memory will be left dirtied.
-
-            mstore(m, COMPACT_TYPEHASH)
-            mstore(add(m, 0x20), caller()) // arbiter: msg.sender
-            calldatacopy(add(m, 0x40), add(claim, 0x40), 0xa0) // sponsor, nonce, expires, id, amount
-            messageHash := keccak256(m, 0xe0)
-        }
-    }
-
-    function toMessageHash(SplitClaimWithWitness memory claim)
-        internal
-        view
-        returns (bytes32 messageHash)
-    {
-        // derive the typehash (TODO: make this more efficient especially once using calldata)
-        bytes32 typehash = keccak256(
-            abi.encodePacked(
-                COMPACT_TYPESTRING_FRAGMENT_ONE,
-                COMPACT_TYPESTRING_FRAGMENT_TWO,
-                COMPACT_TYPESTRING_FRAGMENT_THREE,
-                claim.witnessTypestring
-            )
-        );
-        bytes32 witness = claim.witness;
-
-        assembly ("memory-safe") {
-            let m := mload(0x40) // Grab the free memory pointer; memory will be left dirtied.
-
-            // TODO: calldatacopy this whole chunk at once as part of calldata implementation
-            let sponsor := mload(claim)
-            let expires := mload(add(claim, 0x20))
-            let nonce := mload(add(claim, 0x40))
-            let id := mload(add(claim, 0x60))
-            let allocatedAmount := mload(add(claim, 0x80))
-
-            mstore(m, typehash)
-            mstore(add(m, 0x20), sponsor)
-            mstore(add(m, 0x40), expires)
-            mstore(add(m, 0x60), nonce)
-            mstore(add(m, 0x80), caller()) // arbiter: msg.sender
-            mstore(add(m, 0xa0), id)
-            mstore(add(m, 0xc0), allocatedAmount)
-            mstore(add(m, 0xc0), witness)
-            messageHash := keccak256(m, 0x100)
-        }
-    }
-
-    function toMessageHash(QualifiedSplitClaim calldata claim)
-        internal
-        view
-        returns (bytes32 messageHash, bytes32 qualificationMessageHash)
-    {
-        assembly ("memory-safe") {
-            let m := mload(0x40) // Grab the free memory pointer; memory will be left dirtied.
-
-            mstore(m, COMPACT_TYPEHASH)
-            mstore(add(m, 0x20), caller()) // arbiter: msg.sender
-            calldatacopy(add(m, 0x40), add(claim, 0x40), 0x60) // sponsor, nonce, expires
-            mstore(add(m, 0xa0), calldataload(add(claim, 0xe0)))
-            mstore(add(m, 0xc0), calldataload(add(claim, 0x100)))
-            messageHash := keccak256(m, 0xe0)
-        }
-
-        qualificationMessageHash =
-            usingQualifiedSplitClaim(toQualificationMessageHash)(claim, messageHash, 0);
-    }
-
-    function toMessageHash(QualifiedSplitClaimWithWitness memory claim)
-        internal
-        view
-        returns (bytes32 messageHash, bytes32 qualificationMessageHash)
-    {
-        // derive the typehash (TODO: make this more efficient especially once using calldata)
-        bytes32 typehash = keccak256(
-            abi.encodePacked(
-                COMPACT_TYPESTRING_FRAGMENT_ONE,
-                COMPACT_TYPESTRING_FRAGMENT_TWO,
-                COMPACT_TYPESTRING_FRAGMENT_THREE,
-                claim.witnessTypestring
-            )
-        );
-        bytes32 witness = claim.witness;
-
-        assembly ("memory-safe") {
-            let m := mload(0x40) // Grab the free memory pointer; memory will be left dirtied.
-
-            // TODO: calldatacopy this whole chunk at once as part of calldata implementation
-            let sponsor := mload(claim)
-            let expires := mload(add(claim, 0x20))
-            let nonce := mload(add(claim, 0x40))
-            let id := mload(add(claim, 0x60))
-            let allocatedAmount := mload(add(claim, 0x80))
-
-            mstore(m, typehash)
-            mstore(add(m, 0x20), sponsor)
-            mstore(add(m, 0x40), expires)
-            mstore(add(m, 0x60), nonce)
-            mstore(add(m, 0x80), caller()) // arbiter: msg.sender
-            mstore(add(m, 0xa0), id)
-            mstore(add(m, 0xc0), allocatedAmount)
-            mstore(add(m, 0xc0), witness)
-            messageHash := keccak256(m, 0x100)
-        }
-
-        // TODO: optimize once we're using calldata
-        qualificationMessageHash = keccak256(
-            abi.encodePacked(claim.qualificationTypehash, messageHash, claim.qualificationPayload)
-        );
-    }
-
     function toMessageHash(BatchTransfer calldata transfer)
         internal
         view
@@ -405,6 +293,13 @@ library HashLib {
         }
         bytes32 idsAndAmountsHash = keccak256(abi.encodePacked(idsAndAmounts));
 
+        messageHash = _deriveBatchCompactMessageHash(transfer, idsAndAmountsHash);
+    }
+
+    function _deriveBatchCompactMessageHash(
+        BatchTransfer calldata transfer,
+        bytes32 idsAndAmountsHash
+    ) internal view returns (bytes32 messageHash) {
         assembly ("memory-safe") {
             let m := mload(0x40) // Grab the free memory pointer; memory will be left dirtied.
 
@@ -415,6 +310,20 @@ library HashLib {
             mstore(add(m, 0x80), calldataload(add(transfer, 0x40))) // expires
             mstore(add(m, 0xa0), idsAndAmountsHash)
             messageHash := keccak256(m, 0xc0)
+        }
+    }
+
+    function _usingSplitBatchTransfer(
+        function(BatchTransfer calldata, bytes32) internal view returns (bytes32) fnIn
+    )
+        internal
+        pure
+        returns (
+            function(SplitBatchTransfer calldata, bytes32) internal view returns (bytes32) fnOut
+        )
+    {
+        assembly {
+            fnOut := fnIn
         }
     }
 
@@ -434,17 +343,8 @@ library HashLib {
         }
         bytes32 idsAndAmountsHash = keccak256(abi.encodePacked(idsAndAmounts));
 
-        assembly ("memory-safe") {
-            let m := mload(0x40) // Grab the free memory pointer; memory will be left dirtied.
-
-            mstore(m, BATCH_COMPACT_TYPEHASH)
-            mstore(add(m, 0x20), caller()) // arbiter: msg.sender
-            mstore(add(m, 0x40), caller()) // sponsor: msg.sender
-            mstore(add(m, 0x60), calldataload(add(transfer, 0x20))) // nonce
-            mstore(add(m, 0x80), calldataload(add(transfer, 0x40))) // expires
-            mstore(add(m, 0xa0), idsAndAmountsHash)
-            messageHash := keccak256(m, 0xc0)
-        }
+        messageHash =
+            _usingSplitBatchTransfer(_deriveBatchCompactMessageHash)(transfer, idsAndAmountsHash);
     }
 
     function toMessageHash(BatchClaim calldata claim) internal view returns (bytes32 messageHash) {
