@@ -470,6 +470,14 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         return _processBatchClaim(claimPayload, _release);
     }
 
+    function claim(QualifiedBatchClaim calldata claimPayload) external returns (bool) {
+        return _processQualifiedBatchClaim(claimPayload, _release);
+    }
+
+    function claimAndWithdraw(QualifiedBatchClaim calldata claimPayload) external returns (bool) {
+        return _processQualifiedBatchClaim(claimPayload, _release);
+    }
+
     function enableForcedWithdrawal(uint256 id) external returns (uint256 withdrawableAt) {
         withdrawableAt = block.timestamp + id.toResetPeriod().toSeconds();
 
@@ -629,7 +637,7 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         );
     }
 
-    // NOTE: this function assumes that there's at least one array element
+    // NOTE: this function expects that there's at least one array element
     function _notExpiredAndWithValidSignaturesBatch(BatchClaim calldata claimPayload)
         internal
         returns (bytes32 messageHash, uint96 allocatorId)
@@ -642,6 +650,25 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         bytes32 domainSeparator = _INITIAL_DOMAIN_SEPARATOR.toLatest(_INITIAL_CHAIN_ID);
         messageHash.signedBy(claimPayload.sponsor, claimPayload.sponsorSignature, domainSeparator);
         messageHash.signedBy(
+            allocatorId.fromRegisteredAllocatorIdWithConsumed(claimPayload.nonce),
+            claimPayload.allocatorSignature,
+            domainSeparator
+        );
+    }
+
+    // NOTE: this function expects that there's at least one array element
+    function _notExpiredAndWithValidSignaturesQualifiedBatch(
+        QualifiedBatchClaim calldata claimPayload
+    ) internal returns (bytes32 messageHash, uint96 allocatorId) {
+        bytes32 qualificationMessageHash;
+        claimPayload.expires.later();
+
+        allocatorId = claimPayload.claims[0].id.toAllocatorId();
+
+        (messageHash, qualificationMessageHash) = claimPayload.toMessageHash();
+        bytes32 domainSeparator = _INITIAL_DOMAIN_SEPARATOR.toLatest(_INITIAL_CHAIN_ID);
+        messageHash.signedBy(claimPayload.sponsor, claimPayload.sponsorSignature, domainSeparator);
+        qualificationMessageHash.signedBy(
             allocatorId.fromRegisteredAllocatorIdWithConsumed(claimPayload.nonce),
             claimPayload.allocatorSignature,
             domainSeparator
@@ -1066,6 +1093,23 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
     ) internal returns (bool) {
         (bytes32 messageHash, uint96 allocatorId) =
             _notExpiredAndWithValidSignaturesBatch(batchClaim);
+
+        return _verifyAndProcessBatchComponents(
+            allocatorId,
+            batchClaim.sponsor,
+            batchClaim.claimant,
+            messageHash,
+            batchClaim.claims,
+            operation
+        );
+    }
+
+    function _processQualifiedBatchClaim(
+        QualifiedBatchClaim calldata batchClaim,
+        function(address, address, uint256, uint256) internal returns (bool) operation
+    ) internal returns (bool) {
+        (bytes32 messageHash, uint96 allocatorId) =
+            _notExpiredAndWithValidSignaturesQualifiedBatch(batchClaim);
 
         return _verifyAndProcessBatchComponents(
             allocatorId,

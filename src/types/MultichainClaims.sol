@@ -4,11 +4,11 @@ pragma solidity ^0.8.27;
 import { BatchClaimComponent, SplitBatchClaimComponent } from "./Components.sol";
 
 struct MultichainClaim {
+    bytes allocatorSignature; // Authorization from the allocator.
+    bytes sponsorSignature; // Authorization from the sponsor.
+    address sponsor; // The account to source the tokens from.
     uint256 nonce; // A parameter to enforce replay protection, scoped to allocator.
     uint256 expires; // The time at which the claim expires.
-    bytes allocatorSignature; // Authorization from the allocator.
-    address sponsor; // The account to source the tokens from.
-    bytes sponsorSignature; // Authorization from the sponsor.
     uint256 chainIndex;
     bytes32[] otherChains;
     BatchClaimComponent[] claims; // IDs and amounts.
@@ -16,11 +16,11 @@ struct MultichainClaim {
 }
 
 struct QualifiedMultichainClaim {
+    bytes allocatorSignature; // Authorization from the allocator.
+    bytes sponsorSignature; // Authorization from the sponsor.
+    address sponsor; // The account to source the tokens from.
     uint256 nonce; // A parameter to enforce replay protection, scoped to allocator.
     uint256 expires; // The time at which the claim expires.
-    bytes allocatorSignature; // Authorization from the allocator.
-    address sponsor; // The account to source the tokens from.
-    bytes sponsorSignature; // Authorization from the sponsor.
     bytes32 qualificationTypehash; // Typehash of the qualification payload.
     bytes qualificationPayload; // Data used to derive qualification hash.
     uint256 chainIndex;
@@ -30,11 +30,11 @@ struct QualifiedMultichainClaim {
 }
 
 struct MultichainClaimWithWitness {
+    bytes allocatorSignature; // Authorization from the allocator.
+    bytes sponsorSignature; // Authorization from the sponsor.
+    address sponsor; // The account to source the tokens from.
     uint256 nonce; // A parameter to enforce replay protection, scoped to allocator.
     uint256 expires; // The time at which the claim expires.
-    bytes allocatorSignature; // Authorization from the allocator.
-    address sponsor; // The account to source the tokens from.
-    bytes sponsorSignature; // Authorization from the sponsor.
     bytes32 witness; // Hash of the witness data.
     string witnessTypestring; // Witness typestring appended to existing typestring.
     uint256 chainIndex;
@@ -44,11 +44,11 @@ struct MultichainClaimWithWitness {
 }
 
 struct QualifiedMultichainClaimWithWitness {
+    bytes allocatorSignature; // Authorization from the allocator.
+    bytes sponsorSignature; // Authorization from the sponsor.
+    address sponsor; // The account to source the tokens from.
     uint256 nonce; // A parameter to enforce replay protection, scoped to allocator.
     uint256 expires; // The time at which the claim expires.
-    bytes allocatorSignature; // Authorization from the allocator.
-    address sponsor; // The account to source the tokens from.
-    bytes sponsorSignature; // Authorization from the sponsor.
     bytes32 witness; // Hash of the witness data.
     string witnessTypestring; // Witness typestring appended to existing typestring.
     bytes32 qualificationTypehash; // Typehash of the qualification payload.
@@ -60,22 +60,22 @@ struct QualifiedMultichainClaimWithWitness {
 }
 
 struct SplitMultichainClaim {
+    bytes allocatorSignature; // Authorization from the allocator.
+    bytes sponsorSignature; // Authorization from the sponsor.
+    address sponsor; // The account to source the tokens from.
     uint256 nonce; // A parameter to enforce replay protection, scoped to allocator.
     uint256 expires; // The time at which the claim expires.
-    bytes allocatorSignature; // Authorization from the allocator.
-    address sponsor; // The account to source the tokens from.
-    bytes sponsorSignature; // Authorization from the sponsor.
     uint256 chainIndex;
     bytes32[] otherChains;
     SplitBatchClaimComponent[] claims; // The claim token IDs, recipients and amounts.
 }
 
 struct SplitMultichainClaimWithWitness {
+    bytes allocatorSignature; // Authorization from the allocator.
+    bytes sponsorSignature; // Authorization from the sponsor.
+    address sponsor; // The account to source the tokens from.
     uint256 nonce; // A parameter to enforce replay protection, scoped to allocator.
     uint256 expires; // The time at which the claim expires.
-    bytes allocatorSignature; // Authorization from the allocator.
-    address sponsor; // The account to source the tokens from.
-    bytes sponsorSignature; // Authorization from the sponsor.
     bytes32 witness; // Hash of the witness data.
     string witnessTypestring; // Witness typestring appended to existing typestring.
     uint256 chainIndex;
@@ -84,11 +84,11 @@ struct SplitMultichainClaimWithWitness {
 }
 
 struct QualifiedSplitMultichainClaim {
+    bytes allocatorSignature; // Authorization from the allocator.
+    bytes sponsorSignature; // Authorization from the sponsor.
+    address sponsor; // The account to source the tokens from.
     uint256 nonce; // A parameter to enforce replay protection, scoped to allocator.
     uint256 expires; // The time at which the claim expires.
-    bytes allocatorSignature; // Authorization from the allocator.
-    address sponsor; // The account to source the tokens from.
-    bytes sponsorSignature; // Authorization from the sponsor.
     bytes32 qualificationTypehash; // Typehash of the qualification payload.
     bytes qualificationPayload; // Data used to derive qualification hash.
     uint256 chainIndex;
@@ -97,11 +97,11 @@ struct QualifiedSplitMultichainClaim {
 }
 
 struct QualifiedSplitMultichainClaimWithWitness {
+    bytes allocatorSignature; // Authorization from the allocator.
+    bytes sponsorSignature; // Authorization from the sponsor.
+    address sponsor; // The account to source the tokens from.
     uint256 nonce; // A parameter to enforce replay protection, scoped to allocator.
     uint256 expires; // The time at which the claim expires.
-    bytes allocatorSignature; // Authorization from the allocator.
-    address sponsor; // The account to source the tokens from.
-    bytes sponsorSignature; // Authorization from the sponsor.
     bytes32 witness; // Hash of the witness data.
     string witnessTypestring; // Witness typestring appended to existing typestring.
     bytes32 qualificationTypehash; // Typehash of the qualification payload.
@@ -112,11 +112,11 @@ struct QualifiedSplitMultichainClaimWithWitness {
 }
 
 struct ExogenousMultichainClaim {
+    bytes allocatorSignature; // Authorization from the allocator.
+    bytes sponsorSignature; // Authorization from the sponsor.
+    address sponsor; // The account to source the tokens from.
     uint256 nonce; // A parameter to enforce replay protection, scoped to allocator.
     uint256 expires; // The time at which the claim expires.
-    bytes allocatorSignature; // Authorization from the allocator.
-    address sponsor; // The account to source the tokens from.
-    bytes sponsorSignature; // Authorization from the sponsor.
     uint256 chainIndex;
     bytes32[] otherChains;
     uint256 notarizedChainId;
@@ -125,11 +125,11 @@ struct ExogenousMultichainClaim {
 }
 
 struct ExogenousQualifiedMultichainClaim {
+    bytes allocatorSignature; // Authorization from the allocator.
+    bytes sponsorSignature; // Authorization from the sponsor.
+    address sponsor; // The account to source the tokens from.
     uint256 nonce; // A parameter to enforce replay protection, scoped to allocator.
     uint256 expires; // The time at which the claim expires.
-    bytes allocatorSignature; // Authorization from the allocator.
-    address sponsor; // The account to source the tokens from.
-    bytes sponsorSignature; // Authorization from the sponsor.
     bytes32 qualificationTypehash; // Typehash of the qualification payload.
     bytes qualificationPayload; // Data used to derive qualification hash.
     uint256 chainIndex;
@@ -140,11 +140,11 @@ struct ExogenousQualifiedMultichainClaim {
 }
 
 struct ExogenousMultichainClaimWithWitness {
+    bytes allocatorSignature; // Authorization from the allocator.
+    bytes sponsorSignature; // Authorization from the sponsor.
+    address sponsor; // The account to source the tokens from.
     uint256 nonce; // A parameter to enforce replay protection, scoped to allocator.
     uint256 expires; // The time at which the claim expires.
-    bytes allocatorSignature; // Authorization from the allocator.
-    address sponsor; // The account to source the tokens from.
-    bytes sponsorSignature; // Authorization from the sponsor.
     bytes32 witness; // Hash of the witness data.
     string witnessTypestring; // Witness typestring appended to existing typestring.
     uint256 chainIndex;
@@ -155,11 +155,11 @@ struct ExogenousMultichainClaimWithWitness {
 }
 
 struct ExogenousQualifiedMultichainClaimWithWitness {
+    bytes allocatorSignature; // Authorization from the allocator.
+    bytes sponsorSignature; // Authorization from the sponsor.
+    address sponsor; // The account to source the tokens from.
     uint256 nonce; // A parameter to enforce replay protection, scoped to allocator.
     uint256 expires; // The time at which the claim expires.
-    bytes allocatorSignature; // Authorization from the allocator.
-    address sponsor; // The account to source the tokens from.
-    bytes sponsorSignature; // Authorization from the sponsor.
     bytes32 witness; // Hash of the witness data.
     string witnessTypestring; // Witness typestring appended to existing typestring.
     bytes32 qualificationTypehash; // Typehash of the qualification payload.
@@ -172,11 +172,11 @@ struct ExogenousQualifiedMultichainClaimWithWitness {
 }
 
 struct ExogenousSplitMultichainClaim {
+    bytes allocatorSignature; // Authorization from the allocator.
+    bytes sponsorSignature; // Authorization from the sponsor.
+    address sponsor; // The account to source the tokens from.
     uint256 nonce; // A parameter to enforce replay protection, scoped to allocator.
     uint256 expires; // The time at which the claim expires.
-    bytes allocatorSignature; // Authorization from the allocator.
-    address sponsor; // The account to source the tokens from.
-    bytes sponsorSignature; // Authorization from the sponsor.
     uint256 chainIndex;
     bytes32[] otherChains;
     uint256 notarizedChainId;
@@ -184,11 +184,11 @@ struct ExogenousSplitMultichainClaim {
 }
 
 struct ExogenousSplitMultichainClaimWithWitness {
+    bytes allocatorSignature; // Authorization from the allocator.
+    bytes sponsorSignature; // Authorization from the sponsor.
+    address sponsor; // The account to source the tokens from.
     uint256 nonce; // A parameter to enforce replay protection, scoped to allocator.
     uint256 expires; // The time at which the claim expires.
-    bytes allocatorSignature; // Authorization from the allocator.
-    address sponsor; // The account to source the tokens from.
-    bytes sponsorSignature; // Authorization from the sponsor.
     bytes32 witness; // Hash of the witness data.
     string witnessTypestring; // Witness typestring appended to existing typestring.
     uint256 chainIndex;
@@ -198,11 +198,11 @@ struct ExogenousSplitMultichainClaimWithWitness {
 }
 
 struct ExogenousQualifiedSplitMultichainClaim {
+    bytes allocatorSignature; // Authorization from the allocator.
+    bytes sponsorSignature; // Authorization from the sponsor.
+    address sponsor; // The account to source the tokens from.
     uint256 nonce; // A parameter to enforce replay protection, scoped to allocator.
     uint256 expires; // The time at which the claim expires.
-    bytes allocatorSignature; // Authorization from the allocator.
-    address sponsor; // The account to source the tokens from.
-    bytes sponsorSignature; // Authorization from the sponsor.
     bytes32 qualificationTypehash; // Typehash of the qualification payload.
     bytes qualificationPayload; // Data used to derive qualification hash.
     uint256 chainIndex;
@@ -212,11 +212,11 @@ struct ExogenousQualifiedSplitMultichainClaim {
 }
 
 struct ExogenousQualifiedSplitMultichainClaimWithWitness {
+    bytes allocatorSignature; // Authorization from the allocator.
+    bytes sponsorSignature; // Authorization from the sponsor.
+    address sponsor; // The account to source the tokens from.
     uint256 nonce; // A parameter to enforce replay protection, scoped to allocator.
     uint256 expires; // The time at which the claim expires.
-    bytes allocatorSignature; // Authorization from the allocator.
-    address sponsor; // The account to source the tokens from.
-    bytes sponsorSignature; // Authorization from the sponsor.
     bytes32 witness; // Hash of the witness data.
     string witnessTypestring; // Witness typestring appended to existing typestring.
     bytes32 qualificationTypehash; // Typehash of the qualification payload.

@@ -21,7 +21,12 @@ import {
     SplitClaimWithWitness,
     QualifiedSplitClaimWithWitness
 } from "../src/types/Claims.sol";
-import { BatchTransfer, SplitBatchTransfer, BatchClaim } from "../src/types/BatchClaims.sol";
+import {
+    BatchTransfer,
+    SplitBatchTransfer,
+    BatchClaim,
+    QualifiedBatchClaim
+} from "../src/types/BatchClaims.sol";
 
 import {
     SplitComponent,
@@ -1839,6 +1844,127 @@ contract TheCompactTest is Test {
 
         BatchClaim memory claim = BatchClaim(
             allocatorSignature, sponsorSignature, swapper, nonce, expires, claims, claimant
+        );
+
+        vm.prank(arbiter);
+        (bool status) = theCompact.claim(claim);
+        assert(status);
+
+        assertEq(address(theCompact).balance, amount);
+        assertEq(token.balanceOf(address(theCompact)), anotherAmount);
+        assertEq(anotherToken.balanceOf(address(theCompact)), aThirdAmount);
+
+        assertEq(theCompact.balanceOf(claimant, id), amount);
+        assertEq(theCompact.balanceOf(claimant, anotherId), anotherAmount);
+        assertEq(theCompact.balanceOf(claimant, aThirdId), aThirdAmount);
+    }
+
+    function test_qualifiedBatchClaim() public {
+        uint256 amount = 1e18;
+        uint256 anotherAmount = 1e18;
+        uint256 aThirdAmount = 1e18;
+        uint256 nonce = 0;
+        uint256 expires = block.timestamp + 1000;
+        address claimant = 0x1111111111111111111111111111111111111111;
+        address arbiter = 0x2222222222222222222222222222222222222222;
+
+        vm.prank(allocator);
+        theCompact.__register(allocator, "");
+
+        vm.startPrank(swapper);
+        uint256 id = theCompact.deposit{ value: amount }(
+            allocator, ResetPeriod.TenMinutes, Scope.Multichain, swapper
+        );
+
+        uint256 anotherId = theCompact.deposit(
+            address(token),
+            allocator,
+            ResetPeriod.TenMinutes,
+            Scope.Multichain,
+            anotherAmount,
+            swapper
+        );
+        assertEq(theCompact.balanceOf(swapper, anotherId), anotherAmount);
+
+        uint256 aThirdId = theCompact.deposit(
+            address(anotherToken),
+            allocator,
+            ResetPeriod.TenMinutes,
+            Scope.Multichain,
+            aThirdAmount,
+            swapper
+        );
+        assertEq(theCompact.balanceOf(swapper, aThirdId), aThirdAmount);
+
+        vm.stopPrank();
+
+        assertEq(theCompact.balanceOf(swapper, id), amount);
+        assertEq(theCompact.balanceOf(swapper, anotherId), anotherAmount);
+        assertEq(theCompact.balanceOf(swapper, aThirdId), aThirdAmount);
+
+        uint256[2][] memory idsAndAmounts = new uint256[2][](3);
+        idsAndAmounts[0] = [id, amount];
+        idsAndAmounts[1] = [anotherId, anotherAmount];
+        idsAndAmounts[2] = [aThirdId, aThirdAmount];
+
+        bytes32 claimHash = keccak256(
+            abi.encode(
+                keccak256(
+                    "BatchCompact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256[2][] idsAndAmounts)"
+                ),
+                arbiter,
+                swapper,
+                nonce,
+                expires,
+                keccak256(abi.encodePacked(idsAndAmounts))
+            )
+        );
+
+        bytes32 digest =
+            keccak256(abi.encodePacked(bytes2(0x1901), theCompact.DOMAIN_SEPARATOR(), claimHash));
+
+        (bytes32 r, bytes32 vs) = vm.signCompact(swapperPrivateKey, digest);
+        bytes memory sponsorSignature = abi.encodePacked(r, vs);
+
+        bytes32 qualificationTypehash =
+            keccak256("ExampleQualifiedClaim(bytes32 claimHash,uint256 qualifiedClaimArgument)");
+
+        uint256 qualifiedClaimArgument = 123;
+        bytes memory qualificationPayload = abi.encode(qualifiedClaimArgument);
+
+        bytes32 qualifiedClaimHash =
+            keccak256(abi.encode(qualificationTypehash, claimHash, qualifiedClaimArgument));
+
+        digest = keccak256(
+            abi.encodePacked(bytes2(0x1901), theCompact.DOMAIN_SEPARATOR(), qualifiedClaimHash)
+        );
+
+        (r, vs) = vm.signCompact(allocatorPrivateKey, digest);
+        bytes memory allocatorSignature = abi.encodePacked(r, vs);
+
+        BatchClaimComponent[] memory claims = new BatchClaimComponent[](3);
+        claims[0] = BatchClaimComponent({ id: id, allocatedAmount: amount, amount: amount });
+        claims[1] = BatchClaimComponent({
+            id: anotherId,
+            allocatedAmount: anotherAmount,
+            amount: anotherAmount
+        });
+        claims[2] = BatchClaimComponent({
+            id: aThirdId,
+            allocatedAmount: aThirdAmount,
+            amount: aThirdAmount
+        });
+
+        QualifiedBatchClaim memory claim = QualifiedBatchClaim(
+            allocatorSignature,
+            sponsorSignature,
+            swapper,
+            nonce,
+            expires,
+            qualificationTypehash,
+            qualificationPayload,
+            claims,
+            claimant
         );
 
         vm.prank(arbiter);
