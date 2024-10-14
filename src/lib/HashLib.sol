@@ -363,7 +363,14 @@ library HashLib {
     }
 
     function toMessageHash(BatchClaim calldata claim) internal view returns (bytes32 messageHash) {
-        bytes32 idsAndAmountsHash = toIdsAndAmountsHash(claim.claims);
+        return _deriveBatchMessageHash(claim, claim.claims);
+    }
+
+    function _deriveBatchMessageHash(
+        BatchClaim calldata claim,
+        BatchClaimComponent[] calldata claims
+    ) internal view returns (bytes32 messageHash) {
+        bytes32 idsAndAmountsHash = toIdsAndAmountsHash(claims);
 
         assembly ("memory-safe") {
             let m := mload(0x40) // Grab the free memory pointer; memory will be left dirtied.
@@ -376,22 +383,28 @@ library HashLib {
         }
     }
 
+    function _usingQualifiedBatchClaim(
+        function(BatchClaim calldata, BatchClaimComponent[] calldata) internal view returns (bytes32)
+            fnIn
+    )
+        internal
+        pure
+        returns (
+            function(QualifiedBatchClaim calldata, BatchClaimComponent[] calldata) internal view returns (bytes32)
+            fnOut
+        )
+    {
+        assembly {
+            fnOut := fnIn
+        }
+    }
+
     function toMessageHash(QualifiedBatchClaim calldata claim)
         internal
         view
         returns (bytes32 messageHash, bytes32 qualificationMessageHash)
     {
-        bytes32 idsAndAmountsHash = toIdsAndAmountsHash(claim.claims);
-
-        assembly ("memory-safe") {
-            let m := mload(0x40) // Grab the free memory pointer; memory will be left dirtied.
-
-            mstore(m, BATCH_COMPACT_TYPEHASH)
-            mstore(add(m, 0x20), caller()) // arbiter: msg.sender
-            calldatacopy(add(m, 0x40), add(claim, 0x40), 0x60) // sponsor, nonce, expires
-            mstore(add(m, 0xa0), idsAndAmountsHash)
-            messageHash := keccak256(m, 0xc0)
-        }
+        messageHash = _usingQualifiedBatchClaim(_deriveBatchMessageHash)(claim, claim.claims);
 
         // TODO: optimize once we're using calldata
         qualificationMessageHash = keccak256(
