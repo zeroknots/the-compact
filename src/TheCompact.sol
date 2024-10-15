@@ -509,6 +509,17 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         return _processSplitBatchClaim(claimPayload, _release);
     }
 
+    function claim(SplitBatchClaimWithWitness calldata claimPayload) external returns (bool) {
+        return _processSplitBatchClaimWithWitness(claimPayload, _release);
+    }
+
+    function claimAndWithdraw(SplitBatchClaimWithWitness calldata claimPayload)
+        external
+        returns (bool)
+    {
+        return _processSplitBatchClaimWithWitness(claimPayload, _release);
+    }
+
     function enableForcedWithdrawal(uint256 id) external returns (uint256 withdrawableAt) {
         withdrawableAt = block.timestamp + id.toResetPeriod().toSeconds();
 
@@ -821,6 +832,20 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         internal
         pure
         returns (function(bytes32, SplitBatchClaim calldata, address) internal view fnOut)
+    {
+        assembly {
+            fnOut := fnIn
+        }
+    }
+
+    function _usingSplitBatchClaimWithWitness(
+        function(bytes32, Claim calldata, address) internal view fnIn
+    )
+        internal
+        pure
+        returns (
+            function(bytes32, SplitBatchClaimWithWitness calldata, address) internal view fnOut
+        )
     {
         assembly {
             fnOut := fnIn
@@ -1253,6 +1278,24 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         uint96 allocatorId = batchClaim.claims[0].id.toAllocatorId();
 
         _usingSplitBatchClaim(_notExpiredAndWithValidSignatures)(
+            messageHash,
+            batchClaim,
+            allocatorId.fromRegisteredAllocatorIdWithConsumed(batchClaim.nonce)
+        );
+
+        return _verifyAndProcessSplitBatchComponents(
+            allocatorId, batchClaim.sponsor, messageHash, batchClaim.claims, operation
+        );
+    }
+
+    function _processSplitBatchClaimWithWitness(
+        SplitBatchClaimWithWitness calldata batchClaim,
+        function(address, address, uint256, uint256) internal returns (bool) operation
+    ) internal returns (bool) {
+        bytes32 messageHash = batchClaim.toMessageHash();
+        uint96 allocatorId = batchClaim.claims[0].id.toAllocatorId();
+
+        _usingSplitBatchClaimWithWitness(_notExpiredAndWithValidSignatures)(
             messageHash,
             batchClaim,
             allocatorId.fromRegisteredAllocatorIdWithConsumed(batchClaim.nonce)
