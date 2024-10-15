@@ -660,34 +660,26 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         internal
         returns (bytes32 messageHash, uint96 allocatorId)
     {
-        claimPayload.expires.later();
-
+        messageHash = claimPayload.toMessageHash();
         allocatorId = claimPayload.claims[0].id.toAllocatorId();
 
-        messageHash = claimPayload.toMessageHash();
-        bytes32 domainSeparator = _INITIAL_DOMAIN_SEPARATOR.toLatest(_INITIAL_CHAIN_ID);
-        messageHash.signedBy(claimPayload.sponsor, claimPayload.sponsorSignature, domainSeparator);
-        messageHash.signedBy(
-            allocatorId.fromRegisteredAllocatorIdWithConsumed(claimPayload.nonce),
-            claimPayload.allocatorSignature,
-            domainSeparator
+        _usingBatchClaim(_notExpiredAndWithValidSignatures)(
+            messageHash,
+            claimPayload,
+            allocatorId.fromRegisteredAllocatorIdWithConsumed(claimPayload.nonce)
         );
     }
 
     function _notExpiredAndWithValidSignaturesBatchWithWitness(
         BatchClaimWithWitness calldata claimPayload
     ) internal returns (bytes32 messageHash, uint96 allocatorId) {
-        claimPayload.expires.later();
-
+        messageHash = claimPayload.toMessageHash();
         allocatorId = claimPayload.claims[0].id.toAllocatorId();
 
-        messageHash = claimPayload.toMessageHash();
-        bytes32 domainSeparator = _INITIAL_DOMAIN_SEPARATOR.toLatest(_INITIAL_CHAIN_ID);
-        messageHash.signedBy(claimPayload.sponsor, claimPayload.sponsorSignature, domainSeparator);
-        messageHash.signedBy(
-            allocatorId.fromRegisteredAllocatorIdWithConsumed(claimPayload.nonce),
-            claimPayload.allocatorSignature,
-            domainSeparator
+        _usingBatchClaimWithWitness(_notExpiredAndWithValidSignatures)(
+            messageHash,
+            claimPayload,
+            allocatorId.fromRegisteredAllocatorIdWithConsumed(claimPayload.nonce)
         );
     }
 
@@ -800,6 +792,28 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         internal
         pure
         returns (function(bytes32, SplitClaim calldata, address) internal view fnOut)
+    {
+        assembly {
+            fnOut := fnIn
+        }
+    }
+
+    function _usingBatchClaim(function(bytes32, Claim calldata, address) internal view fnIn)
+        internal
+        pure
+        returns (function(bytes32, BatchClaim calldata, address) internal view fnOut)
+    {
+        assembly {
+            fnOut := fnIn
+        }
+    }
+
+    function _usingBatchClaimWithWitness(
+        function(bytes32, Claim calldata, address) internal view fnIn
+    )
+        internal
+        pure
+        returns (function(bytes32, BatchClaimWithWitness calldata, address) internal view fnOut)
     {
         assembly {
             fnOut := fnIn
