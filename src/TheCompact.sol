@@ -66,7 +66,8 @@ import {
     SplitComponent,
     TransferComponent,
     SplitByIdComponent,
-    BatchClaimComponent
+    BatchClaimComponent,
+    SplitBatchClaimComponent
 } from "./types/Components.sol";
 
 import { IAllocator } from "./interfaces/IAllocator.sol";
@@ -500,6 +501,14 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         return _processQualifiedBatchClaimWithWitness(claimPayload, _release);
     }
 
+    function claim(SplitBatchClaim calldata claimPayload) external returns (bool) {
+        return _processSplitBatchClaim(claimPayload, _release);
+    }
+
+    function claimAndWithdraw(SplitBatchClaim calldata claimPayload) external returns (bool) {
+        return _processSplitBatchClaim(claimPayload, _release);
+    }
+
     function enableForcedWithdrawal(uint256 id) external returns (uint256 withdrawableAt) {
         withdrawableAt = block.timestamp + id.toResetPeriod().toSeconds();
 
@@ -802,6 +811,16 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         internal
         pure
         returns (function(bytes32, BatchClaim calldata, address) internal view fnOut)
+    {
+        assembly {
+            fnOut := fnIn
+        }
+    }
+
+    function _usingSplitBatchClaim(function(bytes32, Claim calldata, address) internal view fnIn)
+        internal
+        pure
+        returns (function(bytes32, SplitBatchClaim calldata, address) internal view fnOut)
     {
         assembly {
             fnOut := fnIn
@@ -1175,12 +1194,46 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         return true;
     }
 
+    function _verifyAndProcessSplitBatchComponents(
+        uint96 allocatorId,
+        address sponsor,
+        bytes32 messageHash,
+        SplitBatchClaimComponent[] calldata claims,
+        function(address, address, uint256, uint256) internal returns (bool) operation
+    ) internal returns (bool) {
+        uint256 totalClaims = claims.length;
+        uint256 errorBuffer = (totalClaims == 0).asUint256();
+
+        unchecked {
+            for (uint256 i = 0; i < totalClaims; ++i) {
+                SplitBatchClaimComponent calldata claim = claims[i];
+                errorBuffer |= (claim.id.toAllocatorId() != allocatorId).asUint256();
+
+                _verifyAndProcessSplitComponents(
+                    sponsor, messageHash, claim.id, claim.allocatedAmount, claim.portions, operation
+                );
+            }
+        }
+
+        if (errorBuffer.asBool()) {
+            revert InvalidBatchAllocation();
+        }
+
+        return true;
+    }
+
     function _processBatchClaim(
         BatchClaim calldata batchClaim,
         function(address, address, uint256, uint256) internal returns (bool) operation
     ) internal returns (bool) {
-        (bytes32 messageHash, uint96 allocatorId) =
-            _notExpiredAndWithValidSignaturesBatch(batchClaim);
+        bytes32 messageHash = batchClaim.toMessageHash();
+        uint96 allocatorId = batchClaim.claims[0].id.toAllocatorId();
+
+        _usingBatchClaim(_notExpiredAndWithValidSignatures)(
+            messageHash,
+            batchClaim,
+            allocatorId.fromRegisteredAllocatorIdWithConsumed(batchClaim.nonce)
+        );
 
         return _verifyAndProcessBatchComponents(
             allocatorId,
@@ -1189,6 +1242,24 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
             messageHash,
             batchClaim.claims,
             operation
+        );
+    }
+
+    function _processSplitBatchClaim(
+        SplitBatchClaim calldata batchClaim,
+        function(address, address, uint256, uint256) internal returns (bool) operation
+    ) internal returns (bool) {
+        bytes32 messageHash = batchClaim.toMessageHash();
+        uint96 allocatorId = batchClaim.claims[0].id.toAllocatorId();
+
+        _usingSplitBatchClaim(_notExpiredAndWithValidSignatures)(
+            messageHash,
+            batchClaim,
+            allocatorId.fromRegisteredAllocatorIdWithConsumed(batchClaim.nonce)
+        );
+
+        return _verifyAndProcessSplitBatchComponents(
+            allocatorId, batchClaim.sponsor, messageHash, batchClaim.claims, operation
         );
     }
 

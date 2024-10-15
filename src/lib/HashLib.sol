@@ -71,7 +71,7 @@ import {
     ExogenousQualifiedSplitMultichainClaimWithWitness
 } from "../types/MultichainClaims.sol";
 
-import { BatchClaimComponent } from "../types/Components.sol";
+import { BatchClaimComponent, SplitBatchClaimComponent } from "../types/Components.sol";
 
 import { ResetPeriod } from "../types/ResetPeriod.sol";
 import { Scope } from "../types/Scope.sol";
@@ -405,6 +405,19 @@ library HashLib {
         idsAndAmountsHash = keccak256(abi.encodePacked(idsAndAmounts));
     }
 
+    function toSplitIdsAndAmountsHash(SplitBatchClaimComponent[] calldata claims)
+        internal
+        pure
+        returns (bytes32 idsAndAmountsHash)
+    {
+        // TODO: make this more efficient ASAP
+        uint256[2][] memory idsAndAmounts = new uint256[2][](claims.length);
+        for (uint256 i = 0; i < claims.length; ++i) {
+            idsAndAmounts[i] = [claims[i].id, claims[i].allocatedAmount];
+        }
+        idsAndAmountsHash = keccak256(abi.encodePacked(idsAndAmounts));
+    }
+
     function toMessageHash(BatchClaim calldata claim) internal view returns (bytes32 messageHash) {
         return _deriveBatchMessageHash(claim, claim.claims);
     }
@@ -414,6 +427,31 @@ library HashLib {
         BatchClaimComponent[] calldata claims
     ) internal view returns (bytes32 messageHash) {
         bytes32 idsAndAmountsHash = toIdsAndAmountsHash(claims);
+
+        assembly ("memory-safe") {
+            let m := mload(0x40) // Grab the free memory pointer; memory will be left dirtied.
+
+            mstore(m, BATCH_COMPACT_TYPEHASH)
+            mstore(add(m, 0x20), caller()) // arbiter: msg.sender
+            calldatacopy(add(m, 0x40), add(claim, 0x40), 0x60) // sponsor, nonce, expires
+            mstore(add(m, 0xa0), idsAndAmountsHash)
+            messageHash := keccak256(m, 0xc0)
+        }
+    }
+
+    function toMessageHash(SplitBatchClaim calldata claim)
+        internal
+        view
+        returns (bytes32 messageHash)
+    {
+        return _deriveSplitBatchMessageHash(claim, claim.claims);
+    }
+
+    function _deriveSplitBatchMessageHash(
+        SplitBatchClaim calldata claim,
+        SplitBatchClaimComponent[] calldata claims
+    ) internal view returns (bytes32 messageHash) {
+        bytes32 idsAndAmountsHash = toSplitIdsAndAmountsHash(claims);
 
         assembly ("memory-safe") {
             let m := mload(0x40) // Grab the free memory pointer; memory will be left dirtied.
@@ -554,41 +592,6 @@ library HashLib {
         returns (bytes32 messageHash)
     {
         return _usingSplitClaimWithWitness(toMessageHashWithWitness)(claim, 0);
-    }
-
-    // TODO: all these SplitBatch can just use a function cast to leverage
-    // BatchClaim.toMessageHash logic as the structs have the exact same offsets
-    function toMessageHash(SplitBatchClaim memory claim)
-        internal
-        view
-        returns (bytes32 messageHash)
-    {
-        // TODO: make this more efficient especially once using calldata
-        uint256[2][] memory idsAndAmounts = new uint256[2][](claim.claims.length);
-        for (uint256 i = 0; i < claim.claims.length; ++i) {
-            idsAndAmounts[i] = [claim.claims[i].id, claim.claims[i].allocatedAmount];
-        }
-        bytes32 idsAndAmountsHash = keccak256(abi.encodePacked(idsAndAmounts));
-
-        assembly ("memory-safe") {
-            let m := mload(0x40) // Grab the free memory pointer; memory will be left dirtied.
-
-            // TODO: calldatacopy this whole chunk at once as part of calldata implementation
-            let sponsor := mload(claim)
-            let expires := mload(add(claim, 0x20))
-            let nonce := mload(add(claim, 0x40))
-
-            let id := mload(add(claim, 0x60))
-            let amount := mload(add(claim, 0x80))
-
-            mstore(m, BATCH_COMPACT_TYPEHASH)
-            mstore(add(m, 0x20), sponsor)
-            mstore(add(m, 0x40), expires)
-            mstore(add(m, 0x60), nonce)
-            mstore(add(m, 0x80), caller()) // arbiter: msg.sender
-            mstore(add(m, 0xa0), idsAndAmountsHash)
-            messageHash := keccak256(m, 0xc0)
-        }
     }
 
     function toMessageHash(SplitBatchClaimWithWitness memory claim)
