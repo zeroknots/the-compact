@@ -383,6 +383,32 @@ library HashLib {
         }
     }
 
+    function _toBatchMessageHashWithWitness(
+        BatchClaimWithWitness calldata claim,
+        BatchClaimComponent[] calldata claims
+    ) internal view returns (bytes32 messageHash) {
+        bytes32 idsAndAmountsHash = toIdsAndAmountsHash(claims);
+
+        assembly ("memory-safe") {
+            let m := mload(0x40) // Grab the free memory pointer; memory will be left dirtied.
+
+            // prepare full typestring
+            let witnessTypestringPtr := add(claim, calldataload(add(claim, 0xc0)))
+            let witnessTypestringLength := calldataload(witnessTypestringPtr)
+            mstore(m, BATCH_COMPACT_TYPESTRING_FRAGMENT_ONE)
+            mstore(add(m, 0x20), BATCH_COMPACT_TYPESTRING_FRAGMENT_TWO)
+            mstore(add(m, 0x46), BATCH_COMPACT_TYPESTRING_FRAGMENT_FOUR)
+            mstore(add(m, 0x40), BATCH_COMPACT_TYPESTRING_FRAGMENT_THREE)
+            calldatacopy(add(m, 0x66), add(0x20, witnessTypestringPtr), witnessTypestringLength)
+            mstore(m, keccak256(m, add(0x66, witnessTypestringLength))) // typehash
+            mstore(add(m, 0x20), caller()) // arbiter: msg.sender
+            calldatacopy(add(m, 0x40), add(claim, 0x40), 0x60) // sponsor, nonce, expires
+            mstore(add(m, 0xa0), idsAndAmountsHash)
+            mstore(add(m, 0xc0), calldataload(add(claim, 0xa0))) // witness
+            messageHash := keccak256(m, 0xe0)
+        }
+    }
+
     function _usingQualifiedBatchClaim(
         function(BatchClaim calldata, BatchClaimComponent[] calldata) internal view returns (bytes32)
             fnIn
@@ -391,6 +417,22 @@ library HashLib {
         pure
         returns (
             function(QualifiedBatchClaim calldata, BatchClaimComponent[] calldata) internal view returns (bytes32)
+            fnOut
+        )
+    {
+        assembly {
+            fnOut := fnIn
+        }
+    }
+
+    function _usingQualifiedBatchClaimWithWitness(
+        function(BatchClaimWithWitness calldata, BatchClaimComponent[] calldata) internal view returns (bytes32)
+            fnIn
+    )
+        internal
+        pure
+        returns (
+            function(QualifiedBatchClaimWithWitness calldata, BatchClaimComponent[] calldata) internal view returns (bytes32)
             fnOut
         )
     {
@@ -412,96 +454,22 @@ library HashLib {
         );
     }
 
-    function toMessageHash(BatchClaimWithWitness memory claim)
+    function toMessageHash(BatchClaimWithWitness calldata claim)
         internal
         view
         returns (bytes32 messageHash)
     {
-        // derive the typehash (TODO: make this more efficient especially once using calldata)
-        bytes32 typehash = keccak256(
-            abi.encodePacked(
-                BATCH_COMPACT_TYPESTRING_FRAGMENT_ONE,
-                BATCH_COMPACT_TYPESTRING_FRAGMENT_TWO,
-                BATCH_COMPACT_TYPESTRING_FRAGMENT_THREE,
-                BATCH_COMPACT_TYPESTRING_FRAGMENT_FOUR,
-                claim.witnessTypestring
-            )
-        );
-        bytes32 witness = claim.witness;
-
-        // TODO: make this more efficient especially once using calldata
-        uint256[2][] memory idsAndAmounts = new uint256[2][](claim.claims.length);
-        for (uint256 i = 0; i < claim.claims.length; ++i) {
-            idsAndAmounts[i] = [claim.claims[i].id, claim.claims[i].allocatedAmount];
-        }
-        bytes32 idsAndAmountsHash = keccak256(abi.encodePacked(idsAndAmounts));
-
-        assembly ("memory-safe") {
-            let m := mload(0x40) // Grab the free memory pointer; memory will be left dirtied.
-
-            // TODO: calldatacopy this whole chunk at once as part of calldata implementation
-            let sponsor := mload(claim)
-            let expires := mload(add(claim, 0x20))
-            let nonce := mload(add(claim, 0x40))
-
-            let id := mload(add(claim, 0x60))
-            let amount := mload(add(claim, 0x80))
-
-            mstore(m, typehash)
-            mstore(add(m, 0x20), sponsor)
-            mstore(add(m, 0x40), expires)
-            mstore(add(m, 0x60), nonce)
-            mstore(add(m, 0x80), caller()) // arbiter: msg.sender
-            mstore(add(m, 0xa0), idsAndAmountsHash)
-            mstore(add(m, 0xc0), witness)
-            messageHash := keccak256(m, 0xe0)
-        }
+        return _toBatchMessageHashWithWitness(claim, claim.claims);
     }
 
-    function toMessageHash(QualifiedBatchClaimWithWitness memory claim)
+    function toMessageHash(QualifiedBatchClaimWithWitness calldata claim)
         internal
         view
         returns (bytes32 messageHash, bytes32 qualificationMessageHash)
     {
-        // derive the typehash (TODO: make this more efficient especially once using calldata)
-        bytes32 typehash = keccak256(
-            abi.encodePacked(
-                BATCH_COMPACT_TYPESTRING_FRAGMENT_ONE,
-                BATCH_COMPACT_TYPESTRING_FRAGMENT_TWO,
-                BATCH_COMPACT_TYPESTRING_FRAGMENT_THREE,
-                BATCH_COMPACT_TYPESTRING_FRAGMENT_FOUR,
-                claim.witnessTypestring
-            )
+        messageHash = _usingQualifiedBatchClaimWithWitness(_toBatchMessageHashWithWitness)(
+            claim, claim.claims
         );
-        bytes32 witness = claim.witness;
-
-        // TODO: make this more efficient especially once using calldata
-        uint256[2][] memory idsAndAmounts = new uint256[2][](claim.claims.length);
-        for (uint256 i = 0; i < claim.claims.length; ++i) {
-            idsAndAmounts[i] = [claim.claims[i].id, claim.claims[i].allocatedAmount];
-        }
-        bytes32 idsAndAmountsHash = keccak256(abi.encodePacked(idsAndAmounts));
-
-        assembly ("memory-safe") {
-            let m := mload(0x40) // Grab the free memory pointer; memory will be left dirtied.
-
-            // TODO: calldatacopy this whole chunk at once as part of calldata implementation
-            let sponsor := mload(claim)
-            let expires := mload(add(claim, 0x20))
-            let nonce := mload(add(claim, 0x40))
-
-            let id := mload(add(claim, 0x60))
-            let amount := mload(add(claim, 0x80))
-
-            mstore(m, typehash)
-            mstore(add(m, 0x20), sponsor)
-            mstore(add(m, 0x40), expires)
-            mstore(add(m, 0x60), nonce)
-            mstore(add(m, 0x80), caller()) // arbiter: msg.sender
-            mstore(add(m, 0xa0), idsAndAmountsHash)
-            mstore(add(m, 0xc0), witness)
-            messageHash := keccak256(m, 0xe0)
-        }
 
         // TODO: optimize once we're using calldata
         qualificationMessageHash = keccak256(

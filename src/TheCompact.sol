@@ -478,6 +478,28 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         return _processQualifiedBatchClaim(claimPayload, _release);
     }
 
+    function claim(BatchClaimWithWitness calldata claimPayload) external returns (bool) {
+        return _processBatchClaimWithWitness(claimPayload, _release);
+    }
+
+    function claimAndWithdraw(BatchClaimWithWitness calldata claimPayload)
+        external
+        returns (bool)
+    {
+        return _processBatchClaimWithWitness(claimPayload, _release);
+    }
+
+    function claim(QualifiedBatchClaimWithWitness calldata claimPayload) external returns (bool) {
+        return _processQualifiedBatchClaimWithWitness(claimPayload, _release);
+    }
+
+    function claimAndWithdraw(QualifiedBatchClaimWithWitness calldata claimPayload)
+        external
+        returns (bool)
+    {
+        return _processQualifiedBatchClaimWithWitness(claimPayload, _release);
+    }
+
     function enableForcedWithdrawal(uint256 id) external returns (uint256 withdrawableAt) {
         withdrawableAt = block.timestamp + id.toResetPeriod().toSeconds();
 
@@ -656,9 +678,44 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         );
     }
 
+    function _notExpiredAndWithValidSignaturesBatchWithWitness(
+        BatchClaimWithWitness calldata claimPayload
+    ) internal returns (bytes32 messageHash, uint96 allocatorId) {
+        claimPayload.expires.later();
+
+        allocatorId = claimPayload.claims[0].id.toAllocatorId();
+
+        messageHash = claimPayload.toMessageHash();
+        bytes32 domainSeparator = _INITIAL_DOMAIN_SEPARATOR.toLatest(_INITIAL_CHAIN_ID);
+        messageHash.signedBy(claimPayload.sponsor, claimPayload.sponsorSignature, domainSeparator);
+        messageHash.signedBy(
+            allocatorId.fromRegisteredAllocatorIdWithConsumed(claimPayload.nonce),
+            claimPayload.allocatorSignature,
+            domainSeparator
+        );
+    }
+
     // NOTE: this function expects that there's at least one array element
     function _notExpiredAndWithValidSignaturesQualifiedBatch(
         QualifiedBatchClaim calldata claimPayload
+    ) internal returns (bytes32 messageHash, uint96 allocatorId) {
+        bytes32 qualificationMessageHash;
+        claimPayload.expires.later();
+
+        allocatorId = claimPayload.claims[0].id.toAllocatorId();
+
+        (messageHash, qualificationMessageHash) = claimPayload.toMessageHash();
+        bytes32 domainSeparator = _INITIAL_DOMAIN_SEPARATOR.toLatest(_INITIAL_CHAIN_ID);
+        messageHash.signedBy(claimPayload.sponsor, claimPayload.sponsorSignature, domainSeparator);
+        qualificationMessageHash.signedBy(
+            allocatorId.fromRegisteredAllocatorIdWithConsumed(claimPayload.nonce),
+            claimPayload.allocatorSignature,
+            domainSeparator
+        );
+    }
+
+    function _notExpiredAndWithValidSignaturesQualifiedBatchWithWitness(
+        QualifiedBatchClaimWithWitness calldata claimPayload
     ) internal returns (bytes32 messageHash, uint96 allocatorId) {
         bytes32 qualificationMessageHash;
         claimPayload.expires.later();
@@ -1110,6 +1167,40 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
     ) internal returns (bool) {
         (bytes32 messageHash, uint96 allocatorId) =
             _notExpiredAndWithValidSignaturesQualifiedBatch(batchClaim);
+
+        return _verifyAndProcessBatchComponents(
+            allocatorId,
+            batchClaim.sponsor,
+            batchClaim.claimant,
+            messageHash,
+            batchClaim.claims,
+            operation
+        );
+    }
+
+    function _processBatchClaimWithWitness(
+        BatchClaimWithWitness calldata batchClaim,
+        function(address, address, uint256, uint256) internal returns (bool) operation
+    ) internal returns (bool) {
+        (bytes32 messageHash, uint96 allocatorId) =
+            _notExpiredAndWithValidSignaturesBatchWithWitness(batchClaim);
+
+        return _verifyAndProcessBatchComponents(
+            allocatorId,
+            batchClaim.sponsor,
+            batchClaim.claimant,
+            messageHash,
+            batchClaim.claims,
+            operation
+        );
+    }
+
+    function _processQualifiedBatchClaimWithWitness(
+        QualifiedBatchClaimWithWitness calldata batchClaim,
+        function(address, address, uint256, uint256) internal returns (bool) operation
+    ) internal returns (bool) {
+        (bytes32 messageHash, uint96 allocatorId) =
+            _notExpiredAndWithValidSignaturesQualifiedBatchWithWitness(batchClaim);
 
         return _verifyAndProcessBatchComponents(
             allocatorId,

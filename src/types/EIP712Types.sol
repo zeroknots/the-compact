@@ -50,18 +50,21 @@ bytes32 constant BATCH_COMPACT_TYPEHASH =
 
 // abi.decode(bytes("BatchCompact(address arbiter,add"), (bytes32))
 bytes32 constant BATCH_COMPACT_TYPESTRING_FRAGMENT_ONE =
-    abi.decode(bytes("BatchCompact(address arbiter,add"), (bytes32));
+    0x4261746368436f6d70616374286164647265737320617262697465722c616464;
+//abi.decode(bytes("BatchCompact(address arbiter,add"), (bytes32));
 
 // abi.decode(bytes("ress sponsor,uint256 nonce,uint2"), (bytes32))
 bytes32 constant BATCH_COMPACT_TYPESTRING_FRAGMENT_TWO =
-    abi.decode(bytes("ress sponsor,uint256 nonce,uint2"), (bytes32));
+    0x726573732073706f6e736f722c75696e74323536206e6f6e63652c75696e7432;
+//abi.decode(bytes("ress sponsor,uint256 nonce,uint2"), (bytes32));
 
 // abi.decode(bytes("56 expires,uint256[2][] idsAndAm"), (bytes32))
 bytes32 constant BATCH_COMPACT_TYPESTRING_FRAGMENT_THREE =
-    abi.decode(bytes("56 expires,uint256[2][] idsAndAm"), (bytes32));
+    0x353620657870697265732c75696e743235365b325d5b5d20696473416e64416d;
+//abi.decode(bytes("56 expires,uint256[2][] idsAndAm"), (bytes32));
 
-// abi.decode(bytes("ounts,"), (bytes6))
-bytes6 constant BATCH_COMPACT_TYPESTRING_FRAGMENT_FOUR = 0x6f756e74732c;
+// uint48(abi.decode(bytes("ounts,"), (bytes6)))
+uint48 constant BATCH_COMPACT_TYPESTRING_FRAGMENT_FOUR = 0x6f756e74732c;
 
 // A multichain compact can declare tokens and amounts to allocate from multiple chains,
 // each designated by their chainId. Any allocated tokens must designate the Multichain
