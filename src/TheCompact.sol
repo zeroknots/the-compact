@@ -643,20 +643,16 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         }
     }
 
-    function _notExpiredAndWithValidSignatures(Claim calldata claimPayload)
-        internal
-        returns (bytes32 messageHash)
-    {
+    function _notExpiredAndWithValidSignatures(
+        bytes32 messageHash,
+        Claim calldata claimPayload,
+        address allocator
+    ) internal view {
         claimPayload.expires.later();
 
-        messageHash = claimPayload.toMessageHash();
         bytes32 domainSeparator = _INITIAL_DOMAIN_SEPARATOR.toLatest(_INITIAL_CHAIN_ID);
         messageHash.signedBy(claimPayload.sponsor, claimPayload.sponsorSignature, domainSeparator);
-        messageHash.signedBy(
-            claimPayload.id.toRegisteredAllocatorWithConsumed(claimPayload.nonce),
-            claimPayload.allocatorSignature,
-            domainSeparator
-        );
+        messageHash.signedBy(allocator, claimPayload.allocatorSignature, domainSeparator);
     }
 
     // NOTE: this function expects that there's at least one array element
@@ -749,20 +745,15 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         );
     }
 
-    function _notExpiredAndWithValidSignaturesWithWitness(ClaimWithWitness calldata claimPayload)
-        internal
-        returns (bytes32 messageHash)
-    {
+    function _notExpiredAndWithValidSignaturesWithWitness(
+        bytes32 messageHash,
+        ClaimWithWitness calldata claimPayload,
+        address allocator
+    ) internal view {
         claimPayload.expires.later();
-
-        messageHash = claimPayload.toMessageHash();
         bytes32 domainSeparator = _INITIAL_DOMAIN_SEPARATOR.toLatest(_INITIAL_CHAIN_ID);
         messageHash.signedBy(claimPayload.sponsor, claimPayload.sponsorSignature, domainSeparator);
-        messageHash.signedBy(
-            claimPayload.id.toRegisteredAllocatorWithConsumed(claimPayload.nonce),
-            claimPayload.allocatorSignature,
-            domainSeparator
-        );
+        messageHash.signedBy(allocator, claimPayload.allocatorSignature, domainSeparator);
     }
 
     function _notExpiredAndWithValidSignaturesQualifiedWithWitness(
@@ -794,21 +785,21 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
     }
 
     function _usingSplitClaimWithWitness(
-        function(ClaimWithWitness calldata) internal returns (bytes32) fnIn
+        function(bytes32, ClaimWithWitness calldata, address) internal view fnIn
     )
         internal
         pure
-        returns (function(SplitClaimWithWitness calldata) internal returns (bytes32) fnOut)
+        returns (function(bytes32, SplitClaimWithWitness calldata, address) internal view fnOut)
     {
         assembly {
             fnOut := fnIn
         }
     }
 
-    function _usingSplitClaim(function(Claim calldata) internal returns (bytes32) fnIn)
+    function _usingSplitClaim(function(bytes32, Claim calldata, address) internal view fnIn)
         internal
         pure
-        returns (function(SplitClaim calldata) internal returns (bytes32) fnOut)
+        returns (function(bytes32, SplitClaim calldata, address) internal view fnOut)
     {
         assembly {
             fnOut := fnIn
@@ -928,7 +919,12 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         Claim calldata claimPayload,
         function(address, address, uint256, uint256) internal returns (bool) operation
     ) internal returns (bool) {
-        bytes32 messageHash = _notExpiredAndWithValidSignatures(claimPayload);
+        bytes32 messageHash = claimPayload.toMessageHash();
+        _notExpiredAndWithValidSignatures(
+            messageHash,
+            claimPayload,
+            claimPayload.id.toRegisteredAllocatorWithConsumed(claimPayload.nonce)
+        );
 
         claimPayload.amount.withinAllocated(claimPayload.allocatedAmount);
 
@@ -985,9 +981,16 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         SplitClaim calldata claimPayload,
         function(address, address, uint256, uint256) internal returns (bool) operation
     ) internal returns (bool) {
+        bytes32 messageHash = claimPayload.toMessageHash();
+        _usingSplitClaim(_notExpiredAndWithValidSignatures)(
+            messageHash,
+            claimPayload,
+            claimPayload.id.toRegisteredAllocatorWithConsumed(claimPayload.nonce)
+        );
+
         return _verifyAndProcessSplitComponents(
             claimPayload.sponsor,
-            _usingSplitClaim(_notExpiredAndWithValidSignatures)(claimPayload),
+            messageHash,
             claimPayload.id,
             claimPayload.allocatedAmount,
             claimPayload.claimants,
@@ -1029,13 +1032,20 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         ClaimWithWitness calldata claimPayload,
         function(address, address, uint256, uint256) internal returns (bool) operation
     ) internal returns (bool) {
+        bytes32 messageHash = claimPayload.toMessageHash();
+        _notExpiredAndWithValidSignaturesWithWitness(
+            messageHash,
+            claimPayload,
+            claimPayload.id.toRegisteredAllocatorWithConsumed(claimPayload.nonce)
+        );
+
         claimPayload.amount.withinAllocated(claimPayload.allocatedAmount);
 
         return _emitAndOperate(
             claimPayload.sponsor,
             claimPayload.claimant,
             claimPayload.id,
-            _notExpiredAndWithValidSignaturesWithWitness(claimPayload),
+            messageHash,
             claimPayload.amount,
             operation
         );
@@ -1045,9 +1055,16 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         SplitClaimWithWitness calldata claimPayload,
         function(address, address, uint256, uint256) internal returns (bool) operation
     ) internal returns (bool) {
+        bytes32 messageHash = claimPayload.toMessageHash();
+        _usingSplitClaimWithWitness(_notExpiredAndWithValidSignaturesWithWitness)(
+            messageHash,
+            claimPayload,
+            claimPayload.id.toRegisteredAllocatorWithConsumed(claimPayload.nonce)
+        );
+
         return _verifyAndProcessSplitComponents(
             claimPayload.sponsor,
-            _usingSplitClaimWithWitness(_notExpiredAndWithValidSignaturesWithWitness)(claimPayload),
+            messageHash,
             claimPayload.id,
             claimPayload.allocatedAmount,
             claimPayload.claimants,

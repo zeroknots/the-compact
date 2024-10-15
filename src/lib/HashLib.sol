@@ -131,7 +131,7 @@ library HashLib {
         }
     }
 
-    function toMessageHash(Claim calldata claim) internal view returns (bytes32 messageHash) {
+    function toClaimMessageHash(Claim calldata claim) internal view returns (bytes32 messageHash) {
         assembly ("memory-safe") {
             let m := mload(0x40) // Grab the free memory pointer; memory will be left dirtied.
 
@@ -142,7 +142,11 @@ library HashLib {
         }
     }
 
-    function toMessageHash(QualifiedClaim calldata claim)
+    function toMessageHash(Claim calldata claim) internal view returns (bytes32 messageHash) {
+        return toClaimMessageHash(claim);
+    }
+
+    function toQualifiedClaimMessageHash(QualifiedClaim calldata claim)
         internal
         view
         returns (bytes32 messageHash, bytes32 qualificationMessageHash)
@@ -161,26 +165,34 @@ library HashLib {
         qualificationMessageHash = toQualificationMessageHash(claim, messageHash, 0);
     }
 
+    function toMessageHash(QualifiedClaim calldata claim)
+        internal
+        view
+        returns (bytes32 messageHash, bytes32 qualificationMessageHash)
+    {
+        return toQualifiedClaimMessageHash(claim);
+    }
+
     function usingQualifiedSplitClaim(
-        function (
-        QualifiedClaim calldata,
-        bytes32,
-        uint256
-        ) internal pure returns (bytes32) fnIn
+        function(QualifiedClaim calldata) internal view returns (bytes32, bytes32) fnIn
     )
         internal
         pure
         returns (
-            function(
-            QualifiedSplitClaim calldata,
-            bytes32,
-            uint256
-            ) internal pure returns (bytes32) fnOut
+            function(QualifiedSplitClaim calldata) internal view returns (bytes32, bytes32) fnOut
         )
     {
         assembly {
             fnOut := fnIn
         }
+    }
+
+    function toMessageHash(QualifiedSplitClaim calldata claim)
+        internal
+        view
+        returns (bytes32 messageHash, bytes32 qualificationMessageHash)
+    {
+        return usingQualifiedSplitClaim(toQualifiedClaimMessageHash)(claim);
     }
 
     function toQualificationMessageHash(
@@ -273,7 +285,7 @@ library HashLib {
         }
     }
 
-    function toMessageHash(QualifiedClaimWithWitness calldata claim)
+    function toQualifiedClaimWithWitnessMessageHash(QualifiedClaimWithWitness calldata claim)
         internal
         view
         returns (bytes32 messageHash, bytes32 qualificationMessageHash)
@@ -281,6 +293,37 @@ library HashLib {
         messageHash = usingQualifiedClaimWithWitness(toMessageHashWithWitness)(claim, 0x40);
         qualificationMessageHash =
             usingQualifiedClaimWithWitness(toQualificationMessageHash)(claim, messageHash, 0x40);
+    }
+
+    function _usingQualifiedSplitClaimWithWitness(
+        function (QualifiedClaimWithWitness calldata) internal view returns (bytes32, bytes32) fnIn
+    )
+        internal
+        pure
+        returns (
+            function (QualifiedSplitClaimWithWitness calldata) internal view returns (bytes32, bytes32)
+                fnOut
+        )
+    {
+        assembly {
+            fnOut := fnIn
+        }
+    }
+
+    function toMessageHash(QualifiedClaimWithWitness calldata claim)
+        internal
+        view
+        returns (bytes32 messageHash, bytes32 qualificationMessageHash)
+    {
+        return toQualifiedClaimWithWitnessMessageHash(claim);
+    }
+
+    function toMessageHash(QualifiedSplitClaimWithWitness calldata claim)
+        internal
+        view
+        returns (bytes32 messageHash, bytes32 qualificationMessageHash)
+    {
+        return _usingQualifiedSplitClaimWithWitness(toQualifiedClaimWithWitnessMessageHash)(claim);
     }
 
     function toMessageHash(BatchTransfer calldata transfer)
@@ -475,6 +518,42 @@ library HashLib {
         qualificationMessageHash = keccak256(
             abi.encodePacked(claim.qualificationTypehash, messageHash, claim.qualificationPayload)
         );
+    }
+
+    function _usingSplitClaim(function (Claim calldata) internal view returns (bytes32) fnIn)
+        internal
+        pure
+        returns (function (SplitClaim calldata) internal view returns (bytes32) fnOut)
+    {
+        assembly {
+            fnOut := fnIn
+        }
+    }
+
+    function toMessageHash(SplitClaim calldata claim) internal view returns (bytes32 messageHash) {
+        return _usingSplitClaim(toClaimMessageHash)(claim);
+    }
+
+    function _usingSplitClaimWithWitness(
+        function (ClaimWithWitness calldata, uint256) internal view returns (bytes32) fnIn
+    )
+        internal
+        pure
+        returns (
+            function (SplitClaimWithWitness calldata, uint256) internal view returns (bytes32) fnOut
+        )
+    {
+        assembly {
+            fnOut := fnIn
+        }
+    }
+
+    function toMessageHash(SplitClaimWithWitness calldata claim)
+        internal
+        view
+        returns (bytes32 messageHash)
+    {
+        return _usingSplitClaimWithWitness(toMessageHashWithWitness)(claim, 0);
     }
 
     // TODO: all these SplitBatch can just use a function cast to leverage
