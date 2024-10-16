@@ -85,6 +85,7 @@ import { MetadataRenderer } from "./lib/MetadataRenderer.sol";
 contract TheCompact is ITheCompact, ERC6909, Extsload {
     using HashLib for address;
     using HashLib for bytes32;
+    using HashLib for uint256;
     using HashLib for BasicTransfer;
     using HashLib for SplitTransfer;
     using HashLib for Claim;
@@ -704,7 +705,7 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         claimPayload.expires.later();
 
         bytes32 exogenousDomainSeparator =
-            messageHash.toNotarizedDomainHash(claimPayload.notarizedChainId);
+            claimPayload.notarizedChainId.toNotarizedDomainSeparator();
         messageHash.signedBy(
             claimPayload.sponsor, claimPayload.sponsorSignature, exogenousDomainSeparator
         );
@@ -951,6 +952,7 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         function(address, address, uint256, uint256) internal returns (bool) operation
     ) internal returns (bool) {
         bytes32 messageHash = claimPayload.toMessageHash();
+
         _notExpiredAndWithValidSignatures.usingMultichainClaim()(
             messageHash,
             claimPayload,

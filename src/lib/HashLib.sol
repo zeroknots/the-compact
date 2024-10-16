@@ -576,10 +576,13 @@ library HashLib {
             let additionalChainsPtr := add(claim, calldataload(add(claim, 0xa0)))
             let additionalChainsLength := shl(5, calldataload(additionalChainsPtr))
             calldatacopy(add(m, 0x20), add(0x20, additionalChainsPtr), additionalChainsLength)
-            mstore(0x80, keccak256(m, add(0x20, additionalChainsLength)))
+
+            // hash of allocation hashes
+            mstore(add(m, 0x80), keccak256(m, add(0x20, additionalChainsLength)))
 
             mstore(m, MULTICHAIN_COMPACT_TYPEHASH)
             calldatacopy(add(m, 0x20), add(claim, 0x40), 0x60) // sponsor, nonce, expires
+
             messageHash := keccak256(m, 0xa0)
         }
     }
@@ -589,6 +592,8 @@ library HashLib {
         view
         returns (bytes32 messageHash)
     {
+        bytes32 allocationHash;
+
         assembly ("memory-safe") {
             let m := mload(0x40) // Grab the free memory pointer; memory will be left dirtied.
 
@@ -599,35 +604,35 @@ library HashLib {
             mstore(0, ALLOCATION_TYPEHASH)
             mstore(0x20, caller()) // arbiter
             mstore(0x40, chainid())
-            let allocationHash := keccak256(0, 0x80) // allocation hash
+            allocationHash := keccak256(0, 0x80) // allocation hash
 
             mstore(0x40, m)
             mstore(0x60, 0)
+        }
 
-            let chainIndex := shl(5, calldataload(add(claim, 0xc0)))
-
-            // all allocation hashes
-            let additionalChainsPtr := add(claim, calldataload(add(claim, 0xa0)))
-            let allChainsLength := add(0x20, shl(5, calldataload(additionalChainsPtr)))
-
-            // TODO: likely a better way to do this; figure it out
-            let reductionOnceLocated := 0
-            for { let i := 0 } lt(i, allChainsLength) { i := add(i, 0x20) } {
-                mstore(
-                    add(m, i),
-                    calldataload(add(sub(i, reductionOnceLocated), add(additionalChainsPtr, 0x20)))
-                )
-                if eq(i, chainIndex) {
-                    reductionOnceLocated := 0x20
-                    i := add(i, 0x20)
-                    mstore(add(m, i), allocationHash)
-                }
+        // TODO: use inline assembly for this
+        uint256 additionalChainsLength = claim.additionalChains.length;
+        bytes32[] memory allocationHashes = new bytes32[](additionalChainsLength + 1);
+        uint256 extraOffset = 0;
+        for (uint256 i = 0; i < additionalChainsLength; ++i) {
+            allocationHashes[i] = claim.additionalChains[i + extraOffset];
+            if (i == claim.chainIndex) {
+                extraOffset = 1;
+                allocationHashes[i + 1] = allocationHash;
             }
+        }
 
-            mstore(0x80, keccak256(m, allChainsLength))
+        bytes32 allocationHashesHash = keccak256(abi.encodePacked(allocationHashes));
+
+        assembly ("memory-safe") {
+            let m := mload(0x40) // Grab the free memory pointer; memory will be left dirtied.
+
+            // hash of allocation hashes
+            mstore(add(m, 0x80), allocationHashesHash)
 
             mstore(m, MULTICHAIN_COMPACT_TYPEHASH)
             calldatacopy(add(m, 0x20), add(claim, 0x40), 0x60) // sponsor, nonce, expires
+
             messageHash := keccak256(m, 0xa0)
         }
     }
@@ -743,30 +748,19 @@ library HashLib {
         }
     }
 
-    function toNotarizedDomainHash(bytes32 messageHash, uint256 notarizedChainId)
+    function toNotarizedDomainSeparator(uint256 notarizedChainId)
         internal
         view
-        returns (bytes32 domainHash)
+        returns (bytes32 notarizedDomainSeparator)
     {
         assembly ("memory-safe") {
             let m := mload(0x40) // Grab the free memory pointer.
-
-            // Prepare the 712 prefix.
-            mstore(0, 0x1901)
-
-            // Prepare the domain separator.
             mstore(m, _DOMAIN_TYPEHASH)
             mstore(add(m, 0x20), _NAME_HASH)
             mstore(add(m, 0x40), _VERSION_HASH)
             mstore(add(m, 0x60), notarizedChainId)
             mstore(add(m, 0x80), address())
-            mstore(0x20, keccak256(m, 0xa0))
-
-            // Prepare the message hash and compute the domain hash.
-            mstore(0x40, messageHash)
-            domainHash := keccak256(0x1e, 0x42)
-
-            mstore(0x40, m) // Restore the free memory pointer.
+            notarizedDomainSeparator := keccak256(m, 0xa0)
         }
     }
 
