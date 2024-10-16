@@ -82,14 +82,14 @@ bytes32 constant ALLOCATION_TYPEHASH =
 
 // abi.decode(bytes("Allocation(address arbiter,uint2"), (bytes32))
 bytes32 constant ALLOCATION_TYPESTRING_FRAGMENT_ONE =
-    abi.decode(bytes("Allocation(address arbiter,uint2"), (bytes32));
+    0x416c6c6f636174696f6e286164647265737320617262697465722c75696e7432;
 
 // abi.decode(bytes("56 chainId,uint256[2][] idsAndAm"), (bytes32))
 bytes32 constant ALLOCATION_TYPESTRING_FRAGMENT_TWO =
-    abi.decode(bytes("56 chainId,uint256[2][] idsAndAm"), (bytes32));
+    0x353620636861696e49642c75696e743235365b325d5b5d20696473416e64416d;
 
-// abi.decode(bytes("ounts,"), (bytes6))
-bytes6 constant ALLOCATION_TYPESTRING_FRAGMENT_THREE = 0x6f756e74732c;
+// uint48(abi.decode(bytes("ounts,"), (bytes6)))
+uint48 constant ALLOCATION_TYPESTRING_FRAGMENT_THREE = 0x6f756e74732c;
 
 // Message signed by the sponsor that specifies the conditions under which a set of
 // tokens across a number of different chains can be claimed; the specified arbiter on
@@ -112,10 +112,10 @@ bytes32 constant MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_ONE =
 
 // abi.decode(bytes("r,uint256 nonce,uint256 expires,"), (bytes32))
 bytes32 constant MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_TWO =
-    abi.decode(bytes("r,uint256 nonce,uint256 expires,"), (bytes32));
+    0x722c75696e74323536206e6f6e63652c75696e7432353620657870697265732c;
 
-// abi.decode(bytes("Allocation[] allocations)"), (bytes25))
-bytes25 constant MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_THREE =
+// uint200(abi.decode(bytes("Allocation[] allocations)"), (bytes25)))
+uint200 constant MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_THREE =
     0x416c6c6f636174696f6e5b5d20616c6c6f636174696f6e7329;
 
 // The allocator can optionally attest to arbitrary parameters. Any EIP-712 data

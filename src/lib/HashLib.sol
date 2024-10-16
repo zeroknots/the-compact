@@ -490,10 +490,8 @@ library HashLib {
     {
         messageHash = _deriveBatchMessageHash.usingQualifiedBatchClaim()(claim, claim.claims);
 
-        // TODO: optimize once we're using calldata
-        qualificationMessageHash = keccak256(
-            abi.encodePacked(claim.qualificationTypehash, messageHash, claim.qualificationPayload)
-        );
+        qualificationMessageHash =
+            toQualificationMessageHash.usingQualifiedBatchClaim()(claim, messageHash, 0);
     }
 
     function toMessageHash(BatchClaimWithWitness calldata claim)
@@ -513,9 +511,8 @@ library HashLib {
             claim, claim.claims
         );
 
-        // TODO: optimize once we're using calldata
-        qualificationMessageHash = keccak256(
-            abi.encodePacked(claim.qualificationTypehash, messageHash, claim.qualificationPayload)
+        qualificationMessageHash = toQualificationMessageHash.usingQualifiedBatchClaimWithWitness()(
+            claim, messageHash, 0x40
         );
     }
 
@@ -538,10 +535,8 @@ library HashLib {
     {
         messageHash = _toSplitBatchMessageHash.usingQualifiedSplitBatchClaim()(claim, claim.claims);
 
-        // TODO: optimize once we're using calldata
-        qualificationMessageHash = keccak256(
-            abi.encodePacked(claim.qualificationTypehash, messageHash, claim.qualificationPayload)
-        );
+        qualificationMessageHash =
+            toQualificationMessageHash.usingQualifiedSplitBatchClaim()(claim, messageHash, 0);
     }
 
     function toMessageHash(QualifiedSplitBatchClaimWithWitness calldata claim)
@@ -553,1026 +548,88 @@ library HashLib {
             claim, claim.claims
         );
 
-        // TODO: optimize once we're using calldata
-        qualificationMessageHash = keccak256(
-            abi.encodePacked(claim.qualificationTypehash, messageHash, claim.qualificationPayload)
-        );
+        qualificationMessageHash = toQualificationMessageHash
+            .usingQualifiedSplitBatchClaimWithWitness()(claim, messageHash, 0x40);
     }
 
-    function toMessageHash(MultichainClaim memory claim)
+    function toMessageHash(MultichainClaim calldata claim)
         internal
         view
         returns (bytes32 messageHash)
     {
-        // TODO: optimize this once we're using calldata
-        uint256[2][] memory idsAndAmounts = new uint256[2][](claim.claims.length);
-        for (uint256 i = 0; i < claim.claims.length; ++i) {
-            idsAndAmounts[i] = [claim.claims[i].id, claim.claims[i].allocatedAmount];
-        }
-
-        bytes32 allocationHash = keccak256(
-            abi.encodePacked(
-                ALLOCATION_TYPEHASH,
-                block.chainid,
-                msg.sender, // arbiter
-                keccak256(abi.encodePacked(idsAndAmounts))
-            )
-        );
-
-        bytes32[] memory allocationHashes = new bytes32[](claim.otherChains.length + 1);
-        uint256 otherChainsIndex = 0;
-        bytes32 hashToInsert;
-        for (uint256 i = 0; i < allocationHashes.length; ++i) {
-            if (i == claim.chainIndex) {
-                hashToInsert = allocationHash;
-            } else {
-                hashToInsert = claim.otherChains[otherChainsIndex++];
-            }
-            allocationHashes[i] = hashToInsert;
-        }
-
-        bytes32 allocationsHash = keccak256(abi.encodePacked(allocationHashes));
-
         assembly ("memory-safe") {
             let m := mload(0x40) // Grab the free memory pointer; memory will be left dirtied.
 
-            // TODO: calldatacopy this whole chunk at once as part of calldata implementation
-            let sponsor := mload(claim)
-            let expires := mload(add(claim, 0x20))
-            let nonce := mload(add(claim, 0x40))
+            mstore(0, calldataload(add(claim, 0xc0))) // id
+            mstore(0x20, calldataload(add(claim, 0xe0))) // amount
+
+            mstore(0x60, keccak256(0, 0x40))
+            mstore(0, ALLOCATION_TYPEHASH)
+            mstore(0x20, caller()) // arbiter
+            mstore(0x40, chainid())
+            mstore(m, keccak256(0, 0x80)) // first allocation hash
+
+            mstore(0x40, m)
+            mstore(0x60, 0)
+
+            // subsequent allocation hashes
+            let additionalChainsPtr := add(claim, calldataload(add(claim, 0xa0)))
+            let additionalChainsLength := shl(5, calldataload(additionalChainsPtr))
+            calldatacopy(add(m, 0x20), add(0x20, additionalChainsPtr), additionalChainsLength)
+            mstore(0x80, keccak256(m, add(0x20, additionalChainsLength)))
 
             mstore(m, MULTICHAIN_COMPACT_TYPEHASH)
-            mstore(add(m, 0x20), sponsor)
-            mstore(add(m, 0x40), expires)
-            mstore(add(m, 0x60), nonce)
-            mstore(add(m, 0x80), allocationsHash)
+            calldatacopy(add(m, 0x20), add(claim, 0x40), 0x60) // sponsor, nonce, expires
             messageHash := keccak256(m, 0xa0)
         }
     }
 
-    function toMessageHash(QualifiedMultichainClaim memory claim)
-        internal
-        view
-        returns (bytes32 messageHash, bytes32 qualificationMessageHash)
-    {
-        // TODO: optimize this once we're using calldata
-        uint256[2][] memory idsAndAmounts = new uint256[2][](claim.claims.length);
-        for (uint256 i = 0; i < claim.claims.length; ++i) {
-            idsAndAmounts[i] = [claim.claims[i].id, claim.claims[i].allocatedAmount];
-        }
-
-        bytes32 allocationHash = keccak256(
-            abi.encodePacked(
-                ALLOCATION_TYPEHASH,
-                block.chainid,
-                msg.sender, // arbiter
-                keccak256(abi.encodePacked(idsAndAmounts))
-            )
-        );
-
-        bytes32[] memory allocationHashes = new bytes32[](claim.otherChains.length + 1);
-        uint256 otherChainsIndex = 0;
-        bytes32 hashToInsert;
-        for (uint256 i = 0; i < allocationHashes.length; ++i) {
-            if (i == claim.chainIndex) {
-                hashToInsert = allocationHash;
-            } else {
-                hashToInsert = claim.otherChains[otherChainsIndex++];
-            }
-            allocationHashes[i] = hashToInsert;
-        }
-
-        bytes32 allocationsHash = keccak256(abi.encodePacked(allocationHashes));
-
-        assembly ("memory-safe") {
-            let m := mload(0x40) // Grab the free memory pointer; memory will be left dirtied.
-
-            // TODO: calldatacopy this whole chunk at once as part of calldata implementation
-            let sponsor := mload(claim)
-            let expires := mload(add(claim, 0x20))
-            let nonce := mload(add(claim, 0x40))
-
-            mstore(m, MULTICHAIN_COMPACT_TYPEHASH)
-            mstore(add(m, 0x20), sponsor)
-            mstore(add(m, 0x40), expires)
-            mstore(add(m, 0x60), nonce)
-            mstore(add(m, 0x80), allocationsHash)
-            messageHash := keccak256(m, 0xa0)
-        }
-
-        // TODO: optimize once we're using calldata
-        qualificationMessageHash = keccak256(
-            abi.encodePacked(claim.qualificationTypehash, messageHash, claim.qualificationPayload)
-        );
-    }
-
-    function toMessageHash(MultichainClaimWithWitness memory claim)
+    function toMessageHash(ExogenousMultichainClaim calldata claim)
         internal
         view
         returns (bytes32 messageHash)
     {
-        // derive the typehashes (TODO: make this more efficient especially once using calldata)
-        bytes memory allocationTypestring = abi.encodePacked(
-            ALLOCATION_TYPESTRING_FRAGMENT_ONE,
-            ALLOCATION_TYPESTRING_FRAGMENT_TWO,
-            ALLOCATION_TYPESTRING_FRAGMENT_THREE,
-            claim.witnessTypestring
-        );
-
-        bytes32 allocationTypehash = keccak256(allocationTypestring);
-
-        bytes32 typehash = keccak256(
-            abi.encodePacked(
-                MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_ONE,
-                MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_TWO,
-                MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_THREE,
-                allocationTypestring
-            )
-        );
-        bytes32 witness = claim.witness;
-
-        uint256[2][] memory idsAndAmounts = new uint256[2][](claim.claims.length);
-        for (uint256 i = 0; i < claim.claims.length; ++i) {
-            idsAndAmounts[i] = [claim.claims[i].id, claim.claims[i].allocatedAmount];
-        }
-
-        bytes32 allocationHash = keccak256(
-            abi.encodePacked(
-                allocationTypehash,
-                block.chainid,
-                msg.sender, // arbiter
-                keccak256(abi.encodePacked(idsAndAmounts)),
-                witness
-            )
-        );
-
-        bytes32[] memory allocationHashes = new bytes32[](claim.otherChains.length + 1);
-        uint256 otherChainsIndex = 0;
-        bytes32 hashToInsert;
-        for (uint256 i = 0; i < allocationHashes.length; ++i) {
-            if (i == claim.chainIndex) {
-                hashToInsert = allocationHash;
-            } else {
-                hashToInsert = claim.otherChains[otherChainsIndex++];
-            }
-            allocationHashes[i] = hashToInsert;
-        }
-
-        bytes32 allocationsHash = keccak256(abi.encodePacked(allocationHashes));
-
         assembly ("memory-safe") {
             let m := mload(0x40) // Grab the free memory pointer; memory will be left dirtied.
 
-            // TODO: calldatacopy this whole chunk at once as part of calldata implementation
-            let sponsor := mload(claim)
-            let expires := mload(add(claim, 0x20))
-            let nonce := mload(add(claim, 0x40))
+            mstore(0, calldataload(add(claim, 0x100))) // id
+            mstore(0x20, calldataload(add(claim, 0x120))) // amount
 
-            mstore(m, typehash)
-            mstore(add(m, 0x20), sponsor)
-            mstore(add(m, 0x40), expires)
-            mstore(add(m, 0x60), nonce)
-            mstore(add(m, 0x80), allocationsHash)
-            messageHash := keccak256(m, 0xa0)
-        }
-    }
+            mstore(0x60, keccak256(0, 0x40))
+            mstore(0, ALLOCATION_TYPEHASH)
+            mstore(0x20, caller()) // arbiter
+            mstore(0x40, chainid())
+            let allocationHash := keccak256(0, 0x80) // allocation hash
 
-    function toMessageHash(QualifiedMultichainClaimWithWitness memory claim)
-        internal
-        view
-        returns (bytes32 messageHash, bytes32 qualificationMessageHash)
-    {
-        // derive the typehashes (TODO: make this more efficient especially once using calldata)
-        bytes memory allocationTypestring = abi.encodePacked(
-            ALLOCATION_TYPESTRING_FRAGMENT_ONE,
-            ALLOCATION_TYPESTRING_FRAGMENT_TWO,
-            ALLOCATION_TYPESTRING_FRAGMENT_THREE,
-            claim.witnessTypestring
-        );
+            mstore(0x40, m)
+            mstore(0x60, 0)
 
-        bytes32 allocationTypehash = keccak256(allocationTypestring);
+            let chainIndex := shl(5, calldataload(add(claim, 0xc0)))
 
-        bytes32 typehash = keccak256(
-            abi.encodePacked(
-                MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_ONE,
-                MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_TWO,
-                MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_THREE,
-                allocationTypestring
-            )
-        );
-        bytes32 witness = claim.witness;
+            // all allocation hashes
+            let additionalChainsPtr := add(claim, calldataload(add(claim, 0xa0)))
+            let allChainsLength := add(0x20, shl(5, calldataload(additionalChainsPtr)))
 
-        uint256[2][] memory idsAndAmounts = new uint256[2][](claim.claims.length);
-        for (uint256 i = 0; i < claim.claims.length; ++i) {
-            idsAndAmounts[i] = [claim.claims[i].id, claim.claims[i].allocatedAmount];
-        }
-
-        bytes32 allocationHash = keccak256(
-            abi.encodePacked(
-                allocationTypehash,
-                block.chainid,
-                msg.sender, // arbiter
-                keccak256(abi.encodePacked(idsAndAmounts)),
-                witness
-            )
-        );
-
-        bytes32[] memory allocationHashes = new bytes32[](claim.otherChains.length + 1);
-        uint256 otherChainsIndex = 0;
-        bytes32 hashToInsert;
-        for (uint256 i = 0; i < allocationHashes.length; ++i) {
-            if (i == claim.chainIndex) {
-                hashToInsert = allocationHash;
-            } else {
-                hashToInsert = claim.otherChains[otherChainsIndex++];
+            // TODO: likely a better way to do this; figure it out
+            let reductionOnceLocated := 0
+            for { let i := 0 } lt(i, allChainsLength) { i := add(i, 0x20) } {
+                mstore(
+                    add(m, i),
+                    calldataload(add(sub(i, reductionOnceLocated), add(additionalChainsPtr, 0x20)))
+                )
+                if eq(i, chainIndex) {
+                    reductionOnceLocated := 0x20
+                    i := add(i, 0x20)
+                    mstore(add(m, i), allocationHash)
+                }
             }
-            allocationHashes[i] = hashToInsert;
-        }
 
-        bytes32 allocationsHash = keccak256(abi.encodePacked(allocationHashes));
-
-        assembly ("memory-safe") {
-            let m := mload(0x40) // Grab the free memory pointer; memory will be left dirtied.
-
-            // TODO: calldatacopy this whole chunk at once as part of calldata implementation
-            let sponsor := mload(claim)
-            let expires := mload(add(claim, 0x20))
-            let nonce := mload(add(claim, 0x40))
-
-            mstore(m, typehash)
-            mstore(add(m, 0x20), sponsor)
-            mstore(add(m, 0x40), expires)
-            mstore(add(m, 0x60), nonce)
-            mstore(add(m, 0x80), allocationsHash)
-            messageHash := keccak256(m, 0xa0)
-        }
-
-        // TODO: optimize once we're using calldata
-        qualificationMessageHash = keccak256(
-            abi.encodePacked(claim.qualificationTypehash, messageHash, claim.qualificationPayload)
-        );
-    }
-
-    function toMessageHash(SplitMultichainClaim memory claim)
-        internal
-        view
-        returns (bytes32 messageHash)
-    {
-        // TODO: optimize this once we're using calldata
-        uint256[2][] memory idsAndAmounts = new uint256[2][](claim.claims.length);
-        for (uint256 i = 0; i < claim.claims.length; ++i) {
-            idsAndAmounts[i] = [claim.claims[i].id, claim.claims[i].allocatedAmount];
-        }
-
-        bytes32 allocationHash = keccak256(
-            abi.encodePacked(
-                ALLOCATION_TYPEHASH,
-                block.chainid,
-                msg.sender, // arbiter
-                keccak256(abi.encodePacked(idsAndAmounts))
-            )
-        );
-
-        bytes32[] memory allocationHashes = new bytes32[](claim.otherChains.length + 1);
-        uint256 otherChainsIndex = 0;
-        bytes32 hashToInsert;
-        for (uint256 i = 0; i < allocationHashes.length; ++i) {
-            if (i == claim.chainIndex) {
-                hashToInsert = allocationHash;
-            } else {
-                hashToInsert = claim.otherChains[otherChainsIndex++];
-            }
-            allocationHashes[i] = hashToInsert;
-        }
-
-        bytes32 allocationsHash = keccak256(abi.encodePacked(allocationHashes));
-
-        assembly ("memory-safe") {
-            let m := mload(0x40) // Grab the free memory pointer; memory will be left dirtied.
-
-            // TODO: calldatacopy this whole chunk at once as part of calldata implementation
-            let sponsor := mload(claim)
-            let expires := mload(add(claim, 0x20))
-            let nonce := mload(add(claim, 0x40))
+            mstore(0x80, keccak256(m, allChainsLength))
 
             mstore(m, MULTICHAIN_COMPACT_TYPEHASH)
-            mstore(add(m, 0x20), sponsor)
-            mstore(add(m, 0x40), expires)
-            mstore(add(m, 0x60), nonce)
-            mstore(add(m, 0x80), allocationsHash)
+            calldatacopy(add(m, 0x20), add(claim, 0x40), 0x60) // sponsor, nonce, expires
             messageHash := keccak256(m, 0xa0)
         }
-    }
-
-    function toMessageHash(QualifiedSplitMultichainClaim memory claim)
-        internal
-        view
-        returns (bytes32 messageHash, bytes32 qualificationMessageHash)
-    {
-        // TODO: optimize this once we're using calldata
-        uint256[2][] memory idsAndAmounts = new uint256[2][](claim.claims.length);
-        for (uint256 i = 0; i < claim.claims.length; ++i) {
-            idsAndAmounts[i] = [claim.claims[i].id, claim.claims[i].allocatedAmount];
-        }
-
-        bytes32 allocationHash = keccak256(
-            abi.encodePacked(
-                ALLOCATION_TYPEHASH,
-                block.chainid,
-                msg.sender, // arbiter
-                keccak256(abi.encodePacked(idsAndAmounts))
-            )
-        );
-
-        bytes32[] memory allocationHashes = new bytes32[](claim.otherChains.length + 1);
-        uint256 otherChainsIndex = 0;
-        bytes32 hashToInsert;
-        for (uint256 i = 0; i < allocationHashes.length; ++i) {
-            if (i == claim.chainIndex) {
-                hashToInsert = allocationHash;
-            } else {
-                hashToInsert = claim.otherChains[otherChainsIndex++];
-            }
-            allocationHashes[i] = hashToInsert;
-        }
-
-        bytes32 allocationsHash = keccak256(abi.encodePacked(allocationHashes));
-
-        assembly ("memory-safe") {
-            let m := mload(0x40) // Grab the free memory pointer; memory will be left dirtied.
-
-            // TODO: calldatacopy this whole chunk at once as part of calldata implementation
-            let sponsor := mload(claim)
-            let expires := mload(add(claim, 0x20))
-            let nonce := mload(add(claim, 0x40))
-
-            mstore(m, MULTICHAIN_COMPACT_TYPEHASH)
-            mstore(add(m, 0x20), sponsor)
-            mstore(add(m, 0x40), expires)
-            mstore(add(m, 0x60), nonce)
-            mstore(add(m, 0x80), allocationsHash)
-            messageHash := keccak256(m, 0xa0)
-        }
-
-        // TODO: optimize once we're using calldata
-        qualificationMessageHash = keccak256(
-            abi.encodePacked(claim.qualificationTypehash, messageHash, claim.qualificationPayload)
-        );
-    }
-
-    function toMessageHash(SplitMultichainClaimWithWitness memory claim)
-        internal
-        view
-        returns (bytes32 messageHash)
-    {
-        // derive the typehashes (TODO: make this more efficient especially once using calldata)
-        bytes memory allocationTypestring = abi.encodePacked(
-            ALLOCATION_TYPESTRING_FRAGMENT_ONE,
-            ALLOCATION_TYPESTRING_FRAGMENT_TWO,
-            ALLOCATION_TYPESTRING_FRAGMENT_THREE,
-            claim.witnessTypestring
-        );
-
-        bytes32 allocationTypehash = keccak256(allocationTypestring);
-
-        bytes32 typehash = keccak256(
-            abi.encodePacked(
-                MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_ONE,
-                MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_TWO,
-                MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_THREE,
-                allocationTypestring
-            )
-        );
-        bytes32 witness = claim.witness;
-
-        uint256[2][] memory idsAndAmounts = new uint256[2][](claim.claims.length);
-        for (uint256 i = 0; i < claim.claims.length; ++i) {
-            idsAndAmounts[i] = [claim.claims[i].id, claim.claims[i].allocatedAmount];
-        }
-
-        bytes32 allocationHash = keccak256(
-            abi.encodePacked(
-                allocationTypehash,
-                block.chainid,
-                msg.sender, // arbiter
-                keccak256(abi.encodePacked(idsAndAmounts)),
-                witness
-            )
-        );
-
-        bytes32[] memory allocationHashes = new bytes32[](claim.otherChains.length + 1);
-        uint256 otherChainsIndex = 0;
-        bytes32 hashToInsert;
-        for (uint256 i = 0; i < allocationHashes.length; ++i) {
-            if (i == claim.chainIndex) {
-                hashToInsert = allocationHash;
-            } else {
-                hashToInsert = claim.otherChains[otherChainsIndex++];
-            }
-            allocationHashes[i] = hashToInsert;
-        }
-
-        bytes32 allocationsHash = keccak256(abi.encodePacked(allocationHashes));
-
-        assembly ("memory-safe") {
-            let m := mload(0x40) // Grab the free memory pointer; memory will be left dirtied.
-
-            // TODO: calldatacopy this whole chunk at once as part of calldata implementation
-            let sponsor := mload(claim)
-            let expires := mload(add(claim, 0x20))
-            let nonce := mload(add(claim, 0x40))
-
-            mstore(m, typehash)
-            mstore(add(m, 0x20), sponsor)
-            mstore(add(m, 0x40), expires)
-            mstore(add(m, 0x60), nonce)
-            mstore(add(m, 0x80), allocationsHash)
-            messageHash := keccak256(m, 0xa0)
-        }
-    }
-
-    function toMessageHash(QualifiedSplitMultichainClaimWithWitness memory claim)
-        internal
-        view
-        returns (bytes32 messageHash, bytes32 qualificationMessageHash)
-    {
-        // derive the typehashes (TODO: make this more efficient especially once using calldata)
-        bytes memory allocationTypestring = abi.encodePacked(
-            ALLOCATION_TYPESTRING_FRAGMENT_ONE,
-            ALLOCATION_TYPESTRING_FRAGMENT_TWO,
-            ALLOCATION_TYPESTRING_FRAGMENT_THREE,
-            claim.witnessTypestring
-        );
-
-        bytes32 allocationTypehash = keccak256(allocationTypestring);
-
-        bytes32 typehash = keccak256(
-            abi.encodePacked(
-                MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_ONE,
-                MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_TWO,
-                MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_THREE,
-                allocationTypestring
-            )
-        );
-        bytes32 witness = claim.witness;
-
-        uint256[2][] memory idsAndAmounts = new uint256[2][](claim.claims.length);
-        for (uint256 i = 0; i < claim.claims.length; ++i) {
-            idsAndAmounts[i] = [claim.claims[i].id, claim.claims[i].allocatedAmount];
-        }
-
-        bytes32 allocationHash = keccak256(
-            abi.encodePacked(
-                allocationTypehash,
-                block.chainid,
-                msg.sender, // arbiter
-                keccak256(abi.encodePacked(idsAndAmounts)),
-                witness
-            )
-        );
-
-        bytes32[] memory allocationHashes = new bytes32[](claim.otherChains.length + 1);
-        uint256 otherChainsIndex = 0;
-        bytes32 hashToInsert;
-        for (uint256 i = 0; i < allocationHashes.length; ++i) {
-            if (i == claim.chainIndex) {
-                hashToInsert = allocationHash;
-            } else {
-                hashToInsert = claim.otherChains[otherChainsIndex++];
-            }
-            allocationHashes[i] = hashToInsert;
-        }
-
-        bytes32 allocationsHash = keccak256(abi.encodePacked(allocationHashes));
-
-        assembly ("memory-safe") {
-            let m := mload(0x40) // Grab the free memory pointer; memory will be left dirtied.
-
-            // TODO: calldatacopy this whole chunk at once as part of calldata implementation
-            let sponsor := mload(claim)
-            let expires := mload(add(claim, 0x20))
-            let nonce := mload(add(claim, 0x40))
-
-            mstore(m, typehash)
-            mstore(add(m, 0x20), sponsor)
-            mstore(add(m, 0x40), expires)
-            mstore(add(m, 0x60), nonce)
-            mstore(add(m, 0x80), allocationsHash)
-            messageHash := keccak256(m, 0xa0)
-        }
-
-        // TODO: optimize once we're using calldata
-        qualificationMessageHash = keccak256(
-            abi.encodePacked(claim.qualificationTypehash, messageHash, claim.qualificationPayload)
-        );
-    }
-
-    function toMessageHash(ExogenousMultichainClaim memory claim)
-        internal
-        view
-        returns (bytes32 messageHash)
-    {
-        // TODO: optimize this once we're using calldata
-        uint256[2][] memory idsAndAmounts = new uint256[2][](claim.claims.length);
-        for (uint256 i = 0; i < claim.claims.length; ++i) {
-            idsAndAmounts[i] = [claim.claims[i].id, claim.claims[i].allocatedAmount];
-        }
-
-        bytes32 allocationHash = keccak256(
-            abi.encodePacked(
-                ALLOCATION_TYPEHASH,
-                block.chainid,
-                msg.sender, // arbiter
-                keccak256(abi.encodePacked(idsAndAmounts))
-            )
-        );
-
-        bytes32[] memory allocationHashes = new bytes32[](claim.otherChains.length + 1);
-        uint256 otherChainsIndex = 0;
-        bytes32 hashToInsert;
-        for (uint256 i = 0; i < allocationHashes.length; ++i) {
-            if (i == claim.chainIndex) {
-                hashToInsert = allocationHash;
-            } else {
-                hashToInsert = claim.otherChains[otherChainsIndex++];
-            }
-            allocationHashes[i] = hashToInsert;
-        }
-
-        bytes32 allocationsHash = keccak256(abi.encodePacked(allocationHashes));
-
-        assembly ("memory-safe") {
-            let m := mload(0x40) // Grab the free memory pointer; memory will be left dirtied.
-
-            // TODO: calldatacopy this whole chunk at once as part of calldata implementation
-            let sponsor := mload(claim)
-            let expires := mload(add(claim, 0x20))
-            let nonce := mload(add(claim, 0x40))
-
-            mstore(m, MULTICHAIN_COMPACT_TYPEHASH)
-            mstore(add(m, 0x20), sponsor)
-            mstore(add(m, 0x40), expires)
-            mstore(add(m, 0x60), nonce)
-            mstore(add(m, 0x80), allocationsHash)
-            messageHash := keccak256(m, 0xa0)
-        }
-    }
-
-    function toMessageHash(ExogenousQualifiedMultichainClaim memory claim)
-        internal
-        view
-        returns (bytes32 messageHash, bytes32 qualificationMessageHash)
-    {
-        // TODO: optimize this once we're using calldata
-        uint256[2][] memory idsAndAmounts = new uint256[2][](claim.claims.length);
-        for (uint256 i = 0; i < claim.claims.length; ++i) {
-            idsAndAmounts[i] = [claim.claims[i].id, claim.claims[i].allocatedAmount];
-        }
-
-        bytes32 allocationHash = keccak256(
-            abi.encodePacked(
-                ALLOCATION_TYPEHASH,
-                block.chainid,
-                msg.sender, // arbiter
-                keccak256(abi.encodePacked(idsAndAmounts))
-            )
-        );
-
-        bytes32[] memory allocationHashes = new bytes32[](claim.otherChains.length + 1);
-        uint256 otherChainsIndex = 0;
-        bytes32 hashToInsert;
-        for (uint256 i = 0; i < allocationHashes.length; ++i) {
-            if (i == claim.chainIndex) {
-                hashToInsert = allocationHash;
-            } else {
-                hashToInsert = claim.otherChains[otherChainsIndex++];
-            }
-            allocationHashes[i] = hashToInsert;
-        }
-
-        bytes32 allocationsHash = keccak256(abi.encodePacked(allocationHashes));
-
-        assembly ("memory-safe") {
-            let m := mload(0x40) // Grab the free memory pointer; memory will be left dirtied.
-
-            // TODO: calldatacopy this whole chunk at once as part of calldata implementation
-            let sponsor := mload(claim)
-            let expires := mload(add(claim, 0x20))
-            let nonce := mload(add(claim, 0x40))
-
-            mstore(m, MULTICHAIN_COMPACT_TYPEHASH)
-            mstore(add(m, 0x20), sponsor)
-            mstore(add(m, 0x40), expires)
-            mstore(add(m, 0x60), nonce)
-            mstore(add(m, 0x80), allocationsHash)
-            messageHash := keccak256(m, 0xa0)
-        }
-
-        // TODO: optimize once we're using calldata
-        qualificationMessageHash = keccak256(
-            abi.encodePacked(claim.qualificationTypehash, messageHash, claim.qualificationPayload)
-        );
-    }
-
-    function toMessageHash(ExogenousMultichainClaimWithWitness memory claim)
-        internal
-        view
-        returns (bytes32 messageHash)
-    {
-        // derive the typehashes (TODO: make this more efficient especially once using calldata)
-        bytes memory allocationTypestring = abi.encodePacked(
-            ALLOCATION_TYPESTRING_FRAGMENT_ONE,
-            ALLOCATION_TYPESTRING_FRAGMENT_TWO,
-            ALLOCATION_TYPESTRING_FRAGMENT_THREE,
-            claim.witnessTypestring
-        );
-
-        bytes32 allocationTypehash = keccak256(allocationTypestring);
-
-        bytes32 typehash = keccak256(
-            abi.encodePacked(
-                MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_ONE,
-                MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_TWO,
-                MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_THREE,
-                allocationTypestring
-            )
-        );
-        bytes32 witness = claim.witness;
-
-        uint256[2][] memory idsAndAmounts = new uint256[2][](claim.claims.length);
-        for (uint256 i = 0; i < claim.claims.length; ++i) {
-            idsAndAmounts[i] = [claim.claims[i].id, claim.claims[i].allocatedAmount];
-        }
-
-        bytes32 allocationHash = keccak256(
-            abi.encodePacked(
-                allocationTypehash,
-                block.chainid,
-                msg.sender, // arbiter
-                keccak256(abi.encodePacked(idsAndAmounts)),
-                witness
-            )
-        );
-
-        bytes32[] memory allocationHashes = new bytes32[](claim.otherChains.length + 1);
-        uint256 otherChainsIndex = 0;
-        bytes32 hashToInsert;
-        for (uint256 i = 0; i < allocationHashes.length; ++i) {
-            if (i == claim.chainIndex) {
-                hashToInsert = allocationHash;
-            } else {
-                hashToInsert = claim.otherChains[otherChainsIndex++];
-            }
-            allocationHashes[i] = hashToInsert;
-        }
-
-        bytes32 allocationsHash = keccak256(abi.encodePacked(allocationHashes));
-
-        assembly ("memory-safe") {
-            let m := mload(0x40) // Grab the free memory pointer; memory will be left dirtied.
-
-            // TODO: calldatacopy this whole chunk at once as part of calldata implementation
-            let sponsor := mload(claim)
-            let expires := mload(add(claim, 0x20))
-            let nonce := mload(add(claim, 0x40))
-
-            mstore(m, typehash)
-            mstore(add(m, 0x20), sponsor)
-            mstore(add(m, 0x40), expires)
-            mstore(add(m, 0x60), nonce)
-            mstore(add(m, 0x80), allocationsHash)
-            messageHash := keccak256(m, 0xa0)
-        }
-    }
-
-    function toMessageHash(ExogenousQualifiedMultichainClaimWithWitness memory claim)
-        internal
-        view
-        returns (bytes32 messageHash, bytes32 qualificationMessageHash)
-    {
-        // derive the typehashes (TODO: make this more efficient especially once using calldata)
-        bytes memory allocationTypestring = abi.encodePacked(
-            ALLOCATION_TYPESTRING_FRAGMENT_ONE,
-            ALLOCATION_TYPESTRING_FRAGMENT_TWO,
-            ALLOCATION_TYPESTRING_FRAGMENT_THREE,
-            claim.witnessTypestring
-        );
-
-        bytes32 allocationTypehash = keccak256(allocationTypestring);
-
-        bytes32 typehash = keccak256(
-            abi.encodePacked(
-                MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_ONE,
-                MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_TWO,
-                MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_THREE,
-                allocationTypestring
-            )
-        );
-        bytes32 witness = claim.witness;
-
-        uint256[2][] memory idsAndAmounts = new uint256[2][](claim.claims.length);
-        for (uint256 i = 0; i < claim.claims.length; ++i) {
-            idsAndAmounts[i] = [claim.claims[i].id, claim.claims[i].allocatedAmount];
-        }
-
-        bytes32 allocationHash = keccak256(
-            abi.encodePacked(
-                allocationTypehash,
-                block.chainid,
-                msg.sender, // arbiter
-                keccak256(abi.encodePacked(idsAndAmounts)),
-                witness
-            )
-        );
-
-        bytes32[] memory allocationHashes = new bytes32[](claim.otherChains.length + 1);
-        uint256 otherChainsIndex = 0;
-        bytes32 hashToInsert;
-        for (uint256 i = 0; i < allocationHashes.length; ++i) {
-            if (i == claim.chainIndex) {
-                hashToInsert = allocationHash;
-            } else {
-                hashToInsert = claim.otherChains[otherChainsIndex++];
-            }
-            allocationHashes[i] = hashToInsert;
-        }
-
-        bytes32 allocationsHash = keccak256(abi.encodePacked(allocationHashes));
-
-        assembly ("memory-safe") {
-            let m := mload(0x40) // Grab the free memory pointer; memory will be left dirtied.
-
-            // TODO: calldatacopy this whole chunk at once as part of calldata implementation
-            let sponsor := mload(claim)
-            let expires := mload(add(claim, 0x20))
-            let nonce := mload(add(claim, 0x40))
-
-            mstore(m, typehash)
-            mstore(add(m, 0x20), sponsor)
-            mstore(add(m, 0x40), expires)
-            mstore(add(m, 0x60), nonce)
-            mstore(add(m, 0x80), allocationsHash)
-            messageHash := keccak256(m, 0xa0)
-        }
-
-        // TODO: optimize once we're using calldata
-        qualificationMessageHash = keccak256(
-            abi.encodePacked(claim.qualificationTypehash, messageHash, claim.qualificationPayload)
-        );
-    }
-
-    function toMessageHash(ExogenousSplitMultichainClaim memory claim)
-        internal
-        view
-        returns (bytes32 messageHash)
-    {
-        // TODO: optimize this once we're using calldata
-        uint256[2][] memory idsAndAmounts = new uint256[2][](claim.claims.length);
-        for (uint256 i = 0; i < claim.claims.length; ++i) {
-            idsAndAmounts[i] = [claim.claims[i].id, claim.claims[i].allocatedAmount];
-        }
-
-        bytes32 allocationHash = keccak256(
-            abi.encodePacked(
-                ALLOCATION_TYPEHASH,
-                block.chainid,
-                msg.sender, // arbiter
-                keccak256(abi.encodePacked(idsAndAmounts))
-            )
-        );
-
-        bytes32[] memory allocationHashes = new bytes32[](claim.otherChains.length + 1);
-        uint256 otherChainsIndex = 0;
-        bytes32 hashToInsert;
-        for (uint256 i = 0; i < allocationHashes.length; ++i) {
-            if (i == claim.chainIndex) {
-                hashToInsert = allocationHash;
-            } else {
-                hashToInsert = claim.otherChains[otherChainsIndex++];
-            }
-            allocationHashes[i] = hashToInsert;
-        }
-
-        bytes32 allocationsHash = keccak256(abi.encodePacked(allocationHashes));
-
-        assembly ("memory-safe") {
-            let m := mload(0x40) // Grab the free memory pointer; memory will be left dirtied.
-
-            // TODO: calldatacopy this whole chunk at once as part of calldata implementation
-            let sponsor := mload(claim)
-            let expires := mload(add(claim, 0x20))
-            let nonce := mload(add(claim, 0x40))
-
-            mstore(m, MULTICHAIN_COMPACT_TYPEHASH)
-            mstore(add(m, 0x20), sponsor)
-            mstore(add(m, 0x40), expires)
-            mstore(add(m, 0x60), nonce)
-            mstore(add(m, 0x80), allocationsHash)
-            messageHash := keccak256(m, 0xa0)
-        }
-    }
-
-    function toMessageHash(ExogenousQualifiedSplitMultichainClaim memory claim)
-        internal
-        view
-        returns (bytes32 messageHash, bytes32 qualificationMessageHash)
-    {
-        // TODO: optimize this once we're using calldata
-        uint256[2][] memory idsAndAmounts = new uint256[2][](claim.claims.length);
-        for (uint256 i = 0; i < claim.claims.length; ++i) {
-            idsAndAmounts[i] = [claim.claims[i].id, claim.claims[i].allocatedAmount];
-        }
-
-        bytes32 allocationHash = keccak256(
-            abi.encodePacked(
-                ALLOCATION_TYPEHASH,
-                block.chainid,
-                msg.sender, // arbiter
-                keccak256(abi.encodePacked(idsAndAmounts))
-            )
-        );
-
-        bytes32[] memory allocationHashes = new bytes32[](claim.otherChains.length + 1);
-        uint256 otherChainsIndex = 0;
-        bytes32 hashToInsert;
-        for (uint256 i = 0; i < allocationHashes.length; ++i) {
-            if (i == claim.chainIndex) {
-                hashToInsert = allocationHash;
-            } else {
-                hashToInsert = claim.otherChains[otherChainsIndex++];
-            }
-            allocationHashes[i] = hashToInsert;
-        }
-
-        bytes32 allocationsHash = keccak256(abi.encodePacked(allocationHashes));
-
-        assembly ("memory-safe") {
-            let m := mload(0x40) // Grab the free memory pointer; memory will be left dirtied.
-
-            // TODO: calldatacopy this whole chunk at once as part of calldata implementation
-            let sponsor := mload(claim)
-            let expires := mload(add(claim, 0x20))
-            let nonce := mload(add(claim, 0x40))
-
-            mstore(m, MULTICHAIN_COMPACT_TYPEHASH)
-            mstore(add(m, 0x20), sponsor)
-            mstore(add(m, 0x40), expires)
-            mstore(add(m, 0x60), nonce)
-            mstore(add(m, 0x80), allocationsHash)
-            messageHash := keccak256(m, 0xa0)
-        }
-
-        // TODO: optimize once we're using calldata
-        qualificationMessageHash = keccak256(
-            abi.encodePacked(claim.qualificationTypehash, messageHash, claim.qualificationPayload)
-        );
-    }
-
-    function toMessageHash(ExogenousSplitMultichainClaimWithWitness memory claim)
-        internal
-        view
-        returns (bytes32 messageHash)
-    {
-        // derive the typehashes (TODO: make this more efficient especially once using calldata)
-        bytes memory allocationTypestring = abi.encodePacked(
-            ALLOCATION_TYPESTRING_FRAGMENT_ONE,
-            ALLOCATION_TYPESTRING_FRAGMENT_TWO,
-            ALLOCATION_TYPESTRING_FRAGMENT_THREE,
-            claim.witnessTypestring
-        );
-
-        bytes32 allocationTypehash = keccak256(allocationTypestring);
-
-        bytes32 typehash = keccak256(
-            abi.encodePacked(
-                MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_ONE,
-                MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_TWO,
-                MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_THREE,
-                allocationTypestring
-            )
-        );
-        bytes32 witness = claim.witness;
-
-        uint256[2][] memory idsAndAmounts = new uint256[2][](claim.claims.length);
-        for (uint256 i = 0; i < claim.claims.length; ++i) {
-            idsAndAmounts[i] = [claim.claims[i].id, claim.claims[i].allocatedAmount];
-        }
-
-        bytes32 allocationHash = keccak256(
-            abi.encodePacked(
-                allocationTypehash,
-                block.chainid,
-                msg.sender, // arbiter
-                keccak256(abi.encodePacked(idsAndAmounts)),
-                witness
-            )
-        );
-
-        bytes32[] memory allocationHashes = new bytes32[](claim.otherChains.length + 1);
-        uint256 otherChainsIndex = 0;
-        bytes32 hashToInsert;
-        for (uint256 i = 0; i < allocationHashes.length; ++i) {
-            if (i == claim.chainIndex) {
-                hashToInsert = allocationHash;
-            } else {
-                hashToInsert = claim.otherChains[otherChainsIndex++];
-            }
-            allocationHashes[i] = hashToInsert;
-        }
-
-        bytes32 allocationsHash = keccak256(abi.encodePacked(allocationHashes));
-
-        assembly ("memory-safe") {
-            let m := mload(0x40) // Grab the free memory pointer; memory will be left dirtied.
-
-            // TODO: calldatacopy this whole chunk at once as part of calldata implementation
-            let sponsor := mload(claim)
-            let expires := mload(add(claim, 0x20))
-            let nonce := mload(add(claim, 0x40))
-
-            mstore(m, typehash)
-            mstore(add(m, 0x20), sponsor)
-            mstore(add(m, 0x40), expires)
-            mstore(add(m, 0x60), nonce)
-            mstore(add(m, 0x80), allocationsHash)
-            messageHash := keccak256(m, 0xa0)
-        }
-    }
-
-    function toMessageHash(ExogenousQualifiedSplitMultichainClaimWithWitness memory claim)
-        internal
-        view
-        returns (bytes32 messageHash, bytes32 qualificationMessageHash)
-    {
-        // derive the typehashes (TODO: make this more efficient especially once using calldata)
-        bytes memory allocationTypestring = abi.encodePacked(
-            ALLOCATION_TYPESTRING_FRAGMENT_ONE,
-            ALLOCATION_TYPESTRING_FRAGMENT_TWO,
-            ALLOCATION_TYPESTRING_FRAGMENT_THREE,
-            claim.witnessTypestring
-        );
-
-        bytes32 allocationTypehash = keccak256(allocationTypestring);
-
-        bytes32 typehash = keccak256(
-            abi.encodePacked(
-                MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_ONE,
-                MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_TWO,
-                MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_THREE,
-                allocationTypestring
-            )
-        );
-        bytes32 witness = claim.witness;
-
-        uint256[2][] memory idsAndAmounts = new uint256[2][](claim.claims.length);
-        for (uint256 i = 0; i < claim.claims.length; ++i) {
-            idsAndAmounts[i] = [claim.claims[i].id, claim.claims[i].allocatedAmount];
-        }
-
-        bytes32 allocationHash = keccak256(
-            abi.encodePacked(
-                allocationTypehash,
-                block.chainid,
-                msg.sender, // arbiter
-                keccak256(abi.encodePacked(idsAndAmounts)),
-                witness
-            )
-        );
-
-        bytes32[] memory allocationHashes = new bytes32[](claim.otherChains.length + 1);
-        uint256 otherChainsIndex = 0;
-        bytes32 hashToInsert;
-        for (uint256 i = 0; i < allocationHashes.length; ++i) {
-            if (i == claim.chainIndex) {
-                hashToInsert = allocationHash;
-            } else {
-                hashToInsert = claim.otherChains[otherChainsIndex++];
-            }
-            allocationHashes[i] = hashToInsert;
-        }
-
-        bytes32 allocationsHash = keccak256(abi.encodePacked(allocationHashes));
-
-        assembly ("memory-safe") {
-            let m := mload(0x40) // Grab the free memory pointer; memory will be left dirtied.
-
-            // TODO: calldatacopy this whole chunk at once as part of calldata implementation
-            let sponsor := mload(claim)
-            let expires := mload(add(claim, 0x20))
-            let nonce := mload(add(claim, 0x40))
-
-            mstore(m, typehash)
-            mstore(add(m, 0x20), sponsor)
-            mstore(add(m, 0x40), expires)
-            mstore(add(m, 0x60), nonce)
-            mstore(add(m, 0x80), allocationsHash)
-            messageHash := keccak256(m, 0xa0)
-        }
-
-        // TODO: optimize once we're using calldata
-        qualificationMessageHash = keccak256(
-            abi.encodePacked(claim.qualificationTypehash, messageHash, claim.qualificationPayload)
-        );
     }
 
     function toPermit2WitnessHash(

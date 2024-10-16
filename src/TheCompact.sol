@@ -558,6 +558,25 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         return _processQualifiedSplitBatchClaimWithWitness(claimPayload, _release);
     }
 
+    function claim(MultichainClaim calldata claimPayload) external returns (bool) {
+        return _processMultichainClaim(claimPayload, _release);
+    }
+
+    function claimAndWithdraw(MultichainClaim calldata claimPayload) external returns (bool) {
+        return _processMultichainClaim(claimPayload, _release);
+    }
+
+    function claim(ExogenousMultichainClaim calldata claimPayload) external returns (bool) {
+        return _processExogenousMultichainClaim(claimPayload, _release);
+    }
+
+    function claimAndWithdraw(ExogenousMultichainClaim calldata claimPayload)
+        external
+        returns (bool)
+    {
+        return _processExogenousMultichainClaim(claimPayload, _release);
+    }
+
     function enableForcedWithdrawal(uint256 id) external returns (uint256 withdrawableAt) {
         withdrawableAt = block.timestamp + id.toResetPeriod().toSeconds();
 
@@ -674,6 +693,23 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
 
         bytes32 domainSeparator = _INITIAL_DOMAIN_SEPARATOR.toLatest(_INITIAL_CHAIN_ID);
         messageHash.signedBy(claimPayload.sponsor, claimPayload.sponsorSignature, domainSeparator);
+        messageHash.signedBy(allocator, claimPayload.allocatorSignature, domainSeparator);
+    }
+
+    function _notExpiredAndWithValidSignaturesExogenous(
+        bytes32 messageHash,
+        ExogenousMultichainClaim calldata claimPayload,
+        address allocator
+    ) internal view {
+        claimPayload.expires.later();
+
+        bytes32 exogenousDomainSeparator =
+            messageHash.toNotarizedDomainHash(claimPayload.notarizedChainId);
+        messageHash.signedBy(
+            claimPayload.sponsor, claimPayload.sponsorSignature, exogenousDomainSeparator
+        );
+
+        bytes32 domainSeparator = _INITIAL_DOMAIN_SEPARATOR.toLatest(_INITIAL_CHAIN_ID);
         messageHash.signedBy(allocator, claimPayload.allocatorSignature, domainSeparator);
     }
 
@@ -907,6 +943,53 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
             messageHash,
             claimPayload.amount,
             operation
+        );
+    }
+
+    function _processMultichainClaim(
+        MultichainClaim calldata claimPayload,
+        function(address, address, uint256, uint256) internal returns (bool) operation
+    ) internal returns (bool) {
+        bytes32 messageHash = claimPayload.toMessageHash();
+        _notExpiredAndWithValidSignatures.usingMultichainClaim()(
+            messageHash,
+            claimPayload,
+            claimPayload.id.toRegisteredAllocatorWithConsumed(claimPayload.nonce)
+        );
+
+        claimPayload.amount.withinAllocated(claimPayload.allocatedAmount);
+
+        return _emitAndOperate(
+            claimPayload.sponsor,
+            claimPayload.claimant,
+            claimPayload.id,
+            messageHash,
+            claimPayload.amount,
+            operation
+        );
+    }
+
+    function _processExogenousMultichainClaim(
+        ExogenousMultichainClaim calldata claimPayload,
+        function(address, address, uint256, uint256) internal returns (bool) operation
+    ) internal returns (bool) {
+        bytes32 messageHash = claimPayload.toMessageHash();
+
+        uint256 id = claimPayload.id;
+        uint256 amount = claimPayload.amount;
+
+        _notExpiredAndWithValidSignaturesExogenous(
+            messageHash, claimPayload, id.toRegisteredAllocatorWithConsumed(claimPayload.nonce)
+        );
+
+        if (id.toScope() != Scope.Multichain) {
+            revert InvalidScope(id);
+        }
+
+        amount.withinAllocated(claimPayload.allocatedAmount);
+
+        return _emitAndOperate(
+            claimPayload.sponsor, claimPayload.claimant, id, messageHash, amount, operation
         );
     }
 

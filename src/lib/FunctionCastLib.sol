@@ -27,6 +27,8 @@ import {
     QualifiedSplitBatchClaimWithWitness
 } from "../types/BatchClaims.sol";
 
+import { MultichainClaim } from "../types/MultichainClaims.sol";
+
 import {
     TransferComponent,
     SplitByIdComponent,
@@ -120,6 +122,74 @@ library FunctionCastLib {
         pure
         returns (
             function(QualifiedClaimWithWitness calldata, bytes32, uint256)
+            internal
+            pure
+            returns (bytes32) fnOut
+        )
+    {
+        assembly {
+            fnOut := fnIn
+        }
+    }
+
+    function usingQualifiedBatchClaim(
+        function(QualifiedClaim calldata, bytes32, uint256) internal pure returns (bytes32) fnIn
+    )
+        internal
+        pure
+        returns (
+            function(QualifiedBatchClaim calldata, bytes32, uint256)
+            internal
+            pure
+            returns (bytes32) fnOut
+        )
+    {
+        assembly {
+            fnOut := fnIn
+        }
+    }
+
+    function usingQualifiedBatchClaimWithWitness(
+        function(QualifiedClaim calldata, bytes32, uint256) internal pure returns (bytes32) fnIn
+    )
+        internal
+        pure
+        returns (
+            function(QualifiedBatchClaimWithWitness calldata, bytes32, uint256)
+            internal
+            pure
+            returns (bytes32) fnOut
+        )
+    {
+        assembly {
+            fnOut := fnIn
+        }
+    }
+
+    function usingQualifiedSplitBatchClaim(
+        function(QualifiedClaim calldata, bytes32, uint256) internal pure returns (bytes32) fnIn
+    )
+        internal
+        pure
+        returns (
+            function(QualifiedSplitBatchClaim calldata, bytes32, uint256)
+            internal
+            pure
+            returns (bytes32) fnOut
+        )
+    {
+        assembly {
+            fnOut := fnIn
+        }
+    }
+
+    function usingQualifiedSplitBatchClaimWithWitness(
+        function(QualifiedClaim calldata, bytes32, uint256) internal pure returns (bytes32) fnIn
+    )
+        internal
+        pure
+        returns (
+            function(QualifiedSplitBatchClaimWithWitness calldata, bytes32, uint256)
             internal
             pure
             returns (bytes32) fnOut
@@ -414,6 +484,16 @@ library FunctionCastLib {
         internal
         pure
         returns (function(QualifiedSplitClaimWithWitness calldata) internal returns (bytes32) fnOut)
+    {
+        assembly {
+            fnOut := fnIn
+        }
+    }
+
+    function usingMultichainClaim(function(bytes32, Claim calldata, address) internal view fnIn)
+        internal
+        pure
+        returns (function(bytes32, MultichainClaim calldata, address) internal view fnOut)
     {
         assembly {
             fnOut := fnIn

@@ -9,6 +9,8 @@ contract Extsload {
         }
     }
 
+    // TODO: add these back in once we have more headroom?
+    /*
     function extsload(bytes32 startSlot, uint256 nSlots) external view returns (bytes32[] memory) {
         assembly ("memory-safe") {
             let memptr := mload(0x40)
@@ -54,4 +56,5 @@ contract Extsload {
             return(start, sub(end, start))
         }
     }
+    */
 }

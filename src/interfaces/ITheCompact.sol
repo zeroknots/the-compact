@@ -54,6 +54,7 @@ interface ITheCompact {
     error InvalidRegistrationProof(address allocator);
     error InvalidBatchDepositStructure();
     error AllocatedAmountExceeded(uint256 allocatedAmount, uint256 providedAmount);
+    error InvalidScope(uint256 id);
 
     function deposit(address allocator, ResetPeriod resetPeriod, Scope scope, address recipient)
         external

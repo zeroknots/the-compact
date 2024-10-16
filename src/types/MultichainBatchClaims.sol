@@ -1,22 +1,20 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.27;
 
-import { SplitComponent } from "./Components.sol";
+import { BatchClaimComponent, SplitBatchClaimComponent } from "./Components.sol";
 
-struct MultichainClaim {
+struct MultichainBatchClaim {
     bytes allocatorSignature; // Authorization from the allocator.
     bytes sponsorSignature; // Authorization from the sponsor.
     address sponsor; // The account to source the tokens from.
     uint256 nonce; // A parameter to enforce replay protection, scoped to allocator.
     uint256 expires; // The time at which the claim expires.
     bytes32[] additionalChains; // The allocation hashes from additional chains.
-    uint256 id; // The token ID of the ERC6909 token to allocate.
-    uint256 allocatedAmount; // The original allocated amount of ERC6909 tokens.
+    BatchClaimComponent[] claims; // IDs and amounts.
     address claimant; // The claim recipient; specified by the arbiter.
-    uint256 amount; // The claimed token amount; specified by the arbiter.
 }
 
-struct QualifiedMultichainClaim {
+struct QualifiedMultichainBatchClaim {
     bytes allocatorSignature; // Authorization from the allocator.
     bytes sponsorSignature; // Authorization from the sponsor.
     address sponsor; // The account to source the tokens from.
@@ -25,13 +23,11 @@ struct QualifiedMultichainClaim {
     bytes32 qualificationTypehash; // Typehash of the qualification payload.
     bytes qualificationPayload; // Data used to derive qualification hash.
     bytes32[] additionalChains; // The allocation hashes from additional chains.
-    uint256 id; // The token ID of the ERC6909 token to allocate.
-    uint256 allocatedAmount; // The original allocated amount of ERC6909 tokens.
+    BatchClaimComponent[] claims; // IDs and amounts.
     address claimant; // The claim recipient; specified by the arbiter.
-    uint256 amount; // The claimed token amount; specified by the arbiter.
 }
 
-struct MultichainClaimWithWitness {
+struct MultichainBatchClaimWithWitness {
     bytes allocatorSignature; // Authorization from the allocator.
     bytes sponsorSignature; // Authorization from the sponsor.
     address sponsor; // The account to source the tokens from.
@@ -40,13 +36,11 @@ struct MultichainClaimWithWitness {
     bytes32 witness; // Hash of the witness data.
     string witnessTypestring; // Witness typestring appended to existing typestring.
     bytes32[] additionalChains; // The allocation hashes from additional chains.
-    uint256 id; // The token ID of the ERC6909 token to allocate.
-    uint256 allocatedAmount; // The original allocated amount of ERC6909 tokens.
+    BatchClaimComponent[] claims; // IDs and amounts.
     address claimant; // The claim recipient; specified by the arbiter.
-    uint256 amount; // The claimed token amount; specified by the arbiter.
 }
 
-struct QualifiedMultichainClaimWithWitness {
+struct QualifiedMultichainBatchClaimWithWitness {
     bytes allocatorSignature; // Authorization from the allocator.
     bytes sponsorSignature; // Authorization from the sponsor.
     address sponsor; // The account to source the tokens from.
@@ -57,25 +51,21 @@ struct QualifiedMultichainClaimWithWitness {
     bytes32 qualificationTypehash; // Typehash of the qualification payload.
     bytes qualificationPayload; // Data used to derive qualification hash.
     bytes32[] additionalChains; // The allocation hashes from additional chains.
-    uint256 id; // The token ID of the ERC6909 token to allocate.
-    uint256 allocatedAmount; // The original allocated amount of ERC6909 tokens.
+    BatchClaimComponent[] claims; // IDs and amounts.
     address claimant; // The claim recipient; specified by the arbiter.
-    uint256 amount; // The claimed token amount; specified by the arbiter.
 }
 
-struct SplitMultichainClaim {
+struct SplitMultichainBatchClaim {
     bytes allocatorSignature; // Authorization from the allocator.
     bytes sponsorSignature; // Authorization from the sponsor.
     address sponsor; // The account to source the tokens from.
     uint256 nonce; // A parameter to enforce replay protection, scoped to allocator.
     uint256 expires; // The time at which the claim expires.
     bytes32[] additionalChains; // The allocation hashes from additional chains.
-    uint256 id; // The token ID of the ERC6909 token to allocate.
-    uint256 allocatedAmount; // The original allocated amount of ERC6909 tokens.
-    SplitComponent[] claimants; // The claim recipients and amounts; specified by the arbiter.
+    SplitBatchClaimComponent[] claims; // The claim token IDs, recipients and amounts.
 }
 
-struct SplitMultichainClaimWithWitness {
+struct SplitMultichainBatchClaimWithWitness {
     bytes allocatorSignature; // Authorization from the allocator.
     bytes sponsorSignature; // Authorization from the sponsor.
     address sponsor; // The account to source the tokens from.
@@ -84,12 +74,10 @@ struct SplitMultichainClaimWithWitness {
     bytes32 witness; // Hash of the witness data.
     string witnessTypestring; // Witness typestring appended to existing typestring.
     bytes32[] additionalChains; // The allocation hashes from additional chains.
-    uint256 id; // The token ID of the ERC6909 token to allocate.
-    uint256 allocatedAmount; // The original allocated amount of ERC6909 tokens.
-    SplitComponent[] claimants; // The claim recipients and amounts; specified by the arbiter.
+    SplitBatchClaimComponent[] claims; // The claim token IDs, recipients and amounts.
 }
 
-struct QualifiedSplitMultichainClaim {
+struct QualifiedSplitMultichainBatchClaim {
     bytes allocatorSignature; // Authorization from the allocator.
     bytes sponsorSignature; // Authorization from the sponsor.
     address sponsor; // The account to source the tokens from.
@@ -98,12 +86,10 @@ struct QualifiedSplitMultichainClaim {
     bytes32 qualificationTypehash; // Typehash of the qualification payload.
     bytes qualificationPayload; // Data used to derive qualification hash.
     bytes32[] additionalChains; // The allocation hashes from additional chains.
-    uint256 id; // The token ID of the ERC6909 token to allocate.
-    uint256 allocatedAmount; // The original allocated amount of ERC6909 tokens.
-    SplitComponent[] claimants; // The claim recipients and amounts; specified by the arbiter.
+    SplitBatchClaimComponent[] claims; // The claim token IDs, recipients and amounts.
 }
 
-struct QualifiedSplitMultichainClaimWithWitness {
+struct QualifiedSplitMultichainBatchClaimWithWitness {
     bytes allocatorSignature; // Authorization from the allocator.
     bytes sponsorSignature; // Authorization from the sponsor.
     address sponsor; // The account to source the tokens from.
@@ -114,12 +100,10 @@ struct QualifiedSplitMultichainClaimWithWitness {
     bytes32 qualificationTypehash; // Typehash of the qualification payload.
     bytes qualificationPayload; // Data used to derive qualification hash.
     bytes32[] additionalChains; // The allocation hashes from additional chains.
-    uint256 id; // The token ID of the ERC6909 token to allocate.
-    uint256 allocatedAmount; // The original allocated amount of ERC6909 tokens.
-    SplitComponent[] claimants; // The claim recipients and amounts; specified by the arbiter.
+    SplitBatchClaimComponent[] claims; // The claim token IDs, recipients and amounts.
 }
 
-struct ExogenousMultichainClaim {
+struct ExogenousMultichainBatchClaim {
     bytes allocatorSignature; // Authorization from the allocator.
     bytes sponsorSignature; // Authorization from the sponsor.
     address sponsor; // The account to source the tokens from.
@@ -128,13 +112,11 @@ struct ExogenousMultichainClaim {
     bytes32[] additionalChains; // The allocation hashes from additional chains.
     uint256 chainIndex; // The index after which to insert the current allocation hash.
     uint256 notarizedChainId; // The chain id used to sign the multichain claim.
-    uint256 id; // The token ID of the ERC6909 token to allocate.
-    uint256 allocatedAmount; // The original allocated amount of ERC6909 tokens.
+    BatchClaimComponent[] claims; // IDs and amounts.
     address claimant; // The claim recipient; specified by the arbiter.
-    uint256 amount; // The claimed token amount; specified by the arbiter.
 }
 
-struct ExogenousQualifiedMultichainClaim {
+struct ExogenousQualifiedMultichainBatchClaim {
     bytes allocatorSignature; // Authorization from the allocator.
     bytes sponsorSignature; // Authorization from the sponsor.
     address sponsor; // The account to source the tokens from.
@@ -145,13 +127,11 @@ struct ExogenousQualifiedMultichainClaim {
     bytes32[] additionalChains; // The allocation hashes from additional chains.
     uint256 chainIndex; // The index after which to insert the current allocation hash.
     uint256 notarizedChainId; // The chain id used to sign the multichain claim.
-    uint256 id; // The token ID of the ERC6909 token to allocate.
-    uint256 allocatedAmount; // The original allocated amount of ERC6909 tokens.
+    BatchClaimComponent[] claims; // IDs and amounts.
     address claimant; // The claim recipient; specified by the arbiter.
-    uint256 amount; // The claimed token amount; specified by the arbiter.
 }
 
-struct ExogenousMultichainClaimWithWitness {
+struct ExogenousMultichainBatchClaimWithWitness {
     bytes allocatorSignature; // Authorization from the allocator.
     bytes sponsorSignature; // Authorization from the sponsor.
     address sponsor; // The account to source the tokens from.
@@ -162,13 +142,11 @@ struct ExogenousMultichainClaimWithWitness {
     bytes32[] additionalChains; // The allocation hashes from additional chains.
     uint256 chainIndex; // The index after which to insert the current allocation hash.
     uint256 notarizedChainId; // The chain id used to sign the multichain claim.
-    uint256 id; // The token ID of the ERC6909 token to allocate.
-    uint256 allocatedAmount; // The original allocated amount of ERC6909 tokens.
+    BatchClaimComponent[] claims; // IDs and amounts.
     address claimant; // The claim recipient; specified by the arbiter.
-    uint256 amount; // The claimed token amount; specified by the arbiter.
 }
 
-struct ExogenousQualifiedMultichainClaimWithWitness {
+struct ExogenousQualifiedMultichainBatchClaimWithWitness {
     bytes allocatorSignature; // Authorization from the allocator.
     bytes sponsorSignature; // Authorization from the sponsor.
     address sponsor; // The account to source the tokens from.
@@ -181,13 +159,11 @@ struct ExogenousQualifiedMultichainClaimWithWitness {
     bytes32[] additionalChains; // The allocation hashes from additional chains.
     uint256 chainIndex; // The index after which to insert the current allocation hash.
     uint256 notarizedChainId; // The chain id used to sign the multichain claim.
-    uint256 id; // The token ID of the ERC6909 token to allocate.
-    uint256 allocatedAmount; // The original allocated amount of ERC6909 tokens.
+    BatchClaimComponent[] claims; // IDs and amounts.
     address claimant; // The claim recipient; specified by the arbiter.
-    uint256 amount; // The claimed token amount; specified by the arbiter.
 }
 
-struct ExogenousSplitMultichainClaim {
+struct ExogenousSplitMultichainBatchClaim {
     bytes allocatorSignature; // Authorization from the allocator.
     bytes sponsorSignature; // Authorization from the sponsor.
     address sponsor; // The account to source the tokens from.
@@ -196,12 +172,10 @@ struct ExogenousSplitMultichainClaim {
     bytes32[] additionalChains; // The allocation hashes from additional chains.
     uint256 chainIndex; // The index after which to insert the current allocation hash.
     uint256 notarizedChainId; // The chain id used to sign the multichain claim.
-    uint256 id; // The token ID of the ERC6909 token to allocate.
-    uint256 allocatedAmount; // The original allocated amount of ERC6909 tokens.
-    SplitComponent[] claimants; // The claim recipients and amounts; specified by the arbiter.
+    SplitBatchClaimComponent[] claims; // The claim token IDs, recipients and amounts.
 }
 
-struct ExogenousSplitMultichainClaimWithWitness {
+struct ExogenousSplitMultichainBatchClaimWithWitness {
     bytes allocatorSignature; // Authorization from the allocator.
     bytes sponsorSignature; // Authorization from the sponsor.
     address sponsor; // The account to source the tokens from.
@@ -212,12 +186,10 @@ struct ExogenousSplitMultichainClaimWithWitness {
     bytes32[] additionalChains; // The allocation hashes from additional chains.
     uint256 chainIndex; // The index after which to insert the current allocation hash.
     uint256 notarizedChainId; // The chain id used to sign the multichain claim.
-    uint256 id; // The token ID of the ERC6909 token to allocate.
-    uint256 allocatedAmount; // The original allocated amount of ERC6909 tokens.
-    SplitComponent[] claimants; // The claim recipients and amounts; specified by the arbiter.
+    SplitBatchClaimComponent[] claims; // The claim token IDs, recipients and amounts.
 }
 
-struct ExogenousQualifiedSplitMultichainClaim {
+struct ExogenousQualifiedSplitMultichainBatchClaim {
     bytes allocatorSignature; // Authorization from the allocator.
     bytes sponsorSignature; // Authorization from the sponsor.
     address sponsor; // The account to source the tokens from.
@@ -228,12 +200,10 @@ struct ExogenousQualifiedSplitMultichainClaim {
     bytes32[] additionalChains; // The allocation hashes from additional chains.
     uint256 chainIndex; // The index after which to insert the current allocation hash.
     uint256 notarizedChainId; // The chain id used to sign the multichain claim.
-    uint256 id; // The token ID of the ERC6909 token to allocate.
-    uint256 allocatedAmount; // The original allocated amount of ERC6909 tokens.
-    SplitComponent[] claimants; // The claim recipients and amounts; specified by the arbiter.
+    SplitBatchClaimComponent[] claims; // The claim token IDs, recipients and amounts.
 }
 
-struct ExogenousQualifiedSplitMultichainClaimWithWitness {
+struct ExogenousQualifiedSplitMultichainBatchClaimWithWitness {
     bytes allocatorSignature; // Authorization from the allocator.
     bytes sponsorSignature; // Authorization from the sponsor.
     address sponsor; // The account to source the tokens from.
@@ -246,7 +216,5 @@ struct ExogenousQualifiedSplitMultichainClaimWithWitness {
     bytes32[] additionalChains; // The allocation hashes from additional chains.
     uint256 chainIndex; // The index after which to insert the current allocation hash.
     uint256 notarizedChainId; // The chain id used to sign the multichain claim.
-    uint256 id; // The token ID of the ERC6909 token to allocate.
-    uint256 allocatedAmount; // The original allocated amount of ERC6909 tokens.
-    SplitComponent[] claimants; // The claim recipients and amounts; specified by the arbiter.
+    SplitBatchClaimComponent[] claims; // The claim token IDs, recipients and amounts.
 }
