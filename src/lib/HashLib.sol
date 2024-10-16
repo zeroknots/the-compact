@@ -455,6 +455,38 @@ library HashLib {
         return _toSplitBatchMessageHashWithWitness(claim, claim.claims);
     }
 
+    function _usingQualifiedSplitBatchClaim(
+        function (SplitBatchClaim calldata, SplitBatchClaimComponent[] calldata) internal view returns (bytes32)
+            fnIn
+    )
+        internal
+        pure
+        returns (
+            function (QualifiedSplitBatchClaim calldata, SplitBatchClaimComponent[] calldata) internal view returns (bytes32)
+                fnOut
+        )
+    {
+        assembly {
+            fnOut := fnIn
+        }
+    }
+
+    function _usingQualifiedSplitBatchClaimWithWitness(
+        function (SplitBatchClaimWithWitness calldata, SplitBatchClaimComponent[] calldata) internal view returns (bytes32)
+            fnIn
+    )
+        internal
+        pure
+        returns (
+            function (QualifiedSplitBatchClaimWithWitness calldata, SplitBatchClaimComponent[] calldata) internal view returns (bytes32)
+                fnOut
+        )
+    {
+        assembly {
+            fnOut := fnIn
+        }
+    }
+
     function _toSplitBatchMessageHash(
         SplitBatchClaim calldata claim,
         SplitBatchClaimComponent[] calldata claims
@@ -628,37 +660,12 @@ library HashLib {
         return _usingSplitClaimWithWitness(toMessageHashWithWitness)(claim, 0);
     }
 
-    function toMessageHash(QualifiedSplitBatchClaim memory claim)
+    function toMessageHash(QualifiedSplitBatchClaim calldata claim)
         internal
         view
         returns (bytes32 messageHash, bytes32 qualificationMessageHash)
     {
-        // TODO: make this more efficient especially once using calldata
-        uint256[2][] memory idsAndAmounts = new uint256[2][](claim.claims.length);
-        for (uint256 i = 0; i < claim.claims.length; ++i) {
-            idsAndAmounts[i] = [claim.claims[i].id, claim.claims[i].allocatedAmount];
-        }
-        bytes32 idsAndAmountsHash = keccak256(abi.encodePacked(idsAndAmounts));
-
-        assembly ("memory-safe") {
-            let m := mload(0x40) // Grab the free memory pointer; memory will be left dirtied.
-
-            // TODO: calldatacopy this whole chunk at once as part of calldata implementation
-            let sponsor := mload(claim)
-            let expires := mload(add(claim, 0x20))
-            let nonce := mload(add(claim, 0x40))
-
-            let id := mload(add(claim, 0x60))
-            let amount := mload(add(claim, 0x80))
-
-            mstore(m, BATCH_COMPACT_TYPEHASH)
-            mstore(add(m, 0x20), sponsor)
-            mstore(add(m, 0x40), expires)
-            mstore(add(m, 0x60), nonce)
-            mstore(add(m, 0x80), caller()) // arbiter: msg.sender
-            mstore(add(m, 0xa0), idsAndAmountsHash)
-            messageHash := keccak256(m, 0xc0)
-        }
+        messageHash = _usingQualifiedSplitBatchClaim(_toSplitBatchMessageHash)(claim, claim.claims);
 
         // TODO: optimize once we're using calldata
         qualificationMessageHash = keccak256(
@@ -666,50 +673,14 @@ library HashLib {
         );
     }
 
-    function toMessageHash(QualifiedSplitBatchClaimWithWitness memory claim)
+    function toMessageHash(QualifiedSplitBatchClaimWithWitness calldata claim)
         internal
         view
         returns (bytes32 messageHash, bytes32 qualificationMessageHash)
     {
-        // derive the typehash (TODO: make this more efficient especially once using calldata)
-        bytes32 typehash = keccak256(
-            abi.encodePacked(
-                BATCH_COMPACT_TYPESTRING_FRAGMENT_ONE,
-                BATCH_COMPACT_TYPESTRING_FRAGMENT_TWO,
-                BATCH_COMPACT_TYPESTRING_FRAGMENT_THREE,
-                BATCH_COMPACT_TYPESTRING_FRAGMENT_FOUR,
-                claim.witnessTypestring
-            )
+        messageHash = _usingQualifiedSplitBatchClaimWithWitness(_toSplitBatchMessageHashWithWitness)(
+            claim, claim.claims
         );
-        bytes32 witness = claim.witness;
-
-        // TODO: make this more efficient especially once using calldata
-        uint256[2][] memory idsAndAmounts = new uint256[2][](claim.claims.length);
-        for (uint256 i = 0; i < claim.claims.length; ++i) {
-            idsAndAmounts[i] = [claim.claims[i].id, claim.claims[i].allocatedAmount];
-        }
-        bytes32 idsAndAmountsHash = keccak256(abi.encodePacked(idsAndAmounts));
-
-        assembly ("memory-safe") {
-            let m := mload(0x40) // Grab the free memory pointer; memory will be left dirtied.
-
-            // TODO: calldatacopy this whole chunk at once as part of calldata implementation
-            let sponsor := mload(claim)
-            let expires := mload(add(claim, 0x20))
-            let nonce := mload(add(claim, 0x40))
-
-            let id := mload(add(claim, 0x60))
-            let amount := mload(add(claim, 0x80))
-
-            mstore(m, typehash)
-            mstore(add(m, 0x20), sponsor)
-            mstore(add(m, 0x40), expires)
-            mstore(add(m, 0x60), nonce)
-            mstore(add(m, 0x80), caller()) // arbiter: msg.sender
-            mstore(add(m, 0xa0), idsAndAmountsHash)
-            mstore(add(m, 0xc0), witness)
-            messageHash := keccak256(m, 0xe0)
-        }
 
         // TODO: optimize once we're using calldata
         qualificationMessageHash = keccak256(
