@@ -76,9 +76,45 @@ import { BatchClaimComponent, SplitBatchClaimComponent } from "../types/Componen
 import { ResetPeriod } from "../types/ResetPeriod.sol";
 import { Scope } from "../types/Scope.sol";
 
+import { FunctionCastLib } from "./FunctionCastLib.sol";
+
 // TODO: make calldata versions of these where useful
 library HashLib {
-    error Debug(bytes data);
+    using
+    FunctionCastLib
+    for function(BatchTransfer calldata, bytes32) internal view returns (bytes32);
+    using
+    FunctionCastLib
+    for function(QualifiedClaim calldata) internal view returns (bytes32, bytes32);
+    using
+    FunctionCastLib
+    for function(ClaimWithWitness calldata, uint256) internal view returns (bytes32);
+    using
+    FunctionCastLib
+    for function(QualifiedClaim calldata, bytes32, uint256) internal pure returns (bytes32);
+    using
+    FunctionCastLib
+    for function(QualifiedClaimWithWitness calldata) internal view returns (bytes32, bytes32);
+    using
+    FunctionCastLib
+    for
+        function(SplitBatchClaim calldata, SplitBatchClaimComponent[] calldata) internal view returns (bytes32);
+    using
+    FunctionCastLib
+    for
+        function(SplitBatchClaimWithWitness calldata, SplitBatchClaimComponent[] calldata) internal view returns (bytes32);
+    using
+    FunctionCastLib
+    for
+        function(BatchClaim calldata, BatchClaimComponent[] calldata) internal view returns (bytes32);
+    using
+    FunctionCastLib
+    for
+        function(BatchClaimWithWitness calldata, BatchClaimComponent[] calldata) internal view returns (bytes32);
+    using FunctionCastLib for function(Claim calldata) internal view returns (bytes32);
+    using
+    FunctionCastLib
+    for function(ClaimWithWitness calldata, uint256) internal view returns (bytes32);
 
     /// @dev `keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)")`.
     bytes32 internal constant _DOMAIN_TYPEHASH =
@@ -173,26 +209,12 @@ library HashLib {
         return toQualifiedClaimMessageHash(claim);
     }
 
-    function usingQualifiedSplitClaim(
-        function(QualifiedClaim calldata) internal view returns (bytes32, bytes32) fnIn
-    )
-        internal
-        pure
-        returns (
-            function(QualifiedSplitClaim calldata) internal view returns (bytes32, bytes32) fnOut
-        )
-    {
-        assembly {
-            fnOut := fnIn
-        }
-    }
-
     function toMessageHash(QualifiedSplitClaim calldata claim)
         internal
         view
         returns (bytes32 messageHash, bytes32 qualificationMessageHash)
     {
-        return usingQualifiedSplitClaim(toQualifiedClaimMessageHash)(claim);
+        return toQualifiedClaimMessageHash.usingQualifiedSplitClaim()(claim);
     }
 
     function toQualificationMessageHash(
@@ -251,63 +273,14 @@ library HashLib {
         }
     }
 
-    function usingQualifiedClaimWithWitness(
-        function(ClaimWithWitness calldata, uint256) internal view returns (bytes32) fnIn
-    )
-        internal
-        pure
-        returns (
-            function(QualifiedClaimWithWitness calldata, uint256) internal view returns (bytes32) fnOut
-        )
-    {
-        assembly {
-            fnOut := fnIn
-        }
-    }
-
-    function usingQualifiedClaimWithWitness(
-        function(QualifiedClaim calldata, bytes32, uint256)
-        internal
-        pure
-        returns (bytes32) fnIn
-    )
-        internal
-        pure
-        returns (
-            function(QualifiedClaimWithWitness calldata, bytes32, uint256)
-            internal
-            pure
-            returns (bytes32) fnOut
-        )
-    {
-        assembly {
-            fnOut := fnIn
-        }
-    }
-
     function toQualifiedClaimWithWitnessMessageHash(QualifiedClaimWithWitness calldata claim)
         internal
         view
         returns (bytes32 messageHash, bytes32 qualificationMessageHash)
     {
-        messageHash = usingQualifiedClaimWithWitness(toMessageHashWithWitness)(claim, 0x40);
+        messageHash = toMessageHashWithWitness.usingQualifiedClaimWithWitness()(claim, 0x40);
         qualificationMessageHash =
-            usingQualifiedClaimWithWitness(toQualificationMessageHash)(claim, messageHash, 0x40);
-    }
-
-    function _usingQualifiedSplitClaimWithWitness(
-        function (QualifiedClaimWithWitness calldata) internal view returns (bytes32, bytes32) fnIn
-    )
-        internal
-        pure
-        returns (
-            function (QualifiedSplitClaimWithWitness calldata) internal view returns (bytes32, bytes32)
-                fnOut
-        )
-    {
-        assembly {
-            fnOut := fnIn
-        }
+            toQualificationMessageHash.usingQualifiedClaimWithWitness()(claim, messageHash, 0x40);
     }
 
     function toMessageHash(QualifiedClaimWithWitness calldata claim)
@@ -323,7 +296,7 @@ library HashLib {
         view
         returns (bytes32 messageHash, bytes32 qualificationMessageHash)
     {
-        return _usingQualifiedSplitClaimWithWitness(toQualifiedClaimWithWitnessMessageHash)(claim);
+        return toQualifiedClaimWithWitnessMessageHash.usingQualifiedSplitClaimWithWitness()(claim);
     }
 
     function toMessageHash(BatchTransfer calldata transfer)
@@ -358,20 +331,6 @@ library HashLib {
         }
     }
 
-    function _usingSplitBatchTransfer(
-        function(BatchTransfer calldata, bytes32) internal view returns (bytes32) fnIn
-    )
-        internal
-        pure
-        returns (
-            function(SplitBatchTransfer calldata, bytes32) internal view returns (bytes32) fnOut
-        )
-    {
-        assembly {
-            fnOut := fnIn
-        }
-    }
-
     function toMessageHash(SplitBatchTransfer calldata transfer)
         internal
         view
@@ -389,7 +348,7 @@ library HashLib {
         bytes32 idsAndAmountsHash = keccak256(abi.encodePacked(idsAndAmounts));
 
         messageHash =
-            _usingSplitBatchTransfer(_deriveBatchCompactMessageHash)(transfer, idsAndAmountsHash);
+            _deriveBatchCompactMessageHash.usingSplitBatchTransfer()(transfer, idsAndAmountsHash);
     }
 
     function toIdsAndAmountsHash(BatchClaimComponent[] calldata claims)
@@ -453,38 +412,6 @@ library HashLib {
         returns (bytes32 messageHash)
     {
         return _toSplitBatchMessageHashWithWitness(claim, claim.claims);
-    }
-
-    function _usingQualifiedSplitBatchClaim(
-        function (SplitBatchClaim calldata, SplitBatchClaimComponent[] calldata) internal view returns (bytes32)
-            fnIn
-    )
-        internal
-        pure
-        returns (
-            function (QualifiedSplitBatchClaim calldata, SplitBatchClaimComponent[] calldata) internal view returns (bytes32)
-                fnOut
-        )
-    {
-        assembly {
-            fnOut := fnIn
-        }
-    }
-
-    function _usingQualifiedSplitBatchClaimWithWitness(
-        function (SplitBatchClaimWithWitness calldata, SplitBatchClaimComponent[] calldata) internal view returns (bytes32)
-            fnIn
-    )
-        internal
-        pure
-        returns (
-            function (QualifiedSplitBatchClaimWithWitness calldata, SplitBatchClaimComponent[] calldata) internal view returns (bytes32)
-                fnOut
-        )
-    {
-        assembly {
-            fnOut := fnIn
-        }
     }
 
     function _toSplitBatchMessageHash(
@@ -556,44 +483,12 @@ library HashLib {
         }
     }
 
-    function _usingQualifiedBatchClaim(
-        function(BatchClaim calldata, BatchClaimComponent[] calldata) internal view returns (bytes32)
-            fnIn
-    )
-        internal
-        pure
-        returns (
-            function(QualifiedBatchClaim calldata, BatchClaimComponent[] calldata) internal view returns (bytes32)
-            fnOut
-        )
-    {
-        assembly {
-            fnOut := fnIn
-        }
-    }
-
-    function _usingQualifiedBatchClaimWithWitness(
-        function(BatchClaimWithWitness calldata, BatchClaimComponent[] calldata) internal view returns (bytes32)
-            fnIn
-    )
-        internal
-        pure
-        returns (
-            function(QualifiedBatchClaimWithWitness calldata, BatchClaimComponent[] calldata) internal view returns (bytes32)
-            fnOut
-        )
-    {
-        assembly {
-            fnOut := fnIn
-        }
-    }
-
     function toMessageHash(QualifiedBatchClaim calldata claim)
         internal
         view
         returns (bytes32 messageHash, bytes32 qualificationMessageHash)
     {
-        messageHash = _usingQualifiedBatchClaim(_deriveBatchMessageHash)(claim, claim.claims);
+        messageHash = _deriveBatchMessageHash.usingQualifiedBatchClaim()(claim, claim.claims);
 
         // TODO: optimize once we're using calldata
         qualificationMessageHash = keccak256(
@@ -614,7 +509,7 @@ library HashLib {
         view
         returns (bytes32 messageHash, bytes32 qualificationMessageHash)
     {
-        messageHash = _usingQualifiedBatchClaimWithWitness(_toBatchMessageHashWithWitness)(
+        messageHash = _toBatchMessageHashWithWitness.usingQualifiedBatchClaimWithWitness()(
             claim, claim.claims
         );
 
@@ -624,32 +519,8 @@ library HashLib {
         );
     }
 
-    function _usingSplitClaim(function (Claim calldata) internal view returns (bytes32) fnIn)
-        internal
-        pure
-        returns (function (SplitClaim calldata) internal view returns (bytes32) fnOut)
-    {
-        assembly {
-            fnOut := fnIn
-        }
-    }
-
     function toMessageHash(SplitClaim calldata claim) internal view returns (bytes32 messageHash) {
-        return _usingSplitClaim(toClaimMessageHash)(claim);
-    }
-
-    function _usingSplitClaimWithWitness(
-        function (ClaimWithWitness calldata, uint256) internal view returns (bytes32) fnIn
-    )
-        internal
-        pure
-        returns (
-            function (SplitClaimWithWitness calldata, uint256) internal view returns (bytes32) fnOut
-        )
-    {
-        assembly {
-            fnOut := fnIn
-        }
+        return toClaimMessageHash.usingSplitClaim()(claim);
     }
 
     function toMessageHash(SplitClaimWithWitness calldata claim)
@@ -657,7 +528,7 @@ library HashLib {
         view
         returns (bytes32 messageHash)
     {
-        return _usingSplitClaimWithWitness(toMessageHashWithWitness)(claim, 0);
+        return toMessageHashWithWitness.usingSplitClaimWithWitness()(claim, 0);
     }
 
     function toMessageHash(QualifiedSplitBatchClaim calldata claim)
@@ -665,7 +536,7 @@ library HashLib {
         view
         returns (bytes32 messageHash, bytes32 qualificationMessageHash)
     {
-        messageHash = _usingQualifiedSplitBatchClaim(_toSplitBatchMessageHash)(claim, claim.claims);
+        messageHash = _toSplitBatchMessageHash.usingQualifiedSplitBatchClaim()(claim, claim.claims);
 
         // TODO: optimize once we're using calldata
         qualificationMessageHash = keccak256(
@@ -678,7 +549,7 @@ library HashLib {
         view
         returns (bytes32 messageHash, bytes32 qualificationMessageHash)
     {
-        messageHash = _usingQualifiedSplitBatchClaimWithWitness(_toSplitBatchMessageHashWithWitness)(
+        messageHash = _toSplitBatchMessageHashWithWitness.usingQualifiedSplitBatchClaimWithWitness()(
             claim, claim.claims
         );
 

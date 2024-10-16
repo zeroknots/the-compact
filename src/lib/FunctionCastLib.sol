@@ -27,7 +27,12 @@ import {
     QualifiedSplitBatchClaimWithWitness
 } from "../types/BatchClaims.sol";
 
-import { TransferComponent, SplitByIdComponent } from "../types/Components.sol";
+import {
+    TransferComponent,
+    SplitByIdComponent,
+    BatchClaimComponent,
+    SplitBatchClaimComponent
+} from "../types/Components.sol";
 
 library FunctionCastLib {
     function usingSplitTransfer(
@@ -60,6 +65,168 @@ library FunctionCastLib {
         internal
         pure
         returns (function (bytes32, address, SplitBatchTransfer calldata) internal view fnOut)
+    {
+        assembly {
+            fnOut := fnIn
+        }
+    }
+
+    function usingSplitBatchTransfer(
+        function(BatchTransfer calldata, bytes32) internal view returns (bytes32) fnIn
+    )
+        internal
+        pure
+        returns (
+            function(SplitBatchTransfer calldata, bytes32) internal view returns (bytes32) fnOut
+        )
+    {
+        assembly {
+            fnOut := fnIn
+        }
+    }
+
+    function usingQualifiedSplitClaim(
+        function(QualifiedClaim calldata) internal view returns (bytes32, bytes32) fnIn
+    )
+        internal
+        pure
+        returns (
+            function(QualifiedSplitClaim calldata) internal view returns (bytes32, bytes32) fnOut
+        )
+    {
+        assembly {
+            fnOut := fnIn
+        }
+    }
+
+    function usingQualifiedClaimWithWitness(
+        function(ClaimWithWitness calldata, uint256) internal view returns (bytes32) fnIn
+    )
+        internal
+        pure
+        returns (
+            function(QualifiedClaimWithWitness calldata, uint256) internal view returns (bytes32) fnOut
+        )
+    {
+        assembly {
+            fnOut := fnIn
+        }
+    }
+
+    function usingQualifiedClaimWithWitness(
+        function(QualifiedClaim calldata, bytes32, uint256) internal pure returns (bytes32) fnIn
+    )
+        internal
+        pure
+        returns (
+            function(QualifiedClaimWithWitness calldata, bytes32, uint256)
+            internal
+            pure
+            returns (bytes32) fnOut
+        )
+    {
+        assembly {
+            fnOut := fnIn
+        }
+    }
+
+    function usingQualifiedSplitClaimWithWitness(
+        function (QualifiedClaimWithWitness calldata) internal view returns (bytes32, bytes32) fnIn
+    )
+        internal
+        pure
+        returns (
+            function (QualifiedSplitClaimWithWitness calldata) internal view returns (bytes32, bytes32)
+                fnOut
+        )
+    {
+        assembly {
+            fnOut := fnIn
+        }
+    }
+
+    function usingQualifiedSplitBatchClaim(
+        function (SplitBatchClaim calldata, SplitBatchClaimComponent[] calldata) internal view returns (bytes32)
+            fnIn
+    )
+        internal
+        pure
+        returns (
+            function (QualifiedSplitBatchClaim calldata, SplitBatchClaimComponent[] calldata) internal view returns (bytes32)
+                fnOut
+        )
+    {
+        assembly {
+            fnOut := fnIn
+        }
+    }
+
+    function usingQualifiedSplitBatchClaimWithWitness(
+        function (SplitBatchClaimWithWitness calldata, SplitBatchClaimComponent[] calldata) internal view returns (bytes32)
+            fnIn
+    )
+        internal
+        pure
+        returns (
+            function (QualifiedSplitBatchClaimWithWitness calldata, SplitBatchClaimComponent[] calldata) internal view returns (bytes32)
+                fnOut
+        )
+    {
+        assembly {
+            fnOut := fnIn
+        }
+    }
+
+    function usingQualifiedBatchClaim(
+        function(BatchClaim calldata, BatchClaimComponent[] calldata) internal view returns (bytes32)
+            fnIn
+    )
+        internal
+        pure
+        returns (
+            function(QualifiedBatchClaim calldata, BatchClaimComponent[] calldata) internal view returns (bytes32)
+            fnOut
+        )
+    {
+        assembly {
+            fnOut := fnIn
+        }
+    }
+
+    function usingQualifiedBatchClaimWithWitness(
+        function(BatchClaimWithWitness calldata, BatchClaimComponent[] calldata) internal view returns (bytes32)
+            fnIn
+    )
+        internal
+        pure
+        returns (
+            function(QualifiedBatchClaimWithWitness calldata, BatchClaimComponent[] calldata) internal view returns (bytes32)
+            fnOut
+        )
+    {
+        assembly {
+            fnOut := fnIn
+        }
+    }
+
+    function usingSplitClaim(function (Claim calldata) internal view returns (bytes32) fnIn)
+        internal
+        pure
+        returns (function (SplitClaim calldata) internal view returns (bytes32) fnOut)
+    {
+        assembly {
+            fnOut := fnIn
+        }
+    }
+
+    function usingSplitClaimWithWitness(
+        function (ClaimWithWitness calldata, uint256) internal view returns (bytes32) fnIn
+    )
+        internal
+        pure
+        returns (
+            function (SplitClaimWithWitness calldata, uint256) internal view returns (bytes32) fnOut
+        )
     {
         assembly {
             fnOut := fnIn
