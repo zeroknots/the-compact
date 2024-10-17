@@ -40,6 +40,12 @@ library EfficiencyLib {
         }
     }
 
+    function isNullAddress(address account) internal pure returns (bool isNull) {
+        assembly {
+            isNull := iszero(shl(96, account))
+        }
+    }
+
     function asUint256(bool a) internal pure returns (uint256 b) {
         assembly {
             b := a

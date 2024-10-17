@@ -5,6 +5,7 @@ import { Lock } from "../types/Lock.sol";
 import { ResetPeriod } from "../types/ResetPeriod.sol";
 // TODO: add scope to metadata
 import { IdLib } from "./IdLib.sol";
+import { EfficiencyLib } from "./EfficiencyLib.sol";
 import { LibString } from "solady/utils/LibString.sol";
 import { MetadataReaderLib } from "solady/utils/MetadataReaderLib.sol";
 
@@ -13,13 +14,14 @@ library MetadataLib {
     using MetadataLib for string;
     using IdLib for Lock;
     using IdLib for ResetPeriod;
+    using EfficiencyLib for address;
     using LibString for uint256;
     using LibString for address;
     using MetadataReaderLib for address;
 
     function toURI(Lock memory lock, uint256 id) internal view returns (string memory uri) {
         string memory tokenAddress =
-            lock.token == address(0) ? "Native Token" : lock.token.toHexStringChecksummed();
+            lock.token.isNullAddress() ? "Native Token" : lock.token.toHexStringChecksummed();
         string memory allocator = lock.allocator.toHexStringChecksummed();
         string memory resetPeriod =
             string.concat(lock.resetPeriod.toSeconds().toString(), " seconds"); // TODO: return minutes / hours / days
@@ -76,7 +78,7 @@ library MetadataLib {
         returns (string memory symbol)
     {
         // NOTE: this will not take into account the correct symbol on many chains
-        if (token == address(0)) {
+        if (token.isNullAddress()) {
             return "ETH";
         }
 
@@ -91,7 +93,7 @@ library MetadataLib {
         view
         returns (string memory decimals)
     {
-        if (token == address(0)) {
+        if (token.isNullAddress()) {
             return "18";
         }
         return uint256(token.readDecimals()).toString();
