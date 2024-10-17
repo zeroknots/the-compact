@@ -157,6 +157,18 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
     uint256 private constant _TRANSFER_EVENT_SIGNATURE =
         0x1b3d7edb2e9c0b0e7c525b20aaaef0f5940d2ed71663c7d39266ecafac728859;
 
+    /// @dev `keccak256(bytes("Claim(address,address,address,bytes32)"))`.
+    uint256 private constant _CLAIM_EVENT_SIGNATURE =
+        0x770c32a2314b700d6239ee35ba23a9690f2fceb93a55d8c753e953059b3b18d4;
+
+    /// @dev `keccak256(bytes("Deposit(address,address,uint256,uint256)"))`.
+    uint256 private constant _DEPOSIT_EVENT_SIGNATURE =
+        0xdcbc1c05240f31ff3ad067ef1ee35ce4997762752e3a095284754544f4c709d7;
+
+    /// @dev `keccak256(bytes("Withdrawal(address,address,uint256,uint256)"))`.
+    uint256 private constant _WITHDRAWAL_EVENT_SIGNATURE =
+        0xc2b4a290c20fb28939d29f102514fbffd2b73c059ffba8b78250c94161d5fcc6;
+
     // Rage-quit functionality (TODO: optimize storage layout)
     mapping(address => mapping(uint256 => uint256)) private _cutoffTime;
 
@@ -1162,7 +1174,17 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         internal
         returns (bool)
     {
-        emit Claim(sponsor, allocator, msg.sender, messageHash);
+        assembly {
+            mstore(0, messageHash)
+            log4(
+                0,
+                0x20,
+                _CLAIM_EVENT_SIGNATURE,
+                shr(0x60, shl(0x60, sponsor)),
+                shr(0x60, shl(0x60, allocator)),
+                caller()
+            )
+        }
     }
 
     function _emitAndOperate(
@@ -1620,13 +1642,15 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
                 revert(0x1c, 0x04)
             }
             sstore(toBalanceSlot, toBalanceAfter)
-            // Emit the {Transfer} event.
+
+            let recipient := shr(0x60, shl(0x60, to))
+
+            // Emit the {Transfer} and {Deposit} events.
             mstore(0x00, caller())
             mstore(0x20, amount)
-            log4(0x00, 0x40, _TRANSFER_EVENT_SIGNATURE, 0, shr(0x60, shl(0x60, to)), id)
+            log4(0, 0x40, _TRANSFER_EVENT_SIGNATURE, 0, recipient, id)
+            log4(0x20, 0x20, _DEPOSIT_EVENT_SIGNATURE, shr(0x60, shl(0x60, from)), recipient, id)
         }
-
-        emit Deposit(from, to, id, amount);
     }
 
     /// @dev Burns `amount` token `id` from `from` without checking transfer hooks and sends
@@ -1649,10 +1673,14 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
             }
             // Subtract and store the updated balance.
             sstore(fromBalanceSlot, sub(fromBalance, amount))
-            // Emit the {Transfer} event.
+
+            let account := shr(0x60, shl(0x60, from))
+
+            // Emit the {Transfer} and {Withdrawal} events.
             mstore(0x00, caller())
             mstore(0x20, amount)
-            log4(0x00, 0x40, _TRANSFER_EVENT_SIGNATURE, shr(0x60, shl(0x60, from)), 0, id)
+            log4(0x00, 0x40, _TRANSFER_EVENT_SIGNATURE, account, 0, id)
+            log4(0x20, 0x20, _WITHDRAWAL_EVENT_SIGNATURE, account, shr(0x60, shl(0x60, to)), id)
         }
 
         address token = id.toToken();
@@ -1661,8 +1689,6 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         } else {
             token.safeTransfer(to, amount);
         }
-
-        emit Withdrawal(from, to, id, amount);
 
         return true;
     }
