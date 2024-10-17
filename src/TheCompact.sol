@@ -640,6 +640,34 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         return _processExogenousMultichainClaimWithWitness(claimPayload, _release);
     }
 
+    function claim(QualifiedMultichainClaimWithWitness calldata claimPayload)
+        external
+        returns (bool)
+    {
+        return _processQualifiedMultichainClaimWithWitness(claimPayload, _release);
+    }
+
+    function claimAndWithdraw(QualifiedMultichainClaimWithWitness calldata claimPayload)
+        external
+        returns (bool)
+    {
+        return _processQualifiedMultichainClaimWithWitness(claimPayload, _release);
+    }
+
+    function claim(ExogenousQualifiedMultichainClaimWithWitness calldata claimPayload)
+        external
+        returns (bool)
+    {
+        return _processExogenousQualifiedMultichainClaimWithWitness(claimPayload, _release);
+    }
+
+    function claimAndWithdraw(ExogenousQualifiedMultichainClaimWithWitness calldata claimPayload)
+        external
+        returns (bool)
+    {
+        return _processExogenousQualifiedMultichainClaimWithWitness(claimPayload, _release);
+    }
+
     function enableForcedWithdrawal(uint256 id) external returns (uint256 withdrawableAt) {
         // overflow check not necessary as reset period is capped
         unchecked {
@@ -908,6 +936,24 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         );
     }
 
+    function _notExpiredAndWithValidSignaturesQualifiedExogenousWithWitness(
+        bytes32 messageHash,
+        bytes32 qualificationMessageHash,
+        ExogenousQualifiedMultichainClaimWithWitness calldata claimPayload,
+        address allocator
+    ) internal view {
+        _notExpiredAndSignedByBoth(
+            claimPayload.expires,
+            claimPayload.notarizedChainId.toNotarizedDomainSeparator(),
+            messageHash,
+            claimPayload.sponsor,
+            claimPayload.sponsorSignature,
+            qualificationMessageHash,
+            allocator,
+            claimPayload.allocatorSignature
+        );
+    }
+
     // NOTE: this function expects that there's at least one array element
     function _notExpiredAndWithValidSignaturesBatch(BatchClaim calldata claimPayload)
         internal
@@ -1160,6 +1206,30 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         );
     }
 
+    function _processQualifiedMultichainClaimWithWitness(
+        QualifiedMultichainClaimWithWitness calldata claimPayload,
+        function(address, address, uint256, uint256) internal returns (bool) operation
+    ) internal returns (bool) {
+        (bytes32 messageHash, bytes32 qualificationMessageHash) = claimPayload.toMessageHash();
+        address allocator = claimPayload.id.toRegisteredAllocatorWithConsumed(claimPayload.nonce);
+
+        _notExpiredAndWithValidQualifiedSignatures.usingQualifiedMultichainClaimWithWitness()(
+            messageHash, qualificationMessageHash, claimPayload, allocator
+        );
+
+        claimPayload.amount.withinAllocated(claimPayload.allocatedAmount);
+
+        return _emitAndOperate(
+            claimPayload.sponsor,
+            claimPayload.claimant,
+            claimPayload.id,
+            messageHash,
+            claimPayload.amount,
+            allocator,
+            operation
+        );
+    }
+
     function _processExogenousMultichainClaim(
         ExogenousMultichainClaim calldata claimPayload,
         function(address, address, uint256, uint256) internal returns (bool) operation
@@ -1233,6 +1303,37 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         address allocator = id.toRegisteredAllocatorWithConsumed(claimPayload.nonce);
 
         _notExpiredAndWithValidSignaturesQualifiedExogenous(
+            messageHash, qualificationMessageHash, claimPayload, allocator
+        );
+
+        if (id.toScope() != Scope.Multichain) {
+            revert InvalidScope(id);
+        }
+
+        amount.withinAllocated(claimPayload.allocatedAmount);
+
+        return _emitAndOperate(
+            claimPayload.sponsor,
+            claimPayload.claimant,
+            id,
+            messageHash,
+            amount,
+            allocator,
+            operation
+        );
+    }
+
+    function _processExogenousQualifiedMultichainClaimWithWitness(
+        ExogenousQualifiedMultichainClaimWithWitness calldata claimPayload,
+        function(address, address, uint256, uint256) internal returns (bool) operation
+    ) internal returns (bool) {
+        (bytes32 messageHash, bytes32 qualificationMessageHash) = claimPayload.toMessageHash();
+
+        uint256 id = claimPayload.id;
+        uint256 amount = claimPayload.amount;
+        address allocator = id.toRegisteredAllocatorWithConsumed(claimPayload.nonce);
+
+        _notExpiredAndWithValidSignaturesQualifiedExogenousWithWitness(
             messageHash, qualificationMessageHash, claimPayload, allocator
         );
 

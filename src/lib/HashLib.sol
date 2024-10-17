@@ -635,6 +635,48 @@ library HashLib {
         }
     }
 
+    function usingQualifiedMultichainClaimWithWitness(
+        function (MultichainClaim calldata, uint256, bytes32, bytes32)
+        internal
+        view
+        returns (bytes32) fnIn
+    )
+        internal
+        pure
+        returns (
+            function (QualifiedMultichainClaimWithWitness calldata, uint256, bytes32, bytes32)
+                                                        internal
+                                                        view
+                                                        returns (bytes32) fnOut
+        )
+    {
+        assembly ("memory-safe") {
+            fnOut := fnIn
+        }
+    }
+
+    function usingQualifiedMultichainClaimWithWitness(
+        function (
+        QualifiedClaim calldata,
+        bytes32,
+        uint256
+        ) internal pure returns (bytes32) fnIn
+    )
+        internal
+        pure
+        returns (
+            function (
+                                                        QualifiedMultichainClaimWithWitness calldata,
+                                                        bytes32,
+                                                        uint256
+                                                    ) internal pure returns (bytes32) fnOut
+        )
+    {
+        assembly ("memory-safe") {
+            fnOut := fnIn
+        }
+    }
+
     function usingQualifiedMultichainClaim(
         function (
         QualifiedClaim calldata,
@@ -667,6 +709,26 @@ library HashLib {
         pure
         returns (
             function (ExogenousMultichainClaimWithWitness calldata, uint256, bytes32, bytes32)
+                                                        internal
+                                                        view
+                                                        returns (bytes32) fnOut
+        )
+    {
+        assembly ("memory-safe") {
+            fnOut := fnIn
+        }
+    }
+
+    function usingExogenousQualifiedMultichainClaimWithWitness(
+        function (ExogenousMultichainClaim calldata, uint256, bytes32, bytes32)
+        internal
+        view
+        returns (bytes32) fnIn
+    )
+        internal
+        pure
+        returns (
+            function (ExogenousQualifiedMultichainClaimWithWitness calldata, uint256, bytes32, bytes32)
                                                         internal
                                                         view
                                                         returns (bytes32) fnOut
@@ -747,6 +809,22 @@ library HashLib {
         )(claim, 0x40, allocationTypehash, multichainCompactTypehash);
     }
 
+    function toMessageHash(QualifiedMultichainClaimWithWitness calldata claim)
+        internal
+        view
+        returns (bytes32 messageHash, bytes32 qualificationMessageHash)
+    {
+        (bytes32 allocationTypehash, bytes32 multichainCompactTypehash) =
+            usingQualifiedMultichainClaimWithWitness(getMultichainTypehashes)(claim);
+
+        messageHash = usingQualifiedMultichainClaimWithWitness(toMultichainClaimMessageHash)(
+            claim, 0x80, allocationTypehash, multichainCompactTypehash
+        );
+        qualificationMessageHash = usingQualifiedMultichainClaimWithWitness(
+            toQualificationMessageHash
+        )(claim, messageHash, 0x40);
+    }
+
     function toMessageHash(QualifiedMultichainClaim calldata claim)
         internal
         view
@@ -805,6 +883,28 @@ library HashLib {
         }
     }
 
+    function usingExogenousQualifiedMultichainClaimWithWitness(
+        function(
+        QualifiedClaim calldata,
+        bytes32,
+        uint256
+        ) internal pure returns (bytes32) fnIn
+    )
+        internal
+        pure
+        returns (
+            function(
+            ExogenousQualifiedMultichainClaimWithWitness calldata,
+            bytes32,
+            uint256
+            ) internal pure returns (bytes32) fnOut
+        )
+    {
+        assembly ("memory-safe") {
+            fnOut := fnIn
+        }
+    }
+
     function usingExogenousMultichainClaimWithWitness(
         function (
         MultichainClaimWithWitness calldata
@@ -815,6 +915,42 @@ library HashLib {
         returns (
             function (
                                 ExogenousMultichainClaimWithWitness calldata
+                            ) internal pure returns (bytes32, bytes32) fnOut
+        )
+    {
+        assembly ("memory-safe") {
+            fnOut := fnIn
+        }
+    }
+
+    function usingExogenousQualifiedMultichainClaimWithWitness(
+        function (
+        MultichainClaimWithWitness calldata
+        ) internal pure returns (bytes32, bytes32) fnIn
+    )
+        internal
+        pure
+        returns (
+            function (
+                                ExogenousQualifiedMultichainClaimWithWitness calldata
+                            ) internal pure returns (bytes32, bytes32) fnOut
+        )
+    {
+        assembly ("memory-safe") {
+            fnOut := fnIn
+        }
+    }
+
+    function usingQualifiedMultichainClaimWithWitness(
+        function (
+        MultichainClaimWithWitness calldata
+        ) internal pure returns (bytes32, bytes32) fnIn
+    )
+        internal
+        pure
+        returns (
+            function (
+                                QualifiedMultichainClaimWithWitness calldata
                             ) internal pure returns (bytes32, bytes32) fnOut
         )
     {
@@ -928,6 +1064,22 @@ library HashLib {
         qualificationMessageHash = usingExogenousQualifiedMultichainClaim(
             toQualificationMessageHash
         )(claim, messageHash, 0);
+    }
+
+    function toMessageHash(ExogenousQualifiedMultichainClaimWithWitness calldata claim)
+        internal
+        view
+        returns (bytes32 messageHash, bytes32 qualificationMessageHash)
+    {
+        (bytes32 allocationTypehash, bytes32 multichainCompactTypehash) =
+            usingExogenousQualifiedMultichainClaimWithWitness(getMultichainTypehashes)(claim);
+
+        messageHash = usingExogenousQualifiedMultichainClaimWithWitness(
+            toExogenousMultichainClaimMessageHash
+        )(claim, 0x80, allocationTypehash, multichainCompactTypehash);
+        qualificationMessageHash = usingExogenousQualifiedMultichainClaimWithWitness(
+            toQualificationMessageHash
+        )(claim, messageHash, 0x40);
     }
 
     function toPermit2WitnessHash(
