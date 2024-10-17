@@ -20,7 +20,7 @@ struct SplitTransfer {
     SplitComponent[] recipients; // The recipients and amounts of each transfer.
 }
 
-struct Claim {
+struct BasicClaim {
     bytes allocatorSignature; // Authorization from the allocator.
     bytes sponsorSignature; // Authorization from the sponsor.
     address sponsor; // The account to source the tokens from.

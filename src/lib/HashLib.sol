@@ -29,7 +29,7 @@ import {
 import {
     BasicTransfer,
     SplitTransfer,
-    Claim,
+    BasicClaim,
     QualifiedClaim,
     ClaimWithWitness,
     QualifiedClaimWithWitness,
@@ -111,7 +111,7 @@ library HashLib {
     FunctionCastLib
     for
         function(BatchClaimWithWitness calldata, BatchClaimComponent[] calldata) internal view returns (bytes32);
-    using FunctionCastLib for function(Claim calldata) internal view returns (bytes32);
+    using FunctionCastLib for function(BasicClaim calldata) internal view returns (bytes32);
     using
     FunctionCastLib
     for function(ClaimWithWitness calldata, uint256) internal view returns (bytes32);
@@ -167,7 +167,11 @@ library HashLib {
         }
     }
 
-    function toClaimMessageHash(Claim calldata claim) internal view returns (bytes32 messageHash) {
+    function toClaimMessageHash(BasicClaim calldata claim)
+        internal
+        view
+        returns (bytes32 messageHash)
+    {
         assembly ("memory-safe") {
             let m := mload(0x40) // Grab the free memory pointer; memory will be left dirtied.
 
@@ -178,7 +182,7 @@ library HashLib {
         }
     }
 
-    function toMessageHash(Claim calldata claim) internal view returns (bytes32 messageHash) {
+    function toMessageHash(BasicClaim calldata claim) internal view returns (bytes32 messageHash) {
         return toClaimMessageHash(claim);
     }
 

@@ -14,7 +14,7 @@ import { HashLib } from "../src/lib/HashLib.sol";
 import {
     BasicTransfer,
     SplitTransfer,
-    Claim,
+    BasicClaim,
     QualifiedClaim,
     ClaimWithWitness,
     QualifiedClaimWithWitness,
@@ -1123,7 +1123,7 @@ contract TheCompactTest is Test {
         (r, vs) = vm.signCompact(allocatorPrivateKey, digest);
         bytes memory allocatorSignature = abi.encodePacked(r, vs);
 
-        Claim memory claim = Claim(
+        BasicClaim memory claim = BasicClaim(
             allocatorSignature,
             sponsorSignature,
             swapper,
@@ -1184,7 +1184,7 @@ contract TheCompactTest is Test {
         (r, vs) = vm.signCompact(allocatorPrivateKey, digest);
         bytes memory allocatorSignature = abi.encodePacked(r, vs);
 
-        Claim memory claim = Claim(
+        BasicClaim memory claim = BasicClaim(
             allocatorSignature,
             sponsorSignature,
             swapper,

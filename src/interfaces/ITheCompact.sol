@@ -4,7 +4,7 @@ pragma solidity ^0.8.27;
 import { ForcedWithdrawalStatus } from "../types/ForcedWithdrawalStatus.sol";
 import { ResetPeriod } from "../types/ResetPeriod.sol";
 import { Scope } from "../types/Scope.sol";
-import { Claim, BasicTransfer } from "../types/Claims.sol";
+import { BasicClaim, BasicTransfer } from "../types/Claims.sol";
 import { BatchClaim } from "../types/BatchClaims.sol";
 import { ISignatureTransfer } from "permit2/src/interfaces/ISignatureTransfer.sol";
 
@@ -23,12 +23,11 @@ interface ITheCompact {
         uint256 indexed id,
         uint256 depositedAmount
     );
-    event Claimed(
+    event Claim(
         address indexed sponsor,
-        address indexed claimant,
-        uint256 indexed id,
-        bytes32 claimHash,
-        uint256 claimAmount
+        address indexed allocator,
+        address indexed arbiter,
+        bytes32 claimHash
     );
     event Withdrawal(
         address indexed account,
@@ -99,11 +98,11 @@ interface ITheCompact {
 
     function allocatedWithdrawal(BasicTransfer memory transfer) external returns (bool);
 
-    function claim(Claim memory claim) external returns (bool);
+    function claim(BasicClaim memory claim) external returns (bool);
 
     function claim(BatchClaim memory claim) external returns (bool);
 
-    function claimAndWithdraw(Claim memory claim) external returns (bool);
+    function claimAndWithdraw(BasicClaim memory claim) external returns (bool);
 
     function enableForcedWithdrawal(uint256 id) external returns (uint256 withdrawableAt);
 

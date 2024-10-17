@@ -4,7 +4,7 @@ pragma solidity ^0.8.27;
 import {
     BasicTransfer,
     SplitTransfer,
-    Claim,
+    BasicClaim,
     QualifiedClaim,
     ClaimWithWitness,
     QualifiedClaimWithWitness,
@@ -279,7 +279,7 @@ library FunctionCastLib {
         }
     }
 
-    function usingSplitClaim(function (Claim calldata) internal view returns (bytes32) fnIn)
+    function usingSplitClaim(function (BasicClaim calldata) internal view returns (bytes32) fnIn)
         internal
         pure
         returns (function (SplitClaim calldata) internal view returns (bytes32) fnOut)
@@ -316,7 +316,9 @@ library FunctionCastLib {
         }
     }
 
-    function usingClaimWithWitness(function (bytes32, Claim calldata, address) internal view fnIn)
+    function usingClaimWithWitness(
+        function (bytes32, BasicClaim calldata, address) internal view fnIn
+    )
         internal
         pure
         returns (function (bytes32, ClaimWithWitness calldata, address) internal view fnOut)
@@ -327,7 +329,7 @@ library FunctionCastLib {
     }
 
     function usingSplitClaimWithWitness(
-        function(bytes32, Claim calldata, address) internal view fnIn
+        function(bytes32, BasicClaim calldata, address) internal view fnIn
     )
         internal
         pure
@@ -338,7 +340,7 @@ library FunctionCastLib {
         }
     }
 
-    function usingSplitClaim(function(bytes32, Claim calldata, address) internal view fnIn)
+    function usingSplitClaim(function(bytes32, BasicClaim calldata, address) internal view fnIn)
         internal
         pure
         returns (function(bytes32, SplitClaim calldata, address) internal view fnOut)
@@ -348,7 +350,7 @@ library FunctionCastLib {
         }
     }
 
-    function usingBatchClaim(function(bytes32, Claim calldata, address) internal view fnIn)
+    function usingBatchClaim(function(bytes32, BasicClaim calldata, address) internal view fnIn)
         internal
         pure
         returns (function(bytes32, BatchClaim calldata, address) internal view fnOut)
@@ -358,7 +360,9 @@ library FunctionCastLib {
         }
     }
 
-    function usingSplitBatchClaim(function(bytes32, Claim calldata, address) internal view fnIn)
+    function usingSplitBatchClaim(
+        function(bytes32, BasicClaim calldata, address) internal view fnIn
+    )
         internal
         pure
         returns (function(bytes32, SplitBatchClaim calldata, address) internal view fnOut)
@@ -369,7 +373,7 @@ library FunctionCastLib {
     }
 
     function usingSplitBatchClaimWithWitness(
-        function(bytes32, Claim calldata, address) internal view fnIn
+        function(bytes32, BasicClaim calldata, address) internal view fnIn
     )
         internal
         pure
@@ -383,7 +387,7 @@ library FunctionCastLib {
     }
 
     function usingBatchClaimWithWitness(
-        function(bytes32, Claim calldata, address) internal view fnIn
+        function(bytes32, BasicClaim calldata, address) internal view fnIn
     )
         internal
         pure
@@ -395,11 +399,11 @@ library FunctionCastLib {
     }
 
     function usingQualifiedSplitClaim(
-        function(QualifiedClaim calldata) internal returns (bytes32) fnIn
+        function(QualifiedClaim calldata) internal returns (bytes32, address) fnIn
     )
         internal
         pure
-        returns (function(QualifiedSplitClaim calldata) internal returns (bytes32) fnOut)
+        returns (function(QualifiedSplitClaim calldata) internal returns (bytes32, address) fnOut)
     {
         assembly {
             fnOut := fnIn
@@ -479,18 +483,22 @@ library FunctionCastLib {
     }
 
     function usingSplitClaimQualifiedWithWitness(
-        function(QualifiedClaimWithWitness calldata) internal returns (bytes32) fnIn
+        function(QualifiedClaimWithWitness calldata) internal returns (bytes32, address) fnIn
     )
         internal
         pure
-        returns (function(QualifiedSplitClaimWithWitness calldata) internal returns (bytes32) fnOut)
+        returns (
+            function(QualifiedSplitClaimWithWitness calldata) internal returns (bytes32, address) fnOut
+        )
     {
         assembly {
             fnOut := fnIn
         }
     }
 
-    function usingMultichainClaim(function(bytes32, Claim calldata, address) internal view fnIn)
+    function usingMultichainClaim(
+        function(bytes32, BasicClaim calldata, address) internal view fnIn
+    )
         internal
         pure
         returns (function(bytes32, MultichainClaim calldata, address) internal view fnOut)
