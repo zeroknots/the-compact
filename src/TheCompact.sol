@@ -1170,10 +1170,7 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         );
     }
 
-    function _emitClaim(address sponsor, bytes32 messageHash, address allocator)
-        internal
-        returns (bool)
-    {
+    function _emitClaim(address sponsor, bytes32 messageHash, address allocator) internal {
         assembly {
             mstore(0, messageHash)
             log4(
@@ -1271,15 +1268,16 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
 
                 operation(sponsor, claimant, component.id, component.amount);
             }
-        }
-        if (errorBuffer.asBool()) {
-            for (uint256 i = 0; i < totalClaims; ++i) {
-                component = claims[i];
-                component.amount.withinAllocated(component.allocatedAmount);
-            }
 
-            // TODO: extract more informative error by deriving the reason for the failure
-            revert InvalidBatchAllocation();
+            if (errorBuffer.asBool()) {
+                for (uint256 i = 0; i < totalClaims; ++i) {
+                    component = claims[i];
+                    component.amount.withinAllocated(component.allocatedAmount);
+                }
+
+                // TODO: extract more informative error by deriving the reason for the failure
+                revert InvalidBatchAllocation();
+            }
         }
 
         return true;
@@ -1698,11 +1696,22 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         virtual
         override
     {
+        address allocator = id.toAllocator();
+
         if (
-            IAllocator(id.toAllocator()).attest(msg.sender, from, to, id, amount)
+            IAllocator(allocator).attest(msg.sender, from, to, id, amount)
                 != IAllocator.attest.selector
         ) {
-            revert UnallocatedTransfer(msg.sender, from, to, id, amount);
+            assembly {
+                // revert UnallocatedTransfer(msg.sender, from, to, id, amount)
+                mstore(0, 0x014c9310)
+                mstore(0x20, caller())
+                mstore(0x40, shr(0x60, shl(0x60, from)))
+                mstore(0x60, shr(0x60, shl(0x60, to)))
+                mstore(0x80, id)
+                mstore(0xa0, amount)
+                revert(0x1c, 0xa4)
+            }
         }
     }
 }
