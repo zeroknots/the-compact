@@ -600,7 +600,13 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
 
     function disableForcedWithdrawal(uint256 id) external returns (bool) {
         if (_cutoffTime[msg.sender][id] == 0) {
-            revert ForcedWithdrawalAlreadyDisabled(msg.sender, id);
+            assembly ("memory-safe") {
+                // revert ForcedWithdrawalAlreadyDisabled(msg.sender, id)
+                mstore(0, 0xe632dbad)
+                mstore(0x20, caller())
+                mstore(0x40, id)
+                revert(0x1c, 0x44)
+            }
         }
 
         delete _cutoffTime[msg.sender][id];
@@ -617,7 +623,12 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         uint256 withdrawableAt = _cutoffTime[msg.sender][id];
 
         if ((withdrawableAt == 0).or(withdrawableAt > block.timestamp)) {
-            revert PrematureWithdrawal(id);
+            assembly ("memory-safe") {
+                // revert PrematureWithdrawal(id)
+                mstore(0, 0x9287bcb0)
+                mstore(0x20, id)
+                revert(0x1c, 0x24)
+            }
         }
 
         withdrawnAmount = balanceOf(msg.sender, id);
@@ -629,8 +640,14 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         external
         returns (uint96 allocatorId)
     {
+        allocator = uint256(uint160(allocator)).asSanitizedAddress();
         if (!allocator.canBeRegistered(proof)) {
-            revert InvalidRegistrationProof(allocator);
+            assembly ("memory-safe") {
+                // revert InvalidRegistrationProof(allocator)
+                mstore(0, 0x4e7f492b)
+                mstore(0x20, allocator)
+                revert(0x1c, 0x24)
+            }
         }
 
         allocatorId = allocator.register();
@@ -643,12 +660,12 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
     {
         forcedWithdrawalAvailableAt = _cutoffTime[account][id];
 
-        if (forcedWithdrawalAvailableAt == 0) {
-            status = ForcedWithdrawalStatus.Disabled;
-        } else if (forcedWithdrawalAvailableAt > block.timestamp) {
-            status = ForcedWithdrawalStatus.Pending;
-        } else {
-            status = ForcedWithdrawalStatus.Enabled;
+        assembly ("memory-safe") {
+            status :=
+                mul(
+                    iszero(iszero(forcedWithdrawalAvailableAt)),
+                    sub(2, gt(forcedWithdrawalAvailableAt, timestamp()))
+                )
         }
     }
 
@@ -657,11 +674,10 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         view
         returns (address token, address allocator, ResetPeriod resetPeriod, Scope scope)
     {
-        Lock memory lock = id.toLock();
-        token = lock.token;
-        allocator = lock.allocator;
-        resetPeriod = lock.resetPeriod;
-        scope = lock.scope;
+        token = id.toToken();
+        allocator = id.toAllocatorId().toRegisteredAllocator();
+        resetPeriod = id.toResetPeriod();
+        scope = id.toScope();
     }
 
     function check(uint256 nonce, address allocator) external view returns (bool consumed) {
