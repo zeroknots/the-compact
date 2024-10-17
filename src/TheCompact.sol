@@ -1121,14 +1121,13 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         address allocator = claimPayload.id.toRegisteredAllocatorWithConsumed(claimPayload.nonce);
         _notExpiredAndWithValidSignatures(messageHash, claimPayload, allocator);
 
-        claimPayload.amount.withinAllocated(claimPayload.allocatedAmount);
-
         return _emitAndOperate(
             claimPayload.sponsor,
             claimPayload.claimant,
             claimPayload.id,
             messageHash,
             claimPayload.amount,
+            claimPayload.allocatedAmount,
             allocator,
             operation
         );
@@ -1145,14 +1144,13 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
             messageHash, claimPayload, allocator
         );
 
-        claimPayload.amount.withinAllocated(claimPayload.allocatedAmount);
-
         return _emitAndOperate(
             claimPayload.sponsor,
             claimPayload.claimant,
             claimPayload.id,
             messageHash,
             claimPayload.amount,
+            claimPayload.allocatedAmount,
             allocator,
             operation
         );
@@ -1169,14 +1167,13 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
             messageHash, claimPayload, allocator
         );
 
-        claimPayload.amount.withinAllocated(claimPayload.allocatedAmount);
-
         return _emitAndOperate(
             claimPayload.sponsor,
             claimPayload.claimant,
             claimPayload.id,
             messageHash,
             claimPayload.amount,
+            claimPayload.allocatedAmount,
             allocator,
             operation
         );
@@ -1193,14 +1190,13 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
             messageHash, qualificationMessageHash, claimPayload, allocator
         );
 
-        claimPayload.amount.withinAllocated(claimPayload.allocatedAmount);
-
         return _emitAndOperate(
             claimPayload.sponsor,
             claimPayload.claimant,
             claimPayload.id,
             messageHash,
             claimPayload.amount,
+            claimPayload.allocatedAmount,
             allocator,
             operation
         );
@@ -1217,14 +1213,13 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
             messageHash, qualificationMessageHash, claimPayload, allocator
         );
 
-        claimPayload.amount.withinAllocated(claimPayload.allocatedAmount);
-
         return _emitAndOperate(
             claimPayload.sponsor,
             claimPayload.claimant,
             claimPayload.id,
             messageHash,
             claimPayload.amount,
+            claimPayload.allocatedAmount,
             allocator,
             operation
         );
@@ -1248,14 +1243,13 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
             revert InvalidScope(id);
         }
 
-        amount.withinAllocated(claimPayload.allocatedAmount);
-
         return _emitAndOperate(
             claimPayload.sponsor,
             claimPayload.claimant,
             id,
             messageHash,
             amount,
+            claimPayload.allocatedAmount,
             allocator,
             operation
         );
@@ -1279,14 +1273,13 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
             revert InvalidScope(id);
         }
 
-        amount.withinAllocated(claimPayload.allocatedAmount);
-
         return _emitAndOperate(
             claimPayload.sponsor,
             claimPayload.claimant,
             id,
             messageHash,
             amount,
+            claimPayload.allocatedAmount,
             allocator,
             operation
         );
@@ -1310,14 +1303,13 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
             revert InvalidScope(id);
         }
 
-        amount.withinAllocated(claimPayload.allocatedAmount);
-
         return _emitAndOperate(
             claimPayload.sponsor,
             claimPayload.claimant,
             id,
             messageHash,
             amount,
+            claimPayload.allocatedAmount,
             allocator,
             operation
         );
@@ -1341,14 +1333,13 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
             revert InvalidScope(id);
         }
 
-        amount.withinAllocated(claimPayload.allocatedAmount);
-
         return _emitAndOperate(
             claimPayload.sponsor,
             claimPayload.claimant,
             id,
             messageHash,
             amount,
+            claimPayload.allocatedAmount,
             allocator,
             operation
         );
@@ -1419,7 +1410,6 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         QualifiedClaim calldata claimPayload,
         function(address, address, uint256, uint256) internal returns (bool) operation
     ) internal returns (bool) {
-        claimPayload.amount.withinAllocated(claimPayload.allocatedAmount);
         (bytes32 messageHash, address allocator) =
             _notExpiredAndWithValidSignaturesQualified(claimPayload);
 
@@ -1429,6 +1419,7 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
             claimPayload.id,
             messageHash,
             claimPayload.amount,
+            claimPayload.allocatedAmount,
             allocator,
             operation
         );
@@ -1461,14 +1452,13 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
             messageHash, claimPayload, allocator
         );
 
-        claimPayload.amount.withinAllocated(claimPayload.allocatedAmount);
-
         return _emitAndOperate(
             claimPayload.sponsor,
             claimPayload.claimant,
             claimPayload.id,
             messageHash,
             claimPayload.amount,
+            claimPayload.allocatedAmount,
             allocator,
             operation
         );
@@ -1515,9 +1505,12 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         uint256 id,
         bytes32 messageHash,
         uint256 amount,
+        uint256 allocatedAmount,
         address allocator,
         function(address, address, uint256, uint256) internal returns (bool) operation
     ) internal returns (bool) {
+        amount.withinAllocated(allocatedAmount);
+
         _emitClaim(sponsor, messageHash, allocator);
 
         return operation(sponsor, claimant, id, amount);
@@ -1527,7 +1520,6 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         QualifiedClaimWithWitness calldata claimPayload,
         function(address, address, uint256, uint256) internal returns (bool) operation
     ) internal returns (bool) {
-        claimPayload.amount.withinAllocated(claimPayload.allocatedAmount);
         (bytes32 messageHash, address allocator) =
             _notExpiredAndWithValidSignaturesQualifiedWithWitness(claimPayload);
 
@@ -1537,6 +1529,7 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
             claimPayload.id,
             messageHash,
             claimPayload.amount,
+            claimPayload.allocatedAmount,
             allocator,
             operation
         );
