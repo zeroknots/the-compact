@@ -243,7 +243,7 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         bool firstUnderlyingTokenIsNative;
         uint256 id;
 
-        assembly {
+        assembly ("memory-safe") {
             let idsAndAmountsOffset := idsAndAmounts.offset
             id := calldataload(idsAndAmountsOffset)
             firstUnderlyingTokenIsNative := iszero(shr(96, shl(96, id)))
@@ -343,7 +343,7 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
     ) external payable returns (uint256[] memory) {
         uint256 totalTokens = permitted.length;
         bool firstUnderlyingTokenIsNative;
-        assembly {
+        assembly ("memory-safe") {
             let permittedOffset := permitted.offset
             firstUnderlyingTokenIsNative := iszero(shr(96, shl(96, add(permittedOffset, 0x20))))
 
@@ -1171,7 +1171,7 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
     }
 
     function _emitClaim(address sponsor, bytes32 messageHash, address allocator) internal {
-        assembly {
+        assembly ("memory-safe") {
             mstore(0, messageHash)
             log4(
                 0,
@@ -1702,7 +1702,7 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
             IAllocator(allocator).attest(msg.sender, from, to, id, amount)
                 != IAllocator.attest.selector
         ) {
-            assembly {
+            assembly ("memory-safe") {
                 // revert UnallocatedTransfer(msg.sender, from, to, id, amount)
                 mstore(0, 0x014c9310)
                 mstore(0x20, caller())

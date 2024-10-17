@@ -44,7 +44,7 @@ library FunctionCastLib {
         pure
         returns (function (bytes32, address, SplitTransfer calldata) internal view fnOut)
     {
-        assembly {
+        assembly ("memory-safe") {
             fnOut := fnIn
         }
     }
@@ -56,7 +56,7 @@ library FunctionCastLib {
         pure
         returns (function (bytes32, address, BatchTransfer calldata) internal view fnOut)
     {
-        assembly {
+        assembly ("memory-safe") {
             fnOut := fnIn
         }
     }
@@ -68,7 +68,7 @@ library FunctionCastLib {
         pure
         returns (function (bytes32, address, SplitBatchTransfer calldata) internal view fnOut)
     {
-        assembly {
+        assembly ("memory-safe") {
             fnOut := fnIn
         }
     }
@@ -82,7 +82,7 @@ library FunctionCastLib {
             function(SplitBatchTransfer calldata, bytes32) internal view returns (bytes32) fnOut
         )
     {
-        assembly {
+        assembly ("memory-safe") {
             fnOut := fnIn
         }
     }
@@ -96,7 +96,7 @@ library FunctionCastLib {
             function(QualifiedSplitClaim calldata) internal view returns (bytes32, bytes32) fnOut
         )
     {
-        assembly {
+        assembly ("memory-safe") {
             fnOut := fnIn
         }
     }
@@ -110,7 +110,7 @@ library FunctionCastLib {
             function(QualifiedClaimWithWitness calldata, uint256) internal view returns (bytes32) fnOut
         )
     {
-        assembly {
+        assembly ("memory-safe") {
             fnOut := fnIn
         }
     }
@@ -127,7 +127,7 @@ library FunctionCastLib {
             returns (bytes32) fnOut
         )
     {
-        assembly {
+        assembly ("memory-safe") {
             fnOut := fnIn
         }
     }
@@ -144,7 +144,7 @@ library FunctionCastLib {
             returns (bytes32) fnOut
         )
     {
-        assembly {
+        assembly ("memory-safe") {
             fnOut := fnIn
         }
     }
@@ -161,7 +161,7 @@ library FunctionCastLib {
             returns (bytes32) fnOut
         )
     {
-        assembly {
+        assembly ("memory-safe") {
             fnOut := fnIn
         }
     }
@@ -178,7 +178,7 @@ library FunctionCastLib {
             returns (bytes32) fnOut
         )
     {
-        assembly {
+        assembly ("memory-safe") {
             fnOut := fnIn
         }
     }
@@ -195,7 +195,7 @@ library FunctionCastLib {
             returns (bytes32) fnOut
         )
     {
-        assembly {
+        assembly ("memory-safe") {
             fnOut := fnIn
         }
     }
@@ -210,7 +210,7 @@ library FunctionCastLib {
                 fnOut
         )
     {
-        assembly {
+        assembly ("memory-safe") {
             fnOut := fnIn
         }
     }
@@ -226,7 +226,7 @@ library FunctionCastLib {
                 fnOut
         )
     {
-        assembly {
+        assembly ("memory-safe") {
             fnOut := fnIn
         }
     }
@@ -242,7 +242,7 @@ library FunctionCastLib {
                 fnOut
         )
     {
-        assembly {
+        assembly ("memory-safe") {
             fnOut := fnIn
         }
     }
@@ -258,7 +258,7 @@ library FunctionCastLib {
             fnOut
         )
     {
-        assembly {
+        assembly ("memory-safe") {
             fnOut := fnIn
         }
     }
@@ -274,7 +274,7 @@ library FunctionCastLib {
             fnOut
         )
     {
-        assembly {
+        assembly ("memory-safe") {
             fnOut := fnIn
         }
     }
@@ -284,7 +284,7 @@ library FunctionCastLib {
         pure
         returns (function (SplitClaim calldata) internal view returns (bytes32) fnOut)
     {
-        assembly {
+        assembly ("memory-safe") {
             fnOut := fnIn
         }
     }
@@ -298,7 +298,7 @@ library FunctionCastLib {
             function (SplitClaimWithWitness calldata, uint256) internal view returns (bytes32) fnOut
         )
     {
-        assembly {
+        assembly ("memory-safe") {
             fnOut := fnIn
         }
     }
@@ -311,7 +311,7 @@ library FunctionCastLib {
         pure
         returns (function (SplitByIdComponent[] memory, uint256) internal returns (address) fnOut)
     {
-        assembly {
+        assembly ("memory-safe") {
             fnOut := fnIn
         }
     }
@@ -323,7 +323,7 @@ library FunctionCastLib {
         pure
         returns (function (bytes32, ClaimWithWitness calldata, address) internal view fnOut)
     {
-        assembly {
+        assembly ("memory-safe") {
             fnOut := fnIn
         }
     }
@@ -335,7 +335,7 @@ library FunctionCastLib {
         pure
         returns (function(bytes32, SplitClaimWithWitness calldata, address) internal view fnOut)
     {
-        assembly {
+        assembly ("memory-safe") {
             fnOut := fnIn
         }
     }
@@ -345,7 +345,7 @@ library FunctionCastLib {
         pure
         returns (function(bytes32, SplitClaim calldata, address) internal view fnOut)
     {
-        assembly {
+        assembly ("memory-safe") {
             fnOut := fnIn
         }
     }
@@ -355,7 +355,7 @@ library FunctionCastLib {
         pure
         returns (function(bytes32, BatchClaim calldata, address) internal view fnOut)
     {
-        assembly {
+        assembly ("memory-safe") {
             fnOut := fnIn
         }
     }
@@ -367,7 +367,7 @@ library FunctionCastLib {
         pure
         returns (function(bytes32, SplitBatchClaim calldata, address) internal view fnOut)
     {
-        assembly {
+        assembly ("memory-safe") {
             fnOut := fnIn
         }
     }
@@ -381,7 +381,7 @@ library FunctionCastLib {
             function(bytes32, SplitBatchClaimWithWitness calldata, address) internal view fnOut
         )
     {
-        assembly {
+        assembly ("memory-safe") {
             fnOut := fnIn
         }
     }
@@ -393,7 +393,7 @@ library FunctionCastLib {
         pure
         returns (function(bytes32, BatchClaimWithWitness calldata, address) internal view fnOut)
     {
-        assembly {
+        assembly ("memory-safe") {
             fnOut := fnIn
         }
     }
@@ -405,7 +405,7 @@ library FunctionCastLib {
         pure
         returns (function(QualifiedSplitClaim calldata) internal returns (bytes32, address) fnOut)
     {
-        assembly {
+        assembly ("memory-safe") {
             fnOut := fnIn
         }
     }
@@ -419,7 +419,7 @@ library FunctionCastLib {
             function (bytes32, bytes32, QualifiedClaimWithWitness calldata, address) internal view fnOut
         )
     {
-        assembly {
+        assembly ("memory-safe") {
             fnOut := fnIn
         }
     }
@@ -433,7 +433,7 @@ library FunctionCastLib {
             function (bytes32, bytes32, QualifiedBatchClaim calldata, address) internal view fnOut
         )
     {
-        assembly {
+        assembly ("memory-safe") {
             fnOut := fnIn
         }
     }
@@ -447,7 +447,7 @@ library FunctionCastLib {
             function (bytes32, bytes32, QualifiedSplitBatchClaim calldata, address) internal view fnOut
         )
     {
-        assembly {
+        assembly ("memory-safe") {
             fnOut := fnIn
         }
     }
@@ -462,7 +462,7 @@ library FunctionCastLib {
                 fnOut
         )
     {
-        assembly {
+        assembly ("memory-safe") {
             fnOut := fnIn
         }
     }
@@ -477,7 +477,7 @@ library FunctionCastLib {
                 fnOut
         )
     {
-        assembly {
+        assembly ("memory-safe") {
             fnOut := fnIn
         }
     }
@@ -491,7 +491,7 @@ library FunctionCastLib {
             function(QualifiedSplitClaimWithWitness calldata) internal returns (bytes32, address) fnOut
         )
     {
-        assembly {
+        assembly ("memory-safe") {
             fnOut := fnIn
         }
     }
@@ -503,7 +503,7 @@ library FunctionCastLib {
         pure
         returns (function(bytes32, MultichainClaim calldata, address) internal view fnOut)
     {
-        assembly {
+        assembly ("memory-safe") {
             fnOut := fnIn
         }
     }

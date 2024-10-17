@@ -13,6 +13,7 @@ library IdLib {
     using IdLib for uint256;
     using IdLib for address;
     using MetadataLib for Lock;
+    using EfficiencyLib for bool;
     using EfficiencyLib for uint8;
     using EfficiencyLib for uint96;
     using EfficiencyLib for uint256;
@@ -40,34 +41,34 @@ library IdLib {
         pure
         returns (uint256 updatedId)
     {
-        assembly {
+        assembly ("memory-safe") {
             updatedId := or(shl(160, shr(160, id)), shr(96, shl(96, token)))
         }
     }
 
     function toScope(uint256 id) internal pure returns (Scope scope) {
-        assembly {
+        assembly ("memory-safe") {
             // extract uppermost bit
             scope := shr(255, id)
         }
     }
 
     function toResetPeriod(uint256 id) internal pure returns (ResetPeriod resetPeriod) {
-        assembly {
+        assembly ("memory-safe") {
             // extract 2nd, 3rd & 4th uppermost bits
             resetPeriod := and(shr(252, id), 7)
         }
     }
 
     function toCompactFlag(uint256 id) internal pure returns (uint8 compactFlag) {
-        assembly {
+        assembly ("memory-safe") {
             // extract 5th, 6th, 7th & 8th uppermost bits
             compactFlag := and(shr(248, id), 15)
         }
     }
 
     function toAllocatorId(uint256 id) internal pure returns (uint96 allocatorId) {
-        assembly {
+        assembly ("memory-safe") {
             // extract bits 5-96
             allocatorId := shr(164, shl(4, id))
         }
@@ -76,7 +77,7 @@ library IdLib {
     // TODO: add a bit of extra time to pad 1 hour and 1 day values
     function toSeconds(ResetPeriod resetPeriod) internal pure returns (uint256 duration) {
         // note: no bounds check performed; ensure that the enum is in range
-        assembly {
+        assembly ("memory-safe") {
             // 278d00  093a80  015180  000e10  000258  00003c  00000f  000001
             // 30 days 7 days  1 day   1 hour  10 min  1 min   15 sec  1 sec
             let bitpacked := 0x278d00093a80015180000e1000025800003c00000f000001
@@ -102,7 +103,7 @@ library IdLib {
     //  * 17 leading zero nibbles: 14
     //  * 18+ leading zero nibbles: 15
     function toCompactFlag(address allocator) internal pure returns (uint8 compactFlag) {
-        assembly {
+        assembly ("memory-safe") {
             // extract the uppermost 72 bits of the address
             let x := shr(168, shl(96, allocator))
 
@@ -132,7 +133,7 @@ library IdLib {
     function usingAllocatorId(address allocator) internal pure returns (uint96 allocatorId) {
         uint8 compactFlag = allocator.toCompactFlag();
 
-        assembly {
+        assembly ("memory-safe") {
             allocatorId := or(shl(88, compactFlag), shr(168, shl(168, allocator)))
         }
     }
@@ -179,7 +180,7 @@ library IdLib {
     }
 
     function toRegisteredAllocator(uint96 allocatorId) internal view returns (address allocator) {
-        assembly {
+        assembly ("memory-safe") {
             // NOTE: consider an SLOAD bypass for a fully compact allocator
 
             allocator := sload(or(_ALLOCATOR_BY_ALLOCATOR_ID_SLOT_SEED, allocatorId))
@@ -198,7 +199,7 @@ library IdLib {
     }
 
     function mustHaveARegisteredAllocator(uint96 allocatorId) internal view {
-        assembly {
+        assembly ("memory-safe") {
             // NOTE: consider an SLOAD bypass for a fully compact allocator
             if iszero(sload(or(_ALLOCATOR_BY_ALLOCATOR_ID_SLOT_SEED, allocatorId))) {
                 mstore(0, _NO_ALLOCATOR_REGISTERED_ERROR_SIGNATURE)
@@ -213,14 +214,13 @@ library IdLib {
         view
         returns (bool)
     {
-        // TODO: optimize
-        return (msg.sender == allocator)
+        uint256 proofLength = proof.length;
+        return (msg.sender == allocator).or(
+            proofLength == 86
+                && (proof[0] == 0xff).and(allocator == address(uint160(uint256(keccak256(proof)))))
+        )
             || (
-                proof.length == 86 && proof[0] == 0xff
-                    && allocator == address(uint160(uint256(keccak256(proof))))
-            )
-            || (
-                proof.length > 31
+                proofLength > 31
                     && allocator.isValidSignatureNow(abi.decode(proof[0:32], (bytes32)), proof[32:])
             );
     }
@@ -228,7 +228,7 @@ library IdLib {
     function register(address allocator) internal returns (uint96 allocatorId) {
         allocatorId = allocator.usingAllocatorId();
 
-        assembly {
+        assembly ("memory-safe") {
             let allocatorSlot := or(_ALLOCATOR_BY_ALLOCATOR_ID_SLOT_SEED, allocatorId)
 
             let registeredAllocator := sload(allocatorSlot)
