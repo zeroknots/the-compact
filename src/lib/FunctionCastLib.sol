@@ -27,7 +27,12 @@ import {
     QualifiedSplitBatchClaimWithWitness
 } from "../types/BatchClaims.sol";
 
-import { MultichainClaim } from "../types/MultichainClaims.sol";
+import {
+    MultichainClaim,
+    QualifiedMultichainClaim,
+    ExogenousMultichainClaim,
+    ExogenousQualifiedMultichainClaim
+} from "../types/MultichainClaims.sol";
 
 import {
     TransferComponent,
@@ -502,6 +507,20 @@ library FunctionCastLib {
         internal
         pure
         returns (function(bytes32, MultichainClaim calldata, address) internal view fnOut)
+    {
+        assembly ("memory-safe") {
+            fnOut := fnIn
+        }
+    }
+
+    function usingQualifiedMultichainClaim(
+        function(bytes32, bytes32, QualifiedClaim calldata, address) internal view fnIn
+    )
+        internal
+        pure
+        returns (
+            function(bytes32, bytes32, QualifiedMultichainClaim calldata, address) internal view fnOut
+        )
     {
         assembly ("memory-safe") {
             fnOut := fnIn
