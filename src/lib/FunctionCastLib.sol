@@ -31,7 +31,8 @@ import {
     MultichainClaim,
     QualifiedMultichainClaim,
     ExogenousMultichainClaim,
-    ExogenousQualifiedMultichainClaim
+    ExogenousQualifiedMultichainClaim,
+    MultichainClaimWithWitness
 } from "../types/MultichainClaims.sol";
 
 import {
@@ -507,6 +508,20 @@ library FunctionCastLib {
         internal
         pure
         returns (function(bytes32, MultichainClaim calldata, address) internal view fnOut)
+    {
+        assembly ("memory-safe") {
+            fnOut := fnIn
+        }
+    }
+
+    function usingMultichainClaimWithWitness(
+        function(bytes32, BasicClaim calldata, address) internal view fnIn
+    )
+        internal
+        pure
+        returns (
+            function(bytes32, MultichainClaimWithWitness calldata, address) internal view fnOut
+        )
     {
         assembly ("memory-safe") {
             fnOut := fnIn

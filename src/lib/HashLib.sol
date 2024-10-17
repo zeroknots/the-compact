@@ -566,11 +566,12 @@ library HashLib {
             .usingQualifiedSplitBatchClaimWithWitness()(claim, messageHash, 0x40);
     }
 
-    function toMultichainClaimMessageHash(MultichainClaim calldata claim, uint256 additionalOffset)
-        internal
-        view
-        returns (bytes32 messageHash)
-    {
+    function toMultichainClaimMessageHash(
+        MultichainClaim calldata claim,
+        uint256 additionalOffset,
+        bytes32 allocationTypehash,
+        bytes32 multichainCompactTypehash
+    ) internal view returns (bytes32 messageHash) {
         assembly ("memory-safe") {
             let m := mload(0x40) // Grab the free memory pointer; memory will be left dirtied.
 
@@ -579,14 +580,15 @@ library HashLib {
             mstore(0, calldataload(add(claimWithAdditionalOffset, 0xc0))) // id
             mstore(0x20, calldataload(add(claimWithAdditionalOffset, 0xe0))) // amount
 
-            mstore(0x60, keccak256(0, 0x40))
-            mstore(0, ALLOCATION_TYPEHASH)
-            mstore(0x20, caller()) // arbiter
-            mstore(0x40, chainid())
-            mstore(m, keccak256(0, 0x80)) // first allocation hash
+            mstore(add(m, 0x60), keccak256(0, 0x40))
+            mstore(m, allocationTypehash)
+            mstore(add(m, 0x20), caller()) // arbiter
+            mstore(add(m, 0x40), chainid())
 
-            mstore(0x40, m)
-            mstore(0x60, 0)
+            let hasWitness := iszero(eq(allocationTypehash, ALLOCATION_TYPEHASH))
+            if hasWitness { mstore(add(m, 0x80), calldataload(add(claim, 0xa0))) } // witness
+
+            mstore(m, keccak256(m, add(0x80, mul(0x20, hasWitness)))) // first allocation hash
 
             // subsequent allocation hashes
             let additionalChainsPtr :=
@@ -597,7 +599,7 @@ library HashLib {
             // hash of allocation hashes
             mstore(add(m, 0x80), keccak256(m, add(0x20, additionalChainsLength)))
 
-            mstore(m, MULTICHAIN_COMPACT_TYPEHASH)
+            mstore(m, multichainCompactTypehash)
             calldatacopy(add(m, 0x20), add(claim, 0x40), 0x60) // sponsor, nonce, expires
 
             messageHash := keccak256(m, 0xa0)
@@ -609,11 +611,12 @@ library HashLib {
         view
         returns (bytes32 messageHash)
     {
-        messageHash = toMultichainClaimMessageHash(claim, 0);
+        messageHash =
+            toMultichainClaimMessageHash(claim, 0, ALLOCATION_TYPEHASH, MULTICHAIN_COMPACT_TYPEHASH);
     }
 
     function usingQualifiedMultichainClaim(
-        function (MultichainClaim calldata, uint256)
+        function (MultichainClaim calldata, uint256, bytes32, bytes32)
         internal
         view
         returns (bytes32) fnIn
@@ -621,10 +624,10 @@ library HashLib {
         internal
         pure
         returns (
-            function (QualifiedMultichainClaim calldata, uint256)
-                                        internal
-                                        view
-                                        returns (bytes32) fnOut
+            function (QualifiedMultichainClaim calldata, uint256, bytes32, bytes32)
+                                                        internal
+                                                        view
+                                                        returns (bytes32) fnOut
         )
     {
         assembly ("memory-safe") {
@@ -632,7 +635,29 @@ library HashLib {
         }
     }
 
-    function usingExogenousQualifiedMultichainClaim(
+    function usingQualifiedMultichainClaim(
+        function (
+        QualifiedClaim calldata,
+        bytes32,
+        uint256
+        ) internal pure returns (bytes32) fnIn
+    )
+        internal
+        pure
+        returns (
+            function (
+                                                        QualifiedMultichainClaim calldata,
+                                                        bytes32,
+                                                        uint256
+                                                    ) internal pure returns (bytes32) fnOut
+        )
+    {
+        assembly ("memory-safe") {
+            fnOut := fnIn
+        }
+    }
+
+    function usingExogenousMultichainClaimWithWitness(
         function (ExogenousMultichainClaim calldata, uint256, bytes32, bytes32)
         internal
         view
@@ -641,10 +666,10 @@ library HashLib {
         internal
         pure
         returns (
-            function (ExogenousQualifiedMultichainClaim calldata, uint256, bytes32, bytes32)
-                                        internal
-                                        view
-                                        returns (bytes32) fnOut
+            function (ExogenousMultichainClaimWithWitness calldata, uint256, bytes32, bytes32)
+                                                        internal
+                                                        view
+                                                        returns (bytes32) fnOut
         )
     {
         assembly ("memory-safe") {
@@ -652,21 +677,21 @@ library HashLib {
         }
     }
 
-    function usingQualifiedMultichainClaim(
+    function usingExogenousMultichainClaimWithWitness(
         function (
-        QualifiedClaim calldata,
-        bytes32,
-        uint256
+            QualifiedClaim calldata,
+            bytes32,
+            uint256
         ) internal pure returns (bytes32) fnIn
     )
         internal
         pure
         returns (
             function (
-                                        QualifiedMultichainClaim calldata,
-                                        bytes32,
-                                        uint256
-                                    ) internal pure returns (bytes32) fnOut
+                                ExogenousMultichainClaimWithWitness calldata,
+                                bytes32,
+                                uint256
+                            ) internal pure returns (bytes32) fnOut
         )
     {
         assembly ("memory-safe") {
@@ -674,26 +699,52 @@ library HashLib {
         }
     }
 
-    function usingExogenousQualifiedMultichainClaim(
+    function usingMultichainClaimWithWitness(
         function (
-        QualifiedClaim calldata,
-        bytes32,
-        uint256
-        ) internal pure returns (bytes32) fnIn
+            MultichainClaim calldata,
+            uint256,
+            bytes32,
+            bytes32
+        ) internal view returns (bytes32) fnIn
     )
         internal
         pure
         returns (
             function (
-                                        ExogenousQualifiedMultichainClaim calldata,
-                                        bytes32,
-                                        uint256
-                                    ) internal pure returns (bytes32) fnOut
+                                MultichainClaimWithWitness calldata,
+                                uint256,
+                                bytes32,
+                                bytes32
+                            ) internal view returns (bytes32) fnOut
         )
     {
         assembly ("memory-safe") {
             fnOut := fnIn
         }
+    }
+
+    function toMessageHash(MultichainClaimWithWitness calldata claim)
+        internal
+        view
+        returns (bytes32 messageHash)
+    {
+        (bytes32 allocationTypehash, bytes32 multichainCompactTypehash) =
+            getMultichainTypehashes(claim);
+        messageHash = usingMultichainClaimWithWitness(toMultichainClaimMessageHash)(
+            claim, 0x40, allocationTypehash, multichainCompactTypehash
+        );
+    }
+
+    function toMessageHash(ExogenousMultichainClaimWithWitness calldata claim)
+        internal
+        view
+        returns (bytes32 messageHash)
+    {
+        (bytes32 allocationTypehash, bytes32 multichainCompactTypehash) =
+            usingExogenousMultichainClaimWithWitness(getMultichainTypehashes)(claim);
+        messageHash = usingExogenousMultichainClaimWithWitness(
+            toExogenousMultichainClaimMessageHash
+        )(claim, 0x40, allocationTypehash, multichainCompactTypehash);
     }
 
     function toMessageHash(QualifiedMultichainClaim calldata claim)
@@ -701,22 +752,30 @@ library HashLib {
         view
         returns (bytes32 messageHash, bytes32 qualificationMessageHash)
     {
-        messageHash = usingQualifiedMultichainClaim(toMultichainClaimMessageHash)(claim, 0x40);
+        messageHash = usingQualifiedMultichainClaim(toMultichainClaimMessageHash)(
+            claim, 0x40, ALLOCATION_TYPEHASH, MULTICHAIN_COMPACT_TYPEHASH
+        );
         qualificationMessageHash =
             usingQualifiedMultichainClaim(toQualificationMessageHash)(claim, messageHash, 0);
     }
 
     function usingExogenousQualifiedMultichainClaim(
-        function (
-        QualifiedMultichainClaim calldata
-        ) internal pure returns (bytes32, bytes32) fnIn
+        function(
+        ExogenousMultichainClaim calldata,
+        uint256,
+        bytes32,
+        bytes32
+        ) internal view returns (bytes32) fnIn
     )
         internal
         pure
         returns (
-            function (
-                        ExogenousQualifiedMultichainClaim calldata
-                        ) internal pure returns (bytes32, bytes32) fnOut
+            function(
+            ExogenousQualifiedMultichainClaim calldata,
+            uint256,
+            bytes32,
+            bytes32
+            ) internal view returns (bytes32) fnOut
         )
     {
         assembly ("memory-safe") {
@@ -724,10 +783,50 @@ library HashLib {
         }
     }
 
-    function getQualifiedMultichainTypehashes(QualifiedMultichainClaim calldata claim)
+    function usingExogenousQualifiedMultichainClaim(
+        function(
+        QualifiedClaim calldata,
+        bytes32,
+        uint256
+        ) internal pure returns (bytes32) fnIn
+    )
         internal
         pure
-        returns (bytes32 qualifiedAllocationTypehash, bytes32 qualifiedMultichainCompactTypehash)
+        returns (
+            function(
+            ExogenousQualifiedMultichainClaim calldata,
+            bytes32,
+            uint256
+            ) internal pure returns (bytes32) fnOut
+        )
+    {
+        assembly ("memory-safe") {
+            fnOut := fnIn
+        }
+    }
+
+    function usingExogenousMultichainClaimWithWitness(
+        function (
+        MultichainClaimWithWitness calldata
+        ) internal pure returns (bytes32, bytes32) fnIn
+    )
+        internal
+        pure
+        returns (
+            function (
+                                ExogenousMultichainClaimWithWitness calldata
+                            ) internal pure returns (bytes32, bytes32) fnOut
+        )
+    {
+        assembly ("memory-safe") {
+            fnOut := fnIn
+        }
+    }
+
+    function getMultichainTypehashes(MultichainClaimWithWitness calldata claim)
+        internal
+        pure
+        returns (bytes32 allocationTypehash, bytes32 multichainCompactTypehash)
     {
         assembly ("memory-safe") {
             let m := mload(0x40) // Grab the free memory pointer; memory will be left dirtied.
@@ -750,9 +849,9 @@ library HashLib {
                 add(0x20, witnessTypestringPtr),
                 witnessTypestringLength
             )
-            qualifiedAllocationTypehash :=
+            allocationTypehash :=
                 keccak256(allocationTypestringOffset, add(0x46, witnessTypestringLength))
-            qualifiedMultichainCompactTypehash := keccak256(m, add(0x9f, witnessTypestringLength))
+            multichainCompactTypehash := keccak256(m, add(0x9f, witnessTypestringLength))
         }
     }
 
@@ -770,14 +869,15 @@ library HashLib {
             mstore(0, calldataload(add(claimWithAdditionalOffset, 0x100))) // id
             mstore(0x20, calldataload(add(claimWithAdditionalOffset, 0x120))) // amount
 
-            mstore(0x60, keccak256(0, 0x40))
-            mstore(0, allocationTypehash)
-            mstore(0x20, caller()) // arbiter
-            mstore(0x40, chainid())
-            let allocationHash := keccak256(0, 0x80) // allocation hash
+            mstore(add(m, 0x60), keccak256(0, 0x40))
+            mstore(m, allocationTypehash)
+            mstore(add(m, 0x20), caller()) // arbiter
+            mstore(add(m, 0x40), chainid())
 
-            mstore(0x40, m)
-            mstore(0x60, 0)
+            let hasWitness := iszero(eq(allocationTypehash, ALLOCATION_TYPEHASH))
+            if hasWitness { mstore(add(m, 0x80), calldataload(add(claim, 0xa0))) } // witness
+
+            let allocationHash := keccak256(m, add(0x80, mul(0x20, hasWitness))) // first allocation hash
 
             // additional allocation hashes
             let additionalChainsPtr :=

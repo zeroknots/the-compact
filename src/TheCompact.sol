@@ -615,6 +615,31 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         return _processExogenousQualifiedMultichainClaim(claimPayload, _release);
     }
 
+    function claim(MultichainClaimWithWitness calldata claimPayload) external returns (bool) {
+        return _processMultichainClaimWithWitness(claimPayload, _release);
+    }
+
+    function claimAndWithdraw(MultichainClaimWithWitness calldata claimPayload)
+        external
+        returns (bool)
+    {
+        return _processMultichainClaimWithWitness(claimPayload, _release);
+    }
+
+    function claim(ExogenousMultichainClaimWithWitness calldata claimPayload)
+        external
+        returns (bool)
+    {
+        return _processExogenousMultichainClaimWithWitness(claimPayload, _release);
+    }
+
+    function claimAndWithdraw(ExogenousMultichainClaimWithWitness calldata claimPayload)
+        external
+        returns (bool)
+    {
+        return _processExogenousMultichainClaimWithWitness(claimPayload, _release);
+    }
+
     function enableForcedWithdrawal(uint256 id) external returns (uint256 withdrawableAt) {
         // overflow check not necessary as reset period is capped
         unchecked {
@@ -806,14 +831,39 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         );
     }
 
+    function usingExogenousMultichainClaimWithWitness(
+        function(
+        bytes32,
+        ExogenousMultichainClaim calldata,
+        address,
+        uint256
+        ) internal view fnIn
+    )
+        internal
+        pure
+        returns (
+            function(
+            bytes32,
+            ExogenousMultichainClaimWithWitness calldata,
+            address,
+            uint256
+            ) internal view fnOut
+        )
+    {
+        assembly ("memory-safe") {
+            fnOut := fnIn
+        }
+    }
+
     function _notExpiredAndWithValidSignaturesExogenous(
         bytes32 messageHash,
         ExogenousMultichainClaim calldata claimPayload,
-        address allocator
+        address allocator,
+        uint256 notarizedChainId
     ) internal view {
         _notExpiredAndSignedByBoth(
             claimPayload.expires,
-            claimPayload.notarizedChainId.toNotarizedDomainSeparator(),
+            notarizedChainId.toNotarizedDomainSeparator(),
             messageHash,
             claimPayload.sponsor,
             claimPayload.sponsorSignature,
@@ -1062,6 +1112,30 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         );
     }
 
+    function _processMultichainClaimWithWitness(
+        MultichainClaimWithWitness calldata claimPayload,
+        function(address, address, uint256, uint256) internal returns (bool) operation
+    ) internal returns (bool) {
+        bytes32 messageHash = claimPayload.toMessageHash();
+        address allocator = claimPayload.id.toRegisteredAllocatorWithConsumed(claimPayload.nonce);
+
+        _notExpiredAndWithValidSignatures.usingMultichainClaimWithWitness()(
+            messageHash, claimPayload, allocator
+        );
+
+        claimPayload.amount.withinAllocated(claimPayload.allocatedAmount);
+
+        return _emitAndOperate(
+            claimPayload.sponsor,
+            claimPayload.claimant,
+            claimPayload.id,
+            messageHash,
+            claimPayload.amount,
+            allocator,
+            operation
+        );
+    }
+
     function _processQualifiedMultichainClaim(
         QualifiedMultichainClaim calldata claimPayload,
         function(address, address, uint256, uint256) internal returns (bool) operation
@@ -1096,7 +1170,40 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         uint256 amount = claimPayload.amount;
         address allocator = id.toRegisteredAllocatorWithConsumed(claimPayload.nonce);
 
-        _notExpiredAndWithValidSignaturesExogenous(messageHash, claimPayload, allocator);
+        _notExpiredAndWithValidSignaturesExogenous(
+            messageHash, claimPayload, allocator, claimPayload.notarizedChainId
+        );
+
+        if (id.toScope() != Scope.Multichain) {
+            revert InvalidScope(id);
+        }
+
+        amount.withinAllocated(claimPayload.allocatedAmount);
+
+        return _emitAndOperate(
+            claimPayload.sponsor,
+            claimPayload.claimant,
+            id,
+            messageHash,
+            amount,
+            allocator,
+            operation
+        );
+    }
+
+    function _processExogenousMultichainClaimWithWitness(
+        ExogenousMultichainClaimWithWitness calldata claimPayload,
+        function(address, address, uint256, uint256) internal returns (bool) operation
+    ) internal returns (bool) {
+        bytes32 messageHash = claimPayload.toMessageHash();
+
+        uint256 id = claimPayload.id;
+        uint256 amount = claimPayload.amount;
+        address allocator = id.toRegisteredAllocatorWithConsumed(claimPayload.nonce);
+
+        usingExogenousMultichainClaimWithWitness(_notExpiredAndWithValidSignaturesExogenous)(
+            messageHash, claimPayload, allocator, claimPayload.notarizedChainId
+        );
 
         if (id.toScope() != Scope.Multichain) {
             revert InvalidScope(id);
