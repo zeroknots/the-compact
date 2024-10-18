@@ -625,9 +625,9 @@ library HashLib {
         pure
         returns (
             function (QualifiedMultichainClaim calldata, uint256, bytes32, bytes32)
-                                                                internal
-                                                                view
-                                                                returns (bytes32) fnOut
+                                                                        internal
+                                                                        view
+                                                                        returns (bytes32) fnOut
         )
     {
         assembly ("memory-safe") {
@@ -645,9 +645,9 @@ library HashLib {
         pure
         returns (
             function (QualifiedMultichainClaimWithWitness calldata, uint256, bytes32, bytes32)
-                                                                internal
-                                                                view
-                                                                returns (bytes32) fnOut
+                                                                        internal
+                                                                        view
+                                                                        returns (bytes32) fnOut
         )
     {
         assembly ("memory-safe") {
@@ -666,10 +666,11 @@ library HashLib {
         pure
         returns (
             function (
-                                                                QualifiedMultichainClaimWithWitness calldata,
-                                                                bytes32,
-                                                                uint256
-                                                            ) internal pure returns (bytes32) fnOut
+                                                                        QualifiedMultichainClaimWithWitness calldata,
+                                                                        bytes32,
+                                                                        uint256
+                                                                    ) internal pure returns (bytes32)
+                fnOut
         )
     {
         assembly ("memory-safe") {
@@ -688,10 +689,11 @@ library HashLib {
         pure
         returns (
             function (
-                                                                QualifiedMultichainClaim calldata,
-                                                                bytes32,
-                                                                uint256
-                                                            ) internal pure returns (bytes32) fnOut
+                                                                        QualifiedMultichainClaim calldata,
+                                                                        bytes32,
+                                                                        uint256
+                                                                    ) internal pure returns (bytes32)
+                fnOut
         )
     {
         assembly ("memory-safe") {
@@ -709,9 +711,9 @@ library HashLib {
         pure
         returns (
             function (ExogenousMultichainClaimWithWitness calldata, uint256, bytes32, bytes32)
-                                                                internal
-                                                                view
-                                                                returns (bytes32) fnOut
+                                                                        internal
+                                                                        view
+                                                                        returns (bytes32) fnOut
         )
     {
         assembly ("memory-safe") {
@@ -729,9 +731,9 @@ library HashLib {
         pure
         returns (
             function (ExogenousQualifiedMultichainClaimWithWitness calldata, uint256, bytes32, bytes32)
-                                                                internal
-                                                                view
-                                                                returns (bytes32) fnOut
+                                                                        internal
+                                                                        view
+                                                                        returns (bytes32) fnOut
         )
     {
         assembly ("memory-safe") {
@@ -750,10 +752,10 @@ library HashLib {
         pure
         returns (
             function (
-                                        ExogenousMultichainClaimWithWitness calldata,
-                                        bytes32,
-                                        uint256
-                                    ) internal pure returns (bytes32) fnOut
+                                                ExogenousMultichainClaimWithWitness calldata,
+                                                bytes32,
+                                                uint256
+                                            ) internal pure returns (bytes32) fnOut
         )
     {
         assembly ("memory-safe") {
@@ -773,11 +775,11 @@ library HashLib {
         pure
         returns (
             function (
-                                        MultichainClaimWithWitness calldata,
-                                        uint256,
-                                        bytes32,
-                                        bytes32
-                                    ) internal view returns (bytes32) fnOut
+                                                MultichainClaimWithWitness calldata,
+                                                uint256,
+                                                bytes32,
+                                                bytes32
+                                            ) internal view returns (bytes32) fnOut
         )
     {
         assembly ("memory-safe") {
@@ -914,8 +916,8 @@ library HashLib {
         pure
         returns (
             function (
-                                        ExogenousMultichainClaimWithWitness calldata
-                                    ) internal pure returns (bytes32, bytes32) fnOut
+                                                ExogenousMultichainClaimWithWitness calldata
+                                            ) internal pure returns (bytes32, bytes32) fnOut
         )
     {
         assembly ("memory-safe") {
@@ -932,8 +934,8 @@ library HashLib {
         pure
         returns (
             function (
-                                        ExogenousQualifiedMultichainClaimWithWitness calldata
-                                    ) internal pure returns (bytes32, bytes32) fnOut
+                                                ExogenousQualifiedMultichainClaimWithWitness calldata
+                                            ) internal pure returns (bytes32, bytes32) fnOut
         )
     {
         assembly ("memory-safe") {
@@ -950,8 +952,8 @@ library HashLib {
         pure
         returns (
             function (
-                                        QualifiedMultichainClaimWithWitness calldata
-                                    ) internal pure returns (bytes32, bytes32) fnOut
+                                                QualifiedMultichainClaimWithWitness calldata
+                                            ) internal pure returns (bytes32, bytes32) fnOut
         )
     {
         assembly ("memory-safe") {

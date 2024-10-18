@@ -528,33 +528,4 @@ library FunctionCastLib {
             fnOut := fnIn
         }
     }
-
-    function usingQualifiedMultichainClaim(
-        function(bytes32, bytes32, QualifiedClaim calldata, address) internal view fnIn
-    )
-        internal
-        pure
-        returns (
-            function(bytes32, bytes32, QualifiedMultichainClaim calldata, address) internal view fnOut
-        )
-    {
-        assembly ("memory-safe") {
-            fnOut := fnIn
-        }
-    }
-
-    function usingQualifiedMultichainClaimWithWitness(
-        function(bytes32, bytes32, QualifiedClaim calldata, address) internal view fnIn
-    )
-        internal
-        pure
-        returns (
-            function(bytes32, bytes32, QualifiedMultichainClaimWithWitness calldata, address) internal view
-            fnOut
-        )
-    {
-        assembly ("memory-safe") {
-            fnOut := fnIn
-        }
-    }
 }
