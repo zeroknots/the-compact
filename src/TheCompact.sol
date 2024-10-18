@@ -773,6 +773,16 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         return _processSplitClaimWithQualificationAndSponsorDomain(messageHash, qualificationMessageHash, calldataPointer, offsetToId, bytes32(0), operation);
     }
 
+    function _processBatchClaimWithQualification(
+        bytes32 messageHash,
+        bytes32 qualificationMessageHash,
+        uint256 calldataPointer,
+        uint256 offsetToId,
+        function(address, address, uint256, uint256) internal returns (bool) operation
+    ) internal returns (bool) {
+        return _processBatchClaimWithQualificationAndSponsorDomain(messageHash, qualificationMessageHash, calldataPointer, offsetToId, bytes32(0), operation);
+    }
+
     function _validate(uint96 allocatorId, bytes32 messageHash, bytes32 qualificationMessageHash, uint256 calldataPointer, bytes32 sponsorDomainSeparator) internal returns (address sponsor) {
         bytes calldata allocatorSignature;
         bytes calldata sponsorSignature;
@@ -1112,6 +1122,58 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
             bytes32,
             bytes32,
             QualifiedSplitClaim calldata,
+            uint256,
+            function(address, address, uint256, uint256) internal returns (bool)
+            ) internal returns (bool) fnOut
+        )
+    {
+        assembly {
+            fnOut := fnIn
+        }
+    }
+
+    function usingQualifiedBatchClaim(
+        function(
+        bytes32,
+        bytes32,
+        uint256,
+        uint256,
+        function(address, address, uint256, uint256) internal returns (bool)
+        ) internal returns (bool) fnIn
+    )
+        internal
+        pure
+        returns (
+            function(
+            bytes32,
+            bytes32,
+            QualifiedBatchClaim calldata,
+            uint256,
+            function(address, address, uint256, uint256) internal returns (bool)
+            ) internal returns (bool) fnOut
+        )
+    {
+        assembly {
+            fnOut := fnIn
+        }
+    }
+
+    function usingQualifiedBatchClaimWithWitness(
+        function(
+        bytes32,
+        bytes32,
+        uint256,
+        uint256,
+        function(address, address, uint256, uint256) internal returns (bool)
+        ) internal returns (bool) fnIn
+    )
+        internal
+        pure
+        returns (
+            function(
+            bytes32,
+            bytes32,
+            QualifiedBatchClaimWithWitness calldata,
             uint256,
             function(address, address, uint256, uint256) internal returns (bool)
             ) internal returns (bool) fnOut
@@ -1507,14 +1569,7 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
 
     function _processQualifiedBatchClaim(QualifiedBatchClaim calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation) internal returns (bool) {
         (bytes32 messageHash, bytes32 qualificationMessageHash) = claimPayload.toMessageHash();
-        uint96 allocatorId = claimPayload.claims[0].id.toAllocatorId();
-        address allocator = allocatorId.fromRegisteredAllocatorIdWithConsumed(claimPayload.nonce);
-
-        _notExpiredAndSignedByBoth(claimPayload.expires, messageHash, claimPayload.sponsor, claimPayload.sponsorSignature, qualificationMessageHash, allocator, claimPayload.allocatorSignature);
-
-        _emitClaim(claimPayload.sponsor, messageHash, allocator);
-
-        return _verifyAndProcessBatchComponents(allocatorId, claimPayload.sponsor, claimPayload.claimant, messageHash, claimPayload.claims, operation);
+        return usingQualifiedBatchClaim(_processBatchClaimWithQualification)(messageHash, qualificationMessageHash, claimPayload, 0xe0, operation);
     }
 
     function _processBatchClaimWithWitness(BatchClaimWithWitness calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation) internal returns (bool) {
@@ -1525,15 +1580,8 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         internal
         returns (bool)
     {
-        uint96 allocatorId = claimPayload.claims[0].id.toAllocatorId();
-        address allocator = allocatorId.fromRegisteredAllocatorIdWithConsumed(claimPayload.nonce);
         (bytes32 messageHash, bytes32 qualificationMessageHash) = claimPayload.toMessageHash();
-
-        _notExpiredAndSignedByBoth(claimPayload.expires, messageHash, claimPayload.sponsor, claimPayload.sponsorSignature, qualificationMessageHash, allocator, claimPayload.allocatorSignature);
-
-        _emitClaim(claimPayload.sponsor, messageHash, allocator);
-
-        return _verifyAndProcessBatchComponents(allocatorId, claimPayload.sponsor, claimPayload.claimant, messageHash, claimPayload.claims, operation);
+        return usingQualifiedBatchClaimWithWitness(_processBatchClaimWithQualification)(messageHash, qualificationMessageHash, claimPayload, 0x120, operation);
     }
 
     function _processBatchPermit2Deposits(
