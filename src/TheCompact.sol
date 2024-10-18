@@ -652,22 +652,6 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
 
     function _notExpiredAndSignedByBoth(
         uint256 expires,
-        bytes32 sponsorDomainSeparator,
-        bytes32 messageHash,
-        address sponsor,
-        bytes calldata sponsorSignature,
-        bytes32 qualificationMessageHash,
-        address allocator,
-        bytes calldata allocatorSignature
-    ) internal view {
-        expires.later();
-
-        messageHash.signedBy(sponsor, sponsorSignature, sponsorDomainSeparator);
-        qualificationMessageHash.signedBy(allocator, allocatorSignature, _INITIAL_DOMAIN_SEPARATOR.toLatest(_INITIAL_CHAIN_ID));
-    }
-
-    function _notExpiredAndSignedByBoth(
-        uint256 expires,
         bytes32 messageHash,
         address sponsor,
         bytes calldata sponsorSignature,
@@ -745,6 +729,13 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         return _processClaimWithQualificationAndSponsorDomain(messageHash, messageHash, calldataPointer, offsetToId, bytes32(0), operation);
     }
 
+    function _processSimpleSplitClaim(bytes32 messageHash, uint256 calldataPointer, uint256 offsetToId, function(address, address, uint256, uint256) internal returns (bool) operation)
+        internal
+        returns (bool)
+    {
+        return _processSplitClaimWithQualificationAndSponsorDomain(messageHash, messageHash, calldataPointer, offsetToId, bytes32(0), operation);
+    }
+
     function _processClaimWithSponsorDomain(
         bytes32 messageHash,
         uint256 calldataPointer,
@@ -763,6 +754,16 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         function(address, address, uint256, uint256) internal returns (bool) operation
     ) internal returns (bool) {
         return _processClaimWithQualificationAndSponsorDomain(messageHash, qualificationMessageHash, calldataPointer, offsetToId, bytes32(0), operation);
+    }
+
+    function _processSplitClaimWithQualification(
+        bytes32 messageHash,
+        bytes32 qualificationMessageHash,
+        uint256 calldataPointer,
+        uint256 offsetToId,
+        function(address, address, uint256, uint256) internal returns (bool) operation
+    ) internal returns (bool) {
+        return _processSplitClaimWithQualificationAndSponsorDomain(messageHash, qualificationMessageHash, calldataPointer, offsetToId, bytes32(0), operation);
     }
 
     function _processClaimWithQualificationAndSponsorDomain(
@@ -828,6 +829,68 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         return operation(sponsor, claimant, id, amount);
     }
 
+    function _processSplitClaimWithQualificationAndSponsorDomain(
+        bytes32 messageHash,
+        bytes32 qualificationMessageHash,
+        uint256 calldataPointer,
+        uint256 offsetToId,
+        bytes32 sponsorDomainSeparator,
+        function(address, address, uint256, uint256) internal returns (bool) operation
+    ) internal returns (bool) {
+        bytes calldata allocatorSignature;
+        bytes calldata sponsorSignature;
+        address sponsor;
+        uint256 nonce;
+        uint256 expires;
+
+        uint256 id;
+        uint256 allocatedAmount;
+        SplitComponent[] calldata claimants;
+
+        assembly {
+            let allocatorSignaturePtr := add(calldataPointer, calldataload(calldataPointer))
+            allocatorSignature.offset := add(0x20, allocatorSignaturePtr)
+            allocatorSignature.length := calldataload(allocatorSignaturePtr)
+
+            let sponsorSignaturePtr := add(calldataPointer, calldataload(add(calldataPointer, 0x20)))
+            sponsorSignature.offset := add(0x20, sponsorSignaturePtr)
+            sponsorSignature.length := calldataload(sponsorSignaturePtr)
+
+            sponsor := calldataload(add(calldataPointer, 0x40)) // TODO: sanitize
+            nonce := calldataload(add(calldataPointer, 0x60))
+            expires := calldataload(add(calldataPointer, 0x80))
+
+            let calldataPointerWithOffset := add(calldataPointer, offsetToId)
+            id := calldataload(calldataPointerWithOffset)
+            allocatedAmount := calldataload(add(calldataPointerWithOffset, 0x20))
+
+            let claimantsPtr := add(calldataPointer, calldataload(add(calldataPointerWithOffset, 0x40)))
+            claimants.offset := add(0x20, claimantsPtr)
+            claimants.length := calldataload(claimantsPtr)
+        }
+
+        expires.later();
+
+        uint96 allocatorId = id.toAllocatorId();
+        address allocator = allocatorId.fromRegisteredAllocatorIdWithConsumed(nonce);
+
+        if ((sponsorDomainSeparator != bytes32(0)).and(id.toScope() != Scope.Multichain)) {
+            revert InvalidScope(id);
+        }
+
+        bytes32 domainSeparator = _INITIAL_DOMAIN_SEPARATOR.toLatest(_INITIAL_CHAIN_ID);
+        assembly {
+            sponsorDomainSeparator := add(sponsorDomainSeparator, mul(iszero(sponsorDomainSeparator), domainSeparator))
+        }
+
+        messageHash.signedBy(sponsor, sponsorSignature, sponsorDomainSeparator);
+        qualificationMessageHash.signedBy(allocator, allocatorSignature, domainSeparator);
+
+        _emitClaim(sponsor, messageHash, allocator);
+
+        return _verifyAndProcessSplitComponents(sponsor, id, allocatedAmount, claimants, operation);
+    }
+
     function usingBasicClaim(
         function(
         bytes32,
@@ -842,6 +905,54 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
             function(
             bytes32,
             BasicClaim calldata,
+            uint256,
+            function(address, address, uint256, uint256) internal returns (bool)
+            ) internal returns (bool) fnOut
+        )
+    {
+        assembly {
+            fnOut := fnIn
+        }
+    }
+
+    function usingSplitClaim(
+        function(
+        bytes32,
+        uint256,
+        uint256,
+        function(address, address, uint256, uint256) internal returns (bool)
+        ) internal returns (bool) fnIn
+    )
+        internal
+        pure
+        returns (
+            function(
+            bytes32,
+            SplitClaim calldata,
+            uint256,
+            function(address, address, uint256, uint256) internal returns (bool)
+            ) internal returns (bool) fnOut
+        )
+    {
+        assembly {
+            fnOut := fnIn
+        }
+    }
+
+    function usingSplitClaimWithWitness(
+        function(
+        bytes32,
+        uint256,
+        uint256,
+        function(address, address, uint256, uint256) internal returns (bool)
+        ) internal returns (bool) fnIn
+    )
+        internal
+        pure
+        returns (
+            function(
+            bytes32,
+            SplitClaimWithWitness calldata,
             uint256,
             function(address, address, uint256, uint256) internal returns (bool)
             ) internal returns (bool) fnOut
@@ -918,6 +1029,58 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
             bytes32,
             bytes32,
             QualifiedClaim calldata,
+            uint256,
+            function(address, address, uint256, uint256) internal returns (bool)
+            ) internal returns (bool) fnOut
+        )
+    {
+        assembly {
+            fnOut := fnIn
+        }
+    }
+
+    function usingQualifiedSplitClaim(
+        function(
+        bytes32,
+        bytes32,
+        uint256,
+        uint256,
+        function(address, address, uint256, uint256) internal returns (bool)
+        ) internal returns (bool) fnIn
+    )
+        internal
+        pure
+        returns (
+            function(
+            bytes32,
+            bytes32,
+            QualifiedSplitClaim calldata,
+            uint256,
+            function(address, address, uint256, uint256) internal returns (bool)
+            ) internal returns (bool) fnOut
+        )
+    {
+        assembly {
+            fnOut := fnIn
+        }
+    }
+
+    function usingQualifiedSplitClaimWithWitness(
+        function(
+        bytes32,
+        bytes32,
+        uint256,
+        uint256,
+        function(address, address, uint256, uint256) internal returns (bool)
+        ) internal returns (bool) fnIn
+    )
+        internal
+        pure
+        returns (
+            function(
+            bytes32,
+            bytes32,
+            QualifiedSplitClaimWithWitness calldata,
             uint256,
             function(address, address, uint256, uint256) internal returns (bool)
             ) internal returns (bool) fnOut
@@ -1215,32 +1378,16 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
     }
 
     function _processSplitClaim(SplitClaim calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation) internal returns (bool) {
-        bytes32 messageHash = claimPayload.toMessageHash();
-        uint96 allocatorId = claimPayload.id.toAllocatorId();
-        address allocator = allocatorId.fromRegisteredAllocatorIdWithConsumed(claimPayload.nonce);
-        _notExpiredAndSignedByBoth(claimPayload.expires, messageHash, claimPayload.sponsor, claimPayload.sponsorSignature, messageHash, allocator, claimPayload.allocatorSignature);
-
-        return _verifyAndProcessSplitComponents(claimPayload.sponsor, messageHash, claimPayload.id, claimPayload.allocatedAmount, claimPayload.claimants, allocator, operation);
+        return usingSplitClaim(_processSimpleSplitClaim)(claimPayload.toMessageHash(), claimPayload, 0xa0, operation);
     }
 
     function _processQualifiedSplitClaim(QualifiedSplitClaim calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation) internal returns (bool) {
         (bytes32 messageHash, bytes32 qualificationMessageHash) = claimPayload.toMessageHash();
-
-        uint96 allocatorId = claimPayload.id.toAllocatorId();
-        address allocator = allocatorId.fromRegisteredAllocatorIdWithConsumed(claimPayload.nonce);
-
-        _notExpiredAndSignedByBoth(claimPayload.expires, messageHash, claimPayload.sponsor, claimPayload.sponsorSignature, qualificationMessageHash, allocator, claimPayload.allocatorSignature);
-
-        return _verifyAndProcessSplitComponents(claimPayload.sponsor, messageHash, claimPayload.id, claimPayload.allocatedAmount, claimPayload.claimants, allocator, operation);
+        return usingQualifiedSplitClaim(_processSplitClaimWithQualification)(messageHash, qualificationMessageHash, claimPayload, 0xe0, operation);
     }
 
     function _processSplitClaimWithWitness(SplitClaimWithWitness calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation) internal returns (bool) {
-        bytes32 messageHash = claimPayload.toMessageHash();
-        uint96 allocatorId = claimPayload.id.toAllocatorId();
-        address allocator = allocatorId.fromRegisteredAllocatorIdWithConsumed(claimPayload.nonce);
-        _notExpiredAndSignedByBoth(claimPayload.expires, messageHash, claimPayload.sponsor, claimPayload.sponsorSignature, messageHash, allocator, claimPayload.allocatorSignature);
-
-        return _verifyAndProcessSplitComponents(claimPayload.sponsor, messageHash, claimPayload.id, claimPayload.allocatedAmount, claimPayload.claimants, allocator, operation);
+        return usingSplitClaimWithWitness(_processSimpleSplitClaim)(claimPayload.toMessageHash(), claimPayload, 0xe0, operation);
     }
 
     function _processQualifiedSplitClaimWithWitness(QualifiedSplitClaimWithWitness calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation)
@@ -1248,12 +1395,7 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         returns (bool)
     {
         (bytes32 messageHash, bytes32 qualificationMessageHash) = claimPayload.toMessageHash();
-        uint96 allocatorId = claimPayload.id.toAllocatorId();
-        address allocator = allocatorId.fromRegisteredAllocatorIdWithConsumed(claimPayload.nonce);
-
-        _notExpiredAndSignedByBoth(claimPayload.expires, messageHash, claimPayload.sponsor, claimPayload.sponsorSignature, qualificationMessageHash, allocator, claimPayload.allocatorSignature);
-
-        return _verifyAndProcessSplitComponents(claimPayload.sponsor, messageHash, claimPayload.id, claimPayload.allocatedAmount, claimPayload.claimants, allocator, operation);
+        return usingQualifiedSplitClaimWithWitness(_processSplitClaimWithQualification)(messageHash, qualificationMessageHash, claimPayload, 0x120, operation);
     }
 
     function _processBatchClaim(BatchClaim calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation) internal returns (bool) {
@@ -1429,18 +1571,14 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
 
     function _verifyAndProcessSplitComponents(
         address sponsor,
-        bytes32 messageHash,
         uint256 id,
         uint256 allocatedAmount,
         SplitComponent[] calldata claimants,
-        address allocator,
         function(address, address, uint256, uint256) internal returns (bool) operation
     ) internal returns (bool) {
         uint256 totalClaims = claimants.length;
         uint256 spentAmount = 0;
         uint256 errorBuffer = (totalClaims == 0).asUint256();
-
-        _emitClaim(sponsor, messageHash, allocator);
 
         unchecked {
             for (uint256 i = 0; i < totalClaims; ++i) {
@@ -1480,12 +1618,14 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         uint256 totalClaims = claims.length;
         uint256 errorBuffer = (totalClaims == 0).asUint256();
 
+        _emitClaim(sponsor, messageHash, allocator);
+
         unchecked {
             for (uint256 i = 0; i < totalClaims; ++i) {
                 SplitBatchClaimComponent calldata claimComponent = claims[i];
                 errorBuffer |= (claimComponent.id.toAllocatorId() != allocatorId).asUint256();
 
-                _verifyAndProcessSplitComponents(sponsor, messageHash, claimComponent.id, claimComponent.allocatedAmount, claimComponent.portions, allocator, operation);
+                _verifyAndProcessSplitComponents(sponsor, claimComponent.id, claimComponent.allocatedAmount, claimComponent.portions, operation);
             }
         }
 
