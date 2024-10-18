@@ -1,12 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.27;
 
-import {
-    SplitByIdComponent,
-    TransferComponent,
-    BatchClaimComponent,
-    SplitBatchClaimComponent
-} from "./Components.sol";
+import { SplitByIdComponent, TransferComponent, BatchClaimComponent, SplitBatchClaimComponent } from "./Components.sol";
 
 struct BatchTransfer {
     bytes allocatorSignature; // Authorization from the allocator.

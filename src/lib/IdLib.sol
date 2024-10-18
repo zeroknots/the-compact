@@ -25,10 +25,8 @@ library IdLib {
     error NoAllocatorRegistered(uint96 allocatorId);
     error AllocatorAlreadyRegistered(uint96 allocatorId, address allocator);
 
-    uint256 private constant _ALLOCATOR_BY_ALLOCATOR_ID_SLOT_SEED =
-        0x000044036fc77deaed2300000000000000000000000;
-    uint256 private constant _ALLOCATOR_REGISTERED_EVENT_SIGNATURE =
-        0xc54dcaa67a8fd7b4a9aa6fd57351934c792613d5ec1acbd65274270e6de8f7e4;
+    uint256 private constant _ALLOCATOR_BY_ALLOCATOR_ID_SLOT_SEED = 0x000044036fc77deaed2300000000000000000000000;
+    uint256 private constant _ALLOCATOR_REGISTERED_EVENT_SIGNATURE = 0xc54dcaa67a8fd7b4a9aa6fd57351934c792613d5ec1acbd65274270e6de8f7e4;
     uint256 private constant _NO_ALLOCATOR_REGISTERED_ERROR_SIGNATURE = 0xcf90c3a8;
     uint256 private constant _ALLOCATOR_ALREADY_REGISTERED_ERROR_SIGNATURE = 0xc18b0e97;
 
@@ -36,11 +34,7 @@ library IdLib {
         return id.asSanitizedAddress();
     }
 
-    function withReplacedToken(uint256 id, address token)
-        internal
-        pure
-        returns (uint256 updatedId)
-    {
+    function withReplacedToken(uint256 id, address token) internal pure returns (uint256 updatedId) {
         assembly ("memory-safe") {
             updatedId := or(shl(160, shr(160, id)), shr(96, shl(96, token)))
         }
@@ -138,11 +132,7 @@ library IdLib {
         }
     }
 
-    function toLock(address token, address allocator, ResetPeriod resetPeriod, Scope scope)
-        internal
-        pure
-        returns (Lock memory)
-    {
+    function toLock(address token, address allocator, ResetPeriod resetPeriod, Scope scope) internal pure returns (Lock memory) {
         return Lock({ token: token, allocator: allocator, resetPeriod: resetPeriod, scope: scope });
     }
 
@@ -159,24 +149,13 @@ library IdLib {
     // bits 97-256: token
     // note that this will return an ID even if the allocator is unregistered
     function toId(Lock memory lock) internal pure returns (uint256 id) {
-        id = (
-            (lock.scope.asUint256() << 255) | (lock.resetPeriod.asUint256() << 252)
-                | (lock.allocator.usingAllocatorId().asUint256() << 160) | lock.token.asUint256()
-        );
+        id = ((lock.scope.asUint256() << 255) | (lock.resetPeriod.asUint256() << 252) | (lock.allocator.usingAllocatorId().asUint256() << 160) | lock.token.asUint256());
     }
 
-    function toIdIfRegistered(
-        address token,
-        Scope scope,
-        ResetPeriod resetPeriod,
-        address allocator
-    ) internal view returns (uint256 id) {
+    function toIdIfRegistered(address token, Scope scope, ResetPeriod resetPeriod, address allocator) internal view returns (uint256 id) {
         uint96 allocatorId = allocator.usingAllocatorId();
         allocatorId.mustHaveARegisteredAllocator();
-        id = (
-            (scope.asUint256() << 255) | (resetPeriod.asUint256() << 252)
-                | (allocatorId.asUint256() << 160) | token.asUint256()
-        );
+        id = ((scope.asUint256() << 255) | (resetPeriod.asUint256() << 252) | (allocatorId.asUint256() << 160) | token.asUint256());
     }
 
     function toRegisteredAllocator(uint96 allocatorId) internal view returns (address allocator) {
@@ -209,20 +188,10 @@ library IdLib {
         }
     }
 
-    function canBeRegistered(address allocator, bytes calldata proof)
-        internal
-        view
-        returns (bool)
-    {
+    function canBeRegistered(address allocator, bytes calldata proof) internal view returns (bool) {
         uint256 proofLength = proof.length;
-        return (msg.sender == allocator).or(
-            proofLength == 86
-                && (proof[0] == 0xff).and(allocator == address(uint160(uint256(keccak256(proof)))))
-        )
-            || (
-                proofLength > 31
-                    && allocator.isValidSignatureNow(abi.decode(proof[0:32], (bytes32)), proof[32:])
-            );
+        return (msg.sender == allocator).or(proofLength == 86 && (proof[0] == 0xff).and(allocator == address(uint160(uint256(keccak256(proof))))))
+            || (proofLength > 31 && allocator.isValidSignatureNow(abi.decode(proof[0:32], (bytes32)), proof[32:]));
     }
 
     function register(address allocator) internal returns (uint96 allocatorId) {

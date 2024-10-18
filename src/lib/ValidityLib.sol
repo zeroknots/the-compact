@@ -24,15 +24,8 @@ library ValidityLib {
         }
     }
 
-    function signedBy(
-        bytes32 messageHash,
-        address expectedSigner,
-        bytes calldata signature,
-        bytes32 domainSeparator
-    ) internal view {
-        bool hasValidSigner = expectedSigner.isValidSignatureNowCalldata(
-            messageHash.withDomain(domainSeparator), signature
-        );
+    function signedBy(bytes32 messageHash, address expectedSigner, bytes calldata signature, bytes32 domainSeparator) internal view {
+        bool hasValidSigner = expectedSigner.isValidSignatureNowCalldata(messageHash.withDomain(domainSeparator), signature);
 
         assembly ("memory-safe") {
             // NOTE: analyze whether the signature check can safely be skipped in all
@@ -45,18 +38,12 @@ library ValidityLib {
         }
     }
 
-    function fromRegisteredAllocatorIdWithConsumed(uint96 allocatorId, uint256 nonce)
-        internal
-        returns (address allocator)
-    {
+    function fromRegisteredAllocatorIdWithConsumed(uint96 allocatorId, uint256 nonce) internal returns (address allocator) {
         allocator = allocatorId.toRegisteredAllocator();
         nonce.consumeNonce(allocator);
     }
 
-    function toRegisteredAllocatorWithConsumed(uint256 id, uint256 nonce)
-        internal
-        returns (address allocator)
-    {
+    function toRegisteredAllocatorWithConsumed(uint256 id, uint256 nonce) internal returns (address allocator) {
         allocator = id.toAllocator();
         nonce.consumeNonce(allocator);
     }

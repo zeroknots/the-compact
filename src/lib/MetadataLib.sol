@@ -20,27 +20,15 @@ library MetadataLib {
     using MetadataReaderLib for address;
 
     function toURI(Lock memory lock, uint256 id) internal view returns (string memory uri) {
-        string memory tokenAddress =
-            lock.token.isNullAddress() ? "Native Token" : lock.token.toHexStringChecksummed();
+        string memory tokenAddress = lock.token.isNullAddress() ? "Native Token" : lock.token.toHexStringChecksummed();
         string memory allocator = lock.allocator.toHexStringChecksummed();
-        string memory resetPeriod =
-            string.concat(lock.resetPeriod.toSeconds().toString(), " seconds"); // TODO: return minutes / hours / days
+        string memory resetPeriod = string.concat(lock.resetPeriod.toSeconds().toString(), " seconds"); // TODO: return minutes / hours / days
         string memory tokenName = lock.token.readNameWithDefaultValue();
         string memory tokenSymbol = lock.token.readSymbolWithDefaultValue();
         string memory tokenDecimals = uint256(lock.token.readDecimals()).toString();
 
         string memory name = string.concat("{\"name\": \"Compact ", tokenSymbol, "\",");
-        string memory description = string.concat(
-            "\"description\": \"Compact ",
-            tokenName,
-            " (",
-            tokenAddress,
-            ") with allocator ",
-            allocator,
-            " and reset period of ",
-            resetPeriod,
-            "\","
-        );
+        string memory description = string.concat("\"description\": \"Compact ", tokenName, " (", tokenAddress, ") with allocator ", allocator, " and reset period of ", resetPeriod, "\",");
         string memory attributes = string.concat(
             "\"attributes\": [",
             toAttributeString("ID", id.toString(), false),
@@ -72,11 +60,7 @@ library MetadataLib {
         }
     }
 
-    function readSymbolWithDefaultValue(address token)
-        internal
-        view
-        returns (string memory symbol)
-    {
+    function readSymbolWithDefaultValue(address token) internal view returns (string memory symbol) {
         // NOTE: this will not take into account the correct symbol on many chains
         if (token.isNullAddress()) {
             return "ETH";
@@ -88,24 +72,14 @@ library MetadataLib {
         }
     }
 
-    function readDecimalsWithDefaultValue(address token)
-        internal
-        view
-        returns (string memory decimals)
-    {
+    function readDecimalsWithDefaultValue(address token) internal view returns (string memory decimals) {
         if (token.isNullAddress()) {
             return "18";
         }
         return uint256(token.readDecimals()).toString();
     }
 
-    function toAttributeString(string memory trait, string memory value, bool terminal)
-        internal
-        pure
-        returns (string memory attribute)
-    {
-        return string.concat(
-            "{\"trait_type\": \"", trait, "\", \"value\": \"", value, "\"}", terminal ? "" : ","
-        );
+    function toAttributeString(string memory trait, string memory value, bool terminal) internal pure returns (string memory attribute) {
+        return string.concat("{\"trait_type\": \"", trait, "\", \"value\": \"", value, "\"}", terminal ? "" : ",");
     }
 }

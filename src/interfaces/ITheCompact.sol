@@ -17,27 +17,10 @@ import { ISignatureTransfer } from "permit2/src/interfaces/ISignatureTransfer.so
  *         This contract has not yet been properly tested, audited, or reviewed.
  */
 interface ITheCompact {
-    event Deposit(
-        address indexed depositor,
-        address indexed recipient,
-        uint256 indexed id,
-        uint256 depositedAmount
-    );
-    event Claim(
-        address indexed sponsor,
-        address indexed allocator,
-        address indexed arbiter,
-        bytes32 claimHash
-    );
-    event Withdrawal(
-        address indexed account,
-        address indexed recipient,
-        uint256 indexed id,
-        uint256 withdrawnAmount
-    );
-    event ForcedWithdrawalEnabled(
-        address indexed account, uint256 indexed id, uint256 withdrawableAt
-    );
+    event Deposit(address indexed depositor, address indexed recipient, uint256 indexed id, uint256 depositedAmount);
+    event Claim(address indexed sponsor, address indexed allocator, address indexed arbiter, bytes32 claimHash);
+    event Withdrawal(address indexed account, address indexed recipient, uint256 indexed id, uint256 withdrawnAmount);
+    event ForcedWithdrawalEnabled(address indexed account, uint256 indexed id, uint256 withdrawableAt);
     event ForcedWithdrawalDisabled(address indexed account, uint256 indexed id);
     event AllocatorRegistered(uint96 allocatorId, address allocator);
 
@@ -46,28 +29,16 @@ interface ITheCompact {
     error InvalidSignature();
     error PrematureWithdrawal(uint256 id);
     error ForcedWithdrawalAlreadyDisabled(address account, uint256 id);
-    error UnallocatedTransfer(
-        address operator, address from, address to, uint256 id, uint256 amount
-    );
+    error UnallocatedTransfer(address operator, address from, address to, uint256 id, uint256 amount);
     error InvalidBatchAllocation();
     error InvalidRegistrationProof(address allocator);
     error InvalidBatchDepositStructure();
     error AllocatedAmountExceeded(uint256 allocatedAmount, uint256 providedAmount);
     error InvalidScope(uint256 id);
 
-    function deposit(address allocator, ResetPeriod resetPeriod, Scope scope, address recipient)
-        external
-        payable
-        returns (uint256 id);
+    function deposit(address allocator, ResetPeriod resetPeriod, Scope scope, address recipient) external payable returns (uint256 id);
 
-    function deposit(
-        address token,
-        address allocator,
-        ResetPeriod resetPeriod,
-        Scope scope,
-        uint256 amount,
-        address recipient
-    ) external returns (uint256 id);
+    function deposit(address token, address allocator, ResetPeriod resetPeriod, Scope scope, uint256 amount, address recipient) external returns (uint256 id);
 
     function deposit(
         address depositor,
@@ -108,23 +79,13 @@ interface ITheCompact {
 
     function disableForcedWithdrawal(uint256 id) external returns (bool);
 
-    function forcedWithdrawal(uint256 id, address recipient)
-        external
-        returns (uint256 withdrawnAmount);
+    function forcedWithdrawal(uint256 id, address recipient) external returns (uint256 withdrawnAmount);
 
-    function __register(address allocator, bytes calldata proof)
-        external
-        returns (uint96 allocatorId);
+    function __register(address allocator, bytes calldata proof) external returns (uint96 allocatorId);
 
-    function getForcedWithdrawalStatus(address account, uint256 id)
-        external
-        view
-        returns (ForcedWithdrawalStatus status, uint256 forcedWithdrawalAvailableAt);
+    function getForcedWithdrawalStatus(address account, uint256 id) external view returns (ForcedWithdrawalStatus status, uint256 forcedWithdrawalAvailableAt);
 
-    function getLockDetails(uint256 id)
-        external
-        view
-        returns (address token, address allocator, ResetPeriod resetPeriod, Scope scope);
+    function getLockDetails(uint256 id) external view returns (address token, address allocator, ResetPeriod resetPeriod, Scope scope);
 
     function check(uint256 nonce, address allocator) external view returns (bool consumed);
 

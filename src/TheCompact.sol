@@ -63,13 +63,7 @@ import {
     ExogenousQualifiedSplitMultichainClaimWithWitness
 } from "./types/MultichainClaims.sol";
 
-import {
-    SplitComponent,
-    TransferComponent,
-    SplitByIdComponent,
-    BatchClaimComponent,
-    SplitBatchClaimComponent
-} from "./types/Components.sol";
+import { SplitComponent, TransferComponent, SplitByIdComponent, BatchClaimComponent, SplitBatchClaimComponent } from "./types/Components.sol";
 
 import { IAllocator } from "./interfaces/IAllocator.sol";
 import { MetadataRenderer } from "./lib/MetadataRenderer.sol";
@@ -137,37 +131,27 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
     using ValidityLib for uint256;
     using ValidityLib for bytes32;
     using FunctionCastLib for function(bytes32, address, BasicTransfer calldata) internal view;
-    using
-    FunctionCastLib
-    for function(TransferComponent[] memory, uint256) internal returns (address);
+    using FunctionCastLib for function(TransferComponent[] memory, uint256) internal returns (address);
     using FunctionCastLib for function(bytes32, BasicClaim calldata, address) internal view;
-    using
-    FunctionCastLib
-    for function(bytes32, bytes32, QualifiedClaim calldata, address) internal view;
+    using FunctionCastLib for function(bytes32, bytes32, QualifiedClaim calldata, address) internal view;
     using FunctionCastLib for function(QualifiedClaim calldata) internal returns (bytes32, address);
-    using
-    FunctionCastLib
-    for function(QualifiedClaimWithWitness calldata) internal returns (bytes32, address);
+    using FunctionCastLib for function(QualifiedClaimWithWitness calldata) internal returns (bytes32, address);
 
     IPermit2 private constant _PERMIT2 = IPermit2(0x000000000022D473030F116dDEE9F6B43aC78BA3);
 
     uint256 private constant _ERC6909_MASTER_SLOT_SEED = 0xedcaa89a82293940;
 
     /// @dev `keccak256(bytes("Transfer(address,address,address,uint256,uint256)"))`.
-    uint256 private constant _TRANSFER_EVENT_SIGNATURE =
-        0x1b3d7edb2e9c0b0e7c525b20aaaef0f5940d2ed71663c7d39266ecafac728859;
+    uint256 private constant _TRANSFER_EVENT_SIGNATURE = 0x1b3d7edb2e9c0b0e7c525b20aaaef0f5940d2ed71663c7d39266ecafac728859;
 
     /// @dev `keccak256(bytes("Claim(address,address,address,bytes32)"))`.
-    uint256 private constant _CLAIM_EVENT_SIGNATURE =
-        0x770c32a2314b700d6239ee35ba23a9690f2fceb93a55d8c753e953059b3b18d4;
+    uint256 private constant _CLAIM_EVENT_SIGNATURE = 0x770c32a2314b700d6239ee35ba23a9690f2fceb93a55d8c753e953059b3b18d4;
 
     /// @dev `keccak256(bytes("Deposit(address,address,uint256,uint256)"))`.
-    uint256 private constant _DEPOSIT_EVENT_SIGNATURE =
-        0xdcbc1c05240f31ff3ad067ef1ee35ce4997762752e3a095284754544f4c709d7;
+    uint256 private constant _DEPOSIT_EVENT_SIGNATURE = 0xdcbc1c05240f31ff3ad067ef1ee35ce4997762752e3a095284754544f4c709d7;
 
     /// @dev `keccak256(bytes("Withdrawal(address,address,uint256,uint256)"))`.
-    uint256 private constant _WITHDRAWAL_EVENT_SIGNATURE =
-        0xc2b4a290c20fb28939d29f102514fbffd2b73c059ffba8b78250c94161d5fcc6;
+    uint256 private constant _WITHDRAWAL_EVENT_SIGNATURE = 0xc2b4a290c20fb28939d29f102514fbffd2b73c059ffba8b78250c94161d5fcc6;
 
     // Rage-quit functionality (TODO: optimize storage layout)
     mapping(address => mapping(uint256 => uint256)) private _cutoffTime;
@@ -178,15 +162,7 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
 
     constructor() {
         _INITIAL_CHAIN_ID = block.chainid;
-        _INITIAL_DOMAIN_SEPARATOR = keccak256(
-            abi.encode(
-                HashLib._DOMAIN_TYPEHASH,
-                HashLib._NAME_HASH,
-                HashLib._VERSION_HASH,
-                block.chainid,
-                address(this)
-            )
-        );
+        _INITIAL_DOMAIN_SEPARATOR = keccak256(abi.encode(HashLib._DOMAIN_TYPEHASH, HashLib._NAME_HASH, HashLib._VERSION_HASH, block.chainid, address(this)));
         _METADATA_RENDERER = new MetadataRenderer();
     }
 
@@ -196,37 +172,21 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         _deposit(msg.sender, msg.sender, id, msg.value);
     }
 
-    function deposit(address token, address allocator, uint256 amount)
-        external
-        returns (uint256 id)
-    {
-        id = token.excludingNative().toIdIfRegistered(
-            Scope.Multichain, ResetPeriod.TenMinutes, allocator
-        );
+    function deposit(address token, address allocator, uint256 amount) external returns (uint256 id) {
+        id = token.excludingNative().toIdIfRegistered(Scope.Multichain, ResetPeriod.TenMinutes, allocator);
 
         token.safeTransferFrom(msg.sender, address(this), amount);
 
         _deposit(msg.sender, msg.sender, id, amount);
     }
 
-    function deposit(address allocator, ResetPeriod resetPeriod, Scope scope, address recipient)
-        external
-        payable
-        returns (uint256 id)
-    {
+    function deposit(address allocator, ResetPeriod resetPeriod, Scope scope, address recipient) external payable returns (uint256 id) {
         id = address(0).toIdIfRegistered(scope, resetPeriod, allocator);
 
         _deposit(msg.sender, recipient, id, msg.value);
     }
 
-    function deposit(
-        address token,
-        address allocator,
-        ResetPeriod resetPeriod,
-        Scope scope,
-        uint256 amount,
-        address recipient
-    ) external returns (uint256 id) {
+    function deposit(address token, address allocator, ResetPeriod resetPeriod, Scope scope, uint256 amount, address recipient) external returns (uint256 id) {
         id = token.excludingNative().toIdIfRegistered(scope, resetPeriod, allocator);
 
         token.safeTransferFrom(msg.sender, address(this), amount);
@@ -234,11 +194,7 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         _deposit(msg.sender, recipient, id, amount);
     }
 
-    function deposit(uint256[2][] calldata idsAndAmounts, address recipient)
-        external
-        payable
-        returns (bool)
-    {
+    function deposit(uint256[2][] calldata idsAndAmounts, address recipient) external payable returns (bool) {
         uint256 totalIds = idsAndAmounts.length;
         bool firstUnderlyingTokenIsNative;
         uint256 id;
@@ -252,16 +208,8 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
             //  * the callvalue is zero but the first token is native
             //  * the callvalue is nonzero but the first token is non-native
             //  * the first token is non-native and the callvalue doesn't equal the first amount
-            if or(
-                iszero(totalIds),
-                or(
-                    eq(firstUnderlyingTokenIsNative, iszero(callvalue())),
-                    and(
-                        firstUnderlyingTokenIsNative,
-                        iszero(eq(callvalue(), calldataload(add(idsAndAmountsOffset, 0x20))))
-                    )
-                )
-            ) {
+            if or(iszero(totalIds), or(eq(firstUnderlyingTokenIsNative, iszero(callvalue())), and(firstUnderlyingTokenIsNative, iszero(eq(callvalue(), calldataload(add(idsAndAmountsOffset, 0x20)))))))
+            {
                 // revert InvalidBatchDepositStructure()
                 mstore(0, 0xca0fc08e)
                 revert(0x1c, 0x04)
@@ -309,14 +257,11 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
     ) external returns (uint256 id) {
         id = token.excludingNative().toIdIfRegistered(scope, resetPeriod, allocator);
 
-        ISignatureTransfer.SignatureTransferDetails memory signatureTransferDetails =
-        ISignatureTransfer.SignatureTransferDetails({ to: address(this), requestedAmount: amount });
+        ISignatureTransfer.SignatureTransferDetails memory signatureTransferDetails = ISignatureTransfer.SignatureTransferDetails({ to: address(this), requestedAmount: amount });
 
-        ISignatureTransfer.TokenPermissions memory tokenPermissions =
-            ISignatureTransfer.TokenPermissions({ token: token, amount: amount });
+        ISignatureTransfer.TokenPermissions memory tokenPermissions = ISignatureTransfer.TokenPermissions({ token: token, amount: amount });
 
-        ISignatureTransfer.PermitTransferFrom memory permitTransferFrom = ISignatureTransfer
-            .PermitTransferFrom({ permitted: tokenPermissions, nonce: nonce, deadline: deadline });
+        ISignatureTransfer.PermitTransferFrom memory permitTransferFrom = ISignatureTransfer.PermitTransferFrom({ permitted: tokenPermissions, nonce: nonce, deadline: deadline });
 
         _PERMIT2.permitWitnessTransferFrom(
             permitTransferFrom,
@@ -352,16 +297,8 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
             //  * the callvalue is zero but the first token is native
             //  * the callvalue is nonzero but the first token is non-native
             //  * the first token is non-native and the callvalue doesn't equal the first amount
-            if or(
-                iszero(totalTokens),
-                or(
-                    eq(firstUnderlyingTokenIsNative, iszero(callvalue())),
-                    and(
-                        firstUnderlyingTokenIsNative,
-                        iszero(eq(callvalue(), calldataload(add(permittedOffset, 0x40))))
-                    )
-                )
-            ) {
+            if or(iszero(totalTokens), or(eq(firstUnderlyingTokenIsNative, iszero(callvalue())), and(firstUnderlyingTokenIsNative, iszero(eq(callvalue(), calldataload(add(permittedOffset, 0x40)))))))
+            {
                 // revert InvalidBatchDepositStructure()
                 mstore(0, 0xca0fc08e)
                 revert(0x1c, 0x04)
@@ -371,16 +308,7 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         uint256 initialId = address(0).toIdIfRegistered(scope, resetPeriod, allocator);
 
         return _processBatchPermit2Deposits(
-            firstUnderlyingTokenIsNative,
-            recipient,
-            initialId,
-            totalTokens,
-            permitted,
-            depositor,
-            nonce,
-            deadline,
-            allocator.toPermit2WitnessHash(depositor, resetPeriod, scope, recipient),
-            signature
+            firstUnderlyingTokenIsNative, recipient, initialId, totalTokens, permitted, depositor, nonce, deadline, allocator.toPermit2WitnessHash(depositor, resetPeriod, scope, recipient), signature
         );
     }
 
@@ -444,10 +372,7 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         return _processQualifiedClaimWithWitness(claimPayload, _release);
     }
 
-    function claimAndWithdraw(QualifiedClaimWithWitness calldata claimPayload)
-        external
-        returns (bool)
-    {
+    function claimAndWithdraw(QualifiedClaimWithWitness calldata claimPayload) external returns (bool) {
         return _processQualifiedClaimWithWitness(claimPayload, _withdraw);
     }
 
@@ -471,10 +396,7 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         return _processSplitClaimWithWitness(claimPayload, _release);
     }
 
-    function claimAndWithdraw(SplitClaimWithWitness calldata claimPayload)
-        external
-        returns (bool)
-    {
+    function claimAndWithdraw(SplitClaimWithWitness calldata claimPayload) external returns (bool) {
         return _processSplitClaimWithWitness(claimPayload, _withdraw);
     }
 
@@ -482,10 +404,7 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         return _processQualifiedSplitClaimWithWitness(claimPayload, _release);
     }
 
-    function claimAndWithdraw(QualifiedSplitClaimWithWitness calldata claimPayload)
-        external
-        returns (bool)
-    {
+    function claimAndWithdraw(QualifiedSplitClaimWithWitness calldata claimPayload) external returns (bool) {
         return _processQualifiedSplitClaimWithWitness(claimPayload, _withdraw);
     }
 
@@ -509,10 +428,7 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         return _processBatchClaimWithWitness(claimPayload, _release);
     }
 
-    function claimAndWithdraw(BatchClaimWithWitness calldata claimPayload)
-        external
-        returns (bool)
-    {
+    function claimAndWithdraw(BatchClaimWithWitness calldata claimPayload) external returns (bool) {
         return _processBatchClaimWithWitness(claimPayload, _release);
     }
 
@@ -520,10 +436,7 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         return _processQualifiedBatchClaimWithWitness(claimPayload, _release);
     }
 
-    function claimAndWithdraw(QualifiedBatchClaimWithWitness calldata claimPayload)
-        external
-        returns (bool)
-    {
+    function claimAndWithdraw(QualifiedBatchClaimWithWitness calldata claimPayload) external returns (bool) {
         return _processQualifiedBatchClaimWithWitness(claimPayload, _release);
     }
 
@@ -539,10 +452,7 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         return _processQualifiedSplitBatchClaim(claimPayload, _release);
     }
 
-    function claimAndWithdraw(QualifiedSplitBatchClaim calldata claimPayload)
-        external
-        returns (bool)
-    {
+    function claimAndWithdraw(QualifiedSplitBatchClaim calldata claimPayload) external returns (bool) {
         return _processQualifiedSplitBatchClaim(claimPayload, _release);
     }
 
@@ -550,24 +460,15 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         return _processSplitBatchClaimWithWitness(claimPayload, _release);
     }
 
-    function claimAndWithdraw(SplitBatchClaimWithWitness calldata claimPayload)
-        external
-        returns (bool)
-    {
+    function claimAndWithdraw(SplitBatchClaimWithWitness calldata claimPayload) external returns (bool) {
         return _processSplitBatchClaimWithWitness(claimPayload, _release);
     }
 
-    function claim(QualifiedSplitBatchClaimWithWitness calldata claimPayload)
-        external
-        returns (bool)
-    {
+    function claim(QualifiedSplitBatchClaimWithWitness calldata claimPayload) external returns (bool) {
         return _processQualifiedSplitBatchClaimWithWitness(claimPayload, _release);
     }
 
-    function claimAndWithdraw(QualifiedSplitBatchClaimWithWitness calldata claimPayload)
-        external
-        returns (bool)
-    {
+    function claimAndWithdraw(QualifiedSplitBatchClaimWithWitness calldata claimPayload) external returns (bool) {
         return _processQualifiedSplitBatchClaimWithWitness(claimPayload, _release);
     }
 
@@ -583,10 +484,7 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         return _processExogenousMultichainClaim(claimPayload, _release);
     }
 
-    function claimAndWithdraw(ExogenousMultichainClaim calldata claimPayload)
-        external
-        returns (bool)
-    {
+    function claimAndWithdraw(ExogenousMultichainClaim calldata claimPayload) external returns (bool) {
         return _processExogenousMultichainClaim(claimPayload, _release);
     }
 
@@ -594,24 +492,15 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         return _processQualifiedMultichainClaim(claimPayload, _release);
     }
 
-    function claimAndWithdraw(QualifiedMultichainClaim calldata claimPayload)
-        external
-        returns (bool)
-    {
+    function claimAndWithdraw(QualifiedMultichainClaim calldata claimPayload) external returns (bool) {
         return _processQualifiedMultichainClaim(claimPayload, _release);
     }
 
-    function claim(ExogenousQualifiedMultichainClaim calldata claimPayload)
-        external
-        returns (bool)
-    {
+    function claim(ExogenousQualifiedMultichainClaim calldata claimPayload) external returns (bool) {
         return _processExogenousQualifiedMultichainClaim(claimPayload, _release);
     }
 
-    function claimAndWithdraw(ExogenousQualifiedMultichainClaim calldata claimPayload)
-        external
-        returns (bool)
-    {
+    function claimAndWithdraw(ExogenousQualifiedMultichainClaim calldata claimPayload) external returns (bool) {
         return _processExogenousQualifiedMultichainClaim(claimPayload, _release);
     }
 
@@ -619,52 +508,31 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         return _processMultichainClaimWithWitness(claimPayload, _release);
     }
 
-    function claimAndWithdraw(MultichainClaimWithWitness calldata claimPayload)
-        external
-        returns (bool)
-    {
+    function claimAndWithdraw(MultichainClaimWithWitness calldata claimPayload) external returns (bool) {
         return _processMultichainClaimWithWitness(claimPayload, _release);
     }
 
-    function claim(ExogenousMultichainClaimWithWitness calldata claimPayload)
-        external
-        returns (bool)
-    {
+    function claim(ExogenousMultichainClaimWithWitness calldata claimPayload) external returns (bool) {
         return _processExogenousMultichainClaimWithWitness(claimPayload, _release);
     }
 
-    function claimAndWithdraw(ExogenousMultichainClaimWithWitness calldata claimPayload)
-        external
-        returns (bool)
-    {
+    function claimAndWithdraw(ExogenousMultichainClaimWithWitness calldata claimPayload) external returns (bool) {
         return _processExogenousMultichainClaimWithWitness(claimPayload, _release);
     }
 
-    function claim(QualifiedMultichainClaimWithWitness calldata claimPayload)
-        external
-        returns (bool)
-    {
+    function claim(QualifiedMultichainClaimWithWitness calldata claimPayload) external returns (bool) {
         return _processQualifiedMultichainClaimWithWitness(claimPayload, _release);
     }
 
-    function claimAndWithdraw(QualifiedMultichainClaimWithWitness calldata claimPayload)
-        external
-        returns (bool)
-    {
+    function claimAndWithdraw(QualifiedMultichainClaimWithWitness calldata claimPayload) external returns (bool) {
         return _processQualifiedMultichainClaimWithWitness(claimPayload, _release);
     }
 
-    function claim(ExogenousQualifiedMultichainClaimWithWitness calldata claimPayload)
-        external
-        returns (bool)
-    {
+    function claim(ExogenousQualifiedMultichainClaimWithWitness calldata claimPayload) external returns (bool) {
         return _processExogenousQualifiedMultichainClaimWithWitness(claimPayload, _release);
     }
 
-    function claimAndWithdraw(ExogenousQualifiedMultichainClaimWithWitness calldata claimPayload)
-        external
-        returns (bool)
-    {
+    function claimAndWithdraw(ExogenousQualifiedMultichainClaimWithWitness calldata claimPayload) external returns (bool) {
         return _processExogenousQualifiedMultichainClaimWithWitness(claimPayload, _release);
     }
 
@@ -697,10 +565,7 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         return true;
     }
 
-    function forcedWithdrawal(uint256 id, address recipient)
-        external
-        returns (uint256 withdrawnAmount)
-    {
+    function forcedWithdrawal(uint256 id, address recipient) external returns (uint256 withdrawnAmount) {
         uint256 withdrawableAt = _cutoffTime[msg.sender][id];
 
         if ((withdrawableAt == 0).or(withdrawableAt > block.timestamp)) {
@@ -717,10 +582,7 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         _withdraw(msg.sender, recipient, id, withdrawnAmount);
     }
 
-    function __register(address allocator, bytes calldata proof)
-        external
-        returns (uint96 allocatorId)
-    {
+    function __register(address allocator, bytes calldata proof) external returns (uint96 allocatorId) {
         allocator = uint256(uint160(allocator)).asSanitizedAddress();
         if (!allocator.canBeRegistered(proof)) {
             assembly ("memory-safe") {
@@ -734,27 +596,15 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         allocatorId = allocator.register();
     }
 
-    function getForcedWithdrawalStatus(address account, uint256 id)
-        external
-        view
-        returns (ForcedWithdrawalStatus status, uint256 forcedWithdrawalAvailableAt)
-    {
+    function getForcedWithdrawalStatus(address account, uint256 id) external view returns (ForcedWithdrawalStatus status, uint256 forcedWithdrawalAvailableAt) {
         forcedWithdrawalAvailableAt = _cutoffTime[account][id];
 
         assembly ("memory-safe") {
-            status :=
-                mul(
-                    iszero(iszero(forcedWithdrawalAvailableAt)),
-                    sub(2, gt(forcedWithdrawalAvailableAt, timestamp()))
-                )
+            status := mul(iszero(iszero(forcedWithdrawalAvailableAt)), sub(2, gt(forcedWithdrawalAvailableAt, timestamp())))
         }
     }
 
-    function getLockDetails(uint256 id)
-        external
-        view
-        returns (address token, address allocator, ResetPeriod resetPeriod, Scope scope)
-    {
+    function getLockDetails(uint256 id) external view returns (address token, address allocator, ResetPeriod resetPeriod, Scope scope) {
         token = id.toToken();
         allocator = id.toAllocatorId().toRegisteredAllocator();
         resetPeriod = id.toResetPeriod();
@@ -794,18 +644,10 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         }
     }
 
-    function _notExpiredAndSignedByAllocator(
-        bytes32 messageHash,
-        address allocator,
-        BasicTransfer calldata transferPayload
-    ) internal view {
+    function _notExpiredAndSignedByAllocator(bytes32 messageHash, address allocator, BasicTransfer calldata transferPayload) internal view {
         transferPayload.expires.later();
 
-        messageHash.signedBy(
-            allocator,
-            transferPayload.allocatorSignature,
-            _INITIAL_DOMAIN_SEPARATOR.toLatest(_INITIAL_CHAIN_ID)
-        );
+        messageHash.signedBy(allocator, transferPayload.allocatorSignature, _INITIAL_DOMAIN_SEPARATOR.toLatest(_INITIAL_CHAIN_ID));
     }
 
     function _notExpiredAndSignedByBoth(
@@ -821,9 +663,7 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         expires.later();
 
         messageHash.signedBy(sponsor, sponsorSignature, sponsorDomainSeparator);
-        qualificationMessageHash.signedBy(
-            allocator, allocatorSignature, _INITIAL_DOMAIN_SEPARATOR.toLatest(_INITIAL_CHAIN_ID)
-        );
+        qualificationMessageHash.signedBy(allocator, allocatorSignature, _INITIAL_DOMAIN_SEPARATOR.toLatest(_INITIAL_CHAIN_ID));
     }
 
     function _notExpiredAndSignedByBoth(
@@ -843,28 +683,14 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         qualificationMessageHash.signedBy(allocator, allocatorSignature, domainSeparator);
     }
 
-    function _processBasicTransfer(
-        BasicTransfer calldata transfer,
-        function(address, address, uint256, uint256) internal returns (bool) operation
-    ) internal returns (bool) {
-        _notExpiredAndSignedByAllocator(
-            transfer.toMessageHash(),
-            transfer.id.toRegisteredAllocatorWithConsumed(transfer.nonce),
-            transfer
-        );
+    function _processBasicTransfer(BasicTransfer calldata transfer, function(address, address, uint256, uint256) internal returns (bool) operation) internal returns (bool) {
+        _notExpiredAndSignedByAllocator(transfer.toMessageHash(), transfer.id.toRegisteredAllocatorWithConsumed(transfer.nonce), transfer);
 
         return operation(msg.sender, transfer.recipient, transfer.id, transfer.amount);
     }
 
-    function _processSplitTransfer(
-        SplitTransfer calldata transfer,
-        function(address, address, uint256, uint256) internal returns (bool) operation
-    ) internal returns (bool) {
-        _notExpiredAndSignedByAllocator.usingSplitTransfer()(
-            transfer.toMessageHash(),
-            transfer.id.toRegisteredAllocatorWithConsumed(transfer.nonce),
-            transfer
-        );
+    function _processSplitTransfer(SplitTransfer calldata transfer, function(address, address, uint256, uint256) internal returns (bool) operation) internal returns (bool) {
+        _notExpiredAndSignedByAllocator.usingSplitTransfer()(transfer.toMessageHash(), transfer.id.toRegisteredAllocatorWithConsumed(transfer.nonce), transfer);
 
         uint256 totalSplits = transfer.recipients.length;
         unchecked {
@@ -877,15 +703,8 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         return true;
     }
 
-    function _processBatchTransfer(
-        BatchTransfer calldata transfer,
-        function(address, address, uint256, uint256) internal returns (bool) operation
-    ) internal returns (bool) {
-        _notExpiredAndSignedByAllocator.usingBatchTransfer()(
-            transfer.toMessageHash(),
-            _deriveConsistentAllocatorAndConsumeNonce(transfer.transfers, transfer.nonce),
-            transfer
-        );
+    function _processBatchTransfer(BatchTransfer calldata transfer, function(address, address, uint256, uint256) internal returns (bool) operation) internal returns (bool) {
+        _notExpiredAndSignedByAllocator.usingBatchTransfer()(transfer.toMessageHash(), _deriveConsistentAllocatorAndConsumeNonce(transfer.transfers, transfer.nonce), transfer);
 
         unchecked {
             uint256 totalTransfers = transfer.transfers.length;
@@ -898,16 +717,9 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         return true;
     }
 
-    function _processSplitBatchTransfer(
-        SplitBatchTransfer calldata transfer,
-        function(address, address, uint256, uint256) internal returns (bool) operation
-    ) internal returns (bool) {
+    function _processSplitBatchTransfer(SplitBatchTransfer calldata transfer, function(address, address, uint256, uint256) internal returns (bool) operation) internal returns (bool) {
         _notExpiredAndSignedByAllocator.usingSplitBatchTransfer()(
-            transfer.toMessageHash(),
-            _deriveConsistentAllocatorAndConsumeNonce.usingSplitByIdComponent()(
-                transfer.transfers, transfer.nonce
-            ),
-            transfer
+            transfer.toMessageHash(), _deriveConsistentAllocatorAndConsumeNonce.usingSplitByIdComponent()(transfer.transfers, transfer.nonce), transfer
         );
 
         unchecked {
@@ -926,15 +738,11 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         return true;
     }
 
-    function _processSimpleClaim(
-        bytes32 messageHash,
-        uint256 calldataPointer,
-        uint256 offsetToId,
-        function(address, address, uint256, uint256) internal returns (bool) operation
-    ) internal returns (bool) {
-        return _processClaimWithQualificationAndSponsorDomain(
-            messageHash, messageHash, calldataPointer, offsetToId, bytes32(0), operation
-        );
+    function _processSimpleClaim(bytes32 messageHash, uint256 calldataPointer, uint256 offsetToId, function(address, address, uint256, uint256) internal returns (bool) operation)
+        internal
+        returns (bool)
+    {
+        return _processClaimWithQualificationAndSponsorDomain(messageHash, messageHash, calldataPointer, offsetToId, bytes32(0), operation);
     }
 
     function _processClaimWithSponsorDomain(
@@ -944,9 +752,7 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         bytes32 sponsorDomain,
         function(address, address, uint256, uint256) internal returns (bool) operation
     ) internal returns (bool) {
-        return _processClaimWithQualificationAndSponsorDomain(
-            messageHash, messageHash, calldataPointer, offsetToId, sponsorDomain, operation
-        );
+        return _processClaimWithQualificationAndSponsorDomain(messageHash, messageHash, calldataPointer, offsetToId, sponsorDomain, operation);
     }
 
     function _processClaimWithQualification(
@@ -956,14 +762,7 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         uint256 offsetToId,
         function(address, address, uint256, uint256) internal returns (bool) operation
     ) internal returns (bool) {
-        return _processClaimWithQualificationAndSponsorDomain(
-            messageHash,
-            qualificationMessageHash,
-            calldataPointer,
-            offsetToId,
-            bytes32(0),
-            operation
-        );
+        return _processClaimWithQualificationAndSponsorDomain(messageHash, qualificationMessageHash, calldataPointer, offsetToId, bytes32(0), operation);
     }
 
     function _processClaimWithQualificationAndSponsorDomain(
@@ -990,8 +789,7 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
             allocatorSignature.offset := add(0x20, allocatorSignaturePtr)
             allocatorSignature.length := calldataload(allocatorSignaturePtr)
 
-            let sponsorSignaturePtr :=
-                add(calldataPointer, calldataload(add(calldataPointer, 0x20)))
+            let sponsorSignaturePtr := add(calldataPointer, calldataload(add(calldataPointer, 0x20)))
             sponsorSignature.offset := add(0x20, sponsorSignaturePtr)
             sponsorSignature.length := calldataload(sponsorSignaturePtr)
 
@@ -1017,8 +815,7 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
 
         bytes32 domainSeparator = _INITIAL_DOMAIN_SEPARATOR.toLatest(_INITIAL_CHAIN_ID);
         assembly {
-            sponsorDomainSeparator :=
-                add(sponsorDomainSeparator, mul(iszero(sponsorDomainSeparator), domainSeparator))
+            sponsorDomainSeparator := add(sponsorDomainSeparator, mul(iszero(sponsorDomainSeparator), domainSeparator))
         }
 
         messageHash.signedBy(sponsor, sponsorSignature, sponsorDomainSeparator);
@@ -1339,122 +1136,71 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         }
     }
 
-    function _processBasicClaim(
-        BasicClaim calldata claimPayload,
-        function(address, address, uint256, uint256) internal returns (bool) operation
-    ) internal returns (bool) {
-        return usingBasicClaim(_processSimpleClaim)(
-            claimPayload.toMessageHash(), claimPayload, 0xa0, operation
-        );
+    function _processBasicClaim(BasicClaim calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation) internal returns (bool) {
+        return usingBasicClaim(_processSimpleClaim)(claimPayload.toMessageHash(), claimPayload, 0xa0, operation);
     }
 
-    function _processQualifiedClaim(
-        QualifiedClaim calldata claimPayload,
-        function(address, address, uint256, uint256) internal returns (bool) operation
-    ) internal returns (bool) {
+    function _processQualifiedClaim(QualifiedClaim calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation) internal returns (bool) {
         (bytes32 messageHash, bytes32 qualificationMessageHash) = claimPayload.toMessageHash();
-        return usingQualifiedClaim(_processClaimWithQualification)(
-            messageHash, qualificationMessageHash, claimPayload, 0xe0, operation
-        );
+        return usingQualifiedClaim(_processClaimWithQualification)(messageHash, qualificationMessageHash, claimPayload, 0xe0, operation);
     }
 
-    function _processClaimWithWitness(
-        ClaimWithWitness calldata claimPayload,
-        function(address, address, uint256, uint256) internal returns (bool) operation
-    ) internal returns (bool) {
-        return usingClaimWithWitness(_processSimpleClaim)(
-            claimPayload.toMessageHash(), claimPayload, 0xe0, operation
-        );
+    function _processClaimWithWitness(ClaimWithWitness calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation) internal returns (bool) {
+        return usingClaimWithWitness(_processSimpleClaim)(claimPayload.toMessageHash(), claimPayload, 0xe0, operation);
     }
 
-    function _processQualifiedClaimWithWitness(
-        QualifiedClaimWithWitness calldata claimPayload,
-        function(address, address, uint256, uint256) internal returns (bool) operation
-    ) internal returns (bool) {
+    function _processQualifiedClaimWithWitness(QualifiedClaimWithWitness calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation)
+        internal
+        returns (bool)
+    {
         (bytes32 messageHash, bytes32 qualificationMessageHash) = claimPayload.toMessageHash();
-        return usingQualifiedClaimWithWitness(_processClaimWithQualification)(
-            messageHash, qualificationMessageHash, claimPayload, 0x120, operation
-        );
+        return usingQualifiedClaimWithWitness(_processClaimWithQualification)(messageHash, qualificationMessageHash, claimPayload, 0x120, operation);
     }
 
-    function _processMultichainClaim(
-        MultichainClaim calldata claimPayload,
-        function(address, address, uint256, uint256) internal returns (bool) operation
-    ) internal returns (bool) {
-        return usingMultichainClaim(_processSimpleClaim)(
-            claimPayload.toMessageHash(), claimPayload, 0xc0, operation
-        );
+    function _processMultichainClaim(MultichainClaim calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation) internal returns (bool) {
+        return usingMultichainClaim(_processSimpleClaim)(claimPayload.toMessageHash(), claimPayload, 0xc0, operation);
     }
 
-    function _processQualifiedMultichainClaim(
-        QualifiedMultichainClaim calldata claimPayload,
-        function(address, address, uint256, uint256) internal returns (bool) operation
-    ) internal returns (bool) {
+    function _processQualifiedMultichainClaim(QualifiedMultichainClaim calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation) internal returns (bool) {
         (bytes32 messageHash, bytes32 qualificationMessageHash) = claimPayload.toMessageHash();
-        return usingQualifiedMultichainClaim(_processClaimWithQualification)(
-            messageHash, qualificationMessageHash, claimPayload, 0x100, operation
-        );
+        return usingQualifiedMultichainClaim(_processClaimWithQualification)(messageHash, qualificationMessageHash, claimPayload, 0x100, operation);
     }
 
-    function _processMultichainClaimWithWitness(
-        MultichainClaimWithWitness calldata claimPayload,
-        function(address, address, uint256, uint256) internal returns (bool) operation
-    ) internal returns (bool) {
-        return usingMultichainClaimWithWitness(_processSimpleClaim)(
-            claimPayload.toMessageHash(), claimPayload, 0x100, operation
-        );
+    function _processMultichainClaimWithWitness(MultichainClaimWithWitness calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation)
+        internal
+        returns (bool)
+    {
+        return usingMultichainClaimWithWitness(_processSimpleClaim)(claimPayload.toMessageHash(), claimPayload, 0x100, operation);
     }
 
-    function _processQualifiedMultichainClaimWithWitness(
-        QualifiedMultichainClaimWithWitness calldata claimPayload,
-        function(address, address, uint256, uint256) internal returns (bool) operation
-    ) internal returns (bool) {
+    function _processQualifiedMultichainClaimWithWitness(QualifiedMultichainClaimWithWitness calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation)
+        internal
+        returns (bool)
+    {
         (bytes32 messageHash, bytes32 qualificationMessageHash) = claimPayload.toMessageHash();
-        return usingQualifiedMultichainClaimWithWitness(_processClaimWithQualification)(
-            messageHash, qualificationMessageHash, claimPayload, 0x140, operation
-        );
+        return usingQualifiedMultichainClaimWithWitness(_processClaimWithQualification)(messageHash, qualificationMessageHash, claimPayload, 0x140, operation);
     }
 
-    function _processExogenousMultichainClaim(
-        ExogenousMultichainClaim calldata claimPayload,
-        function(address, address, uint256, uint256) internal returns (bool) operation
-    ) internal returns (bool) {
-        return usingExogenousMultichainClaim(_processClaimWithSponsorDomain)(
-            claimPayload.toMessageHash(),
-            claimPayload,
-            0x100,
-            claimPayload.notarizedChainId.toNotarizedDomainSeparator(),
-            operation
-        );
+    function _processExogenousMultichainClaim(ExogenousMultichainClaim calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation) internal returns (bool) {
+        return usingExogenousMultichainClaim(_processClaimWithSponsorDomain)(claimPayload.toMessageHash(), claimPayload, 0x100, claimPayload.notarizedChainId.toNotarizedDomainSeparator(), operation);
     }
 
-    function _processExogenousMultichainClaimWithWitness(
-        ExogenousMultichainClaimWithWitness calldata claimPayload,
-        function(address, address, uint256, uint256) internal returns (bool) operation
-    ) internal returns (bool) {
+    function _processExogenousMultichainClaimWithWitness(ExogenousMultichainClaimWithWitness calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation)
+        internal
+        returns (bool)
+    {
         return usingExogenousMultichainClaimWithWitness(_processClaimWithSponsorDomain)(
-            claimPayload.toMessageHash(),
-            claimPayload,
-            0x140,
-            claimPayload.notarizedChainId.toNotarizedDomainSeparator(),
-            operation
+            claimPayload.toMessageHash(), claimPayload, 0x140, claimPayload.notarizedChainId.toNotarizedDomainSeparator(), operation
         );
     }
 
-    function _processExogenousQualifiedMultichainClaim(
-        ExogenousQualifiedMultichainClaim calldata claimPayload,
-        function(address, address, uint256, uint256) internal returns (bool) operation
-    ) internal returns (bool) {
+    function _processExogenousQualifiedMultichainClaim(ExogenousQualifiedMultichainClaim calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation)
+        internal
+        returns (bool)
+    {
         (bytes32 messageHash, bytes32 qualificationMessageHash) = claimPayload.toMessageHash();
-        return usingExogenousQualifiedMultichainClaim(
-            _processClaimWithQualificationAndSponsorDomain
-        )(
-            messageHash,
-            qualificationMessageHash,
-            claimPayload,
-            0x140,
-            claimPayload.notarizedChainId.toNotarizedDomainSeparator(),
-            operation
+        return usingExogenousQualifiedMultichainClaim(_processClaimWithQualificationAndSponsorDomain)(
+            messageHash, qualificationMessageHash, claimPayload, 0x140, claimPayload.notarizedChainId.toNotarizedDomainSeparator(), operation
         );
     }
 
@@ -1463,358 +1209,139 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         function(address, address, uint256, uint256) internal returns (bool) operation
     ) internal returns (bool) {
         (bytes32 messageHash, bytes32 qualificationMessageHash) = claimPayload.toMessageHash();
-        return usingExogenousQualifiedMultichainClaimWithWitness(
-            _processClaimWithQualificationAndSponsorDomain
-        )(
-            messageHash,
-            qualificationMessageHash,
-            claimPayload,
-            0x180,
-            claimPayload.notarizedChainId.toNotarizedDomainSeparator(),
-            operation
+        return usingExogenousQualifiedMultichainClaimWithWitness(_processClaimWithQualificationAndSponsorDomain)(
+            messageHash, qualificationMessageHash, claimPayload, 0x180, claimPayload.notarizedChainId.toNotarizedDomainSeparator(), operation
         );
     }
 
-    function _processSplitClaim(
-        SplitClaim calldata claimPayload,
-        function(address, address, uint256, uint256) internal returns (bool) operation
-    ) internal returns (bool) {
+    function _processSplitClaim(SplitClaim calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation) internal returns (bool) {
         bytes32 messageHash = claimPayload.toMessageHash();
         uint96 allocatorId = claimPayload.id.toAllocatorId();
         address allocator = allocatorId.fromRegisteredAllocatorIdWithConsumed(claimPayload.nonce);
-        _notExpiredAndSignedByBoth(
-            claimPayload.expires,
-            messageHash,
-            claimPayload.sponsor,
-            claimPayload.sponsorSignature,
-            messageHash,
-            allocator,
-            claimPayload.allocatorSignature
-        );
+        _notExpiredAndSignedByBoth(claimPayload.expires, messageHash, claimPayload.sponsor, claimPayload.sponsorSignature, messageHash, allocator, claimPayload.allocatorSignature);
 
-        return _verifyAndProcessSplitComponents(
-            claimPayload.sponsor,
-            messageHash,
-            claimPayload.id,
-            claimPayload.allocatedAmount,
-            claimPayload.claimants,
-            allocator,
-            operation
-        );
+        return _verifyAndProcessSplitComponents(claimPayload.sponsor, messageHash, claimPayload.id, claimPayload.allocatedAmount, claimPayload.claimants, allocator, operation);
     }
 
-    function _processQualifiedSplitClaim(
-        QualifiedSplitClaim calldata claimPayload,
-        function(address, address, uint256, uint256) internal returns (bool) operation
-    ) internal returns (bool) {
+    function _processQualifiedSplitClaim(QualifiedSplitClaim calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation) internal returns (bool) {
         (bytes32 messageHash, bytes32 qualificationMessageHash) = claimPayload.toMessageHash();
 
         uint96 allocatorId = claimPayload.id.toAllocatorId();
         address allocator = allocatorId.fromRegisteredAllocatorIdWithConsumed(claimPayload.nonce);
 
-        _notExpiredAndSignedByBoth(
-            claimPayload.expires,
-            messageHash,
-            claimPayload.sponsor,
-            claimPayload.sponsorSignature,
-            qualificationMessageHash,
-            allocator,
-            claimPayload.allocatorSignature
-        );
+        _notExpiredAndSignedByBoth(claimPayload.expires, messageHash, claimPayload.sponsor, claimPayload.sponsorSignature, qualificationMessageHash, allocator, claimPayload.allocatorSignature);
 
-        return _verifyAndProcessSplitComponents(
-            claimPayload.sponsor,
-            messageHash,
-            claimPayload.id,
-            claimPayload.allocatedAmount,
-            claimPayload.claimants,
-            allocator,
-            operation
-        );
+        return _verifyAndProcessSplitComponents(claimPayload.sponsor, messageHash, claimPayload.id, claimPayload.allocatedAmount, claimPayload.claimants, allocator, operation);
     }
 
-    function _processSplitClaimWithWitness(
-        SplitClaimWithWitness calldata claimPayload,
-        function(address, address, uint256, uint256) internal returns (bool) operation
-    ) internal returns (bool) {
+    function _processSplitClaimWithWitness(SplitClaimWithWitness calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation) internal returns (bool) {
         bytes32 messageHash = claimPayload.toMessageHash();
         uint96 allocatorId = claimPayload.id.toAllocatorId();
         address allocator = allocatorId.fromRegisteredAllocatorIdWithConsumed(claimPayload.nonce);
-        _notExpiredAndSignedByBoth(
-            claimPayload.expires,
-            messageHash,
-            claimPayload.sponsor,
-            claimPayload.sponsorSignature,
-            messageHash,
-            allocator,
-            claimPayload.allocatorSignature
-        );
+        _notExpiredAndSignedByBoth(claimPayload.expires, messageHash, claimPayload.sponsor, claimPayload.sponsorSignature, messageHash, allocator, claimPayload.allocatorSignature);
 
-        return _verifyAndProcessSplitComponents(
-            claimPayload.sponsor,
-            messageHash,
-            claimPayload.id,
-            claimPayload.allocatedAmount,
-            claimPayload.claimants,
-            allocator,
-            operation
-        );
+        return _verifyAndProcessSplitComponents(claimPayload.sponsor, messageHash, claimPayload.id, claimPayload.allocatedAmount, claimPayload.claimants, allocator, operation);
     }
 
-    function _processQualifiedSplitClaimWithWitness(
-        QualifiedSplitClaimWithWitness calldata claimPayload,
-        function(address, address, uint256, uint256) internal returns (bool) operation
-    ) internal returns (bool) {
+    function _processQualifiedSplitClaimWithWitness(QualifiedSplitClaimWithWitness calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation)
+        internal
+        returns (bool)
+    {
         (bytes32 messageHash, bytes32 qualificationMessageHash) = claimPayload.toMessageHash();
         uint96 allocatorId = claimPayload.id.toAllocatorId();
         address allocator = allocatorId.fromRegisteredAllocatorIdWithConsumed(claimPayload.nonce);
 
-        _notExpiredAndSignedByBoth(
-            claimPayload.expires,
-            messageHash,
-            claimPayload.sponsor,
-            claimPayload.sponsorSignature,
-            qualificationMessageHash,
-            allocator,
-            claimPayload.allocatorSignature
-        );
+        _notExpiredAndSignedByBoth(claimPayload.expires, messageHash, claimPayload.sponsor, claimPayload.sponsorSignature, qualificationMessageHash, allocator, claimPayload.allocatorSignature);
 
-        return _verifyAndProcessSplitComponents(
-            claimPayload.sponsor,
-            messageHash,
-            claimPayload.id,
-            claimPayload.allocatedAmount,
-            claimPayload.claimants,
-            allocator,
-            operation
-        );
+        return _verifyAndProcessSplitComponents(claimPayload.sponsor, messageHash, claimPayload.id, claimPayload.allocatedAmount, claimPayload.claimants, allocator, operation);
     }
 
-    function _processBatchClaim(
-        BatchClaim calldata claimPayload,
-        function(address, address, uint256, uint256) internal returns (bool) operation
-    ) internal returns (bool) {
+    function _processBatchClaim(BatchClaim calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation) internal returns (bool) {
         bytes32 messageHash = claimPayload.toMessageHash();
         uint96 allocatorId = claimPayload.claims[0].id.toAllocatorId();
         address allocator = allocatorId.fromRegisteredAllocatorIdWithConsumed(claimPayload.nonce);
-        _notExpiredAndSignedByBoth(
-            claimPayload.expires,
-            messageHash,
-            claimPayload.sponsor,
-            claimPayload.sponsorSignature,
-            messageHash,
-            allocator,
-            claimPayload.allocatorSignature
-        );
+        _notExpiredAndSignedByBoth(claimPayload.expires, messageHash, claimPayload.sponsor, claimPayload.sponsorSignature, messageHash, allocator, claimPayload.allocatorSignature);
 
-        return _verifyAndProcessBatchComponents(
-            allocatorId,
-            claimPayload.sponsor,
-            claimPayload.claimant,
-            messageHash,
-            claimPayload.claims,
-            allocator,
-            operation
-        );
+        return _verifyAndProcessBatchComponents(allocatorId, claimPayload.sponsor, claimPayload.claimant, messageHash, claimPayload.claims, allocator, operation);
     }
 
-    function _processSplitBatchClaim(
-        SplitBatchClaim calldata claimPayload,
-        function(address, address, uint256, uint256) internal returns (bool) operation
-    ) internal returns (bool) {
+    function _processSplitBatchClaim(SplitBatchClaim calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation) internal returns (bool) {
         bytes32 messageHash = claimPayload.toMessageHash();
         uint96 allocatorId = claimPayload.claims[0].id.toAllocatorId();
         address allocator = allocatorId.fromRegisteredAllocatorIdWithConsumed(claimPayload.nonce);
 
-        _notExpiredAndSignedByBoth(
-            claimPayload.expires,
-            messageHash,
-            claimPayload.sponsor,
-            claimPayload.sponsorSignature,
-            messageHash,
-            allocator,
-            claimPayload.allocatorSignature
-        );
+        _notExpiredAndSignedByBoth(claimPayload.expires, messageHash, claimPayload.sponsor, claimPayload.sponsorSignature, messageHash, allocator, claimPayload.allocatorSignature);
 
-        return _verifyAndProcessSplitBatchComponents(
-            allocatorId,
-            claimPayload.sponsor,
-            messageHash,
-            claimPayload.claims,
-            allocator,
-            operation
-        );
+        return _verifyAndProcessSplitBatchComponents(allocatorId, claimPayload.sponsor, messageHash, claimPayload.claims, allocator, operation);
     }
 
-    function _processQualifiedSplitBatchClaim(
-        QualifiedSplitBatchClaim calldata claimPayload,
-        function(address, address, uint256, uint256) internal returns (bool) operation
-    ) internal returns (bool) {
+    function _processQualifiedSplitBatchClaim(QualifiedSplitBatchClaim calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation) internal returns (bool) {
         (bytes32 messageHash, bytes32 qualificationMessageHash) = claimPayload.toMessageHash();
         uint96 allocatorId = claimPayload.claims[0].id.toAllocatorId();
         address allocator = allocatorId.fromRegisteredAllocatorIdWithConsumed(claimPayload.nonce);
 
-        _notExpiredAndSignedByBoth(
-            claimPayload.expires,
-            messageHash,
-            claimPayload.sponsor,
-            claimPayload.sponsorSignature,
-            qualificationMessageHash,
-            allocator,
-            claimPayload.allocatorSignature
-        );
+        _notExpiredAndSignedByBoth(claimPayload.expires, messageHash, claimPayload.sponsor, claimPayload.sponsorSignature, qualificationMessageHash, allocator, claimPayload.allocatorSignature);
 
-        return _verifyAndProcessSplitBatchComponents(
-            allocatorId,
-            claimPayload.sponsor,
-            messageHash,
-            claimPayload.claims,
-            allocator,
-            operation
-        );
+        return _verifyAndProcessSplitBatchComponents(allocatorId, claimPayload.sponsor, messageHash, claimPayload.claims, allocator, operation);
     }
 
-    function _processQualifiedSplitBatchClaimWithWitness(
-        QualifiedSplitBatchClaimWithWitness calldata claimPayload,
-        function(address, address, uint256, uint256) internal returns (bool) operation
-    ) internal returns (bool) {
+    function _processQualifiedSplitBatchClaimWithWitness(QualifiedSplitBatchClaimWithWitness calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation)
+        internal
+        returns (bool)
+    {
         (bytes32 messageHash, bytes32 qualificationMessageHash) = claimPayload.toMessageHash();
         uint96 allocatorId = claimPayload.claims[0].id.toAllocatorId();
         address allocator = allocatorId.fromRegisteredAllocatorIdWithConsumed(claimPayload.nonce);
 
-        _notExpiredAndSignedByBoth(
-            claimPayload.expires,
-            messageHash,
-            claimPayload.sponsor,
-            claimPayload.sponsorSignature,
-            qualificationMessageHash,
-            allocator,
-            claimPayload.allocatorSignature
-        );
+        _notExpiredAndSignedByBoth(claimPayload.expires, messageHash, claimPayload.sponsor, claimPayload.sponsorSignature, qualificationMessageHash, allocator, claimPayload.allocatorSignature);
 
-        return _verifyAndProcessSplitBatchComponents(
-            allocatorId,
-            claimPayload.sponsor,
-            messageHash,
-            claimPayload.claims,
-            allocator,
-            operation
-        );
+        return _verifyAndProcessSplitBatchComponents(allocatorId, claimPayload.sponsor, messageHash, claimPayload.claims, allocator, operation);
     }
 
-    function _processSplitBatchClaimWithWitness(
-        SplitBatchClaimWithWitness calldata claimPayload,
-        function(address, address, uint256, uint256) internal returns (bool) operation
-    ) internal returns (bool) {
+    function _processSplitBatchClaimWithWitness(SplitBatchClaimWithWitness calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation)
+        internal
+        returns (bool)
+    {
         bytes32 messageHash = claimPayload.toMessageHash();
         uint96 allocatorId = claimPayload.claims[0].id.toAllocatorId();
         address allocator = allocatorId.fromRegisteredAllocatorIdWithConsumed(claimPayload.nonce);
 
-        _notExpiredAndSignedByBoth(
-            claimPayload.expires,
-            messageHash,
-            claimPayload.sponsor,
-            claimPayload.sponsorSignature,
-            messageHash,
-            allocator,
-            claimPayload.allocatorSignature
-        );
+        _notExpiredAndSignedByBoth(claimPayload.expires, messageHash, claimPayload.sponsor, claimPayload.sponsorSignature, messageHash, allocator, claimPayload.allocatorSignature);
 
-        return _verifyAndProcessSplitBatchComponents(
-            allocatorId,
-            claimPayload.sponsor,
-            messageHash,
-            claimPayload.claims,
-            allocator,
-            operation
-        );
+        return _verifyAndProcessSplitBatchComponents(allocatorId, claimPayload.sponsor, messageHash, claimPayload.claims, allocator, operation);
     }
 
-    function _processQualifiedBatchClaim(
-        QualifiedBatchClaim calldata claimPayload,
-        function(address, address, uint256, uint256) internal returns (bool) operation
-    ) internal returns (bool) {
+    function _processQualifiedBatchClaim(QualifiedBatchClaim calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation) internal returns (bool) {
         (bytes32 messageHash, bytes32 qualificationMessageHash) = claimPayload.toMessageHash();
         uint96 allocatorId = claimPayload.claims[0].id.toAllocatorId();
         address allocator = allocatorId.fromRegisteredAllocatorIdWithConsumed(claimPayload.nonce);
 
-        _notExpiredAndSignedByBoth(
-            claimPayload.expires,
-            messageHash,
-            claimPayload.sponsor,
-            claimPayload.sponsorSignature,
-            qualificationMessageHash,
-            allocator,
-            claimPayload.allocatorSignature
-        );
+        _notExpiredAndSignedByBoth(claimPayload.expires, messageHash, claimPayload.sponsor, claimPayload.sponsorSignature, qualificationMessageHash, allocator, claimPayload.allocatorSignature);
 
-        return _verifyAndProcessBatchComponents(
-            allocatorId,
-            claimPayload.sponsor,
-            claimPayload.claimant,
-            messageHash,
-            claimPayload.claims,
-            allocator,
-            operation
-        );
+        return _verifyAndProcessBatchComponents(allocatorId, claimPayload.sponsor, claimPayload.claimant, messageHash, claimPayload.claims, allocator, operation);
     }
 
-    function _processBatchClaimWithWitness(
-        BatchClaimWithWitness calldata claimPayload,
-        function(address, address, uint256, uint256) internal returns (bool) operation
-    ) internal returns (bool) {
+    function _processBatchClaimWithWitness(BatchClaimWithWitness calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation) internal returns (bool) {
         bytes32 messageHash = claimPayload.toMessageHash();
         uint96 allocatorId = claimPayload.claims[0].id.toAllocatorId();
         address allocator = allocatorId.fromRegisteredAllocatorIdWithConsumed(claimPayload.nonce);
 
-        _notExpiredAndSignedByBoth(
-            claimPayload.expires,
-            messageHash,
-            claimPayload.sponsor,
-            claimPayload.sponsorSignature,
-            messageHash,
-            allocator,
-            claimPayload.allocatorSignature
-        );
+        _notExpiredAndSignedByBoth(claimPayload.expires, messageHash, claimPayload.sponsor, claimPayload.sponsorSignature, messageHash, allocator, claimPayload.allocatorSignature);
 
-        return _verifyAndProcessBatchComponents(
-            allocatorId,
-            claimPayload.sponsor,
-            claimPayload.claimant,
-            messageHash,
-            claimPayload.claims,
-            allocator,
-            operation
-        );
+        return _verifyAndProcessBatchComponents(allocatorId, claimPayload.sponsor, claimPayload.claimant, messageHash, claimPayload.claims, allocator, operation);
     }
 
-    function _processQualifiedBatchClaimWithWitness(
-        QualifiedBatchClaimWithWitness calldata claimPayload,
-        function(address, address, uint256, uint256) internal returns (bool) operation
-    ) internal returns (bool) {
+    function _processQualifiedBatchClaimWithWitness(QualifiedBatchClaimWithWitness calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation)
+        internal
+        returns (bool)
+    {
         uint96 allocatorId = claimPayload.claims[0].id.toAllocatorId();
         address allocator = allocatorId.fromRegisteredAllocatorIdWithConsumed(claimPayload.nonce);
         (bytes32 messageHash, bytes32 qualificationMessageHash) = claimPayload.toMessageHash();
 
-        _notExpiredAndSignedByBoth(
-            claimPayload.expires,
-            messageHash,
-            claimPayload.sponsor,
-            claimPayload.sponsorSignature,
-            qualificationMessageHash,
-            allocator,
-            claimPayload.allocatorSignature
-        );
+        _notExpiredAndSignedByBoth(claimPayload.expires, messageHash, claimPayload.sponsor, claimPayload.sponsorSignature, qualificationMessageHash, allocator, claimPayload.allocatorSignature);
 
-        return _verifyAndProcessBatchComponents(
-            allocatorId,
-            claimPayload.sponsor,
-            claimPayload.claimant,
-            messageHash,
-            claimPayload.claims,
-            allocator,
-            operation
-        );
+        return _verifyAndProcessBatchComponents(allocatorId, claimPayload.sponsor, claimPayload.claimant, messageHash, claimPayload.claims, allocator, operation);
     }
 
     function _processBatchPermit2Deposits(
@@ -1841,21 +1368,10 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
             ids[0] = initialId;
         }
 
-        (
-            ISignatureTransfer.SignatureTransferDetails[] memory details,
-            ISignatureTransfer.TokenPermissions[] memory permittedTokens
-        ) = _preparePermit2ArraysAndPerformDeposits(
-            ids,
-            totalTokensLessInitialNative,
-            firstUnderlyingTokenIsNative,
-            permitted,
-            initialId,
-            recipient,
-            depositor
-        );
+        (ISignatureTransfer.SignatureTransferDetails[] memory details, ISignatureTransfer.TokenPermissions[] memory permittedTokens) =
+            _preparePermit2ArraysAndPerformDeposits(ids, totalTokensLessInitialNative, firstUnderlyingTokenIsNative, permitted, initialId, recipient, depositor);
 
-        ISignatureTransfer.PermitBatchTransferFrom memory permitTransferFrom = ISignatureTransfer
-            .PermitBatchTransferFrom({ permitted: permittedTokens, nonce: nonce, deadline: deadline });
+        ISignatureTransfer.PermitBatchTransferFrom memory permitTransferFrom = ISignatureTransfer.PermitBatchTransferFrom({ permitted: permittedTokens, nonce: nonce, deadline: deadline });
 
         _PERMIT2.permitWitnessTransferFrom(
             permitTransferFrom,
@@ -1892,9 +1408,7 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         unchecked {
             for (uint256 i = 1; i < totalClaims; ++i) {
                 component = claims[i];
-                errorBuffer |= (component.id.toAllocatorId() != allocatorId).or(
-                    component.allocatedAmount < component.amount
-                ).asUint256();
+                errorBuffer |= (component.id.toAllocatorId() != allocatorId).or(component.allocatedAmount < component.amount).asUint256();
 
                 operation(sponsor, claimant, component.id, component.amount);
             }
@@ -1971,15 +1485,7 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
                 SplitBatchClaimComponent calldata claimComponent = claims[i];
                 errorBuffer |= (claimComponent.id.toAllocatorId() != allocatorId).asUint256();
 
-                _verifyAndProcessSplitComponents(
-                    sponsor,
-                    messageHash,
-                    claimComponent.id,
-                    claimComponent.allocatedAmount,
-                    claimComponent.portions,
-                    allocator,
-                    operation
-                );
+                _verifyAndProcessSplitComponents(sponsor, messageHash, claimComponent.id, claimComponent.allocatedAmount, claimComponent.portions, allocator, operation);
             }
         }
 
@@ -1998,29 +1504,17 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         uint256 initialId,
         address recipient,
         address depositor
-    )
-        internal
-        returns (
-            ISignatureTransfer.SignatureTransferDetails[] memory details,
-            ISignatureTransfer.TokenPermissions[] memory permittedTokens
-        )
-    {
+    ) internal returns (ISignatureTransfer.SignatureTransferDetails[] memory details, ISignatureTransfer.TokenPermissions[] memory permittedTokens) {
         unchecked {
-            details =
-                new ISignatureTransfer.SignatureTransferDetails[](totalTokensLessInitialNative);
+            details = new ISignatureTransfer.SignatureTransferDetails[](totalTokensLessInitialNative);
 
-            permittedTokens =
-                new ISignatureTransfer.TokenPermissions[](totalTokensLessInitialNative);
+            permittedTokens = new ISignatureTransfer.TokenPermissions[](totalTokensLessInitialNative);
 
             for (uint256 i = 0; i < totalTokensLessInitialNative; ++i) {
-                ISignatureTransfer.TokenPermissions calldata permittedToken =
-                    permitted[i + firstUnderlyingTokenIsNative.asUint256()];
+                ISignatureTransfer.TokenPermissions calldata permittedToken = permitted[i + firstUnderlyingTokenIsNative.asUint256()];
 
                 permittedTokens[i] = permittedToken;
-                details[i] = ISignatureTransfer.SignatureTransferDetails({
-                    to: address(this),
-                    requestedAmount: permittedToken.amount
-                });
+                details[i] = ISignatureTransfer.SignatureTransferDetails({ to: address(this), requestedAmount: permittedToken.amount });
 
                 uint256 id = initialId.withReplacedToken(permittedToken.token);
                 ids[i + firstUnderlyingTokenIsNative.asUint256()] = id;
@@ -2030,10 +1524,7 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         }
     }
 
-    function _deriveConsistentAllocatorAndConsumeNonce(
-        TransferComponent[] memory components,
-        uint256 nonce
-    ) internal returns (address allocator) {
+    function _deriveConsistentAllocatorAndConsumeNonce(TransferComponent[] memory components, uint256 nonce) internal returns (address allocator) {
         uint256 totalComponents = components.length;
 
         uint256 errorBuffer = (components.length == 0).asUint256();
@@ -2056,14 +1547,7 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
     function _emitClaim(address sponsor, bytes32 messageHash, address allocator) internal {
         assembly ("memory-safe") {
             mstore(0, messageHash)
-            log4(
-                0,
-                0x20,
-                _CLAIM_EVENT_SIGNATURE,
-                shr(0x60, shl(0x60, sponsor)),
-                shr(0x60, shl(0x60, allocator)),
-                caller()
-            )
+            log4(0, 0x20, _CLAIM_EVENT_SIGNATURE, shr(0x60, shl(0x60, sponsor)), shr(0x60, shl(0x60, allocator)), caller())
         }
     }
 
@@ -2086,10 +1570,7 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
 
     /// @dev Moves token `id` from `from` to `to` without checking
     //  allowances or _beforeTokenTransfer / _afterTokenTransfer hooks.
-    function _release(address from, address to, uint256 id, uint256 amount)
-        internal
-        returns (bool)
-    {
+    function _release(address from, address to, uint256 id, uint256 amount) internal returns (bool) {
         assembly ("memory-safe") {
             /// Compute the balance slot and load its value.
             mstore(0x20, _ERC6909_MASTER_SLOT_SEED)
@@ -2160,10 +1641,7 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
 
     /// @dev Burns `amount` token `id` from `from` without checking transfer hooks and sends
     /// the corresponding underlying tokens to `to`. Emits {Transfer} & {Withdrawal} events.
-    function _withdraw(address from, address to, uint256 id, uint256 amount)
-        internal
-        returns (bool)
-    {
+    function _withdraw(address from, address to, uint256 id, uint256 amount) internal returns (bool) {
         assembly ("memory-safe") {
             // Compute the balance slot.
             mstore(0x20, _ERC6909_MASTER_SLOT_SEED)
@@ -2198,17 +1676,10 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         return true;
     }
 
-    function _beforeTokenTransfer(address from, address to, uint256 id, uint256 amount)
-        internal
-        virtual
-        override
-    {
+    function _beforeTokenTransfer(address from, address to, uint256 id, uint256 amount) internal virtual override {
         address allocator = id.toAllocator();
 
-        if (
-            IAllocator(allocator).attest(msg.sender, from, to, id, amount)
-                != IAllocator.attest.selector
-        ) {
+        if (IAllocator(allocator).attest(msg.sender, from, to, id, amount) != IAllocator.attest.selector) {
             assembly ("memory-safe") {
                 // revert UnallocatedTransfer(msg.sender, from, to, id, amount)
                 mstore(0, 0x014c9310)

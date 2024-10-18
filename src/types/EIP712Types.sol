@@ -16,20 +16,16 @@ struct Compact {
 }
 
 // keccak256("Compact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256 id,uint256 amount)")
-bytes32 constant COMPACT_TYPEHASH =
-    0xcdca950b17b5efc016b74b912d8527dfba5e404a688cbc3dab16cb943287fec2;
+bytes32 constant COMPACT_TYPEHASH = 0xcdca950b17b5efc016b74b912d8527dfba5e404a688cbc3dab16cb943287fec2;
 
 // abi.decode(bytes("Compact(address arbiter,address "), (bytes32))
-bytes32 constant COMPACT_TYPESTRING_FRAGMENT_ONE =
-    0x436f6d70616374286164647265737320617262697465722c6164647265737320;
+bytes32 constant COMPACT_TYPESTRING_FRAGMENT_ONE = 0x436f6d70616374286164647265737320617262697465722c6164647265737320;
 
 // abi.decode(bytes("sponsor,uint256 nonce,uint256 ex"), (bytes32))
-bytes32 constant COMPACT_TYPESTRING_FRAGMENT_TWO =
-    0x73706f6e736f722c75696e74323536206e6f6e63652c75696e74323536206578;
+bytes32 constant COMPACT_TYPESTRING_FRAGMENT_TWO = 0x73706f6e736f722c75696e74323536206e6f6e63652c75696e74323536206578;
 
 // abi.decode(bytes("pires,uint256 id,uint256 amount,"), (bytes32))
-bytes32 constant COMPACT_TYPESTRING_FRAGMENT_THREE =
-    0x70697265732c75696e743235362069642c75696e7432353620616d6f756e742c;
+bytes32 constant COMPACT_TYPESTRING_FRAGMENT_THREE = 0x70697265732c75696e743235362069642c75696e7432353620616d6f756e742c;
 
 // Message signed by the sponsor that specifies the conditions under which a set of
 // tokens, each sharing an allocator, can be claimed; the specified arbiter verifies
@@ -45,22 +41,18 @@ struct BatchCompact {
 }
 
 // keccak256("BatchCompact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256[2][] idsAndAmounts)")
-bytes32 constant BATCH_COMPACT_TYPEHASH =
-    0x5a7fee8000a237929ef9be08f2933c4b4f320b00b38809f3c7aa104d5421049f;
+bytes32 constant BATCH_COMPACT_TYPEHASH = 0x5a7fee8000a237929ef9be08f2933c4b4f320b00b38809f3c7aa104d5421049f;
 
 // abi.decode(bytes("BatchCompact(address arbiter,add"), (bytes32))
-bytes32 constant BATCH_COMPACT_TYPESTRING_FRAGMENT_ONE =
-    0x4261746368436f6d70616374286164647265737320617262697465722c616464;
+bytes32 constant BATCH_COMPACT_TYPESTRING_FRAGMENT_ONE = 0x4261746368436f6d70616374286164647265737320617262697465722c616464;
 //abi.decode(bytes("BatchCompact(address arbiter,add"), (bytes32));
 
 // abi.decode(bytes("ress sponsor,uint256 nonce,uint2"), (bytes32))
-bytes32 constant BATCH_COMPACT_TYPESTRING_FRAGMENT_TWO =
-    0x726573732073706f6e736f722c75696e74323536206e6f6e63652c75696e7432;
+bytes32 constant BATCH_COMPACT_TYPESTRING_FRAGMENT_TWO = 0x726573732073706f6e736f722c75696e74323536206e6f6e63652c75696e7432;
 //abi.decode(bytes("ress sponsor,uint256 nonce,uint2"), (bytes32));
 
 // abi.decode(bytes("56 expires,uint256[2][] idsAndAm"), (bytes32))
-bytes32 constant BATCH_COMPACT_TYPESTRING_FRAGMENT_THREE =
-    0x353620657870697265732c75696e743235365b325d5b5d20696473416e64416d;
+bytes32 constant BATCH_COMPACT_TYPESTRING_FRAGMENT_THREE = 0x353620657870697265732c75696e743235365b325d5b5d20696473416e64416d;
 //abi.decode(bytes("56 expires,uint256[2][] idsAndAm"), (bytes32));
 
 // uint48(abi.decode(bytes("ounts,"), (bytes6)))
@@ -77,16 +69,13 @@ struct Allocation {
 }
 
 // keccak256("Allocation(address arbiter,uint256 chainId,uint256[2][] idsAndAmounts)")
-bytes32 constant ALLOCATION_TYPEHASH =
-    0x0f45f7853f78f307081d912de4b372d85725f696a9b9a4b5138a5a1d72b340e0;
+bytes32 constant ALLOCATION_TYPEHASH = 0x0f45f7853f78f307081d912de4b372d85725f696a9b9a4b5138a5a1d72b340e0;
 
 // abi.decode(bytes("Allocation(address arbiter,uint2"), (bytes32))
-bytes32 constant ALLOCATION_TYPESTRING_FRAGMENT_ONE =
-    0x416c6c6f636174696f6e286164647265737320617262697465722c75696e7432;
+bytes32 constant ALLOCATION_TYPESTRING_FRAGMENT_ONE = 0x416c6c6f636174696f6e286164647265737320617262697465722c75696e7432;
 
 // abi.decode(bytes("56 chainId,uint256[2][] idsAndAm"), (bytes32))
-bytes32 constant ALLOCATION_TYPESTRING_FRAGMENT_TWO =
-    0x353620636861696e49642c75696e743235365b325d5b5d20696473416e64416d;
+bytes32 constant ALLOCATION_TYPESTRING_FRAGMENT_TWO = 0x353620636861696e49642c75696e743235365b325d5b5d20696473416e64416d;
 
 // uint48(abi.decode(bytes("ounts,"), (bytes6)))
 uint48 constant ALLOCATION_TYPESTRING_FRAGMENT_THREE = 0x6f756e74732c;
@@ -103,20 +92,16 @@ struct MultichainCompact {
 }
 
 // keccak256("MultichainCompact(address sponsor,uint256 nonce,uint256 expires,Allocation[] allocations)Allocation(address arbiter,uint256 chainId,uint256[2][] idsAndAmounts)")
-bytes32 constant MULTICHAIN_COMPACT_TYPEHASH =
-    0x99704ffe7f2b23b270b03ab25ea2e37b1694622eb999ddcbf45d32d9b1a38c9c;
+bytes32 constant MULTICHAIN_COMPACT_TYPEHASH = 0x99704ffe7f2b23b270b03ab25ea2e37b1694622eb999ddcbf45d32d9b1a38c9c;
 
 // abi.decode(bytes("MultichainCompact(address sponso"), (bytes32))
-bytes32 constant MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_ONE =
-    0x4d756c7469636861696e436f6d7061637428616464726573732073706f6e736f;
+bytes32 constant MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_ONE = 0x4d756c7469636861696e436f6d7061637428616464726573732073706f6e736f;
 
 // abi.decode(bytes("r,uint256 nonce,uint256 expires,"), (bytes32))
-bytes32 constant MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_TWO =
-    0x722c75696e74323536206e6f6e63652c75696e7432353620657870697265732c;
+bytes32 constant MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_TWO = 0x722c75696e74323536206e6f6e63652c75696e7432353620657870697265732c;
 
 // uint200(abi.decode(bytes("Allocation[] allocations)"), (bytes25)))
-uint200 constant MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_THREE =
-    0x416c6c6f636174696f6e5b5d20616c6c6f636174696f6e7329;
+uint200 constant MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_THREE = 0x416c6c6f636174696f6e5b5d20616c6c6f636174696f6e7329;
 
 // The allocator can optionally attest to arbitrary parameters. Any EIP-712 data
 // type can be utilized as long as the first argument is the message hash of the
@@ -125,5 +110,4 @@ uint200 constant MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_THREE =
 // payload as the sponsor.
 
 /// @dev `keccak256(bytes("CompactDeposit(address depositor,address allocator,uint8 resetPeriod,uint8 scope,address recipient)"))`.
-bytes32 constant PERMIT2_WITNESS_FRAGMENT_HASH =
-    0x0091bfc8f1539e204529602051ae82f3e6c6f0f86d0227c9ea890616cedbe646;
+bytes32 constant PERMIT2_WITNESS_FRAGMENT_HASH = 0x0091bfc8f1539e204529602051ae82f3e6c6f0f86d0227c9ea890616cedbe646;
