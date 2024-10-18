@@ -766,24 +766,14 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         return _processSplitClaimWithQualificationAndSponsorDomain(messageHash, qualificationMessageHash, calldataPointer, offsetToId, bytes32(0), operation);
     }
 
-    function _processClaimWithQualificationAndSponsorDomain(
-        bytes32 messageHash,
-        bytes32 qualificationMessageHash,
-        uint256 calldataPointer,
-        uint256 offsetToId,
-        bytes32 sponsorDomainSeparator,
-        function(address, address, uint256, uint256) internal returns (bool) operation
-    ) internal returns (bool) {
+    function _validate(bytes32 messageHash, bytes32 qualificationMessageHash, uint256 calldataPointer, uint256 offsetToId, bytes32 sponsorDomainSeparator) internal returns (address sponsor) {
         bytes calldata allocatorSignature;
         bytes calldata sponsorSignature;
-        address sponsor;
         uint256 nonce;
         uint256 expires;
 
         uint256 id;
         uint256 allocatedAmount;
-        address claimant;
-        uint256 amount;
 
         assembly {
             let allocatorSignaturePtr := add(calldataPointer, calldataload(calldataPointer))
@@ -801,8 +791,6 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
             let calldataPointerWithOffset := add(calldataPointer, offsetToId)
             id := calldataload(calldataPointerWithOffset)
             allocatedAmount := calldataload(add(calldataPointerWithOffset, 0x20))
-            claimant := calldataload(add(calldataPointerWithOffset, 0x40)) // TODO: sanitize
-            amount := calldataload(add(calldataPointerWithOffset, 0x60))
         }
 
         expires.later();
@@ -822,9 +810,35 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         messageHash.signedBy(sponsor, sponsorSignature, sponsorDomainSeparator);
         qualificationMessageHash.signedBy(allocator, allocatorSignature, domainSeparator);
 
-        amount.withinAllocated(allocatedAmount);
-
         _emitClaim(sponsor, messageHash, allocator);
+
+        return sponsor;
+    }
+
+    function _processClaimWithQualificationAndSponsorDomain(
+        bytes32 messageHash,
+        bytes32 qualificationMessageHash,
+        uint256 calldataPointer,
+        uint256 offsetToId,
+        bytes32 sponsorDomainSeparator,
+        function(address, address, uint256, uint256) internal returns (bool) operation
+    ) internal returns (bool) {
+        address sponsor = _validate(messageHash, qualificationMessageHash, calldataPointer, offsetToId, sponsorDomainSeparator);
+
+        uint256 id;
+        uint256 allocatedAmount;
+        address claimant;
+        uint256 amount;
+
+        assembly {
+            let calldataPointerWithOffset := add(calldataPointer, offsetToId)
+            id := calldataload(calldataPointerWithOffset)
+            allocatedAmount := calldataload(add(calldataPointerWithOffset, 0x20))
+            claimant := calldataload(add(calldataPointerWithOffset, 0x40)) // TODO: sanitize
+            amount := calldataload(add(calldataPointerWithOffset, 0x60))
+        }
+
+        amount.withinAllocated(allocatedAmount);
 
         return operation(sponsor, claimant, id, amount);
     }
@@ -837,29 +851,13 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         bytes32 sponsorDomainSeparator,
         function(address, address, uint256, uint256) internal returns (bool) operation
     ) internal returns (bool) {
-        bytes calldata allocatorSignature;
-        bytes calldata sponsorSignature;
-        address sponsor;
-        uint256 nonce;
-        uint256 expires;
+        address sponsor = _validate(messageHash, qualificationMessageHash, calldataPointer, offsetToId, sponsorDomainSeparator);
 
         uint256 id;
         uint256 allocatedAmount;
         SplitComponent[] calldata claimants;
 
         assembly {
-            let allocatorSignaturePtr := add(calldataPointer, calldataload(calldataPointer))
-            allocatorSignature.offset := add(0x20, allocatorSignaturePtr)
-            allocatorSignature.length := calldataload(allocatorSignaturePtr)
-
-            let sponsorSignaturePtr := add(calldataPointer, calldataload(add(calldataPointer, 0x20)))
-            sponsorSignature.offset := add(0x20, sponsorSignaturePtr)
-            sponsorSignature.length := calldataload(sponsorSignaturePtr)
-
-            sponsor := calldataload(add(calldataPointer, 0x40)) // TODO: sanitize
-            nonce := calldataload(add(calldataPointer, 0x60))
-            expires := calldataload(add(calldataPointer, 0x80))
-
             let calldataPointerWithOffset := add(calldataPointer, offsetToId)
             id := calldataload(calldataPointerWithOffset)
             allocatedAmount := calldataload(add(calldataPointerWithOffset, 0x20))
@@ -868,25 +866,6 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
             claimants.offset := add(0x20, claimantsPtr)
             claimants.length := calldataload(claimantsPtr)
         }
-
-        expires.later();
-
-        uint96 allocatorId = id.toAllocatorId();
-        address allocator = allocatorId.fromRegisteredAllocatorIdWithConsumed(nonce);
-
-        if ((sponsorDomainSeparator != bytes32(0)).and(id.toScope() != Scope.Multichain)) {
-            revert InvalidScope(id);
-        }
-
-        bytes32 domainSeparator = _INITIAL_DOMAIN_SEPARATOR.toLatest(_INITIAL_CHAIN_ID);
-        assembly {
-            sponsorDomainSeparator := add(sponsorDomainSeparator, mul(iszero(sponsorDomainSeparator), domainSeparator))
-        }
-
-        messageHash.signedBy(sponsor, sponsorSignature, sponsorDomainSeparator);
-        qualificationMessageHash.signedBy(allocator, allocatorSignature, domainSeparator);
-
-        _emitClaim(sponsor, messageHash, allocator);
 
         return _verifyAndProcessSplitComponents(sponsor, id, allocatedAmount, claimants, operation);
     }
