@@ -216,7 +216,7 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
 
     constructor() {
         _INITIAL_CHAIN_ID = block.chainid;
-        _INITIAL_DOMAIN_SEPARATOR = keccak256(abi.encode(HashLib._DOMAIN_TYPEHASH, HashLib._NAME_HASH, HashLib._VERSION_HASH, block.chainid, address(this)));
+        _INITIAL_DOMAIN_SEPARATOR = block.chainid.toNotarizedDomainSeparator();
         _METADATA_RENDERER = new MetadataRenderer();
     }
 

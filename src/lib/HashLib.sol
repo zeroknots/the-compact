@@ -90,15 +90,17 @@ import {
     ExogenousQualifiedSplitBatchMultichainClaimWithWitness
 } from "../types/BatchMultichainClaims.sol";
 
-import { BatchClaimComponent, SplitBatchClaimComponent } from "../types/Components.sol";
+import { TransferComponent, SplitComponent, SplitByIdComponent, BatchClaimComponent, SplitBatchClaimComponent } from "../types/Components.sol";
 
 import { ResetPeriod } from "../types/ResetPeriod.sol";
 import { Scope } from "../types/Scope.sol";
 
 import { FunctionCastLib } from "./FunctionCastLib.sol";
+import { EfficiencyLib } from "./EfficiencyLib.sol";
 
 // TODO: make calldata versions of these where useful
 library HashLib {
+    using EfficiencyLib for bool;
     using FunctionCastLib for function(BatchTransfer calldata, bytes32) internal view returns (bytes32);
     using FunctionCastLib for function(QualifiedClaim calldata) internal view returns (bytes32, bytes32);
     using FunctionCastLib for function(ClaimWithWitness calldata, uint256) internal view returns (bytes32);
@@ -244,12 +246,15 @@ library HashLib {
     }
 
     function toMessageHash(BatchTransfer calldata transfer) internal view returns (bytes32 messageHash) {
-        // TODO: make this more efficient especially once using calldata
-        uint256[2][] memory idsAndAmounts = new uint256[2][](transfer.transfers.length);
-        for (uint256 i = 0; i < transfer.transfers.length; ++i) {
-            idsAndAmounts[i] = [transfer.transfers[i].id, transfer.transfers[i].amount];
+        TransferComponent[] calldata transfers = transfer.transfers;
+        bytes32 idsAndAmountsHash;
+        assembly ("memory-safe") {
+            let m := mload(0x40) // Grab the free memory pointer; memory will be left dirtied.
+
+            let totalTransferData := mul(transfers.length, 0x40)
+            calldatacopy(m, transfers.offset, totalTransferData)
+            idsAndAmountsHash := keccak256(m, totalTransferData)
         }
-        bytes32 idsAndAmountsHash = keccak256(abi.encodePacked(idsAndAmounts));
 
         messageHash = _deriveBatchCompactMessageHash(transfer, idsAndAmountsHash);
     }
@@ -270,37 +275,87 @@ library HashLib {
 
     function toMessageHash(SplitBatchTransfer calldata transfer) internal view returns (bytes32 messageHash) {
         // TODO: make this more efficient especially once using calldata
-        uint256[2][] memory idsAndAmounts = new uint256[2][](transfer.transfers.length);
-        for (uint256 i = 0; i < transfer.transfers.length; ++i) {
-            uint256 amount = 0;
-            for (uint256 j = 0; j < transfer.transfers[i].portions.length; ++j) {
-                amount += transfer.transfers[i].portions[j].amount;
+        SplitByIdComponent[] calldata transfers = transfer.transfers;
+        uint256 totalIds = transfers.length;
+
+        bytes memory idsAndAmounts = new bytes(totalIds * 0x40);
+        uint256 errorBuffer;
+
+        unchecked {
+            for (uint256 i = 0; i < totalIds; ++i) {
+                SplitByIdComponent calldata transferComponent = transfers[i];
+                uint256 id = transferComponent.id;
+                uint256 amount = 0;
+                uint256 singleAmount;
+
+                SplitComponent[] calldata portions = transferComponent.portions;
+                uint256 portionsLength = portions.length;
+                for (uint256 j = 0; j < portionsLength; ++j) {
+                    singleAmount = portions[j].amount;
+                    amount += singleAmount;
+                    errorBuffer |= (amount < singleAmount).asUint256();
+                }
+
+                assembly {
+                    let extraOffset := add(add(idsAndAmounts, 0x20), mul(i, 0x40))
+                    mstore(extraOffset, id)
+                    mstore(add(extraOffset, 0x20), amount)
+                }
             }
-            idsAndAmounts[i] = [transfer.transfers[i].id, amount];
         }
-        bytes32 idsAndAmountsHash = keccak256(abi.encodePacked(idsAndAmounts));
+
+        bytes32 idsAndAmountsHash;
+        assembly {
+            if errorBuffer {
+                // Revert Panic(0x11) (arithmetic overflow)
+                mstore(0, 0x4e487b71)
+                mstore(0x20, 0x11)
+                revert(0x1c, 0x24)
+            }
+            idsAndAmountsHash := keccak256(add(idsAndAmounts, 0x20), mload(idsAndAmounts))
+        }
 
         messageHash = _deriveBatchCompactMessageHash.usingSplitBatchTransfer()(transfer, idsAndAmountsHash);
     }
 
     function toIdsAndAmountsHash(BatchClaimComponent[] calldata claims) internal pure returns (bytes32 idsAndAmountsHash) {
-        // TODO: make this more efficient ASAP
-        uint256[2][] memory idsAndAmounts = new uint256[2][](claims.length);
-        for (uint256 i = 0; i < claims.length; ++i) {
-            BatchClaimComponent calldata claimComponent = claims[i];
-            idsAndAmounts[i] = [claimComponent.id, claimComponent.allocatedAmount];
+        uint256 totalIds = claims.length;
+        bytes memory idsAndAmounts = new bytes(totalIds * 0x40);
+
+        unchecked {
+            for (uint256 i = 0; i < totalIds; ++i) {
+                BatchClaimComponent calldata claimComponent = claims[i];
+                assembly {
+                    let extraOffset := add(add(idsAndAmounts, 0x20), mul(i, 0x40))
+                    mstore(extraOffset, calldataload(claimComponent)) // id
+                    mstore(add(extraOffset, 0x20), calldataload(add(claimComponent, 0x20))) // amount
+                }
+            }
         }
-        idsAndAmountsHash = keccak256(abi.encodePacked(idsAndAmounts));
+
+        assembly {
+            idsAndAmountsHash := keccak256(add(idsAndAmounts, 0x20), mload(idsAndAmounts))
+        }
     }
 
     function toSplitIdsAndAmountsHash(SplitBatchClaimComponent[] calldata claims) internal pure returns (bytes32 idsAndAmountsHash) {
-        // TODO: make this more efficient ASAP
-        uint256[2][] memory idsAndAmounts = new uint256[2][](claims.length);
-        for (uint256 i = 0; i < claims.length; ++i) {
-            SplitBatchClaimComponent calldata claimComponent = claims[i];
-            idsAndAmounts[i] = [claimComponent.id, claimComponent.allocatedAmount];
+        uint256 totalIds = claims.length;
+        bytes memory idsAndAmounts = new bytes(totalIds * 0x40);
+
+        unchecked {
+            for (uint256 i = 0; i < totalIds; ++i) {
+                SplitBatchClaimComponent calldata claimComponent = claims[i];
+                assembly {
+                    let extraOffset := add(add(idsAndAmounts, 0x20), mul(i, 0x40))
+                    mstore(extraOffset, calldataload(claimComponent)) // id
+                    mstore(add(extraOffset, 0x20), calldataload(add(claimComponent, 0x20))) // amount
+                }
+            }
         }
-        idsAndAmountsHash = keccak256(abi.encodePacked(idsAndAmounts));
+
+        assembly {
+            idsAndAmountsHash := keccak256(add(idsAndAmounts, 0x20), mload(idsAndAmounts))
+        }
     }
 
     function toMessageHash(BatchClaim calldata claim) internal view returns (bytes32 messageHash) {
@@ -925,44 +980,6 @@ library HashLib {
             mstore(add(m, 0xa0), recipient)
             witnessHash := keccak256(m, 0xc0)
         }
-    }
-
-    function toMessageHash(Compact memory compact) internal pure returns (bytes32 messageHash) {
-        assembly ("memory-safe") {
-            let m := mload(0x40) // Grab the free memory pointer; memory will be left dirtied.
-
-            let sponsor := shr(0x60, shl(0x60, mload(compact)))
-            let expires := mload(add(compact, 0x20))
-            let nonce := mload(add(compact, 0x40))
-            let arbiter := shr(0x60, shl(0x60, mload(add(compact, 0x60))))
-            let id := mload(add(compact, 0x80))
-            let amount := mload(add(compact, 0xa0))
-
-            mstore(m, COMPACT_TYPEHASH)
-            mstore(add(m, 0x20), sponsor)
-            mstore(add(m, 0x40), expires)
-            mstore(add(m, 0x60), nonce)
-            mstore(add(m, 0x80), arbiter)
-            mstore(add(m, 0xa0), id)
-            mstore(add(m, 0xc0), amount)
-            messageHash := keccak256(m, 0xe0)
-        }
-    }
-
-    // TODO: optimize if this ends up getting used
-    function toMessageHash(BatchCompact memory compact) internal pure returns (bytes32 messageHash) {
-        messageHash = keccak256(abi.encode(BATCH_COMPACT_TYPEHASH, compact.sponsor, compact.expires, compact.nonce, compact.arbiter, keccak256(abi.encodePacked(compact.idsAndAmounts))));
-    }
-
-    // TODO: optimize if this ends up getting used
-    function toMessageHash(MultichainCompact memory compact) internal pure returns (bytes32 messageHash) {
-        bytes32[] memory allocationHashes = new bytes32[](compact.allocations.length);
-        for (uint256 i = 0; i < compact.allocations.length; ++i) {
-            Allocation memory allocation = compact.allocations[i];
-            allocationHashes[i] = keccak256(abi.encode(ALLOCATION_TYPEHASH, allocation.chainId, allocation.arbiter, keccak256(abi.encodePacked(allocation.idsAndAmounts))));
-        }
-
-        messageHash = keccak256(abi.encode(MULTICHAIN_COMPACT_TYPEHASH, compact.sponsor, compact.expires, compact.nonce, keccak256(abi.encodePacked(allocationHashes))));
     }
 
     function toLatest(bytes32 initialDomainSeparator, uint256 initialChainId) external view returns (bytes32 domainSeparator) {
