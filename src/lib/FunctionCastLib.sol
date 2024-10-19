@@ -39,30 +39,22 @@ import {
 import { TransferComponent, SplitByIdComponent, BatchClaimComponent, SplitBatchClaimComponent } from "../types/Components.sol";
 
 library FunctionCastLib {
-    function usingSplitTransfer(function (bytes32, address, BasicTransfer calldata) internal view fnIn)
-        internal
-        pure
-        returns (function (bytes32, address, SplitTransfer calldata) internal view fnOut)
-    {
+    function usingSplitTransfer(function (bytes32, address, BasicTransfer calldata) internal fnIn) internal pure returns (function (bytes32, address, SplitTransfer calldata) internal fnOut) {
         assembly ("memory-safe") {
             fnOut := fnIn
         }
     }
 
-    function usingBatchTransfer(function (bytes32, address, BasicTransfer calldata) internal view fnIn)
-        internal
-        pure
-        returns (function (bytes32, address, BatchTransfer calldata) internal view fnOut)
-    {
+    function usingBatchTransfer(function (bytes32, address, BasicTransfer calldata) internal fnIn) internal pure returns (function (bytes32, address, BatchTransfer calldata) internal fnOut) {
         assembly ("memory-safe") {
             fnOut := fnIn
         }
     }
 
-    function usingSplitBatchTransfer(function (bytes32, address, BasicTransfer calldata) internal view fnIn)
+    function usingSplitBatchTransfer(function (bytes32, address, BasicTransfer calldata) internal fnIn)
         internal
         pure
-        returns (function (bytes32, address, SplitBatchTransfer calldata) internal view fnOut)
+        returns (function (bytes32, address, SplitBatchTransfer calldata) internal fnOut)
     {
         assembly ("memory-safe") {
             fnOut := fnIn
