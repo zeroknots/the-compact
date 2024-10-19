@@ -795,13 +795,15 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
 
         unchecked {
             uint256 totalIds = transfer.transfers.length;
+            uint256 id;
             for (uint256 i = 0; i < totalIds; ++i) {
                 SplitByIdComponent calldata component = transfer.transfers[i];
+                id = component.id;
                 SplitComponent[] calldata portions = component.portions;
                 uint256 totalPortions = portions.length;
                 for (uint256 j = 0; j < totalPortions; ++j) {
                     SplitComponent calldata portion = portions[j];
-                    operation(msg.sender, portion.claimant, component.id, portion.amount);
+                    operation(msg.sender, portion.claimant, id, portion.amount);
                 }
             }
         }
@@ -902,7 +904,7 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
             sponsorSignature.offset := add(0x20, sponsorSignaturePtr)
             sponsorSignature.length := calldataload(sponsorSignaturePtr)
 
-            sponsor := calldataload(add(calldataPointer, 0x40)) // TODO: sanitize
+            sponsor := shr(96, shl(96, calldataload(add(calldataPointer, 0x40))))
             nonce := calldataload(add(calldataPointer, 0x60))
             expires := calldataload(add(calldataPointer, 0x80))
         }
@@ -969,7 +971,7 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
             let calldataPointerWithOffset := add(calldataPointer, offsetToId)
             id := calldataload(calldataPointerWithOffset)
             allocatedAmount := calldataload(add(calldataPointerWithOffset, 0x20))
-            claimant := calldataload(add(calldataPointerWithOffset, 0x40)) // TODO: sanitize
+            claimant := shr(96, shl(96, calldataload(add(calldataPointerWithOffset, 0x40))))
             amount := calldataload(add(calldataPointerWithOffset, 0x60))
         }
 

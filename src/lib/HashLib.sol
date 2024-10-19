@@ -98,7 +98,6 @@ import { Scope } from "../types/Scope.sol";
 import { FunctionCastLib } from "./FunctionCastLib.sol";
 import { EfficiencyLib } from "./EfficiencyLib.sol";
 
-// TODO: make calldata versions of these where useful
 library HashLib {
     using EfficiencyLib for bool;
     using FunctionCastLib for function(BatchTransfer calldata, bytes32) internal view returns (bytes32);
@@ -135,13 +134,29 @@ library HashLib {
     }
 
     function toMessageHash(SplitTransfer calldata transfer) internal view returns (bytes32 messageHash) {
-        // TODO: optimize this part (but remember to watch out for an amount overflow)
         uint256 amount = 0;
-        for (uint256 i = 0; i < transfer.recipients.length; ++i) {
-            amount += transfer.recipients[i].amount;
+        uint256 currentAmount;
+
+        SplitComponent[] calldata recipients = transfer.recipients;
+        uint256 totalRecipients = recipients.length;
+        uint256 errorBuffer;
+
+        unchecked {
+            for (uint256 i = 0; i < totalRecipients; ++i) {
+                currentAmount = recipients[i].amount;
+                amount += currentAmount;
+                errorBuffer |= (amount < currentAmount).asUint256();
+            }
         }
 
         assembly ("memory-safe") {
+            if errorBuffer {
+                // Revert Panic(0x11) (arithmetic overflow)
+                mstore(0, 0x4e487b71)
+                mstore(0x20, 0x11)
+                revert(0x1c, 0x24)
+            }
+
             let m := mload(0x40) // Grab the free memory pointer; memory will be left dirtied.
 
             mstore(m, COMPACT_TYPEHASH)
@@ -274,7 +289,6 @@ library HashLib {
     }
 
     function toMessageHash(SplitBatchTransfer calldata transfer) internal view returns (bytes32 messageHash) {
-        // TODO: make this more efficient especially once using calldata
         SplitByIdComponent[] calldata transfers = transfer.transfers;
         uint256 totalIds = transfers.length;
 
@@ -913,7 +927,7 @@ library HashLib {
             let additionalChainsData := add(0x20, additionalChainsPtr)
             let chainIndex := shl(5, calldataload(add(claimWithAdditionalOffset, 0xc0)))
 
-            // TODO: rather than using extraOffset, consider breaking into two distinct
+            // NOTE: rather than using extraOffset, consider breaking into two distinct
             // loops or potentially even two calldatacopy operations based on chainIndex
             let extraOffset := 0
             for { let i := 0 } lt(i, additionalChainsLength) { i := add(i, 0x20) } {
