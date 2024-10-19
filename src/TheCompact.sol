@@ -1050,11 +1050,61 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
 
         uint96 firstAllocatorId = claims[0].id.toAllocatorId();
 
-        // TODO: validate scope when relevant!!
-
         address sponsor = _validate(firstAllocatorId, messageHash, qualificationMessageHash, calldataPointer, sponsorDomainSeparator);
 
-        return _verifyAndProcessBatchComponents(firstAllocatorId, sponsor, claimant, claims, operation);
+        uint256 totalClaims = claims.length;
+
+        assembly {
+            if iszero(totalClaims) {
+                // revert InvalidBatchAllocation()
+                mstore(0, 0x3a03d3bb)
+                revert(0x1c, 0x04)
+            }
+        }
+
+        // TODO: many of the bounds checks on these array accesses can be skipped as an optimization
+        BatchClaimComponent calldata component = claims[0];
+        uint256 id = component.id;
+        uint256 amount = component.amount;
+        uint256 errorBuffer = (component.allocatedAmount < amount).or((sponsorDomainSeparator != bytes32(0)).and(id.toScope() == Scope.ChainSpecific)).asUint256();
+
+        operation(sponsor, claimant, id, amount);
+
+        unchecked {
+            for (uint256 i = 1; i < totalClaims; ++i) {
+                component = claims[i];
+                id = component.id;
+                amount = component.amount;
+                errorBuffer |=
+                    (id.toAllocatorId() != firstAllocatorId).or(component.allocatedAmount < amount).or((sponsorDomainSeparator != bytes32(0)).and(id.toScope() == Scope.ChainSpecific)).asUint256();
+
+                operation(sponsor, claimant, id, amount);
+            }
+
+            if (errorBuffer.asBool()) {
+                for (uint256 i = 0; i < totalClaims; ++i) {
+                    component = claims[i];
+                    component.amount.withinAllocated(component.allocatedAmount);
+                    id = component.id;
+                    assembly {
+                        if iszero(or(iszero(sponsorDomainSeparator), iszero(shr(255, id)))) {
+                            // revert InvalidScope(id)
+                            mstore(0, 0xa06356f5)
+                            mstore(0x20, id)
+                            revert(0x1c, 0x24)
+                        }
+                    }
+                }
+
+                assembly {
+                    // revert InvalidBatchAllocation()
+                    mstore(0, 0x3a03d3bb)
+                    revert(0x1c, 0x04)
+                }
+            }
+        }
+
+        return true;
     }
 
     function _processSplitBatchClaimWithQualificationAndSponsorDomain(
@@ -1074,11 +1124,43 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
 
         uint96 firstAllocatorId = claims[0].id.toAllocatorId();
 
-        // TODO: validate scope when relevant!!
-
         address sponsor = _validate(firstAllocatorId, messageHash, qualificationMessageHash, calldataPointer, sponsorDomainSeparator);
 
-        return _verifyAndProcessSplitBatchComponents(firstAllocatorId, sponsor, claims, operation);
+        uint256 totalClaims = claims.length;
+        uint256 errorBuffer = (totalClaims == 0).asUint256();
+        uint256 id;
+
+        unchecked {
+            for (uint256 i = 0; i < totalClaims; ++i) {
+                SplitBatchClaimComponent calldata claimComponent = claims[i];
+                id = claimComponent.id;
+                errorBuffer |= (id.toAllocatorId() != firstAllocatorId).or((sponsorDomainSeparator != bytes32(0)).and(id.toScope() == Scope.ChainSpecific)).asUint256();
+
+                _verifyAndProcessSplitComponents(sponsor, id, claimComponent.allocatedAmount, claimComponent.portions, operation);
+            }
+
+            if (errorBuffer.asBool()) {
+                for (uint256 i = 0; i < totalClaims; ++i) {
+                    id = claims[i].id;
+                    assembly {
+                        if iszero(or(iszero(sponsorDomainSeparator), iszero(shr(255, id)))) {
+                            // revert InvalidScope(id)
+                            mstore(0, 0xa06356f5)
+                            mstore(0x20, id)
+                            revert(0x1c, 0x24)
+                        }
+                    }
+                }
+
+                assembly {
+                    // revert InvalidBatchAllocation()
+                    mstore(0, 0x3a03d3bb)
+                    revert(0x1c, 0x04)
+                }
+            }
+        }
+
+        return true;
     }
 
     function usingBasicClaim(
@@ -2544,52 +2626,7 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         address claimant,
         BatchClaimComponent[] calldata claims,
         function(address, address, uint256, uint256) internal returns (bool) operation
-    ) internal returns (bool) {
-        uint256 totalClaims = claims.length;
-
-        assembly {
-            if iszero(totalClaims) {
-                // revert InvalidBatchAllocation()
-                mstore(0, 0x3a03d3bb)
-                revert(0x1c, 0x04)
-            }
-        }
-
-        // TODO: many of the bounds checks on these array accesses can be skipped as an optimization
-        BatchClaimComponent calldata component = claims[0];
-        uint256 errorBuffer = (component.allocatedAmount < component.amount).asUint256();
-
-        operation(sponsor, claimant, component.id, component.amount);
-
-        uint256 id;
-        uint256 amount;
-
-        unchecked {
-            for (uint256 i = 1; i < totalClaims; ++i) {
-                component = claims[i];
-                id = component.id;
-                amount = component.amount;
-                errorBuffer |= (id.toAllocatorId() != allocatorId).or(component.allocatedAmount < amount).asUint256();
-
-                operation(sponsor, claimant, id, amount);
-            }
-
-            if (errorBuffer.asBool()) {
-                for (uint256 i = 0; i < totalClaims; ++i) {
-                    component = claims[i];
-                    component.amount.withinAllocated(component.allocatedAmount);
-                }
-
-                assembly {
-                    // revert InvalidBatchAllocation()
-                    mstore(0, 0x3a03d3bb)
-                    revert(0x1c, 0x04)
-                }
-            }
-        }
-
-        return true;
-    }
+    ) internal returns (bool) { }
 
     function _verifyAndProcessSplitComponents(
         address sponsor,
@@ -2623,37 +2660,6 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
                 mstore(0x20, allocatedAmount)
                 mstore(0x40, spentAmount)
                 revert(0x1c, 0x44)
-            }
-        }
-
-        return true;
-    }
-
-    function _verifyAndProcessSplitBatchComponents(
-        uint96 allocatorId,
-        address sponsor,
-        SplitBatchClaimComponent[] calldata claims,
-        function(address, address, uint256, uint256) internal returns (bool) operation
-    ) internal returns (bool) {
-        uint256 totalClaims = claims.length;
-        uint256 errorBuffer = (totalClaims == 0).asUint256();
-        uint256 id;
-
-        unchecked {
-            for (uint256 i = 0; i < totalClaims; ++i) {
-                SplitBatchClaimComponent calldata claimComponent = claims[i];
-                id = claimComponent.id;
-                errorBuffer |= (id.toAllocatorId() != allocatorId).asUint256();
-
-                _verifyAndProcessSplitComponents(sponsor, id, claimComponent.allocatedAmount, claimComponent.portions, operation);
-            }
-        }
-
-        assembly {
-            if errorBuffer {
-                // revert InvalidBatchAllocation()
-                mstore(0, 0x3a03d3bb)
-                revert(0x1c, 0x04)
             }
         }
 
@@ -2718,23 +2724,6 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
             mstore(0, messageHash)
             log4(0, 0x20, _CLAIM_EVENT_SIGNATURE, shr(0x60, shl(0x60, sponsor)), shr(0x60, shl(0x60, allocator)), caller())
         }
-    }
-
-    function _emitAndOperate(
-        address sponsor,
-        address claimant,
-        uint256 id,
-        bytes32 messageHash,
-        uint256 amount,
-        uint256 allocatedAmount,
-        address allocator,
-        function(address, address, uint256, uint256) internal returns (bool) operation
-    ) internal returns (bool) {
-        amount.withinAllocated(allocatedAmount);
-
-        _emitClaim(sponsor, messageHash, allocator);
-
-        return operation(sponsor, claimant, id, amount);
     }
 
     /// @dev Moves token `id` from `from` to `to` without checking
