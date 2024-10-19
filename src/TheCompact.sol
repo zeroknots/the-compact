@@ -154,6 +154,22 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
     using HashLib for ExogenousSplitMultichainClaimWithWitness;
     using HashLib for ExogenousQualifiedSplitMultichainClaim;
     using HashLib for ExogenousQualifiedSplitMultichainClaimWithWitness;
+    using HashLib for BatchMultichainClaim;
+    using HashLib for QualifiedBatchMultichainClaim;
+    using HashLib for BatchMultichainClaimWithWitness;
+    using HashLib for QualifiedBatchMultichainClaimWithWitness;
+    using HashLib for SplitBatchMultichainClaim;
+    using HashLib for SplitBatchMultichainClaimWithWitness;
+    using HashLib for QualifiedSplitBatchMultichainClaim;
+    using HashLib for QualifiedSplitBatchMultichainClaimWithWitness;
+    using HashLib for ExogenousBatchMultichainClaim;
+    using HashLib for ExogenousQualifiedBatchMultichainClaim;
+    using HashLib for ExogenousBatchMultichainClaimWithWitness;
+    using HashLib for ExogenousQualifiedBatchMultichainClaimWithWitness;
+    using HashLib for ExogenousSplitBatchMultichainClaim;
+    using HashLib for ExogenousSplitBatchMultichainClaimWithWitness;
+    using HashLib for ExogenousQualifiedSplitBatchMultichainClaim;
+    using HashLib for ExogenousQualifiedSplitBatchMultichainClaimWithWitness;
     using IdLib for uint96;
     using IdLib for uint256;
     using IdLib for address;
@@ -588,6 +604,22 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
 
     function claimAndWithdraw(ExogenousSplitMultichainClaim calldata claimPayload) external returns (bool) {
         return _processExogenousSplitMultichainClaim(claimPayload, _withdraw);
+    }
+
+    function claim(BatchMultichainClaim calldata claimPayload) external returns (bool) {
+        return _processBatchMultichainClaim(claimPayload, _release);
+    }
+
+    function claimAndWithdraw(BatchMultichainClaim calldata claimPayload) external returns (bool) {
+        return _processBatchMultichainClaim(claimPayload, _withdraw);
+    }
+
+    function claim(ExogenousBatchMultichainClaim calldata claimPayload) external returns (bool) {
+        return _processExogenousBatchMultichainClaim(claimPayload, _release);
+    }
+
+    function claimAndWithdraw(ExogenousBatchMultichainClaim calldata claimPayload) external returns (bool) {
+        return _processExogenousBatchMultichainClaim(claimPayload, _withdraw);
     }
 
     function enableForcedWithdrawal(uint256 id) external returns (uint256 withdrawableAt) {
@@ -2300,6 +2332,10 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         return usingSplitMultichainClaim(_processSimpleSplitClaim)(claimPayload.toMessageHash(), claimPayload, 0xc0, operation);
     }
 
+    function _processBatchMultichainClaim(BatchMultichainClaim calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation) internal returns (bool) {
+        return usingBatchMultichainClaim(_processSimpleBatchClaim)(claimPayload.toMessageHash(), claimPayload, 0xc0, operation);
+    }
+
     function _processExogenousMultichainClaim(ExogenousMultichainClaim calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation) internal returns (bool) {
         return usingExogenousMultichainClaim(_processClaimWithSponsorDomain)(claimPayload.toMessageHash(), claimPayload, 0x100, claimPayload.notarizedChainId.toNotarizedDomainSeparator(), operation);
     }
@@ -2338,6 +2374,15 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         returns (bool)
     {
         return usingExogenousSplitMultichainClaim(_processSplitClaimWithSponsorDomain)(
+            claimPayload.toMessageHash(), claimPayload, 0x100, claimPayload.notarizedChainId.toNotarizedDomainSeparator(), operation
+        );
+    }
+
+    function _processExogenousBatchMultichainClaim(ExogenousBatchMultichainClaim calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation)
+        internal
+        returns (bool)
+    {
+        return usingExogenousBatchMultichainClaim(_processBatchClaimWithSponsorDomain)(
             claimPayload.toMessageHash(), claimPayload, 0x100, claimPayload.notarizedChainId.toNotarizedDomainSeparator(), operation
         );
     }
