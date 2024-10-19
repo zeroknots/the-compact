@@ -3,7 +3,7 @@ pragma solidity ^0.8.27;
 
 import { BatchClaimComponent, SplitBatchClaimComponent } from "./Components.sol";
 
-struct MultichainBatchClaim {
+struct BatchMultichainClaim {
     bytes allocatorSignature; // Authorization from the allocator.
     bytes sponsorSignature; // Authorization from the sponsor.
     address sponsor; // The account to source the tokens from.
@@ -14,7 +14,7 @@ struct MultichainBatchClaim {
     address claimant; // The claim recipient; specified by the arbiter.
 }
 
-struct QualifiedMultichainBatchClaim {
+struct QualifiedBatchMultichainClaim {
     bytes allocatorSignature; // Authorization from the allocator.
     bytes sponsorSignature; // Authorization from the sponsor.
     address sponsor; // The account to source the tokens from.
@@ -27,7 +27,7 @@ struct QualifiedMultichainBatchClaim {
     address claimant; // The claim recipient; specified by the arbiter.
 }
 
-struct MultichainBatchClaimWithWitness {
+struct BatchMultichainClaimWithWitness {
     bytes allocatorSignature; // Authorization from the allocator.
     bytes sponsorSignature; // Authorization from the sponsor.
     address sponsor; // The account to source the tokens from.
@@ -40,7 +40,7 @@ struct MultichainBatchClaimWithWitness {
     address claimant; // The claim recipient; specified by the arbiter.
 }
 
-struct QualifiedMultichainBatchClaimWithWitness {
+struct QualifiedBatchMultichainClaimWithWitness {
     bytes allocatorSignature; // Authorization from the allocator.
     bytes sponsorSignature; // Authorization from the sponsor.
     address sponsor; // The account to source the tokens from.
@@ -55,7 +55,7 @@ struct QualifiedMultichainBatchClaimWithWitness {
     address claimant; // The claim recipient; specified by the arbiter.
 }
 
-struct SplitMultichainBatchClaim {
+struct SplitBatchMultichainClaim {
     bytes allocatorSignature; // Authorization from the allocator.
     bytes sponsorSignature; // Authorization from the sponsor.
     address sponsor; // The account to source the tokens from.
@@ -65,7 +65,7 @@ struct SplitMultichainBatchClaim {
     SplitBatchClaimComponent[] claims; // The claim token IDs, recipients and amounts.
 }
 
-struct SplitMultichainBatchClaimWithWitness {
+struct SplitBatchMultichainClaimWithWitness {
     bytes allocatorSignature; // Authorization from the allocator.
     bytes sponsorSignature; // Authorization from the sponsor.
     address sponsor; // The account to source the tokens from.
@@ -77,7 +77,7 @@ struct SplitMultichainBatchClaimWithWitness {
     SplitBatchClaimComponent[] claims; // The claim token IDs, recipients and amounts.
 }
 
-struct QualifiedSplitMultichainBatchClaim {
+struct QualifiedSplitBatchMultichainClaim {
     bytes allocatorSignature; // Authorization from the allocator.
     bytes sponsorSignature; // Authorization from the sponsor.
     address sponsor; // The account to source the tokens from.
@@ -89,7 +89,7 @@ struct QualifiedSplitMultichainBatchClaim {
     SplitBatchClaimComponent[] claims; // The claim token IDs, recipients and amounts.
 }
 
-struct QualifiedSplitMultichainBatchClaimWithWitness {
+struct QualifiedSplitBatchMultichainClaimWithWitness {
     bytes allocatorSignature; // Authorization from the allocator.
     bytes sponsorSignature; // Authorization from the sponsor.
     address sponsor; // The account to source the tokens from.
@@ -103,7 +103,7 @@ struct QualifiedSplitMultichainBatchClaimWithWitness {
     SplitBatchClaimComponent[] claims; // The claim token IDs, recipients and amounts.
 }
 
-struct ExogenousMultichainBatchClaim {
+struct ExogenousBatchMultichainClaim {
     bytes allocatorSignature; // Authorization from the allocator.
     bytes sponsorSignature; // Authorization from the sponsor.
     address sponsor; // The account to source the tokens from.
@@ -116,7 +116,7 @@ struct ExogenousMultichainBatchClaim {
     address claimant; // The claim recipient; specified by the arbiter.
 }
 
-struct ExogenousQualifiedMultichainBatchClaim {
+struct ExogenousQualifiedBatchMultichainClaim {
     bytes allocatorSignature; // Authorization from the allocator.
     bytes sponsorSignature; // Authorization from the sponsor.
     address sponsor; // The account to source the tokens from.
@@ -131,7 +131,7 @@ struct ExogenousQualifiedMultichainBatchClaim {
     address claimant; // The claim recipient; specified by the arbiter.
 }
 
-struct ExogenousMultichainBatchClaimWithWitness {
+struct ExogenousBatchMultichainClaimWithWitness {
     bytes allocatorSignature; // Authorization from the allocator.
     bytes sponsorSignature; // Authorization from the sponsor.
     address sponsor; // The account to source the tokens from.
@@ -146,7 +146,7 @@ struct ExogenousMultichainBatchClaimWithWitness {
     address claimant; // The claim recipient; specified by the arbiter.
 }
 
-struct ExogenousQualifiedMultichainBatchClaimWithWitness {
+struct ExogenousQualifiedBatchMultichainClaimWithWitness {
     bytes allocatorSignature; // Authorization from the allocator.
     bytes sponsorSignature; // Authorization from the sponsor.
     address sponsor; // The account to source the tokens from.
@@ -163,7 +163,7 @@ struct ExogenousQualifiedMultichainBatchClaimWithWitness {
     address claimant; // The claim recipient; specified by the arbiter.
 }
 
-struct ExogenousSplitMultichainBatchClaim {
+struct ExogenousSplitBatchMultichainClaim {
     bytes allocatorSignature; // Authorization from the allocator.
     bytes sponsorSignature; // Authorization from the sponsor.
     address sponsor; // The account to source the tokens from.
@@ -175,7 +175,7 @@ struct ExogenousSplitMultichainBatchClaim {
     SplitBatchClaimComponent[] claims; // The claim token IDs, recipients and amounts.
 }
 
-struct ExogenousSplitMultichainBatchClaimWithWitness {
+struct ExogenousSplitBatchMultichainClaimWithWitness {
     bytes allocatorSignature; // Authorization from the allocator.
     bytes sponsorSignature; // Authorization from the sponsor.
     address sponsor; // The account to source the tokens from.
@@ -189,7 +189,7 @@ struct ExogenousSplitMultichainBatchClaimWithWitness {
     SplitBatchClaimComponent[] claims; // The claim token IDs, recipients and amounts.
 }
 
-struct ExogenousQualifiedSplitMultichainBatchClaim {
+struct ExogenousQualifiedSplitBatchMultichainClaim {
     bytes allocatorSignature; // Authorization from the allocator.
     bytes sponsorSignature; // Authorization from the sponsor.
     address sponsor; // The account to source the tokens from.
@@ -203,7 +203,7 @@ struct ExogenousQualifiedSplitMultichainBatchClaim {
     SplitBatchClaimComponent[] claims; // The claim token IDs, recipients and amounts.
 }
 
-struct ExogenousQualifiedSplitMultichainBatchClaimWithWitness {
+struct ExogenousQualifiedSplitBatchMultichainClaimWithWitness {
     bytes allocatorSignature; // Authorization from the allocator.
     bytes sponsorSignature; // Authorization from the sponsor.
     address sponsor; // The account to source the tokens from.

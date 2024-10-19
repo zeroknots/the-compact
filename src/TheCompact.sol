@@ -63,6 +63,44 @@ import {
     ExogenousQualifiedSplitMultichainClaimWithWitness
 } from "./types/MultichainClaims.sol";
 
+import {
+    MultichainClaim,
+    QualifiedMultichainClaim,
+    MultichainClaimWithWitness,
+    QualifiedMultichainClaimWithWitness,
+    SplitMultichainClaim,
+    SplitMultichainClaimWithWitness,
+    QualifiedSplitMultichainClaim,
+    QualifiedSplitMultichainClaimWithWitness,
+    ExogenousMultichainClaim,
+    ExogenousQualifiedMultichainClaim,
+    ExogenousMultichainClaimWithWitness,
+    ExogenousQualifiedMultichainClaimWithWitness,
+    ExogenousSplitMultichainClaim,
+    ExogenousSplitMultichainClaimWithWitness,
+    ExogenousQualifiedSplitMultichainClaim,
+    ExogenousQualifiedSplitMultichainClaimWithWitness
+} from "./types/MultichainClaims.sol";
+
+import {
+    BatchMultichainClaim,
+    QualifiedBatchMultichainClaim,
+    BatchMultichainClaimWithWitness,
+    QualifiedBatchMultichainClaimWithWitness,
+    SplitBatchMultichainClaim,
+    SplitBatchMultichainClaimWithWitness,
+    QualifiedSplitBatchMultichainClaim,
+    QualifiedSplitBatchMultichainClaimWithWitness,
+    ExogenousBatchMultichainClaim,
+    ExogenousQualifiedBatchMultichainClaim,
+    ExogenousBatchMultichainClaimWithWitness,
+    ExogenousQualifiedBatchMultichainClaimWithWitness,
+    ExogenousSplitBatchMultichainClaim,
+    ExogenousSplitBatchMultichainClaimWithWitness,
+    ExogenousQualifiedSplitBatchMultichainClaim,
+    ExogenousQualifiedSplitBatchMultichainClaimWithWitness
+} from "./types/BatchMultichainClaims.sol";
+
 import { SplitComponent, TransferComponent, SplitByIdComponent, BatchClaimComponent, SplitBatchClaimComponent } from "./types/Components.sol";
 
 import { IAllocator } from "./interfaces/IAllocator.sol";
@@ -1465,6 +1503,306 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         }
     }
 
+    function usingSplitMultichainClaim(
+        function(
+        bytes32,
+        uint256,
+        uint256,
+        function(address, address, uint256, uint256) internal returns (bool)
+        ) internal returns (bool) fnIn
+    )
+        internal
+        pure
+        returns (
+            function(
+            bytes32,
+            SplitMultichainClaim calldata,
+            uint256,
+            function(address, address, uint256, uint256) internal returns (bool)
+            ) internal returns (bool) fnOut
+        )
+    {
+        assembly {
+            fnOut := fnIn
+        }
+    }
+
+    function usingQualifiedSplitMultichainClaim(
+        function(
+        bytes32,
+        bytes32,
+        uint256,
+        uint256,
+        function(address, address, uint256, uint256) internal returns (bool)
+        ) internal returns (bool) fnIn
+    )
+        internal
+        pure
+        returns (
+            function(
+            bytes32,
+            bytes32,
+            QualifiedSplitMultichainClaim calldata,
+            uint256,
+            function(address, address, uint256, uint256) internal returns (bool)
+            ) internal returns (bool) fnOut
+        )
+    {
+        assembly {
+            fnOut := fnIn
+        }
+    }
+
+    function usingSplitMultichainClaimWithWitness(
+        function(
+        bytes32,
+        uint256,
+        uint256,
+        function(address, address, uint256, uint256) internal returns (bool)
+        ) internal returns (bool) fnIn
+    )
+        internal
+        pure
+        returns (
+            function(
+            bytes32,
+            SplitMultichainClaimWithWitness calldata,
+            uint256,
+            function(address, address, uint256, uint256) internal returns (bool)
+            ) internal returns (bool) fnOut
+        )
+    {
+        assembly {
+            fnOut := fnIn
+        }
+    }
+
+    function usingQualifiedSplitMultichainClaimWithWitness(
+        function(
+        bytes32,
+        bytes32,
+        uint256,
+        uint256,
+        function(address, address, uint256, uint256) internal returns (bool)
+        ) internal returns (bool) fnIn
+    )
+        internal
+        pure
+        returns (
+            function(
+            bytes32,
+            bytes32,
+            QualifiedSplitMultichainClaimWithWitness calldata,
+            uint256,
+            function(address, address, uint256, uint256) internal returns (bool)
+            ) internal returns (bool) fnOut
+        )
+    {
+        assembly {
+            fnOut := fnIn
+        }
+    }
+
+    function usingBatchMultichainClaim(
+        function(
+        bytes32,
+        uint256,
+        uint256,
+        function(address, address, uint256, uint256) internal returns (bool)
+        ) internal returns (bool) fnIn
+    )
+        internal
+        pure
+        returns (
+            function(
+            bytes32,
+            BatchMultichainClaim calldata,
+            uint256,
+            function(address, address, uint256, uint256) internal returns (bool)
+            ) internal returns (bool) fnOut
+        )
+    {
+        assembly {
+            fnOut := fnIn
+        }
+    }
+
+    function usingQualifiedBatchMultichainClaim(
+        function(
+        bytes32,
+        bytes32,
+        uint256,
+        uint256,
+        function(address, address, uint256, uint256) internal returns (bool)
+        ) internal returns (bool) fnIn
+    )
+        internal
+        pure
+        returns (
+            function(
+            bytes32,
+            bytes32,
+            QualifiedBatchMultichainClaim calldata,
+            uint256,
+            function(address, address, uint256, uint256) internal returns (bool)
+            ) internal returns (bool) fnOut
+        )
+    {
+        assembly {
+            fnOut := fnIn
+        }
+    }
+
+    function usingBatchMultichainClaimWithWitness(
+        function(
+        bytes32,
+        uint256,
+        uint256,
+        function(address, address, uint256, uint256) internal returns (bool)
+        ) internal returns (bool) fnIn
+    )
+        internal
+        pure
+        returns (
+            function(
+            bytes32,
+            BatchMultichainClaimWithWitness calldata,
+            uint256,
+            function(address, address, uint256, uint256) internal returns (bool)
+            ) internal returns (bool) fnOut
+        )
+    {
+        assembly {
+            fnOut := fnIn
+        }
+    }
+
+    function usingQualifiedBatchMultichainClaimWithWitness(
+        function(
+        bytes32,
+        bytes32,
+        uint256,
+        uint256,
+        function(address, address, uint256, uint256) internal returns (bool)
+        ) internal returns (bool) fnIn
+    )
+        internal
+        pure
+        returns (
+            function(
+            bytes32,
+            bytes32,
+            QualifiedBatchMultichainClaimWithWitness calldata,
+            uint256,
+            function(address, address, uint256, uint256) internal returns (bool)
+            ) internal returns (bool) fnOut
+        )
+    {
+        assembly {
+            fnOut := fnIn
+        }
+    }
+
+    function usingSplitBatchMultichainClaim(
+        function(
+        bytes32,
+        uint256,
+        uint256,
+        function(address, address, uint256, uint256) internal returns (bool)
+        ) internal returns (bool) fnIn
+    )
+        internal
+        pure
+        returns (
+            function(
+            bytes32,
+            SplitBatchMultichainClaim calldata,
+            uint256,
+            function(address, address, uint256, uint256) internal returns (bool)
+            ) internal returns (bool) fnOut
+        )
+    {
+        assembly {
+            fnOut := fnIn
+        }
+    }
+
+    function usingQualifiedSplitBatchMultichainClaim(
+        function(
+        bytes32,
+        bytes32,
+        uint256,
+        uint256,
+        function(address, address, uint256, uint256) internal returns (bool)
+        ) internal returns (bool) fnIn
+    )
+        internal
+        pure
+        returns (
+            function(
+            bytes32,
+            bytes32,
+            QualifiedSplitBatchMultichainClaim calldata,
+            uint256,
+            function(address, address, uint256, uint256) internal returns (bool)
+            ) internal returns (bool) fnOut
+        )
+    {
+        assembly {
+            fnOut := fnIn
+        }
+    }
+
+    function usingSplitBatchMultichainClaimWithWitness(
+        function(
+        bytes32,
+        uint256,
+        uint256,
+        function(address, address, uint256, uint256) internal returns (bool)
+        ) internal returns (bool) fnIn
+    )
+        internal
+        pure
+        returns (
+            function(
+            bytes32,
+            SplitBatchMultichainClaimWithWitness calldata,
+            uint256,
+            function(address, address, uint256, uint256) internal returns (bool)
+            ) internal returns (bool) fnOut
+        )
+    {
+        assembly {
+            fnOut := fnIn
+        }
+    }
+
+    function usingQualifiedSplitBatchMultichainClaimWithWitness(
+        function(
+        bytes32,
+        bytes32,
+        uint256,
+        uint256,
+        function(address, address, uint256, uint256) internal returns (bool)
+        ) internal returns (bool) fnIn
+    )
+        internal
+        pure
+        returns (
+            function(
+            bytes32,
+            bytes32,
+            QualifiedSplitBatchMultichainClaimWithWitness calldata,
+            uint256,
+            function(address, address, uint256, uint256) internal returns (bool)
+            ) internal returns (bool) fnOut
+        )
+    {
+        assembly {
+            fnOut := fnIn
+        }
+    }
+
     function usingExogenousMultichainClaim(
         function(
         bytes32,
@@ -1562,6 +1900,330 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
             bytes32,
             bytes32,
             ExogenousQualifiedMultichainClaimWithWitness calldata,
+            uint256,
+            bytes32,
+            function(address, address, uint256, uint256) internal returns (bool)
+            ) internal returns (bool) fnOut
+        )
+    {
+        assembly {
+            fnOut := fnIn
+        }
+    }
+
+    function usingExogenousSplitMultichainClaim(
+        function(
+        bytes32,
+        uint256,
+        uint256,
+        bytes32,
+        function(address, address, uint256, uint256) internal returns (bool)
+        ) internal returns (bool) fnIn
+    )
+        internal
+        pure
+        returns (
+            function(
+            bytes32,
+            ExogenousSplitMultichainClaim calldata,
+            uint256,
+            bytes32,
+            function(address, address, uint256, uint256) internal returns (bool)
+            ) internal returns (bool) fnOut
+        )
+    {
+        assembly {
+            fnOut := fnIn
+        }
+    }
+
+    function usingExogenousQualifiedSplitMultichainClaim(
+        function(
+        bytes32,
+        bytes32,
+        uint256,
+        uint256,
+        bytes32,
+        function(address, address, uint256, uint256) internal returns (bool)
+        ) internal returns (bool) fnIn
+    )
+        internal
+        pure
+        returns (
+            function(
+            bytes32,
+            bytes32,
+            ExogenousQualifiedSplitMultichainClaim calldata,
+            uint256,
+            bytes32,
+            function(address, address, uint256, uint256) internal returns (bool)
+            ) internal returns (bool) fnOut
+        )
+    {
+        assembly {
+            fnOut := fnIn
+        }
+    }
+
+    function usingExogenousSplitMultichainClaimWithWitness(
+        function(
+        bytes32,
+        uint256,
+        uint256,
+        bytes32,
+        function(address, address, uint256, uint256) internal returns (bool)
+        ) internal returns (bool) fnIn
+    )
+        internal
+        pure
+        returns (
+            function(
+            bytes32,
+            ExogenousSplitMultichainClaimWithWitness calldata,
+            uint256,
+            bytes32,
+            function(address, address, uint256, uint256) internal returns (bool)
+            ) internal returns (bool) fnOut
+        )
+    {
+        assembly {
+            fnOut := fnIn
+        }
+    }
+
+    function usingExogenousQualifiedSplitMultichainClaimWithWitness(
+        function(
+        bytes32,
+        bytes32,
+        uint256,
+        uint256,
+        bytes32,
+        function(address, address, uint256, uint256) internal returns (bool)
+        ) internal returns (bool) fnIn
+    )
+        internal
+        pure
+        returns (
+            function(
+            bytes32,
+            bytes32,
+            ExogenousQualifiedSplitMultichainClaimWithWitness calldata,
+            uint256,
+            bytes32,
+            function(address, address, uint256, uint256) internal returns (bool)
+            ) internal returns (bool) fnOut
+        )
+    {
+        assembly {
+            fnOut := fnIn
+        }
+    }
+
+    function usingExogenousBatchMultichainClaim(
+        function(
+        bytes32,
+        uint256,
+        uint256,
+        bytes32,
+        function(address, address, uint256, uint256) internal returns (bool)
+        ) internal returns (bool) fnIn
+    )
+        internal
+        pure
+        returns (
+            function(
+            bytes32,
+            ExogenousBatchMultichainClaim calldata,
+            uint256,
+            bytes32,
+            function(address, address, uint256, uint256) internal returns (bool)
+            ) internal returns (bool) fnOut
+        )
+    {
+        assembly {
+            fnOut := fnIn
+        }
+    }
+
+    function usingExogenousQualifiedBatchMultichainClaim(
+        function(
+        bytes32,
+        bytes32,
+        uint256,
+        uint256,
+        bytes32,
+        function(address, address, uint256, uint256) internal returns (bool)
+        ) internal returns (bool) fnIn
+    )
+        internal
+        pure
+        returns (
+            function(
+            bytes32,
+            bytes32,
+            ExogenousQualifiedBatchMultichainClaim calldata,
+            uint256,
+            bytes32,
+            function(address, address, uint256, uint256) internal returns (bool)
+            ) internal returns (bool) fnOut
+        )
+    {
+        assembly {
+            fnOut := fnIn
+        }
+    }
+
+    function usingExogenousBatchMultichainClaimWithWitness(
+        function(
+        bytes32,
+        uint256,
+        uint256,
+        bytes32,
+        function(address, address, uint256, uint256) internal returns (bool)
+        ) internal returns (bool) fnIn
+    )
+        internal
+        pure
+        returns (
+            function(
+            bytes32,
+            ExogenousBatchMultichainClaimWithWitness calldata,
+            uint256,
+            bytes32,
+            function(address, address, uint256, uint256) internal returns (bool)
+            ) internal returns (bool) fnOut
+        )
+    {
+        assembly {
+            fnOut := fnIn
+        }
+    }
+
+    function usingExogenousQualifiedBatchMultichainClaimWithWitness(
+        function(
+        bytes32,
+        bytes32,
+        uint256,
+        uint256,
+        bytes32,
+        function(address, address, uint256, uint256) internal returns (bool)
+        ) internal returns (bool) fnIn
+    )
+        internal
+        pure
+        returns (
+            function(
+            bytes32,
+            bytes32,
+            ExogenousQualifiedBatchMultichainClaimWithWitness calldata,
+            uint256,
+            bytes32,
+            function(address, address, uint256, uint256) internal returns (bool)
+            ) internal returns (bool) fnOut
+        )
+    {
+        assembly {
+            fnOut := fnIn
+        }
+    }
+
+    function usingExogenousSplitBatchMultichainClaim(
+        function(
+        bytes32,
+        uint256,
+        uint256,
+        bytes32,
+        function(address, address, uint256, uint256) internal returns (bool)
+        ) internal returns (bool) fnIn
+    )
+        internal
+        pure
+        returns (
+            function(
+            bytes32,
+            ExogenousSplitBatchMultichainClaim calldata,
+            uint256,
+            bytes32,
+            function(address, address, uint256, uint256) internal returns (bool)
+            ) internal returns (bool) fnOut
+        )
+    {
+        assembly {
+            fnOut := fnIn
+        }
+    }
+
+    function usingExogenousQualifiedSplitBatchMultichainClaim(
+        function(
+        bytes32,
+        bytes32,
+        uint256,
+        uint256,
+        bytes32,
+        function(address, address, uint256, uint256) internal returns (bool)
+        ) internal returns (bool) fnIn
+    )
+        internal
+        pure
+        returns (
+            function(
+            bytes32,
+            bytes32,
+            ExogenousQualifiedSplitBatchMultichainClaim calldata,
+            uint256,
+            bytes32,
+            function(address, address, uint256, uint256) internal returns (bool)
+            ) internal returns (bool) fnOut
+        )
+    {
+        assembly {
+            fnOut := fnIn
+        }
+    }
+
+    function usingExogenousSplitBatchMultichainClaimWithWitness(
+        function(
+        bytes32,
+        uint256,
+        uint256,
+        bytes32,
+        function(address, address, uint256, uint256) internal returns (bool)
+        ) internal returns (bool) fnIn
+    )
+        internal
+        pure
+        returns (
+            function(
+            bytes32,
+            ExogenousSplitBatchMultichainClaimWithWitness calldata,
+            uint256,
+            bytes32,
+            function(address, address, uint256, uint256) internal returns (bool)
+            ) internal returns (bool) fnOut
+        )
+    {
+        assembly {
+            fnOut := fnIn
+        }
+    }
+
+    function usingExogenousQualifiedSplitBatchMultichainClaimWithWitness(
+        function(
+        bytes32,
+        bytes32,
+        uint256,
+        uint256,
+        bytes32,
+        function(address, address, uint256, uint256) internal returns (bool)
+        ) internal returns (bool) fnIn
+    )
+        internal
+        pure
+        returns (
+            function(
+            bytes32,
+            bytes32,
+            ExogenousQualifiedSplitBatchMultichainClaimWithWitness calldata,
             uint256,
             bytes32,
             function(address, address, uint256, uint256) internal returns (bool)
