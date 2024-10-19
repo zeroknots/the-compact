@@ -189,6 +189,11 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
     using FunctionCastLib for function(QualifiedClaim calldata) internal returns (bytes32, address);
     using FunctionCastLib for function(QualifiedClaimWithWitness calldata) internal returns (bytes32, address);
 
+    using FunctionCastLib for function(bytes32, uint256, uint256, function(address, address, uint256, uint256) internal returns (bool)) internal returns (bool);
+    using FunctionCastLib for function(bytes32, uint256, uint256, bytes32, function(address, address, uint256, uint256) internal returns (bool)) internal returns (bool);
+    using FunctionCastLib for function(bytes32, bytes32, uint256, uint256, function(address, address, uint256, uint256) internal returns (bool)) internal returns (bool);
+    using FunctionCastLib for function(bytes32, bytes32, uint256, uint256, bytes32, function(address, address, uint256, uint256) internal returns (bool)) internal returns (bool);
+
     IPermit2 private constant _PERMIT2 = IPermit2(0x000000000022D473030F116dDEE9F6B43aC78BA3);
 
     uint256 private constant _ERC6909_MASTER_SLOT_SEED = 0xedcaa89a82293940;
@@ -1157,1249 +1162,17 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         return true;
     }
 
-    function usingBasicClaim(
-        function(
-        bytes32,
-        uint256,
-        uint256,
-        function(address, address, uint256, uint256) internal returns (bool)
-        ) internal returns (bool) fnIn
-    )
-        internal
-        pure
-        returns (
-            function(
-            bytes32,
-            BasicClaim calldata,
-            uint256,
-            function(address, address, uint256, uint256) internal returns (bool)
-            ) internal returns (bool) fnOut
-        )
-    {
-        assembly {
-            fnOut := fnIn
-        }
-    }
-
-    function usingQualifiedClaim(
-        function(
-        bytes32,
-        bytes32,
-        uint256,
-        uint256,
-        function(address, address, uint256, uint256) internal returns (bool)
-        ) internal returns (bool) fnIn
-    )
-        internal
-        pure
-        returns (
-            function(
-            bytes32,
-            bytes32,
-            QualifiedClaim calldata,
-            uint256,
-            function(address, address, uint256, uint256) internal returns (bool)
-            ) internal returns (bool) fnOut
-        )
-    {
-        assembly {
-            fnOut := fnIn
-        }
-    }
-
-    function usingClaimWithWitness(
-        function(
-        bytes32,
-        uint256,
-        uint256,
-        function(address, address, uint256, uint256) internal returns (bool)
-        ) internal returns (bool) fnIn
-    )
-        internal
-        pure
-        returns (
-            function(
-            bytes32,
-            ClaimWithWitness calldata,
-            uint256,
-            function(address, address, uint256, uint256) internal returns (bool)
-            ) internal returns (bool) fnOut
-        )
-    {
-        assembly {
-            fnOut := fnIn
-        }
-    }
-
-    function usingQualifiedClaimWithWitness(
-        function(
-        bytes32,
-        bytes32,
-        uint256,
-        uint256,
-        function(address, address, uint256, uint256) internal returns (bool)
-        ) internal returns (bool) fnIn
-    )
-        internal
-        pure
-        returns (
-            function(
-            bytes32,
-            bytes32,
-            QualifiedClaimWithWitness calldata,
-            uint256,
-            function(address, address, uint256, uint256) internal returns (bool)
-            ) internal returns (bool) fnOut
-        )
-    {
-        assembly {
-            fnOut := fnIn
-        }
-    }
-
-    function usingSplitClaim(
-        function(
-        bytes32,
-        uint256,
-        uint256,
-        function(address, address, uint256, uint256) internal returns (bool)
-        ) internal returns (bool) fnIn
-    )
-        internal
-        pure
-        returns (
-            function(
-            bytes32,
-            SplitClaim calldata,
-            uint256,
-            function(address, address, uint256, uint256) internal returns (bool)
-            ) internal returns (bool) fnOut
-        )
-    {
-        assembly {
-            fnOut := fnIn
-        }
-    }
-
-    function usingQualifiedSplitClaim(
-        function(
-        bytes32,
-        bytes32,
-        uint256,
-        uint256,
-        function(address, address, uint256, uint256) internal returns (bool)
-        ) internal returns (bool) fnIn
-    )
-        internal
-        pure
-        returns (
-            function(
-            bytes32,
-            bytes32,
-            QualifiedSplitClaim calldata,
-            uint256,
-            function(address, address, uint256, uint256) internal returns (bool)
-            ) internal returns (bool) fnOut
-        )
-    {
-        assembly {
-            fnOut := fnIn
-        }
-    }
-
-    function usingSplitClaimWithWitness(
-        function(
-        bytes32,
-        uint256,
-        uint256,
-        function(address, address, uint256, uint256) internal returns (bool)
-        ) internal returns (bool) fnIn
-    )
-        internal
-        pure
-        returns (
-            function(
-            bytes32,
-            SplitClaimWithWitness calldata,
-            uint256,
-            function(address, address, uint256, uint256) internal returns (bool)
-            ) internal returns (bool) fnOut
-        )
-    {
-        assembly {
-            fnOut := fnIn
-        }
-    }
-
-    function usingQualifiedSplitClaimWithWitness(
-        function(
-        bytes32,
-        bytes32,
-        uint256,
-        uint256,
-        function(address, address, uint256, uint256) internal returns (bool)
-        ) internal returns (bool) fnIn
-    )
-        internal
-        pure
-        returns (
-            function(
-            bytes32,
-            bytes32,
-            QualifiedSplitClaimWithWitness calldata,
-            uint256,
-            function(address, address, uint256, uint256) internal returns (bool)
-            ) internal returns (bool) fnOut
-        )
-    {
-        assembly {
-            fnOut := fnIn
-        }
-    }
-
-    function usingBatchClaim(
-        function(
-        bytes32,
-        uint256,
-        uint256,
-        function(address, address, uint256, uint256) internal returns (bool)
-        ) internal returns (bool) fnIn
-    )
-        internal
-        pure
-        returns (
-            function(
-            bytes32,
-            BatchClaim calldata,
-            uint256,
-            function(address, address, uint256, uint256) internal returns (bool)
-            ) internal returns (bool) fnOut
-        )
-    {
-        assembly {
-            fnOut := fnIn
-        }
-    }
-
-    function usingQualifiedBatchClaim(
-        function(
-        bytes32,
-        bytes32,
-        uint256,
-        uint256,
-        function(address, address, uint256, uint256) internal returns (bool)
-        ) internal returns (bool) fnIn
-    )
-        internal
-        pure
-        returns (
-            function(
-            bytes32,
-            bytes32,
-            QualifiedBatchClaim calldata,
-            uint256,
-            function(address, address, uint256, uint256) internal returns (bool)
-            ) internal returns (bool) fnOut
-        )
-    {
-        assembly {
-            fnOut := fnIn
-        }
-    }
-
-    function usingBatchClaimWithWitness(
-        function(
-        bytes32,
-        uint256,
-        uint256,
-        function(address, address, uint256, uint256) internal returns (bool)
-        ) internal returns (bool) fnIn
-    )
-        internal
-        pure
-        returns (
-            function(
-            bytes32,
-            BatchClaimWithWitness calldata,
-            uint256,
-            function(address, address, uint256, uint256) internal returns (bool)
-            ) internal returns (bool) fnOut
-        )
-    {
-        assembly {
-            fnOut := fnIn
-        }
-    }
-
-    function usingQualifiedBatchClaimWithWitness(
-        function(
-        bytes32,
-        bytes32,
-        uint256,
-        uint256,
-        function(address, address, uint256, uint256) internal returns (bool)
-        ) internal returns (bool) fnIn
-    )
-        internal
-        pure
-        returns (
-            function(
-            bytes32,
-            bytes32,
-            QualifiedBatchClaimWithWitness calldata,
-            uint256,
-            function(address, address, uint256, uint256) internal returns (bool)
-            ) internal returns (bool) fnOut
-        )
-    {
-        assembly {
-            fnOut := fnIn
-        }
-    }
-
-    function usingSplitBatchClaim(
-        function(
-        bytes32,
-        uint256,
-        uint256,
-        function(address, address, uint256, uint256) internal returns (bool)
-        ) internal returns (bool) fnIn
-    )
-        internal
-        pure
-        returns (
-            function(
-            bytes32,
-            SplitBatchClaim calldata,
-            uint256,
-            function(address, address, uint256, uint256) internal returns (bool)
-            ) internal returns (bool) fnOut
-        )
-    {
-        assembly {
-            fnOut := fnIn
-        }
-    }
-
-    function usingQualifiedSplitBatchClaim(
-        function(
-        bytes32,
-        bytes32,
-        uint256,
-        uint256,
-        function(address, address, uint256, uint256) internal returns (bool)
-        ) internal returns (bool) fnIn
-    )
-        internal
-        pure
-        returns (
-            function(
-            bytes32,
-            bytes32,
-            QualifiedSplitBatchClaim calldata,
-            uint256,
-            function(address, address, uint256, uint256) internal returns (bool)
-            ) internal returns (bool) fnOut
-        )
-    {
-        assembly {
-            fnOut := fnIn
-        }
-    }
-
-    function usingSplitBatchClaimWithWitness(
-        function(
-        bytes32,
-        uint256,
-        uint256,
-        function(address, address, uint256, uint256) internal returns (bool)
-        ) internal returns (bool) fnIn
-    )
-        internal
-        pure
-        returns (
-            function(
-            bytes32,
-            SplitBatchClaimWithWitness calldata,
-            uint256,
-            function(address, address, uint256, uint256) internal returns (bool)
-            ) internal returns (bool) fnOut
-        )
-    {
-        assembly {
-            fnOut := fnIn
-        }
-    }
-
-    function usingQualifiedSplitBatchClaimWithWitness(
-        function(
-        bytes32,
-        bytes32,
-        uint256,
-        uint256,
-        function(address, address, uint256, uint256) internal returns (bool)
-        ) internal returns (bool) fnIn
-    )
-        internal
-        pure
-        returns (
-            function(
-            bytes32,
-            bytes32,
-            QualifiedSplitBatchClaimWithWitness calldata,
-            uint256,
-            function(address, address, uint256, uint256) internal returns (bool)
-            ) internal returns (bool) fnOut
-        )
-    {
-        assembly {
-            fnOut := fnIn
-        }
-    }
-
-    function usingMultichainClaim(
-        function(
-        bytes32,
-        uint256,
-        uint256,
-        function(address, address, uint256, uint256) internal returns (bool)
-        ) internal returns (bool) fnIn
-    )
-        internal
-        pure
-        returns (
-            function(
-            bytes32,
-            MultichainClaim calldata,
-            uint256,
-            function(address, address, uint256, uint256) internal returns (bool)
-            ) internal returns (bool) fnOut
-        )
-    {
-        assembly {
-            fnOut := fnIn
-        }
-    }
-
-    function usingQualifiedMultichainClaim(
-        function(
-        bytes32,
-        bytes32,
-        uint256,
-        uint256,
-        function(address, address, uint256, uint256) internal returns (bool)
-        ) internal returns (bool) fnIn
-    )
-        internal
-        pure
-        returns (
-            function(
-            bytes32,
-            bytes32,
-            QualifiedMultichainClaim calldata,
-            uint256,
-            function(address, address, uint256, uint256) internal returns (bool)
-            ) internal returns (bool) fnOut
-        )
-    {
-        assembly {
-            fnOut := fnIn
-        }
-    }
-
-    function usingMultichainClaimWithWitness(
-        function(
-        bytes32,
-        uint256,
-        uint256,
-        function(address, address, uint256, uint256) internal returns (bool)
-        ) internal returns (bool) fnIn
-    )
-        internal
-        pure
-        returns (
-            function(
-            bytes32,
-            MultichainClaimWithWitness calldata,
-            uint256,
-            function(address, address, uint256, uint256) internal returns (bool)
-            ) internal returns (bool) fnOut
-        )
-    {
-        assembly {
-            fnOut := fnIn
-        }
-    }
-
-    function usingQualifiedMultichainClaimWithWitness(
-        function(
-        bytes32,
-        bytes32,
-        uint256,
-        uint256,
-        function(address, address, uint256, uint256) internal returns (bool)
-        ) internal returns (bool) fnIn
-    )
-        internal
-        pure
-        returns (
-            function(
-            bytes32,
-            bytes32,
-            QualifiedMultichainClaimWithWitness calldata,
-            uint256,
-            function(address, address, uint256, uint256) internal returns (bool)
-            ) internal returns (bool) fnOut
-        )
-    {
-        assembly {
-            fnOut := fnIn
-        }
-    }
-
-    function usingSplitMultichainClaim(
-        function(
-        bytes32,
-        uint256,
-        uint256,
-        function(address, address, uint256, uint256) internal returns (bool)
-        ) internal returns (bool) fnIn
-    )
-        internal
-        pure
-        returns (
-            function(
-            bytes32,
-            SplitMultichainClaim calldata,
-            uint256,
-            function(address, address, uint256, uint256) internal returns (bool)
-            ) internal returns (bool) fnOut
-        )
-    {
-        assembly {
-            fnOut := fnIn
-        }
-    }
-
-    function usingQualifiedSplitMultichainClaim(
-        function(
-        bytes32,
-        bytes32,
-        uint256,
-        uint256,
-        function(address, address, uint256, uint256) internal returns (bool)
-        ) internal returns (bool) fnIn
-    )
-        internal
-        pure
-        returns (
-            function(
-            bytes32,
-            bytes32,
-            QualifiedSplitMultichainClaim calldata,
-            uint256,
-            function(address, address, uint256, uint256) internal returns (bool)
-            ) internal returns (bool) fnOut
-        )
-    {
-        assembly {
-            fnOut := fnIn
-        }
-    }
-
-    function usingSplitMultichainClaimWithWitness(
-        function(
-        bytes32,
-        uint256,
-        uint256,
-        function(address, address, uint256, uint256) internal returns (bool)
-        ) internal returns (bool) fnIn
-    )
-        internal
-        pure
-        returns (
-            function(
-            bytes32,
-            SplitMultichainClaimWithWitness calldata,
-            uint256,
-            function(address, address, uint256, uint256) internal returns (bool)
-            ) internal returns (bool) fnOut
-        )
-    {
-        assembly {
-            fnOut := fnIn
-        }
-    }
-
-    function usingQualifiedSplitMultichainClaimWithWitness(
-        function(
-        bytes32,
-        bytes32,
-        uint256,
-        uint256,
-        function(address, address, uint256, uint256) internal returns (bool)
-        ) internal returns (bool) fnIn
-    )
-        internal
-        pure
-        returns (
-            function(
-            bytes32,
-            bytes32,
-            QualifiedSplitMultichainClaimWithWitness calldata,
-            uint256,
-            function(address, address, uint256, uint256) internal returns (bool)
-            ) internal returns (bool) fnOut
-        )
-    {
-        assembly {
-            fnOut := fnIn
-        }
-    }
-
-    function usingBatchMultichainClaim(
-        function(
-        bytes32,
-        uint256,
-        uint256,
-        function(address, address, uint256, uint256) internal returns (bool)
-        ) internal returns (bool) fnIn
-    )
-        internal
-        pure
-        returns (
-            function(
-            bytes32,
-            BatchMultichainClaim calldata,
-            uint256,
-            function(address, address, uint256, uint256) internal returns (bool)
-            ) internal returns (bool) fnOut
-        )
-    {
-        assembly {
-            fnOut := fnIn
-        }
-    }
-
-    function usingQualifiedBatchMultichainClaim(
-        function(
-        bytes32,
-        bytes32,
-        uint256,
-        uint256,
-        function(address, address, uint256, uint256) internal returns (bool)
-        ) internal returns (bool) fnIn
-    )
-        internal
-        pure
-        returns (
-            function(
-            bytes32,
-            bytes32,
-            QualifiedBatchMultichainClaim calldata,
-            uint256,
-            function(address, address, uint256, uint256) internal returns (bool)
-            ) internal returns (bool) fnOut
-        )
-    {
-        assembly {
-            fnOut := fnIn
-        }
-    }
-
-    function usingBatchMultichainClaimWithWitness(
-        function(
-        bytes32,
-        uint256,
-        uint256,
-        function(address, address, uint256, uint256) internal returns (bool)
-        ) internal returns (bool) fnIn
-    )
-        internal
-        pure
-        returns (
-            function(
-            bytes32,
-            BatchMultichainClaimWithWitness calldata,
-            uint256,
-            function(address, address, uint256, uint256) internal returns (bool)
-            ) internal returns (bool) fnOut
-        )
-    {
-        assembly {
-            fnOut := fnIn
-        }
-    }
-
-    function usingQualifiedBatchMultichainClaimWithWitness(
-        function(
-        bytes32,
-        bytes32,
-        uint256,
-        uint256,
-        function(address, address, uint256, uint256) internal returns (bool)
-        ) internal returns (bool) fnIn
-    )
-        internal
-        pure
-        returns (
-            function(
-            bytes32,
-            bytes32,
-            QualifiedBatchMultichainClaimWithWitness calldata,
-            uint256,
-            function(address, address, uint256, uint256) internal returns (bool)
-            ) internal returns (bool) fnOut
-        )
-    {
-        assembly {
-            fnOut := fnIn
-        }
-    }
-
-    function usingSplitBatchMultichainClaim(
-        function(
-        bytes32,
-        uint256,
-        uint256,
-        function(address, address, uint256, uint256) internal returns (bool)
-        ) internal returns (bool) fnIn
-    )
-        internal
-        pure
-        returns (
-            function(
-            bytes32,
-            SplitBatchMultichainClaim calldata,
-            uint256,
-            function(address, address, uint256, uint256) internal returns (bool)
-            ) internal returns (bool) fnOut
-        )
-    {
-        assembly {
-            fnOut := fnIn
-        }
-    }
-
-    function usingQualifiedSplitBatchMultichainClaim(
-        function(
-        bytes32,
-        bytes32,
-        uint256,
-        uint256,
-        function(address, address, uint256, uint256) internal returns (bool)
-        ) internal returns (bool) fnIn
-    )
-        internal
-        pure
-        returns (
-            function(
-            bytes32,
-            bytes32,
-            QualifiedSplitBatchMultichainClaim calldata,
-            uint256,
-            function(address, address, uint256, uint256) internal returns (bool)
-            ) internal returns (bool) fnOut
-        )
-    {
-        assembly {
-            fnOut := fnIn
-        }
-    }
-
-    function usingSplitBatchMultichainClaimWithWitness(
-        function(
-        bytes32,
-        uint256,
-        uint256,
-        function(address, address, uint256, uint256) internal returns (bool)
-        ) internal returns (bool) fnIn
-    )
-        internal
-        pure
-        returns (
-            function(
-            bytes32,
-            SplitBatchMultichainClaimWithWitness calldata,
-            uint256,
-            function(address, address, uint256, uint256) internal returns (bool)
-            ) internal returns (bool) fnOut
-        )
-    {
-        assembly {
-            fnOut := fnIn
-        }
-    }
-
-    function usingQualifiedSplitBatchMultichainClaimWithWitness(
-        function(
-        bytes32,
-        bytes32,
-        uint256,
-        uint256,
-        function(address, address, uint256, uint256) internal returns (bool)
-        ) internal returns (bool) fnIn
-    )
-        internal
-        pure
-        returns (
-            function(
-            bytes32,
-            bytes32,
-            QualifiedSplitBatchMultichainClaimWithWitness calldata,
-            uint256,
-            function(address, address, uint256, uint256) internal returns (bool)
-            ) internal returns (bool) fnOut
-        )
-    {
-        assembly {
-            fnOut := fnIn
-        }
-    }
-
-    function usingExogenousMultichainClaim(
-        function(
-        bytes32,
-        uint256,
-        uint256,
-        bytes32,
-        function(address, address, uint256, uint256) internal returns (bool)
-        ) internal returns (bool) fnIn
-    )
-        internal
-        pure
-        returns (
-            function(
-            bytes32,
-            ExogenousMultichainClaim calldata,
-            uint256,
-            bytes32,
-            function(address, address, uint256, uint256) internal returns (bool)
-            ) internal returns (bool) fnOut
-        )
-    {
-        assembly {
-            fnOut := fnIn
-        }
-    }
-
-    function usingExogenousQualifiedMultichainClaim(
-        function(
-        bytes32,
-        bytes32,
-        uint256,
-        uint256,
-        bytes32,
-        function(address, address, uint256, uint256) internal returns (bool)
-        ) internal returns (bool) fnIn
-    )
-        internal
-        pure
-        returns (
-            function(
-            bytes32,
-            bytes32,
-            ExogenousQualifiedMultichainClaim calldata,
-            uint256,
-            bytes32,
-            function(address, address, uint256, uint256) internal returns (bool)
-            ) internal returns (bool) fnOut
-        )
-    {
-        assembly {
-            fnOut := fnIn
-        }
-    }
-
-    function usingExogenousMultichainClaimWithWitness(
-        function(
-        bytes32,
-        uint256,
-        uint256,
-        bytes32,
-        function(address, address, uint256, uint256) internal returns (bool)
-        ) internal returns (bool) fnIn
-    )
-        internal
-        pure
-        returns (
-            function(
-            bytes32,
-            ExogenousMultichainClaimWithWitness calldata,
-            uint256,
-            bytes32,
-            function(address, address, uint256, uint256) internal returns (bool)
-            ) internal returns (bool) fnOut
-        )
-    {
-        assembly {
-            fnOut := fnIn
-        }
-    }
-
-    function usingExogenousQualifiedMultichainClaimWithWitness(
-        function(
-        bytes32,
-        bytes32,
-        uint256,
-        uint256,
-        bytes32,
-        function(address, address, uint256, uint256) internal returns (bool)
-        ) internal returns (bool) fnIn
-    )
-        internal
-        pure
-        returns (
-            function(
-            bytes32,
-            bytes32,
-            ExogenousQualifiedMultichainClaimWithWitness calldata,
-            uint256,
-            bytes32,
-            function(address, address, uint256, uint256) internal returns (bool)
-            ) internal returns (bool) fnOut
-        )
-    {
-        assembly {
-            fnOut := fnIn
-        }
-    }
-
-    function usingExogenousSplitMultichainClaim(
-        function(
-        bytes32,
-        uint256,
-        uint256,
-        bytes32,
-        function(address, address, uint256, uint256) internal returns (bool)
-        ) internal returns (bool) fnIn
-    )
-        internal
-        pure
-        returns (
-            function(
-            bytes32,
-            ExogenousSplitMultichainClaim calldata,
-            uint256,
-            bytes32,
-            function(address, address, uint256, uint256) internal returns (bool)
-            ) internal returns (bool) fnOut
-        )
-    {
-        assembly {
-            fnOut := fnIn
-        }
-    }
-
-    function usingExogenousQualifiedSplitMultichainClaim(
-        function(
-        bytes32,
-        bytes32,
-        uint256,
-        uint256,
-        bytes32,
-        function(address, address, uint256, uint256) internal returns (bool)
-        ) internal returns (bool) fnIn
-    )
-        internal
-        pure
-        returns (
-            function(
-            bytes32,
-            bytes32,
-            ExogenousQualifiedSplitMultichainClaim calldata,
-            uint256,
-            bytes32,
-            function(address, address, uint256, uint256) internal returns (bool)
-            ) internal returns (bool) fnOut
-        )
-    {
-        assembly {
-            fnOut := fnIn
-        }
-    }
-
-    function usingExogenousSplitMultichainClaimWithWitness(
-        function(
-        bytes32,
-        uint256,
-        uint256,
-        bytes32,
-        function(address, address, uint256, uint256) internal returns (bool)
-        ) internal returns (bool) fnIn
-    )
-        internal
-        pure
-        returns (
-            function(
-            bytes32,
-            ExogenousSplitMultichainClaimWithWitness calldata,
-            uint256,
-            bytes32,
-            function(address, address, uint256, uint256) internal returns (bool)
-            ) internal returns (bool) fnOut
-        )
-    {
-        assembly {
-            fnOut := fnIn
-        }
-    }
-
-    function usingExogenousQualifiedSplitMultichainClaimWithWitness(
-        function(
-        bytes32,
-        bytes32,
-        uint256,
-        uint256,
-        bytes32,
-        function(address, address, uint256, uint256) internal returns (bool)
-        ) internal returns (bool) fnIn
-    )
-        internal
-        pure
-        returns (
-            function(
-            bytes32,
-            bytes32,
-            ExogenousQualifiedSplitMultichainClaimWithWitness calldata,
-            uint256,
-            bytes32,
-            function(address, address, uint256, uint256) internal returns (bool)
-            ) internal returns (bool) fnOut
-        )
-    {
-        assembly {
-            fnOut := fnIn
-        }
-    }
-
-    function usingExogenousBatchMultichainClaim(
-        function(
-        bytes32,
-        uint256,
-        uint256,
-        bytes32,
-        function(address, address, uint256, uint256) internal returns (bool)
-        ) internal returns (bool) fnIn
-    )
-        internal
-        pure
-        returns (
-            function(
-            bytes32,
-            ExogenousBatchMultichainClaim calldata,
-            uint256,
-            bytes32,
-            function(address, address, uint256, uint256) internal returns (bool)
-            ) internal returns (bool) fnOut
-        )
-    {
-        assembly {
-            fnOut := fnIn
-        }
-    }
-
-    function usingExogenousQualifiedBatchMultichainClaim(
-        function(
-        bytes32,
-        bytes32,
-        uint256,
-        uint256,
-        bytes32,
-        function(address, address, uint256, uint256) internal returns (bool)
-        ) internal returns (bool) fnIn
-    )
-        internal
-        pure
-        returns (
-            function(
-            bytes32,
-            bytes32,
-            ExogenousQualifiedBatchMultichainClaim calldata,
-            uint256,
-            bytes32,
-            function(address, address, uint256, uint256) internal returns (bool)
-            ) internal returns (bool) fnOut
-        )
-    {
-        assembly {
-            fnOut := fnIn
-        }
-    }
-
-    function usingExogenousBatchMultichainClaimWithWitness(
-        function(
-        bytes32,
-        uint256,
-        uint256,
-        bytes32,
-        function(address, address, uint256, uint256) internal returns (bool)
-        ) internal returns (bool) fnIn
-    )
-        internal
-        pure
-        returns (
-            function(
-            bytes32,
-            ExogenousBatchMultichainClaimWithWitness calldata,
-            uint256,
-            bytes32,
-            function(address, address, uint256, uint256) internal returns (bool)
-            ) internal returns (bool) fnOut
-        )
-    {
-        assembly {
-            fnOut := fnIn
-        }
-    }
-
-    function usingExogenousQualifiedBatchMultichainClaimWithWitness(
-        function(
-        bytes32,
-        bytes32,
-        uint256,
-        uint256,
-        bytes32,
-        function(address, address, uint256, uint256) internal returns (bool)
-        ) internal returns (bool) fnIn
-    )
-        internal
-        pure
-        returns (
-            function(
-            bytes32,
-            bytes32,
-            ExogenousQualifiedBatchMultichainClaimWithWitness calldata,
-            uint256,
-            bytes32,
-            function(address, address, uint256, uint256) internal returns (bool)
-            ) internal returns (bool) fnOut
-        )
-    {
-        assembly {
-            fnOut := fnIn
-        }
-    }
-
-    function usingExogenousSplitBatchMultichainClaim(
-        function(
-        bytes32,
-        uint256,
-        uint256,
-        bytes32,
-        function(address, address, uint256, uint256) internal returns (bool)
-        ) internal returns (bool) fnIn
-    )
-        internal
-        pure
-        returns (
-            function(
-            bytes32,
-            ExogenousSplitBatchMultichainClaim calldata,
-            uint256,
-            bytes32,
-            function(address, address, uint256, uint256) internal returns (bool)
-            ) internal returns (bool) fnOut
-        )
-    {
-        assembly {
-            fnOut := fnIn
-        }
-    }
-
-    function usingExogenousQualifiedSplitBatchMultichainClaim(
-        function(
-        bytes32,
-        bytes32,
-        uint256,
-        uint256,
-        bytes32,
-        function(address, address, uint256, uint256) internal returns (bool)
-        ) internal returns (bool) fnIn
-    )
-        internal
-        pure
-        returns (
-            function(
-            bytes32,
-            bytes32,
-            ExogenousQualifiedSplitBatchMultichainClaim calldata,
-            uint256,
-            bytes32,
-            function(address, address, uint256, uint256) internal returns (bool)
-            ) internal returns (bool) fnOut
-        )
-    {
-        assembly {
-            fnOut := fnIn
-        }
-    }
-
-    function usingExogenousSplitBatchMultichainClaimWithWitness(
-        function(
-        bytes32,
-        uint256,
-        uint256,
-        bytes32,
-        function(address, address, uint256, uint256) internal returns (bool)
-        ) internal returns (bool) fnIn
-    )
-        internal
-        pure
-        returns (
-            function(
-            bytes32,
-            ExogenousSplitBatchMultichainClaimWithWitness calldata,
-            uint256,
-            bytes32,
-            function(address, address, uint256, uint256) internal returns (bool)
-            ) internal returns (bool) fnOut
-        )
-    {
-        assembly {
-            fnOut := fnIn
-        }
-    }
-
-    function usingExogenousQualifiedSplitBatchMultichainClaimWithWitness(
-        function(
-        bytes32,
-        bytes32,
-        uint256,
-        uint256,
-        bytes32,
-        function(address, address, uint256, uint256) internal returns (bool)
-        ) internal returns (bool) fnIn
-    )
-        internal
-        pure
-        returns (
-            function(
-            bytes32,
-            bytes32,
-            ExogenousQualifiedSplitBatchMultichainClaimWithWitness calldata,
-            uint256,
-            bytes32,
-            function(address, address, uint256, uint256) internal returns (bool)
-            ) internal returns (bool) fnOut
-        )
-    {
-        assembly {
-            fnOut := fnIn
-        }
-    }
-
     function _processBasicClaim(BasicClaim calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation) internal returns (bool) {
-        return usingBasicClaim(_processSimpleClaim)(claimPayload.toMessageHash(), claimPayload, 0xa0, operation);
+        return _processSimpleClaim.usingBasicClaim()(claimPayload.toMessageHash(), claimPayload, 0xa0, operation);
     }
 
     function _processQualifiedClaim(QualifiedClaim calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation) internal returns (bool) {
         (bytes32 messageHash, bytes32 qualificationMessageHash) = claimPayload.toMessageHash();
-        return usingQualifiedClaim(_processClaimWithQualification)(messageHash, qualificationMessageHash, claimPayload, 0xe0, operation);
+        return _processClaimWithQualification.usingQualifiedClaim()(messageHash, qualificationMessageHash, claimPayload, 0xe0, operation);
     }
 
     function _processClaimWithWitness(ClaimWithWitness calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation) internal returns (bool) {
-        return usingClaimWithWitness(_processSimpleClaim)(claimPayload.toMessageHash(), claimPayload, 0xe0, operation);
+        return _processSimpleClaim.usingClaimWithWitness()(claimPayload.toMessageHash(), claimPayload, 0xe0, operation);
     }
 
     function _processQualifiedClaimWithWitness(QualifiedClaimWithWitness calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation)
@@ -2407,23 +1180,23 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         returns (bool)
     {
         (bytes32 messageHash, bytes32 qualificationMessageHash) = claimPayload.toMessageHash();
-        return usingQualifiedClaimWithWitness(_processClaimWithQualification)(messageHash, qualificationMessageHash, claimPayload, 0x120, operation);
+        return _processClaimWithQualification.usingQualifiedClaimWithWitness()(messageHash, qualificationMessageHash, claimPayload, 0x120, operation);
     }
 
     function _processMultichainClaim(MultichainClaim calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation) internal returns (bool) {
-        return usingMultichainClaim(_processSimpleClaim)(claimPayload.toMessageHash(), claimPayload, 0xc0, operation);
+        return _processSimpleClaim.usingMultichainClaim()(claimPayload.toMessageHash(), claimPayload, 0xc0, operation);
     }
 
     function _processQualifiedMultichainClaim(QualifiedMultichainClaim calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation) internal returns (bool) {
         (bytes32 messageHash, bytes32 qualificationMessageHash) = claimPayload.toMessageHash();
-        return usingQualifiedMultichainClaim(_processClaimWithQualification)(messageHash, qualificationMessageHash, claimPayload, 0x100, operation);
+        return _processClaimWithQualification.usingQualifiedMultichainClaim()(messageHash, qualificationMessageHash, claimPayload, 0x100, operation);
     }
 
     function _processMultichainClaimWithWitness(MultichainClaimWithWitness calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation)
         internal
         returns (bool)
     {
-        return usingMultichainClaimWithWitness(_processSimpleClaim)(claimPayload.toMessageHash(), claimPayload, 0x100, operation);
+        return _processSimpleClaim.usingMultichainClaimWithWitness()(claimPayload.toMessageHash(), claimPayload, 0x100, operation);
     }
 
     function _processQualifiedMultichainClaimWithWitness(QualifiedMultichainClaimWithWitness calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation)
@@ -2431,7 +1204,7 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         returns (bool)
     {
         (bytes32 messageHash, bytes32 qualificationMessageHash) = claimPayload.toMessageHash();
-        return usingQualifiedMultichainClaimWithWitness(_processClaimWithQualification)(messageHash, qualificationMessageHash, claimPayload, 0x140, operation);
+        return _processClaimWithQualification.usingQualifiedMultichainClaimWithWitness()(messageHash, qualificationMessageHash, claimPayload, 0x140, operation);
     }
 
     function _processQualifiedSplitBatchMultichainClaimWithWitness(
@@ -2439,33 +1212,33 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         function(address, address, uint256, uint256) internal returns (bool) operation
     ) internal returns (bool) {
         (bytes32 messageHash, bytes32 qualificationMessageHash) = claimPayload.toMessageHash();
-        return usingQualifiedSplitBatchMultichainClaimWithWitness(_processSplitBatchClaimWithQualification)(messageHash, qualificationMessageHash, claimPayload, 0x140, operation);
+        return _processSplitBatchClaimWithQualification.usingQualifiedSplitBatchMultichainClaimWithWitness()(messageHash, qualificationMessageHash, claimPayload, 0x140, operation);
     }
 
     function _processSplitMultichainClaim(SplitMultichainClaim calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation) internal returns (bool) {
-        return usingSplitMultichainClaim(_processSimpleSplitClaim)(claimPayload.toMessageHash(), claimPayload, 0xc0, operation);
+        return _processSimpleSplitClaim.usingSplitMultichainClaim()(claimPayload.toMessageHash(), claimPayload, 0xc0, operation);
     }
 
     function _processBatchMultichainClaim(BatchMultichainClaim calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation) internal returns (bool) {
-        return usingBatchMultichainClaim(_processSimpleBatchClaim)(claimPayload.toMessageHash(), claimPayload, 0xc0, operation);
+        return _processSimpleBatchClaim.usingBatchMultichainClaim()(claimPayload.toMessageHash(), claimPayload, 0xc0, operation);
     }
 
     function _processExogenousMultichainClaim(ExogenousMultichainClaim calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation) internal returns (bool) {
-        return usingExogenousMultichainClaim(_processClaimWithSponsorDomain)(claimPayload.toMessageHash(), claimPayload, 0x100, claimPayload.notarizedChainId.toNotarizedDomainSeparator(), operation);
+        return _processClaimWithSponsorDomain.usingExogenousMultichainClaim()(claimPayload.toMessageHash(), claimPayload, 0x100, claimPayload.notarizedChainId.toNotarizedDomainSeparator(), operation);
     }
 
     function _processSplitBatchMultichainClaim(SplitBatchMultichainClaim calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation)
         internal
         returns (bool)
     {
-        return usingSplitBatchMultichainClaim(_processSimpleSplitBatchClaim)(claimPayload.toMessageHash(), claimPayload, 0xc0, operation);
+        return _processSimpleSplitBatchClaim.usingSplitBatchMultichainClaim()(claimPayload.toMessageHash(), claimPayload, 0xc0, operation);
     }
 
     function _processExogenousMultichainClaimWithWitness(ExogenousMultichainClaimWithWitness calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation)
         internal
         returns (bool)
     {
-        return usingExogenousMultichainClaimWithWitness(_processClaimWithSponsorDomain)(
+        return _processClaimWithSponsorDomain.usingExogenousMultichainClaimWithWitness()(
             claimPayload.toMessageHash(), claimPayload, 0x140, claimPayload.notarizedChainId.toNotarizedDomainSeparator(), operation
         );
     }
@@ -2475,7 +1248,7 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         returns (bool)
     {
         (bytes32 messageHash, bytes32 qualificationMessageHash) = claimPayload.toMessageHash();
-        return usingExogenousQualifiedMultichainClaim(_processClaimWithQualificationAndSponsorDomain)(
+        return _processClaimWithQualificationAndSponsorDomain.usingExogenousQualifiedMultichainClaim()(
             messageHash, qualificationMessageHash, claimPayload, 0x140, claimPayload.notarizedChainId.toNotarizedDomainSeparator(), operation
         );
     }
@@ -2485,7 +1258,7 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         function(address, address, uint256, uint256) internal returns (bool) operation
     ) internal returns (bool) {
         (bytes32 messageHash, bytes32 qualificationMessageHash) = claimPayload.toMessageHash();
-        return usingExogenousQualifiedMultichainClaimWithWitness(_processClaimWithQualificationAndSponsorDomain)(
+        return _processClaimWithQualificationAndSponsorDomain.usingExogenousQualifiedMultichainClaimWithWitness()(
             messageHash, qualificationMessageHash, claimPayload, 0x180, claimPayload.notarizedChainId.toNotarizedDomainSeparator(), operation
         );
     }
@@ -2494,7 +1267,7 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         internal
         returns (bool)
     {
-        return usingExogenousSplitMultichainClaim(_processSplitClaimWithSponsorDomain)(
+        return _processSplitClaimWithSponsorDomain.usingExogenousSplitMultichainClaim()(
             claimPayload.toMessageHash(), claimPayload, 0x100, claimPayload.notarizedChainId.toNotarizedDomainSeparator(), operation
         );
     }
@@ -2503,7 +1276,7 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         internal
         returns (bool)
     {
-        return usingExogenousBatchMultichainClaim(_processBatchClaimWithSponsorDomain)(
+        return _processBatchClaimWithSponsorDomain.usingExogenousBatchMultichainClaim()(
             claimPayload.toMessageHash(), claimPayload, 0x100, claimPayload.notarizedChainId.toNotarizedDomainSeparator(), operation
         );
     }
@@ -2512,7 +1285,7 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         internal
         returns (bool)
     {
-        return usingExogenousSplitBatchMultichainClaim(_processSplitBatchClaimWithSponsorDomain)(
+        return _processSplitBatchClaimWithSponsorDomain.usingExogenousSplitBatchMultichainClaim()(
             claimPayload.toMessageHash(), claimPayload, 0x100, claimPayload.notarizedChainId.toNotarizedDomainSeparator(), operation
         );
     }
@@ -2522,22 +1295,22 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         function(address, address, uint256, uint256) internal returns (bool) operation
     ) internal returns (bool) {
         (bytes32 messageHash, bytes32 qualificationMessageHash) = claimPayload.toMessageHash();
-        return usingExogenousQualifiedSplitBatchMultichainClaimWithWitness(_processSplitBatchClaimWithQualificationAndSponsorDomain)(
+        return _processSplitBatchClaimWithQualificationAndSponsorDomain.usingExogenousQualifiedSplitBatchMultichainClaimWithWitness()(
             messageHash, qualificationMessageHash, claimPayload, 0x180, claimPayload.notarizedChainId.toNotarizedDomainSeparator(), operation
         );
     }
 
     function _processSplitClaim(SplitClaim calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation) internal returns (bool) {
-        return usingSplitClaim(_processSimpleSplitClaim)(claimPayload.toMessageHash(), claimPayload, 0xa0, operation);
+        return _processSimpleSplitClaim.usingSplitClaim()(claimPayload.toMessageHash(), claimPayload, 0xa0, operation);
     }
 
     function _processQualifiedSplitClaim(QualifiedSplitClaim calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation) internal returns (bool) {
         (bytes32 messageHash, bytes32 qualificationMessageHash) = claimPayload.toMessageHash();
-        return usingQualifiedSplitClaim(_processSplitClaimWithQualification)(messageHash, qualificationMessageHash, claimPayload, 0xe0, operation);
+        return _processSplitClaimWithQualification.usingQualifiedSplitClaim()(messageHash, qualificationMessageHash, claimPayload, 0xe0, operation);
     }
 
     function _processSplitClaimWithWitness(SplitClaimWithWitness calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation) internal returns (bool) {
-        return usingSplitClaimWithWitness(_processSimpleSplitClaim)(claimPayload.toMessageHash(), claimPayload, 0xe0, operation);
+        return _processSimpleSplitClaim.usingSplitClaimWithWitness()(claimPayload.toMessageHash(), claimPayload, 0xe0, operation);
     }
 
     function _processQualifiedSplitClaimWithWitness(QualifiedSplitClaimWithWitness calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation)
@@ -2545,20 +1318,20 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         returns (bool)
     {
         (bytes32 messageHash, bytes32 qualificationMessageHash) = claimPayload.toMessageHash();
-        return usingQualifiedSplitClaimWithWitness(_processSplitClaimWithQualification)(messageHash, qualificationMessageHash, claimPayload, 0x120, operation);
+        return _processSplitClaimWithQualification.usingQualifiedSplitClaimWithWitness()(messageHash, qualificationMessageHash, claimPayload, 0x120, operation);
     }
 
     function _processBatchClaim(BatchClaim calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation) internal returns (bool) {
-        return usingBatchClaim(_processSimpleBatchClaim)(claimPayload.toMessageHash(), claimPayload, 0xa0, operation);
+        return _processSimpleBatchClaim.usingBatchClaim()(claimPayload.toMessageHash(), claimPayload, 0xa0, operation);
     }
 
     function _processSplitBatchClaim(SplitBatchClaim calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation) internal returns (bool) {
-        return usingSplitBatchClaim(_processSimpleSplitBatchClaim)(claimPayload.toMessageHash(), claimPayload, 0xa0, operation);
+        return _processSimpleSplitBatchClaim.usingSplitBatchClaim()(claimPayload.toMessageHash(), claimPayload, 0xa0, operation);
     }
 
     function _processQualifiedSplitBatchClaim(QualifiedSplitBatchClaim calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation) internal returns (bool) {
         (bytes32 messageHash, bytes32 qualificationMessageHash) = claimPayload.toMessageHash();
-        return usingQualifiedSplitBatchClaim(_processSplitBatchClaimWithQualification)(messageHash, qualificationMessageHash, claimPayload, 0xe0, operation);
+        return _processSplitBatchClaimWithQualification.usingQualifiedSplitBatchClaim()(messageHash, qualificationMessageHash, claimPayload, 0xe0, operation);
     }
 
     function _processQualifiedSplitBatchClaimWithWitness(QualifiedSplitBatchClaimWithWitness calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation)
@@ -2566,23 +1339,23 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         returns (bool)
     {
         (bytes32 messageHash, bytes32 qualificationMessageHash) = claimPayload.toMessageHash();
-        return usingQualifiedSplitBatchClaimWithWitness(_processSplitBatchClaimWithQualification)(messageHash, qualificationMessageHash, claimPayload, 0x120, operation);
+        return _processSplitBatchClaimWithQualification.usingQualifiedSplitBatchClaimWithWitness()(messageHash, qualificationMessageHash, claimPayload, 0x120, operation);
     }
 
     function _processSplitBatchClaimWithWitness(SplitBatchClaimWithWitness calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation)
         internal
         returns (bool)
     {
-        return usingSplitBatchClaimWithWitness(_processSimpleSplitBatchClaim)(claimPayload.toMessageHash(), claimPayload, 0xe0, operation);
+        return _processSimpleSplitBatchClaim.usingSplitBatchClaimWithWitness()(claimPayload.toMessageHash(), claimPayload, 0xe0, operation);
     }
 
     function _processQualifiedBatchClaim(QualifiedBatchClaim calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation) internal returns (bool) {
         (bytes32 messageHash, bytes32 qualificationMessageHash) = claimPayload.toMessageHash();
-        return usingQualifiedBatchClaim(_processBatchClaimWithQualification)(messageHash, qualificationMessageHash, claimPayload, 0xe0, operation);
+        return _processBatchClaimWithQualification.usingQualifiedBatchClaim()(messageHash, qualificationMessageHash, claimPayload, 0xe0, operation);
     }
 
     function _processBatchClaimWithWitness(BatchClaimWithWitness calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation) internal returns (bool) {
-        return usingBatchClaimWithWitness(_processSimpleBatchClaim)(claimPayload.toMessageHash(), claimPayload, 0xe0, operation);
+        return _processSimpleBatchClaim.usingBatchClaimWithWitness()(claimPayload.toMessageHash(), claimPayload, 0xe0, operation);
     }
 
     function _processQualifiedBatchClaimWithWitness(QualifiedBatchClaimWithWitness calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation)
@@ -2590,7 +1363,7 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         returns (bool)
     {
         (bytes32 messageHash, bytes32 qualificationMessageHash) = claimPayload.toMessageHash();
-        return usingQualifiedBatchClaimWithWitness(_processBatchClaimWithQualification)(messageHash, qualificationMessageHash, claimPayload, 0x120, operation);
+        return _processBatchClaimWithQualification.usingQualifiedBatchClaimWithWitness()(messageHash, qualificationMessageHash, claimPayload, 0x120, operation);
     }
 
     function _processBatchPermit2Deposits(
