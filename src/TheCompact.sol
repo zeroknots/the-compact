@@ -993,20 +993,11 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
             amount := calldataload(add(calldataPointerWithOffset, 0x60))
         }
 
-        address sponsor = _validate(id.toAllocatorId(), messageHash, qualificationMessageHash, calldataPointer, sponsorDomainSeparator);
-
-        assembly {
-            if iszero(or(iszero(sponsorDomainSeparator), iszero(shr(255, id)))) {
-                // revert InvalidScope(id)
-                mstore(0, 0xa06356f5)
-                mstore(0x20, id)
-                revert(0x1c, 0x24)
-            }
-        }
+        _ensureValidScope(sponsorDomainSeparator, id);
 
         amount.withinAllocated(allocatedAmount);
 
-        return operation(sponsor, claimant, id, amount);
+        return operation(_validate(id.toAllocatorId(), messageHash, qualificationMessageHash, calldataPointer, sponsorDomainSeparator), claimant, id, amount);
     }
 
     function _processSplitClaimWithQualificationAndSponsorDomain(
@@ -1033,6 +1024,12 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
 
         address sponsor = _validate(id.toAllocatorId(), messageHash, qualificationMessageHash, calldataPointer, sponsorDomainSeparator);
 
+        _ensureValidScope(sponsorDomainSeparator, id);
+
+        return _verifyAndProcessSplitComponents(sponsor, id, allocatedAmount, claimants, operation);
+    }
+
+    function _ensureValidScope(bytes32 sponsorDomainSeparator, uint256 id) internal pure {
         assembly {
             if iszero(or(iszero(sponsorDomainSeparator), iszero(shr(255, id)))) {
                 // revert InvalidScope(id)
@@ -1041,8 +1038,6 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
                 revert(0x1c, 0x24)
             }
         }
-
-        return _verifyAndProcessSplitComponents(sponsor, id, allocatedAmount, claimants, operation);
     }
 
     function _processBatchClaimWithQualificationAndSponsorDomain(
@@ -1102,14 +1097,7 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
                     component = claims[i];
                     component.amount.withinAllocated(component.allocatedAmount);
                     id = component.id;
-                    assembly {
-                        if iszero(or(iszero(sponsorDomainSeparator), iszero(shr(255, id)))) {
-                            // revert InvalidScope(id)
-                            mstore(0, 0xa06356f5)
-                            mstore(0x20, id)
-                            revert(0x1c, 0x24)
-                        }
-                    }
+                    _ensureValidScope(sponsorDomainSeparator, component.id);
                 }
 
                 assembly {
@@ -1157,15 +1145,7 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
 
             if (errorBuffer.asBool()) {
                 for (uint256 i = 0; i < totalClaims; ++i) {
-                    id = claims[i].id;
-                    assembly {
-                        if iszero(or(iszero(sponsorDomainSeparator), iszero(shr(255, id)))) {
-                            // revert InvalidScope(id)
-                            mstore(0, 0xa06356f5)
-                            mstore(0x20, id)
-                            revert(0x1c, 0x24)
-                        }
-                    }
+                    _ensureValidScope(sponsorDomainSeparator, claims[i].id);
                 }
 
                 assembly {
