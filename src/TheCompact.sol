@@ -975,8 +975,13 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
 
         address sponsor = _validate(id.toAllocatorId(), messageHash, qualificationMessageHash, calldataPointer, sponsorDomainSeparator);
 
-        if ((sponsorDomainSeparator != bytes32(0)).and(id.toScope() != Scope.Multichain)) {
-            revert InvalidScope(id);
+        assembly {
+            if iszero(or(iszero(sponsorDomainSeparator), iszero(shr(255, id)))) {
+                // revert InvalidScope(id)
+                mstore(0, 0xa06356f5)
+                mstore(0x20, id)
+                revert(0x1c, 0x24)
+            }
         }
 
         amount.withinAllocated(allocatedAmount);
@@ -1008,8 +1013,13 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
 
         address sponsor = _validate(id.toAllocatorId(), messageHash, qualificationMessageHash, calldataPointer, sponsorDomainSeparator);
 
-        if ((sponsorDomainSeparator != bytes32(0)).and(id.toScope() != Scope.Multichain)) {
-            revert InvalidScope(id);
+        assembly {
+            if iszero(or(iszero(sponsorDomainSeparator), iszero(shr(255, id)))) {
+                // revert InvalidScope(id)
+                mstore(0, 0xa06356f5)
+                mstore(0x20, id)
+                revert(0x1c, 0x24)
+            }
         }
 
         return _verifyAndProcessSplitComponents(sponsor, id, allocatedAmount, claimants, operation);
@@ -2532,8 +2542,13 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         function(address, address, uint256, uint256) internal returns (bool) operation
     ) internal returns (bool) {
         uint256 totalClaims = claims.length;
-        if (totalClaims == 0) {
-            revert InvalidBatchAllocation();
+
+        assembly {
+            if iszero(totalClaims) {
+                // revert InvalidBatchAllocation()
+                mstore(0, 0x3a03d3bb)
+                revert(0x1c, 0x04)
+            }
         }
 
         // TODO: many of the bounds checks on these array accesses can be skipped as an optimization
@@ -2556,8 +2571,11 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
                     component.amount.withinAllocated(component.allocatedAmount);
                 }
 
-                // TODO: extract more informative error by deriving the reason for the failure
-                revert InvalidBatchAllocation();
+                assembly {
+                    // revert InvalidBatchAllocation()
+                    mstore(0, 0x3a03d3bb)
+                    revert(0x1c, 0x04)
+                }
             }
         }
 
@@ -2620,8 +2638,12 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
             }
         }
 
-        if (errorBuffer.asBool()) {
-            revert InvalidBatchAllocation();
+        assembly {
+            if errorBuffer {
+                // revert InvalidBatchAllocation()
+                mstore(0, 0x3a03d3bb)
+                revert(0x1c, 0x04)
+            }
         }
 
         return true;
@@ -2670,8 +2692,13 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
                 errorBuffer |= (components[i].id.toAllocatorId() != allocatorId).asUint256();
             }
         }
-        if (errorBuffer.asBool()) {
-            revert InvalidBatchAllocation();
+
+        assembly {
+            if errorBuffer {
+                // revert InvalidBatchAllocation()
+                mstore(0, 0x3a03d3bb)
+                revert(0x1c, 0x04)
+            }
         }
     }
 
