@@ -10,7 +10,6 @@ import { IdLib } from "./lib/IdLib.sol";
 import { EfficiencyLib } from "./lib/EfficiencyLib.sol";
 import { FunctionCastLib } from "./lib/FunctionCastLib.sol";
 import { HashLib } from "./lib/HashLib.sol";
-import { MetadataLib } from "./lib/MetadataLib.sol";
 import { ValidityLib } from "./lib/ValidityLib.sol";
 import { Extsload } from "./lib/Extsload.sol";
 import { ERC6909 } from "solady/tokens/ERC6909.sol";
@@ -175,7 +174,6 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
     using IdLib for address;
     using IdLib for Lock;
     using IdLib for ResetPeriod;
-    using MetadataLib for address;
     using SafeTransferLib for address;
     using FixedPointMathLib for uint256;
     using EfficiencyLib for bool;
@@ -741,12 +739,12 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
 
     /// @dev Returns the symbol for token `id`.
     function name(uint256 id) public view virtual override returns (string memory) {
-        return string.concat("Compact ", id.toToken().readNameWithDefaultValue());
+        return _METADATA_RENDERER.name(id);
     }
 
     /// @dev Returns the symbol for token `id`.
     function symbol(uint256 id) public view virtual override returns (string memory) {
-        return string.concat(unicode"🤝-", id.toToken().readSymbolWithDefaultValue());
+        return _METADATA_RENDERER.symbol(id);
     }
 
     /// @dev Returns the Uniform Resource Identifier (URI) for token `id`.
