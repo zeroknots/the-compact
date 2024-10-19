@@ -44,7 +44,15 @@ import {
     MultichainClaimWithWitness,
     ExogenousMultichainClaimWithWitness,
     QualifiedMultichainClaimWithWitness,
-    ExogenousQualifiedMultichainClaimWithWitness
+    ExogenousQualifiedMultichainClaimWithWitness,
+    SplitMultichainClaim,
+    ExogenousSplitMultichainClaim,
+    QualifiedSplitMultichainClaim,
+    ExogenousQualifiedSplitMultichainClaim,
+    SplitMultichainClaimWithWitness,
+    ExogenousSplitMultichainClaimWithWitness,
+    QualifiedSplitMultichainClaimWithWitness,
+    ExogenousQualifiedSplitMultichainClaimWithWitness
 } from "../src/types/MultichainClaims.sol";
 
 import { SplitComponent, TransferComponent, SplitByIdComponent, BatchClaimComponent, SplitBatchClaimComponent } from "../src/types/Components.sol";
@@ -2507,6 +2515,124 @@ contract TheCompactTest is Test {
 
         assertEq(theCompact.balanceOf(swapper, anotherId), 0);
         assertEq(theCompact.balanceOf(claimant, anotherId), anotherAmount);
+
+        // change back
+        vm.chainId(notarizedChainId);
+        assertEq(block.chainid, notarizedChainId);
+    }
+
+    function test_splitMultichainClaim() public {
+        ResetPeriod resetPeriod = ResetPeriod.TenMinutes;
+        Scope scope = Scope.Multichain;
+        uint256 amount = 1e18;
+        uint256 anotherAmount = 1e18;
+        uint256 nonce = 0;
+        uint256 expires = block.timestamp + 1000;
+        address arbiter = 0x2222222222222222222222222222222222222222;
+        uint256 anotherChainId = 7171717;
+
+        address recipientOne = 0x1111111111111111111111111111111111111111;
+        address recipientTwo = 0x3333333333333333333333333333333333333333;
+        uint256 amountOne = 4e17;
+        uint256 amountTwo = 6e17;
+
+        vm.prank(allocator);
+        theCompact.__register(allocator, "");
+
+        vm.startPrank(swapper);
+        uint256 id = theCompact.deposit{ value: amount }(allocator, resetPeriod, scope, swapper);
+        uint256 anotherId = theCompact.deposit(address(token), allocator, ResetPeriod.TenMinutes, Scope.Multichain, anotherAmount, swapper);
+        vm.stopPrank();
+
+        assertEq(theCompact.balanceOf(swapper, id), amount);
+        assertEq(theCompact.balanceOf(swapper, anotherId), anotherAmount);
+
+        uint256[2][] memory idsAndAmountsOne = new uint256[2][](1);
+        idsAndAmountsOne[0] = [id, amount];
+
+        uint256[2][] memory idsAndAmountsTwo = new uint256[2][](1);
+        idsAndAmountsTwo[0] = [anotherId, anotherAmount];
+
+        bytes32 allocationHashOne =
+            keccak256(abi.encode(keccak256("Allocation(address arbiter,uint256 chainId,uint256[2][] idsAndAmounts)"), arbiter, block.chainid, keccak256(abi.encodePacked(idsAndAmountsOne))));
+
+        bytes32 allocationHashTwo =
+            keccak256(abi.encode(keccak256("Allocation(address arbiter,uint256 chainId,uint256[2][] idsAndAmounts)"), arbiter, anotherChainId, keccak256(abi.encodePacked(idsAndAmountsTwo))));
+
+        bytes32 claimHash = keccak256(
+            abi.encode(
+                keccak256("MultichainCompact(address sponsor,uint256 nonce,uint256 expires,Allocation[] allocations)Allocation(address arbiter,uint256 chainId,uint256[2][] idsAndAmounts)"),
+                swapper,
+                nonce,
+                expires,
+                keccak256(abi.encodePacked(allocationHashOne, allocationHashTwo))
+            )
+        );
+
+        bytes32 initialDomainSeparator = theCompact.DOMAIN_SEPARATOR();
+
+        bytes32 digest = keccak256(abi.encodePacked(bytes2(0x1901), initialDomainSeparator, claimHash));
+
+        (bytes32 r, bytes32 vs) = vm.signCompact(swapperPrivateKey, digest);
+        bytes memory sponsorSignature = abi.encodePacked(r, vs);
+
+        (r, vs) = vm.signCompact(allocatorPrivateKey, digest);
+        bytes memory allocatorSignature = abi.encodePacked(r, vs);
+
+        bytes32[] memory additionalChains = new bytes32[](1);
+        additionalChains[0] = allocationHashTwo;
+
+        SplitComponent memory splitOne = SplitComponent({ claimant: recipientOne, amount: amountOne });
+
+        SplitComponent memory splitTwo = SplitComponent({ claimant: recipientTwo, amount: amountTwo });
+
+        SplitComponent[] memory recipients = new SplitComponent[](2);
+        recipients[0] = splitOne;
+        recipients[1] = splitTwo;
+
+        SplitMultichainClaim memory claim = SplitMultichainClaim(allocatorSignature, sponsorSignature, swapper, nonce, expires, additionalChains, id, amount, recipients);
+
+        uint256 snapshotId = vm.snapshot();
+        vm.prank(arbiter);
+        (bool status) = theCompact.claim(claim);
+        assert(status);
+
+        assertEq(address(theCompact).balance, amount);
+        assertEq(recipientOne.balance, 0);
+        assertEq(recipientTwo.balance, 0);
+        assertEq(theCompact.balanceOf(recipientOne, id), amountOne);
+        assertEq(theCompact.balanceOf(recipientTwo, id), amountTwo);
+        vm.revertToAndDelete(snapshotId);
+
+        // change to "new chain" (this hack is so the original one gets stored)
+        uint256 notarizedChainId = abi.decode(abi.encode(block.chainid), (uint256));
+        assert(notarizedChainId != anotherChainId);
+        vm.chainId(anotherChainId);
+        assertEq(block.chainid, anotherChainId);
+        assert(notarizedChainId != anotherChainId);
+
+        bytes32 anotherDomainSeparator = theCompact.DOMAIN_SEPARATOR();
+
+        assert(initialDomainSeparator != anotherDomainSeparator);
+
+        digest = keccak256(abi.encodePacked(bytes2(0x1901), anotherDomainSeparator, claimHash));
+
+        (r, vs) = vm.signCompact(allocatorPrivateKey, digest);
+        bytes memory exogenousAllocatorSignature = abi.encodePacked(r, vs);
+
+        additionalChains[0] = allocationHashOne;
+        uint256 chainIndex = 0;
+
+        ExogenousSplitMultichainClaim memory anotherClaim =
+            ExogenousSplitMultichainClaim(exogenousAllocatorSignature, sponsorSignature, swapper, nonce, expires, additionalChains, chainIndex, notarizedChainId, anotherId, anotherAmount, recipients);
+
+        vm.prank(arbiter);
+        (bool exogenousStatus) = theCompact.claim(anotherClaim);
+        assert(exogenousStatus);
+
+        assertEq(theCompact.balanceOf(swapper, anotherId), 0);
+        assertEq(theCompact.balanceOf(recipientOne, anotherId), amountOne);
+        assertEq(theCompact.balanceOf(recipientTwo, anotherId), amountTwo);
 
         // change back
         vm.chainId(notarizedChainId);

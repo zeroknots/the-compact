@@ -481,6 +481,20 @@ library HashLib {
         }
     }
 
+    function usingSplitMultichainClaim(function (MultichainClaim calldata, uint256, bytes32, bytes32) internal view returns (bytes32) fnIn)
+        internal
+        pure
+        returns (function (SplitMultichainClaim calldata, uint256, bytes32, bytes32) internal view returns (bytes32) fnOut)
+    {
+        assembly ("memory-safe") {
+            fnOut := fnIn
+        }
+    }
+
+    function toMessageHash(SplitMultichainClaim calldata claim) internal view returns (bytes32 messageHash) {
+        messageHash = usingSplitMultichainClaim(toMultichainClaimMessageHash)(claim, 0, ALLOCATION_TYPEHASH, MULTICHAIN_COMPACT_TYPEHASH);
+    }
+
     function usingExogenousMultichainClaimWithWitness(function (ExogenousMultichainClaim calldata, uint256, bytes32, bytes32) internal view returns (bytes32) fnIn)
         internal
         pure
@@ -495,6 +509,16 @@ library HashLib {
         internal
         pure
         returns (function (ExogenousQualifiedMultichainClaimWithWitness calldata, uint256, bytes32, bytes32) internal view returns (bytes32) fnOut)
+    {
+        assembly ("memory-safe") {
+            fnOut := fnIn
+        }
+    }
+
+    function usingExogenousSplitMultichainClaim(function (ExogenousMultichainClaim calldata, uint256, bytes32, bytes32) internal view returns (bytes32) fnIn)
+        internal
+        pure
+        returns (function (ExogenousSplitMultichainClaim calldata, uint256, bytes32, bytes32) internal view returns (bytes32) fnOut)
     {
         assembly ("memory-safe") {
             fnOut := fnIn
@@ -678,6 +702,10 @@ library HashLib {
 
     function toMessageHash(ExogenousMultichainClaim calldata claim) internal view returns (bytes32 messageHash) {
         return toExogenousMultichainClaimMessageHash(claim, 0, ALLOCATION_TYPEHASH, MULTICHAIN_COMPACT_TYPEHASH);
+    }
+
+    function toMessageHash(ExogenousSplitMultichainClaim calldata claim) internal view returns (bytes32 messageHash) {
+        return usingExogenousSplitMultichainClaim(toExogenousMultichainClaimMessageHash)(claim, 0, ALLOCATION_TYPEHASH, MULTICHAIN_COMPACT_TYPEHASH);
     }
 
     function toMessageHash(ExogenousQualifiedMultichainClaim calldata claim) internal view returns (bytes32 messageHash, bytes32 qualificationMessageHash) {

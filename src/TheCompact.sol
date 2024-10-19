@@ -451,7 +451,7 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
     }
 
     function claimAndWithdraw(BatchClaim calldata claimPayload) external returns (bool) {
-        return _processBatchClaim(claimPayload, _release);
+        return _processBatchClaim(claimPayload, _withdraw);
     }
 
     function claim(QualifiedBatchClaim calldata claimPayload) external returns (bool) {
@@ -459,7 +459,7 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
     }
 
     function claimAndWithdraw(QualifiedBatchClaim calldata claimPayload) external returns (bool) {
-        return _processQualifiedBatchClaim(claimPayload, _release);
+        return _processQualifiedBatchClaim(claimPayload, _withdraw);
     }
 
     function claim(BatchClaimWithWitness calldata claimPayload) external returns (bool) {
@@ -467,7 +467,7 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
     }
 
     function claimAndWithdraw(BatchClaimWithWitness calldata claimPayload) external returns (bool) {
-        return _processBatchClaimWithWitness(claimPayload, _release);
+        return _processBatchClaimWithWitness(claimPayload, _withdraw);
     }
 
     function claim(QualifiedBatchClaimWithWitness calldata claimPayload) external returns (bool) {
@@ -475,7 +475,7 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
     }
 
     function claimAndWithdraw(QualifiedBatchClaimWithWitness calldata claimPayload) external returns (bool) {
-        return _processQualifiedBatchClaimWithWitness(claimPayload, _release);
+        return _processQualifiedBatchClaimWithWitness(claimPayload, _withdraw);
     }
 
     function claim(SplitBatchClaim calldata claimPayload) external returns (bool) {
@@ -483,7 +483,7 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
     }
 
     function claimAndWithdraw(SplitBatchClaim calldata claimPayload) external returns (bool) {
-        return _processSplitBatchClaim(claimPayload, _release);
+        return _processSplitBatchClaim(claimPayload, _withdraw);
     }
 
     function claim(QualifiedSplitBatchClaim calldata claimPayload) external returns (bool) {
@@ -491,7 +491,7 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
     }
 
     function claimAndWithdraw(QualifiedSplitBatchClaim calldata claimPayload) external returns (bool) {
-        return _processQualifiedSplitBatchClaim(claimPayload, _release);
+        return _processQualifiedSplitBatchClaim(claimPayload, _withdraw);
     }
 
     function claim(SplitBatchClaimWithWitness calldata claimPayload) external returns (bool) {
@@ -499,7 +499,7 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
     }
 
     function claimAndWithdraw(SplitBatchClaimWithWitness calldata claimPayload) external returns (bool) {
-        return _processSplitBatchClaimWithWitness(claimPayload, _release);
+        return _processSplitBatchClaimWithWitness(claimPayload, _withdraw);
     }
 
     function claim(QualifiedSplitBatchClaimWithWitness calldata claimPayload) external returns (bool) {
@@ -507,7 +507,7 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
     }
 
     function claimAndWithdraw(QualifiedSplitBatchClaimWithWitness calldata claimPayload) external returns (bool) {
-        return _processQualifiedSplitBatchClaimWithWitness(claimPayload, _release);
+        return _processQualifiedSplitBatchClaimWithWitness(claimPayload, _withdraw);
     }
 
     function claim(MultichainClaim calldata claimPayload) external returns (bool) {
@@ -515,7 +515,7 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
     }
 
     function claimAndWithdraw(MultichainClaim calldata claimPayload) external returns (bool) {
-        return _processMultichainClaim(claimPayload, _release);
+        return _processMultichainClaim(claimPayload, _withdraw);
     }
 
     function claim(ExogenousMultichainClaim calldata claimPayload) external returns (bool) {
@@ -523,7 +523,7 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
     }
 
     function claimAndWithdraw(ExogenousMultichainClaim calldata claimPayload) external returns (bool) {
-        return _processExogenousMultichainClaim(claimPayload, _release);
+        return _processExogenousMultichainClaim(claimPayload, _withdraw);
     }
 
     function claim(QualifiedMultichainClaim calldata claimPayload) external returns (bool) {
@@ -531,7 +531,7 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
     }
 
     function claimAndWithdraw(QualifiedMultichainClaim calldata claimPayload) external returns (bool) {
-        return _processQualifiedMultichainClaim(claimPayload, _release);
+        return _processQualifiedMultichainClaim(claimPayload, _withdraw);
     }
 
     function claim(ExogenousQualifiedMultichainClaim calldata claimPayload) external returns (bool) {
@@ -539,7 +539,7 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
     }
 
     function claimAndWithdraw(ExogenousQualifiedMultichainClaim calldata claimPayload) external returns (bool) {
-        return _processExogenousQualifiedMultichainClaim(claimPayload, _release);
+        return _processExogenousQualifiedMultichainClaim(claimPayload, _withdraw);
     }
 
     function claim(MultichainClaimWithWitness calldata claimPayload) external returns (bool) {
@@ -547,7 +547,7 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
     }
 
     function claimAndWithdraw(MultichainClaimWithWitness calldata claimPayload) external returns (bool) {
-        return _processMultichainClaimWithWitness(claimPayload, _release);
+        return _processMultichainClaimWithWitness(claimPayload, _withdraw);
     }
 
     function claim(ExogenousMultichainClaimWithWitness calldata claimPayload) external returns (bool) {
@@ -555,7 +555,7 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
     }
 
     function claimAndWithdraw(ExogenousMultichainClaimWithWitness calldata claimPayload) external returns (bool) {
-        return _processExogenousMultichainClaimWithWitness(claimPayload, _release);
+        return _processExogenousMultichainClaimWithWitness(claimPayload, _withdraw);
     }
 
     function claim(QualifiedMultichainClaimWithWitness calldata claimPayload) external returns (bool) {
@@ -563,7 +563,7 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
     }
 
     function claimAndWithdraw(QualifiedMultichainClaimWithWitness calldata claimPayload) external returns (bool) {
-        return _processQualifiedMultichainClaimWithWitness(claimPayload, _release);
+        return _processQualifiedMultichainClaimWithWitness(claimPayload, _withdraw);
     }
 
     function claim(ExogenousQualifiedMultichainClaimWithWitness calldata claimPayload) external returns (bool) {
@@ -571,7 +571,23 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
     }
 
     function claimAndWithdraw(ExogenousQualifiedMultichainClaimWithWitness calldata claimPayload) external returns (bool) {
-        return _processExogenousQualifiedMultichainClaimWithWitness(claimPayload, _release);
+        return _processExogenousQualifiedMultichainClaimWithWitness(claimPayload, _withdraw);
+    }
+
+    function claim(SplitMultichainClaim calldata claimPayload) external returns (bool) {
+        return _processSplitMultichainClaim(claimPayload, _release);
+    }
+
+    function claimAndWithdraw(SplitMultichainClaim calldata claimPayload) external returns (bool) {
+        return _processSplitMultichainClaim(claimPayload, _withdraw);
+    }
+
+    function claim(ExogenousSplitMultichainClaim calldata claimPayload) external returns (bool) {
+        return _processExogenousSplitMultichainClaim(claimPayload, _release);
+    }
+
+    function claimAndWithdraw(ExogenousSplitMultichainClaim calldata claimPayload) external returns (bool) {
+        return _processExogenousSplitMultichainClaim(claimPayload, _withdraw);
     }
 
     function enableForcedWithdrawal(uint256 id) external returns (uint256 withdrawableAt) {
@@ -2280,6 +2296,10 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         return usingQualifiedMultichainClaimWithWitness(_processClaimWithQualification)(messageHash, qualificationMessageHash, claimPayload, 0x140, operation);
     }
 
+    function _processSplitMultichainClaim(SplitMultichainClaim calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation) internal returns (bool) {
+        return usingSplitMultichainClaim(_processSimpleSplitClaim)(claimPayload.toMessageHash(), claimPayload, 0xc0, operation);
+    }
+
     function _processExogenousMultichainClaim(ExogenousMultichainClaim calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation) internal returns (bool) {
         return usingExogenousMultichainClaim(_processClaimWithSponsorDomain)(claimPayload.toMessageHash(), claimPayload, 0x100, claimPayload.notarizedChainId.toNotarizedDomainSeparator(), operation);
     }
@@ -2310,6 +2330,15 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         (bytes32 messageHash, bytes32 qualificationMessageHash) = claimPayload.toMessageHash();
         return usingExogenousQualifiedMultichainClaimWithWitness(_processClaimWithQualificationAndSponsorDomain)(
             messageHash, qualificationMessageHash, claimPayload, 0x180, claimPayload.notarizedChainId.toNotarizedDomainSeparator(), operation
+        );
+    }
+
+    function _processExogenousSplitMultichainClaim(ExogenousSplitMultichainClaim calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation)
+        internal
+        returns (bool)
+    {
+        return usingExogenousSplitMultichainClaim(_processSplitClaimWithSponsorDomain)(
+            claimPayload.toMessageHash(), claimPayload, 0x100, claimPayload.notarizedChainId.toNotarizedDomainSeparator(), operation
         );
     }
 
