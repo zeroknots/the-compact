@@ -543,6 +543,17 @@ library HashLib {
         messageHash = usingSplitBatchMultichainClaim(toMultichainClaimMessageHash)(claim, 0, ALLOCATION_TYPEHASH, MULTICHAIN_COMPACT_TYPEHASH, toSplitIdsAndAmountsHash(claim.claims));
     }
 
+    function toMessageHash(QualifiedSplitBatchMultichainClaim calldata claim) internal view returns (bytes32 messageHash, bytes32 qualificationMessageHash) {
+        messageHash = usingQualifiedSplitBatchMultichainClaim(toMultichainClaimMessageHash)(claim, 0x40, ALLOCATION_TYPEHASH, MULTICHAIN_COMPACT_TYPEHASH, toSplitIdsAndAmountsHash(claim.claims));
+        qualificationMessageHash = usingQualifiedSplitBatchMultichainClaim(toQualificationMessageHash)(claim, messageHash, 0);
+    }
+
+    function toMessageHash(SplitBatchMultichainClaimWithWitness calldata claim) internal view returns (bytes32 messageHash) {
+        (bytes32 allocationTypehash, bytes32 multichainCompactTypehash) = usingSplitBatchMultichainClaimWithWitness(getMultichainTypehashes)(claim);
+
+        messageHash = usingSplitBatchMultichainClaimWithWitness(toMultichainClaimMessageHash)(claim, 0x40, allocationTypehash, multichainCompactTypehash, toSplitIdsAndAmountsHash(claim.claims));
+    }
+
     function toMessageHash(QualifiedSplitBatchMultichainClaimWithWitness calldata claim) internal view returns (bytes32 messageHash, bytes32 qualificationMessageHash) {
         (bytes32 allocationTypehash, bytes32 multichainCompactTypehash) = usingQualifiedSplitBatchMultichainClaimWithWitness(getMultichainTypehashes)(claim);
 
@@ -691,10 +702,30 @@ library HashLib {
         }
     }
 
+    function usingQualifiedSplitBatchMultichainClaim(function (QualifiedClaim calldata, bytes32, uint256) internal pure returns (bytes32) fnIn)
+        internal
+        pure
+        returns (function (QualifiedSplitBatchMultichainClaim calldata, bytes32, uint256) internal pure returns (bytes32) fnOut)
+    {
+        assembly ("memory-safe") {
+            fnOut := fnIn
+        }
+    }
+
     function usingExogenousQualifiedSplitBatchMultichainClaimWithWitness(function (QualifiedClaim calldata, bytes32, uint256) internal pure returns (bytes32) fnIn)
         internal
         pure
         returns (function (ExogenousQualifiedSplitBatchMultichainClaimWithWitness calldata, bytes32, uint256) internal pure returns (bytes32) fnOut)
+    {
+        assembly ("memory-safe") {
+            fnOut := fnIn
+        }
+    }
+
+    function usingExogenousQualifiedSplitBatchMultichainClaim(function (QualifiedClaim calldata, bytes32, uint256) internal pure returns (bytes32) fnIn)
+        internal
+        pure
+        returns (function (ExogenousQualifiedSplitBatchMultichainClaim calldata, bytes32, uint256) internal pure returns (bytes32) fnOut)
     {
         assembly ("memory-safe") {
             fnOut := fnIn
@@ -771,10 +802,50 @@ library HashLib {
         }
     }
 
-    function usingExogenousQualifiedSplitBatchMultichainClaimWithWitness(function (MultichainClaim calldata, uint256, bytes32, bytes32, bytes32) internal view returns (bytes32) fnIn)
+    function usingQualifiedSplitBatchMultichainClaim(function (MultichainClaim calldata, uint256, bytes32, bytes32, bytes32) internal view returns (bytes32) fnIn)
+        internal
+        pure
+        returns (function (QualifiedSplitBatchMultichainClaim calldata, uint256, bytes32, bytes32, bytes32) internal view returns (bytes32) fnOut)
+    {
+        assembly ("memory-safe") {
+            fnOut := fnIn
+        }
+    }
+
+    function usingSplitBatchMultichainClaimWithWitness(function (MultichainClaim calldata, uint256, bytes32, bytes32, bytes32) internal view returns (bytes32) fnIn)
+        internal
+        pure
+        returns (function (SplitBatchMultichainClaimWithWitness calldata, uint256, bytes32, bytes32, bytes32) internal view returns (bytes32) fnOut)
+    {
+        assembly ("memory-safe") {
+            fnOut := fnIn
+        }
+    }
+
+    function usingExogenousQualifiedSplitBatchMultichainClaimWithWitness(function (ExogenousMultichainClaim calldata, uint256, bytes32, bytes32, bytes32) internal view returns (bytes32) fnIn)
         internal
         pure
         returns (function (ExogenousQualifiedSplitBatchMultichainClaimWithWitness calldata, uint256, bytes32, bytes32, bytes32) internal view returns (bytes32) fnOut)
+    {
+        assembly ("memory-safe") {
+            fnOut := fnIn
+        }
+    }
+
+    function usingExogenousQualifiedSplitBatchMultichainClaim(function (ExogenousMultichainClaim calldata, uint256, bytes32, bytes32, bytes32) internal view returns (bytes32) fnIn)
+        internal
+        pure
+        returns (function (ExogenousQualifiedSplitBatchMultichainClaim calldata, uint256, bytes32, bytes32, bytes32) internal view returns (bytes32) fnOut)
+    {
+        assembly ("memory-safe") {
+            fnOut := fnIn
+        }
+    }
+
+    function usingExogenousSplitBatchMultichainClaimWithWitness(function (ExogenousMultichainClaim calldata, uint256, bytes32, bytes32, bytes32) internal view returns (bytes32) fnIn)
+        internal
+        pure
+        returns (function (ExogenousSplitBatchMultichainClaimWithWitness calldata, uint256, bytes32, bytes32, bytes32) internal view returns (bytes32) fnOut)
     {
         assembly ("memory-safe") {
             fnOut := fnIn
@@ -1175,10 +1246,30 @@ library HashLib {
         }
     }
 
+    function usingSplitBatchMultichainClaimWithWitness(function (MultichainClaimWithWitness calldata) internal pure returns (bytes32, bytes32) fnIn)
+        internal
+        pure
+        returns (function (SplitBatchMultichainClaimWithWitness calldata) internal pure returns (bytes32, bytes32) fnOut)
+    {
+        assembly ("memory-safe") {
+            fnOut := fnIn
+        }
+    }
+
     function usingExogenousQualifiedSplitBatchMultichainClaimWithWitness(function (MultichainClaimWithWitness calldata) internal pure returns (bytes32, bytes32) fnIn)
         internal
         pure
         returns (function (ExogenousQualifiedSplitBatchMultichainClaimWithWitness calldata) internal pure returns (bytes32, bytes32) fnOut)
+    {
+        assembly ("memory-safe") {
+            fnOut := fnIn
+        }
+    }
+
+    function usingExogenousSplitBatchMultichainClaimWithWitness(function (MultichainClaimWithWitness calldata) internal pure returns (bytes32, bytes32) fnIn)
+        internal
+        pure
+        returns (function (ExogenousSplitBatchMultichainClaimWithWitness calldata) internal pure returns (bytes32, bytes32) fnOut)
     {
         assembly ("memory-safe") {
             fnOut := fnIn
@@ -1306,10 +1397,25 @@ library HashLib {
         qualificationMessageHash = usingExogenousQualifiedSplitMultichainClaimWithWitness(toQualificationMessageHash)(claim, messageHash, 0x40);
     }
 
+    function toMessageHash(ExogenousQualifiedSplitBatchMultichainClaim calldata claim) internal view returns (bytes32 messageHash, bytes32 qualificationMessageHash) {
+        messageHash = usingExogenousQualifiedSplitBatchMultichainClaim(toExogenousMultichainClaimMessageHash)(
+            claim, 0x40, ALLOCATION_TYPEHASH, MULTICHAIN_COMPACT_TYPEHASH, toSplitIdsAndAmountsHash(claim.claims)
+        );
+        qualificationMessageHash = usingExogenousQualifiedSplitBatchMultichainClaim(toQualificationMessageHash)(claim, messageHash, 0);
+    }
+
+    function toMessageHash(ExogenousSplitBatchMultichainClaimWithWitness calldata claim) internal view returns (bytes32 messageHash) {
+        (bytes32 allocationTypehash, bytes32 multichainCompactTypehash) = usingExogenousSplitBatchMultichainClaimWithWitness(getMultichainTypehashes)(claim);
+
+        messageHash = usingExogenousSplitBatchMultichainClaimWithWitness(toExogenousMultichainClaimMessageHash)(
+            claim, 0x40, allocationTypehash, multichainCompactTypehash, toSplitIdsAndAmountsHash(claim.claims)
+        );
+    }
+
     function toMessageHash(ExogenousQualifiedSplitBatchMultichainClaimWithWitness calldata claim) internal view returns (bytes32 messageHash, bytes32 qualificationMessageHash) {
         (bytes32 allocationTypehash, bytes32 multichainCompactTypehash) = usingExogenousQualifiedSplitBatchMultichainClaimWithWitness(getMultichainTypehashes)(claim);
 
-        messageHash = usingExogenousQualifiedSplitBatchMultichainClaimWithWitness(toMultichainClaimMessageHash)(
+        messageHash = usingExogenousQualifiedSplitBatchMultichainClaimWithWitness(toExogenousMultichainClaimMessageHash)(
             claim, 0x80, allocationTypehash, multichainCompactTypehash, toSplitIdsAndAmountsHash(claim.claims)
         );
         qualificationMessageHash = usingExogenousQualifiedSplitBatchMultichainClaimWithWitness(toQualificationMessageHash)(claim, messageHash, 0x40);

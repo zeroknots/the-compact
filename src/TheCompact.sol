@@ -691,6 +691,38 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         return _processExogenousSplitBatchMultichainClaim(claimPayload, _withdraw);
     }
 
+    function claim(QualifiedSplitBatchMultichainClaim calldata claimPayload) external returns (bool) {
+        return _processQualifiedSplitBatchMultichainClaim(claimPayload, _release);
+    }
+
+    function claimAndWithdraw(QualifiedSplitBatchMultichainClaim calldata claimPayload) external returns (bool) {
+        return _processQualifiedSplitBatchMultichainClaim(claimPayload, _withdraw);
+    }
+
+    function claim(ExogenousQualifiedSplitBatchMultichainClaim calldata claimPayload) external returns (bool) {
+        return _processExogenousQualifiedSplitBatchMultichainClaim(claimPayload, _release);
+    }
+
+    function claimAndWithdraw(ExogenousQualifiedSplitBatchMultichainClaim calldata claimPayload) external returns (bool) {
+        return _processExogenousQualifiedSplitBatchMultichainClaim(claimPayload, _withdraw);
+    }
+
+    function claim(SplitBatchMultichainClaimWithWitness calldata claimPayload) external returns (bool) {
+        return _processSplitBatchMultichainClaimWithWitness(claimPayload, _release);
+    }
+
+    function claimAndWithdraw(SplitBatchMultichainClaimWithWitness calldata claimPayload) external returns (bool) {
+        return _processSplitBatchMultichainClaimWithWitness(claimPayload, _withdraw);
+    }
+
+    function claim(ExogenousSplitBatchMultichainClaimWithWitness calldata claimPayload) external returns (bool) {
+        return _processExogenousSplitBatchMultichainClaimWithWitness(claimPayload, _release);
+    }
+
+    function claimAndWithdraw(ExogenousSplitBatchMultichainClaimWithWitness calldata claimPayload) external returns (bool) {
+        return _processExogenousSplitBatchMultichainClaimWithWitness(claimPayload, _withdraw);
+    }
+
     function claim(QualifiedSplitBatchMultichainClaimWithWitness calldata claimPayload) external returns (bool) {
         return _processQualifiedSplitBatchMultichainClaimWithWitness(claimPayload, _release);
     }
@@ -1255,6 +1287,21 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         return _processClaimWithQualification.usingQualifiedMultichainClaimWithWitness()(messageHash, qualificationMessageHash, claimPayload, 0x140, operation);
     }
 
+    function _processQualifiedSplitBatchMultichainClaim(QualifiedSplitBatchMultichainClaim calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation)
+        internal
+        returns (bool)
+    {
+        (bytes32 messageHash, bytes32 qualificationMessageHash) = claimPayload.toMessageHash();
+        return _processSplitBatchClaimWithQualification.usingQualifiedSplitBatchMultichainClaim()(messageHash, qualificationMessageHash, claimPayload, 0x100, operation);
+    }
+
+    function _processSplitBatchMultichainClaimWithWitness(SplitBatchMultichainClaimWithWitness calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation)
+        internal
+        returns (bool)
+    {
+        return _processSimpleSplitBatchClaim.usingSplitBatchMultichainClaimWithWitness()(claimPayload.toMessageHash(), claimPayload, 0x100, operation);
+    }
+
     function _processQualifiedSplitBatchMultichainClaimWithWitness(
         QualifiedSplitBatchMultichainClaimWithWitness calldata claimPayload,
         function(address, address, uint256, uint256) internal returns (bool) operation
@@ -1387,6 +1434,25 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
     {
         return _processSplitBatchClaimWithSponsorDomain.usingExogenousSplitBatchMultichainClaim()(
             claimPayload.toMessageHash(), claimPayload, 0x100, claimPayload.notarizedChainId.toNotarizedDomainSeparator(), operation
+        );
+    }
+
+    function _processExogenousQualifiedSplitBatchMultichainClaim(
+        ExogenousQualifiedSplitBatchMultichainClaim calldata claimPayload,
+        function(address, address, uint256, uint256) internal returns (bool) operation
+    ) internal returns (bool) {
+        (bytes32 messageHash, bytes32 qualificationMessageHash) = claimPayload.toMessageHash();
+        return _processSplitBatchClaimWithQualificationAndSponsorDomain.usingExogenousQualifiedSplitBatchMultichainClaim()(
+            messageHash, qualificationMessageHash, claimPayload, 0x140, claimPayload.notarizedChainId.toNotarizedDomainSeparator(), operation
+        );
+    }
+
+    function _processExogenousSplitBatchMultichainClaimWithWitness(
+        ExogenousSplitBatchMultichainClaimWithWitness calldata claimPayload,
+        function(address, address, uint256, uint256) internal returns (bool) operation
+    ) internal returns (bool) {
+        return _processSplitBatchClaimWithSponsorDomain.usingExogenousSplitBatchMultichainClaimWithWitness()(
+            claimPayload.toMessageHash(), claimPayload, 0x140, claimPayload.notarizedChainId.toNotarizedDomainSeparator(), operation
         );
     }
 
