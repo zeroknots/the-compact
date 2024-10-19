@@ -622,6 +622,22 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         return _processExogenousBatchMultichainClaim(claimPayload, _withdraw);
     }
 
+    function claim(SplitBatchMultichainClaim calldata claimPayload) external returns (bool) {
+        return _processSplitBatchMultichainClaim(claimPayload, _release);
+    }
+
+    function claimAndWithdraw(SplitBatchMultichainClaim calldata claimPayload) external returns (bool) {
+        return _processSplitBatchMultichainClaim(claimPayload, _withdraw);
+    }
+
+    function claim(ExogenousSplitBatchMultichainClaim calldata claimPayload) external returns (bool) {
+        return _processExogenousSplitBatchMultichainClaim(claimPayload, _release);
+    }
+
+    function claimAndWithdraw(ExogenousSplitBatchMultichainClaim calldata claimPayload) external returns (bool) {
+        return _processExogenousSplitBatchMultichainClaim(claimPayload, _withdraw);
+    }
+
     function enableForcedWithdrawal(uint256 id) external returns (uint256 withdrawableAt) {
         // overflow check not necessary as reset period is capped
         unchecked {
@@ -2340,6 +2356,13 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         return usingExogenousMultichainClaim(_processClaimWithSponsorDomain)(claimPayload.toMessageHash(), claimPayload, 0x100, claimPayload.notarizedChainId.toNotarizedDomainSeparator(), operation);
     }
 
+    function _processSplitBatchMultichainClaim(SplitBatchMultichainClaim calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation)
+        internal
+        returns (bool)
+    {
+        return usingSplitBatchMultichainClaim(_processSimpleSplitBatchClaim)(claimPayload.toMessageHash(), claimPayload, 0xc0, operation);
+    }
+
     function _processExogenousMultichainClaimWithWitness(ExogenousMultichainClaimWithWitness calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation)
         internal
         returns (bool)
@@ -2383,6 +2406,15 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         returns (bool)
     {
         return usingExogenousBatchMultichainClaim(_processBatchClaimWithSponsorDomain)(
+            claimPayload.toMessageHash(), claimPayload, 0x100, claimPayload.notarizedChainId.toNotarizedDomainSeparator(), operation
+        );
+    }
+
+    function _processExogenousSplitBatchMultichainClaim(ExogenousSplitBatchMultichainClaim calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation)
+        internal
+        returns (bool)
+    {
+        return usingExogenousSplitBatchMultichainClaim(_processSplitBatchClaimWithSponsorDomain)(
             claimPayload.toMessageHash(), claimPayload, 0x100, claimPayload.notarizedChainId.toNotarizedDomainSeparator(), operation
         );
     }
