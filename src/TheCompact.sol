@@ -207,6 +207,8 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
     /// @dev `keccak256(bytes("Withdrawal(address,address,uint256,uint256)"))`.
     uint256 private constant _WITHDRAWAL_EVENT_SIGNATURE = 0xc2b4a290c20fb28939d29f102514fbffd2b73c059ffba8b78250c94161d5fcc6;
 
+    uint32 private constant _ATTEST_SELECTOR = 0x1a808f91;
+
     // Rage-quit functionality (TODO: optimize storage layout)
     mapping(address => mapping(uint256 => uint256)) private _cutoffTime;
 
@@ -2846,16 +2848,32 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
     function _beforeTokenTransfer(address from, address to, uint256 id, uint256 amount) internal virtual override {
         address allocator = id.toAllocator();
 
-        if (IAllocator(allocator).attest(msg.sender, from, to, id, amount) != IAllocator.attest.selector) {
-            assembly ("memory-safe") {
+        assembly ("memory-safe") {
+            from := shr(0x60, shl(0x60, from))
+            to := shr(0x60, shl(0x60, to))
+
+            let m := mload(0x40) // Grab the free memory pointer; memory will be left dirtied.
+            mstore(0, 0) // make sure scratch space is cleared just to be safe.
+            let dataStart := add(m, 0x1c)
+
+            mstore(m, _ATTEST_SELECTOR)
+            mstore(add(m, 0x20), caller())
+            mstore(add(m, 0x40), from)
+            mstore(add(m, 0x60), to)
+            mstore(add(m, 0x80), id)
+            mstore(add(m, 0xa0), amount)
+            let success := staticcall(gas(), allocator, dataStart, 0xa4, 0, 0x20)
+            if iszero(eq(mload(0), shr(224, _ATTEST_SELECTOR))) {
+                // bubble up if the call failed and there's data
+                // NOTE: consider evaluating remaining gas to protect against revert bombing
+                if iszero(or(success, iszero(returndatasize()))) {
+                    returndatacopy(0, 0, returndatasize())
+                    revert(0, returndatasize())
+                }
+
                 // revert UnallocatedTransfer(msg.sender, from, to, id, amount)
-                mstore(0, 0x014c9310)
-                mstore(0x20, caller())
-                mstore(0x40, shr(0x60, shl(0x60, from)))
-                mstore(0x60, shr(0x60, shl(0x60, to)))
-                mstore(0x80, id)
-                mstore(0xa0, amount)
-                revert(0x1c, 0xa4)
+                mstore(m, 0x014c9310)
+                revert(dataStart, 0xa4)
             }
         }
     }
