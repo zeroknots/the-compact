@@ -820,6 +820,36 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         _emitClaim(sponsor, messageHash, allocator);
     }
 
+    function _processSplitClaimWithSponsorDomain(
+        bytes32 messageHash,
+        uint256 calldataPointer,
+        uint256 offsetToId,
+        bytes32 sponsorDomain,
+        function(address, address, uint256, uint256) internal returns (bool) operation
+    ) internal returns (bool) {
+        return _processSplitClaimWithQualificationAndSponsorDomain(messageHash, messageHash, calldataPointer, offsetToId, sponsorDomain, operation);
+    }
+
+    function _processBatchClaimWithSponsorDomain(
+        bytes32 messageHash,
+        uint256 calldataPointer,
+        uint256 offsetToId,
+        bytes32 sponsorDomain,
+        function(address, address, uint256, uint256) internal returns (bool) operation
+    ) internal returns (bool) {
+        return _processBatchClaimWithQualificationAndSponsorDomain(messageHash, messageHash, calldataPointer, offsetToId, sponsorDomain, operation);
+    }
+
+    function _processSplitBatchClaimWithSponsorDomain(
+        bytes32 messageHash,
+        uint256 calldataPointer,
+        uint256 offsetToId,
+        bytes32 sponsorDomain,
+        function(address, address, uint256, uint256) internal returns (bool) operation
+    ) internal returns (bool) {
+        return _processSplitBatchClaimWithQualificationAndSponsorDomain(messageHash, messageHash, calldataPointer, offsetToId, sponsorDomain, operation);
+    }
+
     function _processClaimWithQualificationAndSponsorDomain(
         bytes32 messageHash,
         bytes32 qualificationMessageHash,
@@ -959,6 +989,82 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         }
     }
 
+    function usingQualifiedClaim(
+        function(
+        bytes32,
+        bytes32,
+        uint256,
+        uint256,
+        function(address, address, uint256, uint256) internal returns (bool)
+        ) internal returns (bool) fnIn
+    )
+        internal
+        pure
+        returns (
+            function(
+            bytes32,
+            bytes32,
+            QualifiedClaim calldata,
+            uint256,
+            function(address, address, uint256, uint256) internal returns (bool)
+            ) internal returns (bool) fnOut
+        )
+    {
+        assembly {
+            fnOut := fnIn
+        }
+    }
+
+    function usingClaimWithWitness(
+        function(
+        bytes32,
+        uint256,
+        uint256,
+        function(address, address, uint256, uint256) internal returns (bool)
+        ) internal returns (bool) fnIn
+    )
+        internal
+        pure
+        returns (
+            function(
+            bytes32,
+            ClaimWithWitness calldata,
+            uint256,
+            function(address, address, uint256, uint256) internal returns (bool)
+            ) internal returns (bool) fnOut
+        )
+    {
+        assembly {
+            fnOut := fnIn
+        }
+    }
+
+    function usingQualifiedClaimWithWitness(
+        function(
+        bytes32,
+        bytes32,
+        uint256,
+        uint256,
+        function(address, address, uint256, uint256) internal returns (bool)
+        ) internal returns (bool) fnIn
+    )
+        internal
+        pure
+        returns (
+            function(
+            bytes32,
+            bytes32,
+            QualifiedClaimWithWitness calldata,
+            uint256,
+            function(address, address, uint256, uint256) internal returns (bool)
+            ) internal returns (bool) fnOut
+        )
+    {
+        assembly {
+            fnOut := fnIn
+        }
+    }
+
     function usingSplitClaim(
         function(
         bytes32,
@@ -973,6 +1079,82 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
             function(
             bytes32,
             SplitClaim calldata,
+            uint256,
+            function(address, address, uint256, uint256) internal returns (bool)
+            ) internal returns (bool) fnOut
+        )
+    {
+        assembly {
+            fnOut := fnIn
+        }
+    }
+
+    function usingQualifiedSplitClaim(
+        function(
+        bytes32,
+        bytes32,
+        uint256,
+        uint256,
+        function(address, address, uint256, uint256) internal returns (bool)
+        ) internal returns (bool) fnIn
+    )
+        internal
+        pure
+        returns (
+            function(
+            bytes32,
+            bytes32,
+            QualifiedSplitClaim calldata,
+            uint256,
+            function(address, address, uint256, uint256) internal returns (bool)
+            ) internal returns (bool) fnOut
+        )
+    {
+        assembly {
+            fnOut := fnIn
+        }
+    }
+
+    function usingSplitClaimWithWitness(
+        function(
+        bytes32,
+        uint256,
+        uint256,
+        function(address, address, uint256, uint256) internal returns (bool)
+        ) internal returns (bool) fnIn
+    )
+        internal
+        pure
+        returns (
+            function(
+            bytes32,
+            SplitClaimWithWitness calldata,
+            uint256,
+            function(address, address, uint256, uint256) internal returns (bool)
+            ) internal returns (bool) fnOut
+        )
+    {
+        assembly {
+            fnOut := fnIn
+        }
+    }
+
+    function usingQualifiedSplitClaimWithWitness(
+        function(
+        bytes32,
+        bytes32,
+        uint256,
+        uint256,
+        function(address, address, uint256, uint256) internal returns (bool)
+        ) internal returns (bool) fnIn
+    )
+        internal
+        pure
+        returns (
+            function(
+            bytes32,
+            bytes32,
+            QualifiedSplitClaimWithWitness calldata,
             uint256,
             function(address, address, uint256, uint256) internal returns (bool)
             ) internal returns (bool) fnOut
@@ -1007,8 +1189,9 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         }
     }
 
-    function usingSplitBatchClaim(
+    function usingQualifiedBatchClaim(
         function(
+        bytes32,
         bytes32,
         uint256,
         uint256,
@@ -1020,7 +1203,8 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         returns (
             function(
             bytes32,
-            SplitBatchClaim calldata,
+            bytes32,
+            QualifiedBatchClaim calldata,
             uint256,
             function(address, address, uint256, uint256) internal returns (bool)
             ) internal returns (bool) fnOut
@@ -1055,6 +1239,82 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         }
     }
 
+    function usingQualifiedBatchClaimWithWitness(
+        function(
+        bytes32,
+        bytes32,
+        uint256,
+        uint256,
+        function(address, address, uint256, uint256) internal returns (bool)
+        ) internal returns (bool) fnIn
+    )
+        internal
+        pure
+        returns (
+            function(
+            bytes32,
+            bytes32,
+            QualifiedBatchClaimWithWitness calldata,
+            uint256,
+            function(address, address, uint256, uint256) internal returns (bool)
+            ) internal returns (bool) fnOut
+        )
+    {
+        assembly {
+            fnOut := fnIn
+        }
+    }
+
+    function usingSplitBatchClaim(
+        function(
+        bytes32,
+        uint256,
+        uint256,
+        function(address, address, uint256, uint256) internal returns (bool)
+        ) internal returns (bool) fnIn
+    )
+        internal
+        pure
+        returns (
+            function(
+            bytes32,
+            SplitBatchClaim calldata,
+            uint256,
+            function(address, address, uint256, uint256) internal returns (bool)
+            ) internal returns (bool) fnOut
+        )
+    {
+        assembly {
+            fnOut := fnIn
+        }
+    }
+
+    function usingQualifiedSplitBatchClaim(
+        function(
+        bytes32,
+        bytes32,
+        uint256,
+        uint256,
+        function(address, address, uint256, uint256) internal returns (bool)
+        ) internal returns (bool) fnIn
+    )
+        internal
+        pure
+        returns (
+            function(
+            bytes32,
+            bytes32,
+            QualifiedSplitBatchClaim calldata,
+            uint256,
+            function(address, address, uint256, uint256) internal returns (bool)
+            ) internal returns (bool) fnOut
+        )
+    {
+        assembly {
+            fnOut := fnIn
+        }
+    }
+
     function usingSplitBatchClaimWithWitness(
         function(
         bytes32,
@@ -1079,8 +1339,9 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         }
     }
 
-    function usingSplitClaimWithWitness(
+    function usingQualifiedSplitBatchClaimWithWitness(
         function(
+        bytes32,
         bytes32,
         uint256,
         uint256,
@@ -1092,7 +1353,8 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         returns (
             function(
             bytes32,
-            SplitClaimWithWitness calldata,
+            bytes32,
+            QualifiedSplitBatchClaimWithWitness calldata,
             uint256,
             function(address, address, uint256, uint256) internal returns (bool)
             ) internal returns (bool) fnOut
@@ -1153,9 +1415,8 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         }
     }
 
-    function usingQualifiedClaim(
+    function usingMultichainClaimWithWitness(
         function(
-        bytes32,
         bytes32,
         uint256,
         uint256,
@@ -1167,190 +1428,7 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         returns (
             function(
             bytes32,
-            bytes32,
-            QualifiedClaim calldata,
-            uint256,
-            function(address, address, uint256, uint256) internal returns (bool)
-            ) internal returns (bool) fnOut
-        )
-    {
-        assembly {
-            fnOut := fnIn
-        }
-    }
-
-    function usingQualifiedSplitClaim(
-        function(
-        bytes32,
-        bytes32,
-        uint256,
-        uint256,
-        function(address, address, uint256, uint256) internal returns (bool)
-        ) internal returns (bool) fnIn
-    )
-        internal
-        pure
-        returns (
-            function(
-            bytes32,
-            bytes32,
-            QualifiedSplitClaim calldata,
-            uint256,
-            function(address, address, uint256, uint256) internal returns (bool)
-            ) internal returns (bool) fnOut
-        )
-    {
-        assembly {
-            fnOut := fnIn
-        }
-    }
-
-    function usingQualifiedBatchClaim(
-        function(
-        bytes32,
-        bytes32,
-        uint256,
-        uint256,
-        function(address, address, uint256, uint256) internal returns (bool)
-        ) internal returns (bool) fnIn
-    )
-        internal
-        pure
-        returns (
-            function(
-            bytes32,
-            bytes32,
-            QualifiedBatchClaim calldata,
-            uint256,
-            function(address, address, uint256, uint256) internal returns (bool)
-            ) internal returns (bool) fnOut
-        )
-    {
-        assembly {
-            fnOut := fnIn
-        }
-    }
-
-    function usingQualifiedSplitBatchClaim(
-        function(
-        bytes32,
-        bytes32,
-        uint256,
-        uint256,
-        function(address, address, uint256, uint256) internal returns (bool)
-        ) internal returns (bool) fnIn
-    )
-        internal
-        pure
-        returns (
-            function(
-            bytes32,
-            bytes32,
-            QualifiedSplitBatchClaim calldata,
-            uint256,
-            function(address, address, uint256, uint256) internal returns (bool)
-            ) internal returns (bool) fnOut
-        )
-    {
-        assembly {
-            fnOut := fnIn
-        }
-    }
-
-    function usingQualifiedSplitBatchClaimWithWitness(
-        function(
-        bytes32,
-        bytes32,
-        uint256,
-        uint256,
-        function(address, address, uint256, uint256) internal returns (bool)
-        ) internal returns (bool) fnIn
-    )
-        internal
-        pure
-        returns (
-            function(
-            bytes32,
-            bytes32,
-            QualifiedSplitBatchClaimWithWitness calldata,
-            uint256,
-            function(address, address, uint256, uint256) internal returns (bool)
-            ) internal returns (bool) fnOut
-        )
-    {
-        assembly {
-            fnOut := fnIn
-        }
-    }
-
-    function usingQualifiedSplitClaimWithWitness(
-        function(
-        bytes32,
-        bytes32,
-        uint256,
-        uint256,
-        function(address, address, uint256, uint256) internal returns (bool)
-        ) internal returns (bool) fnIn
-    )
-        internal
-        pure
-        returns (
-            function(
-            bytes32,
-            bytes32,
-            QualifiedSplitClaimWithWitness calldata,
-            uint256,
-            function(address, address, uint256, uint256) internal returns (bool)
-            ) internal returns (bool) fnOut
-        )
-    {
-        assembly {
-            fnOut := fnIn
-        }
-    }
-
-    function usingQualifiedClaimWithWitness(
-        function(
-        bytes32,
-        bytes32,
-        uint256,
-        uint256,
-        function(address, address, uint256, uint256) internal returns (bool)
-        ) internal returns (bool) fnIn
-    )
-        internal
-        pure
-        returns (
-            function(
-            bytes32,
-            bytes32,
-            QualifiedClaimWithWitness calldata,
-            uint256,
-            function(address, address, uint256, uint256) internal returns (bool)
-            ) internal returns (bool) fnOut
-        )
-    {
-        assembly {
-            fnOut := fnIn
-        }
-    }
-
-    function usingQualifiedBatchClaimWithWitness(
-        function(
-        bytes32,
-        bytes32,
-        uint256,
-        uint256,
-        function(address, address, uint256, uint256) internal returns (bool)
-        ) internal returns (bool) fnIn
-    )
-        internal
-        pure
-        returns (
-            function(
-            bytes32,
-            bytes32,
-            QualifiedBatchClaimWithWitness calldata,
+            MultichainClaimWithWitness calldata,
             uint256,
             function(address, address, uint256, uint256) internal returns (bool)
             ) internal returns (bool) fnOut
@@ -1377,54 +1455,6 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
             bytes32,
             bytes32,
             QualifiedMultichainClaimWithWitness calldata,
-            uint256,
-            function(address, address, uint256, uint256) internal returns (bool)
-            ) internal returns (bool) fnOut
-        )
-    {
-        assembly {
-            fnOut := fnIn
-        }
-    }
-
-    function usingMultichainClaimWithWitness(
-        function(
-        bytes32,
-        uint256,
-        uint256,
-        function(address, address, uint256, uint256) internal returns (bool)
-        ) internal returns (bool) fnIn
-    )
-        internal
-        pure
-        returns (
-            function(
-            bytes32,
-            MultichainClaimWithWitness calldata,
-            uint256,
-            function(address, address, uint256, uint256) internal returns (bool)
-            ) internal returns (bool) fnOut
-        )
-    {
-        assembly {
-            fnOut := fnIn
-        }
-    }
-
-    function usingClaimWithWitness(
-        function(
-        bytes32,
-        uint256,
-        uint256,
-        function(address, address, uint256, uint256) internal returns (bool)
-        ) internal returns (bool) fnIn
-    )
-        internal
-        pure
-        returns (
-            function(
-            bytes32,
-            ClaimWithWitness calldata,
             uint256,
             function(address, address, uint256, uint256) internal returns (bool)
             ) internal returns (bool) fnOut
@@ -1489,6 +1519,32 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         }
     }
 
+    function usingExogenousMultichainClaimWithWitness(
+        function(
+        bytes32,
+        uint256,
+        uint256,
+        bytes32,
+        function(address, address, uint256, uint256) internal returns (bool)
+        ) internal returns (bool) fnIn
+    )
+        internal
+        pure
+        returns (
+            function(
+            bytes32,
+            ExogenousMultichainClaimWithWitness calldata,
+            uint256,
+            bytes32,
+            function(address, address, uint256, uint256) internal returns (bool)
+            ) internal returns (bool) fnOut
+        )
+    {
+        assembly {
+            fnOut := fnIn
+        }
+    }
+
     function usingExogenousQualifiedMultichainClaimWithWitness(
         function(
         bytes32,
@@ -1506,32 +1562,6 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
             bytes32,
             bytes32,
             ExogenousQualifiedMultichainClaimWithWitness calldata,
-            uint256,
-            bytes32,
-            function(address, address, uint256, uint256) internal returns (bool)
-            ) internal returns (bool) fnOut
-        )
-    {
-        assembly {
-            fnOut := fnIn
-        }
-    }
-
-    function usingExogenousMultichainClaimWithWitness(
-        function(
-        bytes32,
-        uint256,
-        uint256,
-        bytes32,
-        function(address, address, uint256, uint256) internal returns (bool)
-        ) internal returns (bool) fnIn
-    )
-        internal
-        pure
-        returns (
-            function(
-            bytes32,
-            ExogenousMultichainClaimWithWitness calldata,
             uint256,
             bytes32,
             function(address, address, uint256, uint256) internal returns (bool)
