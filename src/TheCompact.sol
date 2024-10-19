@@ -2557,12 +2557,17 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
 
         operation(sponsor, claimant, component.id, component.amount);
 
+        uint256 id;
+        uint256 amount;
+
         unchecked {
             for (uint256 i = 1; i < totalClaims; ++i) {
                 component = claims[i];
-                errorBuffer |= (component.id.toAllocatorId() != allocatorId).or(component.allocatedAmount < component.amount).asUint256();
+                id = component.id;
+                amount = component.amount;
+                errorBuffer |= (id.toAllocatorId() != allocatorId).or(component.allocatedAmount < amount).asUint256();
 
-                operation(sponsor, claimant, component.id, component.amount);
+                operation(sponsor, claimant, id, amount);
             }
 
             if (errorBuffer.asBool()) {
@@ -2628,13 +2633,15 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
     ) internal returns (bool) {
         uint256 totalClaims = claims.length;
         uint256 errorBuffer = (totalClaims == 0).asUint256();
+        uint256 id;
 
         unchecked {
             for (uint256 i = 0; i < totalClaims; ++i) {
                 SplitBatchClaimComponent calldata claimComponent = claims[i];
-                errorBuffer |= (claimComponent.id.toAllocatorId() != allocatorId).asUint256();
+                id = claimComponent.id;
+                errorBuffer |= (id.toAllocatorId() != allocatorId).asUint256();
 
-                _verifyAndProcessSplitComponents(sponsor, claimComponent.id, claimComponent.allocatedAmount, claimComponent.portions, operation);
+                _verifyAndProcessSplitComponents(sponsor, id, claimComponent.allocatedAmount, claimComponent.portions, operation);
             }
         }
 
