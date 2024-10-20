@@ -100,6 +100,8 @@ import {
     ExogenousQualifiedSplitBatchMultichainClaimWithWitness
 } from "./types/BatchMultichainClaims.sol";
 
+import { PERMIT2_WITNESS_FRAGMENT_HASH } from "./types/EIP712Types.sol";
+
 import { SplitComponent, TransferComponent, SplitByIdComponent, BatchClaimComponent, SplitBatchClaimComponent } from "./types/Components.sol";
 
 import { IAllocator } from "./interfaces/IAllocator.sol";
@@ -211,6 +213,7 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
     uint256 private constant _WITHDRAWAL_EVENT_SIGNATURE = 0xc2b4a290c20fb28939d29f102514fbffd2b73c059ffba8b78250c94161d5fcc6;
 
     uint32 private constant _ATTEST_SELECTOR = 0x1a808f91;
+    uint32 private constant _PERMIT_WITNESS_TRANSFER_FROM_SELECTOR = 0x137c29fe;
 
     // Rage-quit functionality (TODO: optimize storage layout)
     mapping(address => mapping(uint256 => uint256)) private _cutoffTime;
@@ -302,34 +305,69 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         return true;
     }
 
+    // TODO: still need to implement one of the following:
+    //  1) check if permit2 has been deployed (can cache as an immutable)
+    //  2) deposit based on balance changes
     function deposit(
-        address depositor,
         address token,
+        uint256 amount,
+        uint256 nonce,
+        uint256 deadline,
+        address depositor,
         address allocator,
         ResetPeriod resetPeriod,
         Scope scope,
-        uint256 amount,
         address recipient,
-        uint256 nonce,
-        uint256 deadline,
         bytes calldata signature
     ) external returns (uint256 id) {
         id = token.excludingNative().toIdIfRegistered(scope, resetPeriod, allocator);
 
-        ISignatureTransfer.SignatureTransferDetails memory signatureTransferDetails = ISignatureTransfer.SignatureTransferDetails({ to: address(this), requestedAmount: amount });
+        address permit2 = address(_PERMIT2);
 
-        ISignatureTransfer.TokenPermissions memory tokenPermissions = ISignatureTransfer.TokenPermissions({ token: token, amount: amount });
+        assembly ("memory-safe") {
+            let m := mload(0x40) // Grab the free memory pointer; memory will be left dirtied.
 
-        ISignatureTransfer.PermitTransferFrom memory permitTransferFrom = ISignatureTransfer.PermitTransferFrom({ permitted: tokenPermissions, nonce: nonce, deadline: deadline });
+            // NOTE: none of these arguments are sanitized; the assumption is that they have to
+            // match the signed values anyway, so *should* be fine not to sanitize them but could
+            // optionally check that there are no dirty upper bits on any of them.
+            mstore(m, PERMIT2_WITNESS_FRAGMENT_HASH)
+            calldatacopy(add(m, 0x20), 0x84, 0xa0) // depositor, allocator, resetPeriod, scope, recipient
+            let witness := keccak256(m, 0xc0)
 
-        _PERMIT2.permitWitnessTransferFrom(
-            permitTransferFrom,
-            signatureTransferDetails,
-            depositor,
-            allocator.toPermit2WitnessHash(depositor, resetPeriod, scope, recipient),
-            "CompactDeposit witness)CompactDeposit(address depositor,address allocator,uint8 resetPeriod,uint8 scope,address recipient)TokenPermissions(address token,uint256 amount)",
-            signature
-        );
+            let signatureLength := signature.length
+            let dataStart := add(m, 0x1c)
+
+            mstore(m, _PERMIT_WITNESS_TRANSFER_FROM_SELECTOR)
+            calldatacopy(add(m, 0x20), 0x04, 0x80) // token, amount, nonce, deadline
+            mstore(add(m, 0xa0), address())
+            mstore(add(m, 0xc0), calldataload(0x24)) // amount
+            mstore(add(m, 0xe0), calldataload(0x84)) // depositor
+            mstore(add(m, 0x100), witness)
+            mstore(add(m, 0x120), 0x140)
+            mstore(add(m, 0x140), 0x220)
+            // "CompactDeposit witness)CompactDeposit(address depositor,address allocator,uint8 resetPeriod,uint8 scope,address recipient)TokenPermissions(address token,uint256 amount)"
+            mstore(add(m, 0x160), 0xa8)
+            mstore(add(m, 0x180), 0x436f6d706163744465706f736974207769746e65737329436f6d706163744465)
+            mstore(add(m, 0x1a0), 0x706f7369742861646472657373206465706f7369746f722c6164647265737320)
+            mstore(add(m, 0x1c0), 0x616c6c6f6361746f722c75696e7438207265736574506572696f642c75696e74)
+            mstore(add(m, 0x1e0), 0x382073636f70652c6164647265737320726563697069656e7429546f6b656e50)
+            mstore(add(m, 0x208), 0x20616d6f756e7429)
+            mstore(add(m, 0x200), 0x65726d697373696f6e73286164647265737320746f6b656e2c75696e74323536)
+            mstore(add(m, 0x240), signatureLength)
+            calldatacopy(add(m, 0x260), signature.offset, signatureLength)
+
+            if iszero(call(gas(), permit2, 0, add(m, 0x1c), add(0x244, signatureLength), 0, 0)) {
+                // bubble up if the call failed and there's data
+                // NOTE: consider evaluating remaining gas to protect against revert bombing
+                if returndatasize() {
+                    returndatacopy(0, 0, returndatasize())
+                    revert(0, returndatasize())
+                }
+
+                // TODO: add proper revert on no data
+                revert(0, 0)
+            }
+        }
 
         _deposit(depositor, recipient, id, amount);
     }

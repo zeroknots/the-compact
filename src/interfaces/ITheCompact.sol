@@ -41,15 +41,15 @@ interface ITheCompact {
     function deposit(address token, address allocator, ResetPeriod resetPeriod, Scope scope, uint256 amount, address recipient) external returns (uint256 id);
 
     function deposit(
-        address depositor,
         address token,
+        uint256 amount,
+        uint256 nonce,
+        uint256 deadline,
+        address depositor,
         address allocator,
         ResetPeriod resetPeriod,
         Scope scope,
-        uint256 amount,
         address recipient,
-        uint256 nonce,
-        uint256 deadline,
         bytes calldata signature
     ) external returns (uint256 id);
 

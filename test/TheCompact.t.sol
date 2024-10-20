@@ -325,7 +325,7 @@ contract TheCompactTest is Test {
         vm.prank(allocator);
         uint96 allocatorId = theCompact.__register(allocator, "");
 
-        uint256 id = theCompact.deposit(swapper, address(token), allocator, resetPeriod, scope, amount, recipient, nonce, deadline, signature);
+        uint256 id = theCompact.deposit(address(token), amount, nonce, deadline, swapper, allocator, resetPeriod, scope, recipient, signature);
 
         (address derivedToken, address derivedAllocator, ResetPeriod derivedResetPeriod, Scope derivedScope) = theCompact.getLockDetails(id);
         assertEq(derivedToken, address(token));
