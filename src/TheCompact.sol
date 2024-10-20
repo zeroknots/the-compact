@@ -675,6 +675,54 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         return _processExogenousBatchMultichainClaim(claimPayload, _withdraw);
     }
 
+    function claim(QualifiedBatchMultichainClaim calldata claimPayload) external returns (bool) {
+        return _processQualifiedBatchMultichainClaim(claimPayload, _release);
+    }
+
+    function claimAndWithdraw(QualifiedBatchMultichainClaim calldata claimPayload) external returns (bool) {
+        return _processQualifiedBatchMultichainClaim(claimPayload, _withdraw);
+    }
+
+    function claim(ExogenousQualifiedBatchMultichainClaim calldata claimPayload) external returns (bool) {
+        return _processExogenousQualifiedBatchMultichainClaim(claimPayload, _release);
+    }
+
+    function claimAndWithdraw(ExogenousQualifiedBatchMultichainClaim calldata claimPayload) external returns (bool) {
+        return _processExogenousQualifiedBatchMultichainClaim(claimPayload, _withdraw);
+    }
+
+    function claim(BatchMultichainClaimWithWitness calldata claimPayload) external returns (bool) {
+        return _processBatchMultichainClaimWithWitness(claimPayload, _release);
+    }
+
+    function claimAndWithdraw(BatchMultichainClaimWithWitness calldata claimPayload) external returns (bool) {
+        return _processBatchMultichainClaimWithWitness(claimPayload, _withdraw);
+    }
+
+    function claim(ExogenousBatchMultichainClaimWithWitness calldata claimPayload) external returns (bool) {
+        return _processExogenousBatchMultichainClaimWithWitness(claimPayload, _release);
+    }
+
+    function claimAndWithdraw(ExogenousBatchMultichainClaimWithWitness calldata claimPayload) external returns (bool) {
+        return _processExogenousBatchMultichainClaimWithWitness(claimPayload, _withdraw);
+    }
+
+    function claim(QualifiedBatchMultichainClaimWithWitness calldata claimPayload) external returns (bool) {
+        return _processQualifiedBatchMultichainClaimWithWitness(claimPayload, _release);
+    }
+
+    function claimAndWithdraw(QualifiedBatchMultichainClaimWithWitness calldata claimPayload) external returns (bool) {
+        return _processQualifiedBatchMultichainClaimWithWitness(claimPayload, _withdraw);
+    }
+
+    function claim(ExogenousQualifiedBatchMultichainClaimWithWitness calldata claimPayload) external returns (bool) {
+        return _processExogenousQualifiedBatchMultichainClaimWithWitness(claimPayload, _release);
+    }
+
+    function claimAndWithdraw(ExogenousQualifiedBatchMultichainClaimWithWitness calldata claimPayload) external returns (bool) {
+        return _processExogenousQualifiedBatchMultichainClaimWithWitness(claimPayload, _withdraw);
+    }
+
     function claim(SplitBatchMultichainClaim calldata claimPayload) external returns (bool) {
         return _processSplitBatchMultichainClaim(claimPayload, _release);
     }
@@ -1339,6 +1387,58 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
 
     function _processBatchMultichainClaim(BatchMultichainClaim calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation) internal returns (bool) {
         return _processSimpleBatchClaim.usingBatchMultichainClaim()(claimPayload.toMessageHash(), claimPayload, 0xc0, operation);
+    }
+
+    function _processQualifiedBatchMultichainClaim(QualifiedBatchMultichainClaim calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation)
+        internal
+        returns (bool)
+    {
+        (bytes32 messageHash, bytes32 qualificationMessageHash) = claimPayload.toMessageHash();
+        return _processBatchClaimWithQualification.usingQualifiedBatchMultichainClaim()(messageHash, qualificationMessageHash, claimPayload, 0xe0, operation);
+    }
+
+    function _processBatchMultichainClaimWithWitness(BatchMultichainClaimWithWitness calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation)
+        internal
+        returns (bool)
+    {
+        return _processSimpleBatchClaim.usingBatchMultichainClaimWithWitness()(claimPayload.toMessageHash(), claimPayload, 0xe0, operation);
+    }
+
+    function _processQualifiedBatchMultichainClaimWithWitness(
+        QualifiedBatchMultichainClaimWithWitness calldata claimPayload,
+        function(address, address, uint256, uint256) internal returns (bool) operation
+    ) internal returns (bool) {
+        (bytes32 messageHash, bytes32 qualificationMessageHash) = claimPayload.toMessageHash();
+        return _processBatchClaimWithQualification.usingQualifiedBatchMultichainClaimWithWitness()(messageHash, qualificationMessageHash, claimPayload, 0x120, operation);
+    }
+
+    function _processExogenousQualifiedBatchMultichainClaim(
+        ExogenousQualifiedBatchMultichainClaim calldata claimPayload,
+        function(address, address, uint256, uint256) internal returns (bool) operation
+    ) internal returns (bool) {
+        (bytes32 messageHash, bytes32 qualificationMessageHash) = claimPayload.toMessageHash();
+        return _processBatchClaimWithQualificationAndSponsorDomain.usingExogenousQualifiedBatchMultichainClaim()(
+            messageHash, qualificationMessageHash, claimPayload, 0x120, claimPayload.notarizedChainId.toNotarizedDomainSeparator(), operation
+        );
+    }
+
+    function _processExogenousBatchMultichainClaimWithWitness(
+        ExogenousBatchMultichainClaimWithWitness calldata claimPayload,
+        function(address, address, uint256, uint256) internal returns (bool) operation
+    ) internal returns (bool) {
+        return _processBatchClaimWithSponsorDomain.usingExogenousBatchMultichainClaimWithWitness()(
+            claimPayload.toMessageHash(), claimPayload, 0x120, claimPayload.notarizedChainId.toNotarizedDomainSeparator(), operation
+        );
+    }
+
+    function _processExogenousQualifiedBatchMultichainClaimWithWitness(
+        ExogenousQualifiedBatchMultichainClaimWithWitness calldata claimPayload,
+        function(address, address, uint256, uint256) internal returns (bool) operation
+    ) internal returns (bool) {
+        (bytes32 messageHash, bytes32 qualificationMessageHash) = claimPayload.toMessageHash();
+        return _processBatchClaimWithQualificationAndSponsorDomain.usingExogenousQualifiedBatchMultichainClaimWithWitness()(
+            messageHash, qualificationMessageHash, claimPayload, 0x160, claimPayload.notarizedChainId.toNotarizedDomainSeparator(), operation
+        );
     }
 
     function _processExogenousMultichainClaim(ExogenousMultichainClaim calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation) internal returns (bool) {
