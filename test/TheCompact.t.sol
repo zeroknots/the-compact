@@ -11,6 +11,8 @@ import { ISignatureTransfer } from "permit2/src/interfaces/ISignatureTransfer.so
 
 import { HashLib } from "../src/lib/HashLib.sol";
 
+import { AlwaysOKAllocator } from "../src/test/AlwaysOKAllocator.sol";
+
 import {
     BasicTransfer,
     SplitTransfer,
@@ -91,6 +93,7 @@ contract TheCompactTest is Test {
     address allocator;
     bytes32 compactEIP712DomainHash = keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)");
     bytes32 permit2EIP712DomainHash = keccak256("EIP712Domain(string name,uint256 chainId,address verifyingContract)");
+    address alwaysOKAllocator;
 
     function setUp() public {
         address permit2Deployer = address(0x4e59b44847b379578588920cA78FbF26c0B4956C);
@@ -129,6 +132,8 @@ contract TheCompactTest is Test {
         anotherToken.approve(address(theCompact), 1e18);
         anotherToken.approve(permit2, 1e18);
         vm.stopPrank();
+
+        alwaysOKAllocator = address(new AlwaysOKAllocator());
     }
 
     function test_name() public view {
@@ -4407,5 +4412,27 @@ contract TheCompactTest is Test {
         // change back
         vm.chainId(notarizedChainId);
         assertEq(block.chainid, notarizedChainId);
+    }
+
+    function test_standardTransfer() public {
+        address recipient = 0x1111111111111111111111111111111111111111;
+        uint256 amount = 1e18;
+
+        theCompact.__register(alwaysOKAllocator, "");
+
+        vm.prank(swapper);
+        uint256 id = theCompact.deposit{ value: amount }(alwaysOKAllocator);
+
+        assertEq(address(theCompact).balance, amount);
+        assertEq(theCompact.balanceOf(swapper, id), amount);
+        assertEq(theCompact.balanceOf(recipient, id), 0);
+
+        vm.prank(swapper);
+        bool status = theCompact.transfer(recipient, id, amount);
+        assert(status);
+
+        assertEq(address(theCompact).balance, amount);
+        assertEq(theCompact.balanceOf(swapper, id), 0);
+        assertEq(theCompact.balanceOf(recipient, id), amount);
     }
 }

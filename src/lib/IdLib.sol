@@ -189,9 +189,7 @@ library IdLib {
     }
 
     function canBeRegistered(address allocator, bytes calldata proof) internal view returns (bool) {
-        uint256 proofLength = proof.length;
-        return (msg.sender == allocator).or(proofLength == 86 && (proof[0] == 0xff).and(allocator == address(uint160(uint256(keccak256(proof))))))
-            || (proofLength > 31 && allocator.isValidSignatureNow(abi.decode(proof[0:32], (bytes32)), proof[32:]));
+        return (msg.sender == allocator).or(allocator.code.length > 0).or(proof.length == 86 && (proof[0] == 0xff).and(allocator == address(uint160(uint256(keccak256(proof))))));
     }
 
     function register(address allocator) internal returns (uint96 allocatorId) {
