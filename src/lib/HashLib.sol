@@ -310,7 +310,7 @@ library HashLib {
                     errorBuffer |= (amount < singleAmount).asUint256();
                 }
 
-                assembly {
+                assembly ("memory-safe") {
                     let extraOffset := add(add(idsAndAmounts, 0x20), mul(i, 0x40))
                     mstore(extraOffset, id)
                     mstore(add(extraOffset, 0x20), amount)
@@ -319,7 +319,7 @@ library HashLib {
         }
 
         bytes32 idsAndAmountsHash;
-        assembly {
+        assembly ("memory-safe") {
             if errorBuffer {
                 // Revert Panic(0x11) (arithmetic overflow)
                 mstore(0, 0x4e487b71)
@@ -339,7 +339,7 @@ library HashLib {
         unchecked {
             for (uint256 i = 0; i < totalIds; ++i) {
                 BatchClaimComponent calldata claimComponent = claims[i];
-                assembly {
+                assembly ("memory-safe") {
                     let extraOffset := add(add(idsAndAmounts, 0x20), mul(i, 0x40))
                     mstore(extraOffset, calldataload(claimComponent)) // id
                     mstore(add(extraOffset, 0x20), calldataload(add(claimComponent, 0x20))) // amount
@@ -347,7 +347,7 @@ library HashLib {
             }
         }
 
-        assembly {
+        assembly ("memory-safe") {
             idsAndAmountsHash := keccak256(add(idsAndAmounts, 0x20), mload(idsAndAmounts))
         }
     }
@@ -359,7 +359,7 @@ library HashLib {
         unchecked {
             for (uint256 i = 0; i < totalIds; ++i) {
                 SplitBatchClaimComponent calldata claimComponent = claims[i];
-                assembly {
+                assembly ("memory-safe") {
                     let extraOffset := add(add(idsAndAmounts, 0x20), mul(i, 0x40))
                     mstore(extraOffset, calldataload(claimComponent)) // id
                     mstore(add(extraOffset, 0x20), calldataload(add(claimComponent, 0x20))) // amount
@@ -367,7 +367,7 @@ library HashLib {
             }
         }
 
-        assembly {
+        assembly ("memory-safe") {
             idsAndAmountsHash := keccak256(add(idsAndAmounts, 0x20), mload(idsAndAmounts))
         }
     }

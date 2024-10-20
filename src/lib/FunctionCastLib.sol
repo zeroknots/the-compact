@@ -119,7 +119,7 @@ library FunctionCastLib {
             ) internal returns (bool) fnOut
         )
     {
-        assembly {
+        assembly ("memory-safe") {
             fnOut := fnIn
         }
     }
@@ -145,7 +145,7 @@ library FunctionCastLib {
             ) internal returns (bool) fnOut
         )
     {
-        assembly {
+        assembly ("memory-safe") {
             fnOut := fnIn
         }
     }
@@ -169,7 +169,7 @@ library FunctionCastLib {
             ) internal returns (bool) fnOut
         )
     {
-        assembly {
+        assembly ("memory-safe") {
             fnOut := fnIn
         }
     }
@@ -195,7 +195,7 @@ library FunctionCastLib {
             ) internal returns (bool) fnOut
         )
     {
-        assembly {
+        assembly ("memory-safe") {
             fnOut := fnIn
         }
     }
@@ -219,7 +219,7 @@ library FunctionCastLib {
             ) internal returns (bool) fnOut
         )
     {
-        assembly {
+        assembly ("memory-safe") {
             fnOut := fnIn
         }
     }
@@ -245,7 +245,7 @@ library FunctionCastLib {
             ) internal returns (bool) fnOut
         )
     {
-        assembly {
+        assembly ("memory-safe") {
             fnOut := fnIn
         }
     }
@@ -269,7 +269,7 @@ library FunctionCastLib {
             ) internal returns (bool) fnOut
         )
     {
-        assembly {
+        assembly ("memory-safe") {
             fnOut := fnIn
         }
     }
@@ -295,7 +295,7 @@ library FunctionCastLib {
             ) internal returns (bool) fnOut
         )
     {
-        assembly {
+        assembly ("memory-safe") {
             fnOut := fnIn
         }
     }
@@ -319,7 +319,7 @@ library FunctionCastLib {
             ) internal returns (bool) fnOut
         )
     {
-        assembly {
+        assembly ("memory-safe") {
             fnOut := fnIn
         }
     }
@@ -345,7 +345,7 @@ library FunctionCastLib {
             ) internal returns (bool) fnOut
         )
     {
-        assembly {
+        assembly ("memory-safe") {
             fnOut := fnIn
         }
     }
@@ -369,7 +369,7 @@ library FunctionCastLib {
             ) internal returns (bool) fnOut
         )
     {
-        assembly {
+        assembly ("memory-safe") {
             fnOut := fnIn
         }
     }
@@ -395,7 +395,7 @@ library FunctionCastLib {
             ) internal returns (bool) fnOut
         )
     {
-        assembly {
+        assembly ("memory-safe") {
             fnOut := fnIn
         }
     }
@@ -419,7 +419,7 @@ library FunctionCastLib {
             ) internal returns (bool) fnOut
         )
     {
-        assembly {
+        assembly ("memory-safe") {
             fnOut := fnIn
         }
     }
@@ -445,7 +445,7 @@ library FunctionCastLib {
             ) internal returns (bool) fnOut
         )
     {
-        assembly {
+        assembly ("memory-safe") {
             fnOut := fnIn
         }
     }
@@ -469,7 +469,7 @@ library FunctionCastLib {
             ) internal returns (bool) fnOut
         )
     {
-        assembly {
+        assembly ("memory-safe") {
             fnOut := fnIn
         }
     }
@@ -495,7 +495,7 @@ library FunctionCastLib {
             ) internal returns (bool) fnOut
         )
     {
-        assembly {
+        assembly ("memory-safe") {
             fnOut := fnIn
         }
     }
@@ -519,7 +519,7 @@ library FunctionCastLib {
             ) internal returns (bool) fnOut
         )
     {
-        assembly {
+        assembly ("memory-safe") {
             fnOut := fnIn
         }
     }
@@ -545,7 +545,7 @@ library FunctionCastLib {
             ) internal returns (bool) fnOut
         )
     {
-        assembly {
+        assembly ("memory-safe") {
             fnOut := fnIn
         }
     }
@@ -569,7 +569,7 @@ library FunctionCastLib {
             ) internal returns (bool) fnOut
         )
     {
-        assembly {
+        assembly ("memory-safe") {
             fnOut := fnIn
         }
     }
@@ -595,7 +595,7 @@ library FunctionCastLib {
             ) internal returns (bool) fnOut
         )
     {
-        assembly {
+        assembly ("memory-safe") {
             fnOut := fnIn
         }
     }
@@ -619,7 +619,7 @@ library FunctionCastLib {
             ) internal returns (bool) fnOut
         )
     {
-        assembly {
+        assembly ("memory-safe") {
             fnOut := fnIn
         }
     }
@@ -645,7 +645,7 @@ library FunctionCastLib {
             ) internal returns (bool) fnOut
         )
     {
-        assembly {
+        assembly ("memory-safe") {
             fnOut := fnIn
         }
     }
@@ -669,7 +669,7 @@ library FunctionCastLib {
             ) internal returns (bool) fnOut
         )
     {
-        assembly {
+        assembly ("memory-safe") {
             fnOut := fnIn
         }
     }
@@ -695,7 +695,7 @@ library FunctionCastLib {
             ) internal returns (bool) fnOut
         )
     {
-        assembly {
+        assembly ("memory-safe") {
             fnOut := fnIn
         }
     }
@@ -719,7 +719,7 @@ library FunctionCastLib {
             ) internal returns (bool) fnOut
         )
     {
-        assembly {
+        assembly ("memory-safe") {
             fnOut := fnIn
         }
     }
@@ -745,7 +745,7 @@ library FunctionCastLib {
             ) internal returns (bool) fnOut
         )
     {
-        assembly {
+        assembly ("memory-safe") {
             fnOut := fnIn
         }
     }
@@ -769,7 +769,7 @@ library FunctionCastLib {
             ) internal returns (bool) fnOut
         )
     {
-        assembly {
+        assembly ("memory-safe") {
             fnOut := fnIn
         }
     }
@@ -795,7 +795,7 @@ library FunctionCastLib {
             ) internal returns (bool) fnOut
         )
     {
-        assembly {
+        assembly ("memory-safe") {
             fnOut := fnIn
         }
     }
@@ -819,7 +819,7 @@ library FunctionCastLib {
             ) internal returns (bool) fnOut
         )
     {
-        assembly {
+        assembly ("memory-safe") {
             fnOut := fnIn
         }
     }
@@ -845,7 +845,7 @@ library FunctionCastLib {
             ) internal returns (bool) fnOut
         )
     {
-        assembly {
+        assembly ("memory-safe") {
             fnOut := fnIn
         }
     }
@@ -869,7 +869,7 @@ library FunctionCastLib {
             ) internal returns (bool) fnOut
         )
     {
-        assembly {
+        assembly ("memory-safe") {
             fnOut := fnIn
         }
     }
@@ -895,7 +895,7 @@ library FunctionCastLib {
             ) internal returns (bool) fnOut
         )
     {
-        assembly {
+        assembly ("memory-safe") {
             fnOut := fnIn
         }
     }
@@ -921,7 +921,7 @@ library FunctionCastLib {
             ) internal returns (bool) fnOut
         )
     {
-        assembly {
+        assembly ("memory-safe") {
             fnOut := fnIn
         }
     }
@@ -949,7 +949,7 @@ library FunctionCastLib {
             ) internal returns (bool) fnOut
         )
     {
-        assembly {
+        assembly ("memory-safe") {
             fnOut := fnIn
         }
     }
@@ -975,7 +975,7 @@ library FunctionCastLib {
             ) internal returns (bool) fnOut
         )
     {
-        assembly {
+        assembly ("memory-safe") {
             fnOut := fnIn
         }
     }
@@ -1003,7 +1003,7 @@ library FunctionCastLib {
             ) internal returns (bool) fnOut
         )
     {
-        assembly {
+        assembly ("memory-safe") {
             fnOut := fnIn
         }
     }
@@ -1029,7 +1029,7 @@ library FunctionCastLib {
             ) internal returns (bool) fnOut
         )
     {
-        assembly {
+        assembly ("memory-safe") {
             fnOut := fnIn
         }
     }
@@ -1057,7 +1057,7 @@ library FunctionCastLib {
             ) internal returns (bool) fnOut
         )
     {
-        assembly {
+        assembly ("memory-safe") {
             fnOut := fnIn
         }
     }
@@ -1083,7 +1083,7 @@ library FunctionCastLib {
             ) internal returns (bool) fnOut
         )
     {
-        assembly {
+        assembly ("memory-safe") {
             fnOut := fnIn
         }
     }
@@ -1111,7 +1111,7 @@ library FunctionCastLib {
             ) internal returns (bool) fnOut
         )
     {
-        assembly {
+        assembly ("memory-safe") {
             fnOut := fnIn
         }
     }
@@ -1137,7 +1137,7 @@ library FunctionCastLib {
             ) internal returns (bool) fnOut
         )
     {
-        assembly {
+        assembly ("memory-safe") {
             fnOut := fnIn
         }
     }
@@ -1165,7 +1165,7 @@ library FunctionCastLib {
             ) internal returns (bool) fnOut
         )
     {
-        assembly {
+        assembly ("memory-safe") {
             fnOut := fnIn
         }
     }
@@ -1191,7 +1191,7 @@ library FunctionCastLib {
             ) internal returns (bool) fnOut
         )
     {
-        assembly {
+        assembly ("memory-safe") {
             fnOut := fnIn
         }
     }
@@ -1219,7 +1219,7 @@ library FunctionCastLib {
             ) internal returns (bool) fnOut
         )
     {
-        assembly {
+        assembly ("memory-safe") {
             fnOut := fnIn
         }
     }
@@ -1245,7 +1245,7 @@ library FunctionCastLib {
             ) internal returns (bool) fnOut
         )
     {
-        assembly {
+        assembly ("memory-safe") {
             fnOut := fnIn
         }
     }
@@ -1273,7 +1273,7 @@ library FunctionCastLib {
             ) internal returns (bool) fnOut
         )
     {
-        assembly {
+        assembly ("memory-safe") {
             fnOut := fnIn
         }
     }
@@ -1299,7 +1299,7 @@ library FunctionCastLib {
             ) internal returns (bool) fnOut
         )
     {
-        assembly {
+        assembly ("memory-safe") {
             fnOut := fnIn
         }
     }
@@ -1327,7 +1327,7 @@ library FunctionCastLib {
             ) internal returns (bool) fnOut
         )
     {
-        assembly {
+        assembly ("memory-safe") {
             fnOut := fnIn
         }
     }

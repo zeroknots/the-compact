@@ -11,7 +11,7 @@ library ConsumerLib {
         // specific nonces are consumed for each account and can only be used once.
         // NOTE: this function temporarily overwrites the free memory pointer, but
         // restores it before returning.
-        assembly {
+        assembly ("memory-safe") {
             let freeMemoryPointer := mload(0x40)
 
             // slot: keccak256(_CONSUMER_NONCE_SCOPE ++ account ++ nonce[0:31])
@@ -35,7 +35,7 @@ library ConsumerLib {
     }
 
     function isConsumedBy(uint256 nonceToCheck, address account) internal view returns (bool consumed) {
-        assembly {
+        assembly ("memory-safe") {
             let freeMemoryPointer := mload(0x40)
 
             // slot: keccak256(_CONSUMER_NONCE_SCOPE ++ account ++ nonce[0:31])

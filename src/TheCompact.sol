@@ -1044,7 +1044,7 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         uint256 nonce;
         uint256 expires;
 
-        assembly {
+        assembly ("memory-safe") {
             let allocatorSignaturePtr := add(calldataPointer, calldataload(calldataPointer))
             allocatorSignature.offset := add(0x20, allocatorSignaturePtr)
             allocatorSignature.length := calldataload(allocatorSignaturePtr)
@@ -1063,7 +1063,7 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         address allocator = allocatorId.fromRegisteredAllocatorIdWithConsumed(nonce);
 
         bytes32 domainSeparator = _INITIAL_DOMAIN_SEPARATOR.toLatest(_INITIAL_CHAIN_ID);
-        assembly {
+        assembly ("memory-safe") {
             sponsorDomainSeparator := add(sponsorDomainSeparator, mul(iszero(sponsorDomainSeparator), domainSeparator))
         }
 
@@ -1116,7 +1116,7 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         address claimant;
         uint256 amount;
 
-        assembly {
+        assembly ("memory-safe") {
             let calldataPointerWithOffset := add(calldataPointer, offsetToId)
             id := calldataload(calldataPointerWithOffset)
             allocatedAmount := calldataload(add(calldataPointerWithOffset, 0x20))
@@ -1143,7 +1143,7 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         uint256 allocatedAmount;
         SplitComponent[] calldata claimants;
 
-        assembly {
+        assembly ("memory-safe") {
             let calldataPointerWithOffset := add(calldataPointer, offsetToId)
             id := calldataload(calldataPointerWithOffset)
             allocatedAmount := calldataload(add(calldataPointerWithOffset, 0x20))
@@ -1161,7 +1161,7 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
     }
 
     function _ensureValidScope(bytes32 sponsorDomainSeparator, uint256 id) internal pure {
-        assembly {
+        assembly ("memory-safe") {
             if iszero(or(iszero(sponsorDomainSeparator), iszero(shr(255, id)))) {
                 // revert InvalidScope(id)
                 mstore(0, 0xa06356f5)
@@ -1181,7 +1181,7 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
     ) internal returns (bool) {
         BatchClaimComponent[] calldata claims;
         address claimant;
-        assembly {
+        assembly ("memory-safe") {
             let calldataPointerWithOffset := add(calldataPointer, offsetToId)
             let claimsPtr := add(calldataPointer, calldataload(calldataPointerWithOffset))
             claims.offset := add(0x20, claimsPtr)
@@ -1196,7 +1196,7 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
 
         uint256 totalClaims = claims.length;
 
-        assembly {
+        assembly ("memory-safe") {
             if iszero(totalClaims) {
                 // revert InvalidBatchAllocation()
                 mstore(0, 0x3a03d3bb)
@@ -1231,7 +1231,7 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
                     _ensureValidScope(sponsorDomainSeparator, component.id);
                 }
 
-                assembly {
+                assembly ("memory-safe") {
                     // revert InvalidBatchAllocation()
                     mstore(0, 0x3a03d3bb)
                     revert(0x1c, 0x04)
@@ -1251,7 +1251,7 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         function(address, address, uint256, uint256) internal returns (bool) operation
     ) internal returns (bool) {
         SplitBatchClaimComponent[] calldata claims;
-        assembly {
+        assembly ("memory-safe") {
             let claimsPtr := add(calldataPointer, calldataload(add(calldataPointer, offsetToId)))
             claims.offset := add(0x20, claimsPtr)
             claims.length := calldataload(claimsPtr)
@@ -1279,7 +1279,7 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
                     _ensureValidScope(sponsorDomainSeparator, claims[i].id);
                 }
 
-                assembly {
+                assembly ("memory-safe") {
                     // revert InvalidBatchAllocation()
                     mstore(0, 0x3a03d3bb)
                     revert(0x1c, 0x04)
@@ -1394,14 +1394,14 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         returns (bool)
     {
         (bytes32 messageHash, bytes32 qualificationMessageHash) = claimPayload.toMessageHash();
-        return _processBatchClaimWithQualification.usingQualifiedBatchMultichainClaim()(messageHash, qualificationMessageHash, claimPayload, 0xe0, operation);
+        return _processBatchClaimWithQualification.usingQualifiedBatchMultichainClaim()(messageHash, qualificationMessageHash, claimPayload, 0x100, operation);
     }
 
     function _processBatchMultichainClaimWithWitness(BatchMultichainClaimWithWitness calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation)
         internal
         returns (bool)
     {
-        return _processSimpleBatchClaim.usingBatchMultichainClaimWithWitness()(claimPayload.toMessageHash(), claimPayload, 0xe0, operation);
+        return _processSimpleBatchClaim.usingBatchMultichainClaimWithWitness()(claimPayload.toMessageHash(), claimPayload, 0x100, operation);
     }
 
     function _processQualifiedBatchMultichainClaimWithWitness(
@@ -1409,7 +1409,7 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         function(address, address, uint256, uint256) internal returns (bool) operation
     ) internal returns (bool) {
         (bytes32 messageHash, bytes32 qualificationMessageHash) = claimPayload.toMessageHash();
-        return _processBatchClaimWithQualification.usingQualifiedBatchMultichainClaimWithWitness()(messageHash, qualificationMessageHash, claimPayload, 0x120, operation);
+        return _processBatchClaimWithQualification.usingQualifiedBatchMultichainClaimWithWitness()(messageHash, qualificationMessageHash, claimPayload, 0x140, operation);
     }
 
     function _processExogenousQualifiedBatchMultichainClaim(
@@ -1418,7 +1418,7 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
     ) internal returns (bool) {
         (bytes32 messageHash, bytes32 qualificationMessageHash) = claimPayload.toMessageHash();
         return _processBatchClaimWithQualificationAndSponsorDomain.usingExogenousQualifiedBatchMultichainClaim()(
-            messageHash, qualificationMessageHash, claimPayload, 0x120, claimPayload.notarizedChainId.toNotarizedDomainSeparator(), operation
+            messageHash, qualificationMessageHash, claimPayload, 0x140, claimPayload.notarizedChainId.toNotarizedDomainSeparator(), operation
         );
     }
 
@@ -1427,7 +1427,7 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         function(address, address, uint256, uint256) internal returns (bool) operation
     ) internal returns (bool) {
         return _processBatchClaimWithSponsorDomain.usingExogenousBatchMultichainClaimWithWitness()(
-            claimPayload.toMessageHash(), claimPayload, 0x120, claimPayload.notarizedChainId.toNotarizedDomainSeparator(), operation
+            claimPayload.toMessageHash(), claimPayload, 0x140, claimPayload.notarizedChainId.toNotarizedDomainSeparator(), operation
         );
     }
 
@@ -1437,7 +1437,7 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
     ) internal returns (bool) {
         (bytes32 messageHash, bytes32 qualificationMessageHash) = claimPayload.toMessageHash();
         return _processBatchClaimWithQualificationAndSponsorDomain.usingExogenousQualifiedBatchMultichainClaimWithWitness()(
-            messageHash, qualificationMessageHash, claimPayload, 0x160, claimPayload.notarizedChainId.toNotarizedDomainSeparator(), operation
+            messageHash, qualificationMessageHash, claimPayload, 0x180, claimPayload.notarizedChainId.toNotarizedDomainSeparator(), operation
         );
     }
 
@@ -1761,7 +1761,7 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
             }
         }
 
-        assembly {
+        assembly ("memory-safe") {
             if errorBuffer {
                 // revert InvalidBatchAllocation()
                 mstore(0, 0x3a03d3bb)

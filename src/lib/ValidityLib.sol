@@ -53,7 +53,7 @@ library ValidityLib {
     }
 
     function excludingNative(address token) internal pure returns (address) {
-        assembly {
+        assembly ("memory-safe") {
             if iszero(shl(96, token)) {
                 // revert InvalidToken(0);
                 mstore(0x40, 0x961c9a4f)
