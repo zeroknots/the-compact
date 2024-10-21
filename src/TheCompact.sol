@@ -16,6 +16,7 @@ import { ERC6909 } from "solady/tokens/ERC6909.sol";
 import { FixedPointMathLib } from "solady/utils/FixedPointMathLib.sol";
 import { SafeTransferLib } from "solady/utils/SafeTransferLib.sol";
 import { IPermit2 } from "permit2/src/interfaces/IPermit2.sol";
+import { Tstorish } from "tstorish/Tstorish.sol";
 import { ISignatureTransfer } from "permit2/src/interfaces/ISignatureTransfer.sol";
 import {
     BasicTransfer,
@@ -115,7 +116,7 @@ import { MetadataRenderer } from "./lib/MetadataRenderer.sol";
  *         formation (and, if necessary, involuntary dissolution) of "resource locks."
  *         This contract has not yet been properly tested, audited, or reviewed.
  */
-contract TheCompact is ITheCompact, ERC6909, Extsload {
+contract TheCompact is ITheCompact, ERC6909, Extsload, Tstorish {
     using HashLib for address;
     using HashLib for bytes32;
     using HashLib for uint256;
@@ -200,6 +201,8 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
 
     uint256 private constant _ERC6909_MASTER_SLOT_SEED = 0xedcaa89a82293940;
 
+    uint256 private constant _REENTRANCY_GUARD_SLOT = 0x929eee149b4bd21268;
+
     /// @dev `keccak256(bytes("Transfer(address,address,address,uint256,uint256)"))`.
     uint256 private constant _TRANSFER_EVENT_SIGNATURE = 0x1b3d7edb2e9c0b0e7c525b20aaaef0f5940d2ed71663c7d39266ecafac728859;
 
@@ -234,11 +237,12 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         _deposit(msg.sender, msg.sender, id, msg.value);
     }
 
-    // TODO: add a reentrancy guard
     function deposit(address token, address allocator, uint256 amount) external returns (uint256 id) {
+        _setTstorish(_REENTRANCY_GUARD_SLOT, 1);
         id = token.excludingNative().toIdIfRegistered(Scope.Multichain, ResetPeriod.TenMinutes, allocator);
 
         _transferAndDeposit(token, msg.sender, id, amount);
+        _clearTstorish(_REENTRANCY_GUARD_SLOT);
     }
 
     function deposit(address allocator, ResetPeriod resetPeriod, Scope scope, address recipient) external payable returns (uint256 id) {
@@ -247,15 +251,16 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         _deposit(msg.sender, recipient, id, msg.value);
     }
 
-    // TODO: add a reentrancy guard
     function deposit(address token, address allocator, ResetPeriod resetPeriod, Scope scope, uint256 amount, address recipient) external returns (uint256 id) {
+        _setTstorish(_REENTRANCY_GUARD_SLOT, 1);
         id = token.excludingNative().toIdIfRegistered(scope, resetPeriod, allocator);
 
         _transferAndDeposit(token, recipient, id, amount);
+        _clearTstorish(_REENTRANCY_GUARD_SLOT);
     }
 
-    // TODO: add a reentrancy guard
     function deposit(uint256[2][] calldata idsAndAmounts, address recipient) external payable returns (bool) {
+        _setTstorish(_REENTRANCY_GUARD_SLOT, 1);
         uint256 totalIds = idsAndAmounts.length;
         bool firstUnderlyingTokenIsNative;
         uint256 id;
@@ -299,10 +304,11 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
             }
         }
 
+        _clearTstorish(_REENTRANCY_GUARD_SLOT);
+
         return true;
     }
 
-    // TODO: add a reentrancy guard
     function deposit(
         address token,
         uint256, // amount
@@ -315,6 +321,7 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         address recipient,
         bytes calldata signature
     ) external returns (uint256 id) {
+        _setTstorish(_REENTRANCY_GUARD_SLOT, 1);
         id = token.excludingNative().toIdIfRegistered(scope, resetPeriod, allocator);
 
         address permit2 = address(_PERMIT2);
@@ -376,9 +383,10 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         unchecked {
             _deposit(depositor, recipient, id, tokenBalance - initialBalance);
         }
+
+        _clearTstorish(_REENTRANCY_GUARD_SLOT);
     }
 
-    // TODO: add a reentrancy guard
     function deposit(
         address depositor,
         ISignatureTransfer.TokenPermissions[] calldata permitted,
@@ -1687,6 +1695,8 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         bytes32 witness,
         bytes calldata signature
     ) internal returns (uint256[] memory ids) {
+        _setTstorish(_REENTRANCY_GUARD_SLOT, 1);
+
         ids = new uint256[](totalTokens);
 
         uint256 totalTokensLessInitialNative;
@@ -1730,6 +1740,8 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         if (errorBuffer.asBool()) {
             revert InvalidDepositBalanceChange();
         }
+
+        _clearTstorish(_REENTRANCY_GUARD_SLOT);
     }
 
     function _verifyAndProcessBatchComponents(
@@ -1779,7 +1791,6 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
     }
 
     // NOTE: all tokens must be supplied in ascending order and cannot be duplicated.
-    // TODO: add reentrancy protection (otherwise token transfers could trigger reentrancy and change balances)
     function _preparePermit2ArraysAndGetBalances(
         uint256[] memory ids,
         uint256 totalTokensLessInitialNative,
@@ -1943,8 +1954,8 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
 
     /// @dev Burns `amount` token `id` from `from` without checking transfer hooks and sends
     /// the corresponding underlying tokens to `to`. Emits {Transfer} & {Withdrawal} events.
-    /// TODO: this still needs reentrancy protection now.
     function _withdraw(address from, address to, uint256 id, uint256 amount) internal returns (bool) {
+        _setTstorish(_REENTRANCY_GUARD_SLOT, 1);
         address token = id.toToken();
 
         if (token == address(0)) {
@@ -1982,6 +1993,8 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
             log4(0x00, 0x40, _TRANSFER_EVENT_SIGNATURE, account, 0, id)
             log4(0x20, 0x20, _WITHDRAWAL_EVENT_SIGNATURE, account, shr(0x60, shl(0x60, to)), id)
         }
+
+        _clearTstorish(_REENTRANCY_GUARD_SLOT);
 
         return true;
     }
