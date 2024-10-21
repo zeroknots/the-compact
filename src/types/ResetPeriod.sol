@@ -6,8 +6,8 @@ enum ResetPeriod {
     FifteenSeconds,
     OneMinute,
     TenMinutes,
-    OneHour,
+    OneHourAndFiveMinutes,
     OneDay,
-    SevenDays,
+    SevenDaysAndOneHour,
     ThirtyDays
 }

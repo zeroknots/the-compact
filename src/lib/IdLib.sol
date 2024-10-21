@@ -68,16 +68,16 @@ library IdLib {
         }
     }
 
-    // TODO: add a bit of extra time to pad 1 hour and 1 day values
+    // NOTE: one hour is padded by five minutes & seven days is padded by one hour
     function toSeconds(ResetPeriod resetPeriod) internal pure returns (uint256 duration) {
         // note: no bounds check performed; ensure that the enum is in range
         assembly ("memory-safe") {
-            // 278d00  093a80  015180  000e10  000258  00003c  00000f  000001
+            // 278d00  094890  015180  000f3c  000258  00003c  00000f  000001
             // 30 days 7 days  1 day   1 hour  10 min  1 min   15 sec  1 sec
-            let bitpacked := 0x278d00093a80015180000e1000025800003c00000f000001
+            let bitpacked := 0x278d00094890015180000f3c00025800003c00000f000001
 
             // shift right by period * 24 bits & mask the least significant 24 bits
-            duration := and(shr(mul(resetPeriod, 24), bitpacked), 0xFFFFFF)
+            duration := and(shr(mul(resetPeriod, 24), bitpacked), 0xffffff)
         }
     }
 
