@@ -107,6 +107,8 @@ interface ITheCompact {
 
     function deposit(address token, address allocator, ResetPeriod resetPeriod, Scope scope, uint256 amount, address recipient) external returns (uint256 id);
 
+    function deposit(uint256[2][] calldata idsAndAmounts, address recipient) external payable returns (bool);
+
     function deposit(
         address token,
         uint256 amount,
