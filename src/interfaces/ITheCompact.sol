@@ -81,7 +81,7 @@ interface ITheCompact {
 
     function disableForcedWithdrawal(uint256 id) external returns (bool);
 
-    function forcedWithdrawal(uint256 id, address recipient) external returns (uint256 withdrawnAmount);
+    function forcedWithdrawal(uint256 id, address recipient, uint256 amount) external returns (bool);
 
     function __register(address allocator, bytes calldata proof) external returns (uint96 allocatorId);
 

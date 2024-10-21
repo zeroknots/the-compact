@@ -861,7 +861,7 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         return true;
     }
 
-    function forcedWithdrawal(uint256 id, address recipient) external returns (uint256 withdrawnAmount) {
+    function forcedWithdrawal(uint256 id, address recipient, uint256 amount) external returns (bool) {
         uint256 withdrawableAt = _cutoffTime[msg.sender][id];
 
         if ((withdrawableAt == 0).or(withdrawableAt > block.timestamp)) {
@@ -873,9 +873,7 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
             }
         }
 
-        withdrawnAmount = balanceOf(msg.sender, id);
-
-        _withdraw(msg.sender, recipient, id, withdrawnAmount);
+        return _withdraw(msg.sender, recipient, id, amount);
     }
 
     function __register(address allocator, bytes calldata proof) external returns (uint96 allocatorId) {
@@ -1945,7 +1943,22 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
 
     /// @dev Burns `amount` token `id` from `from` without checking transfer hooks and sends
     /// the corresponding underlying tokens to `to`. Emits {Transfer} & {Withdrawal} events.
+    /// TODO: this still needs reentrancy protection now.
     function _withdraw(address from, address to, uint256 id, uint256 amount) internal returns (bool) {
+        address token = id.toToken();
+
+        if (token == address(0)) {
+            to.safeTransferETH(amount);
+        } else {
+            uint256 initialBalance = token.balanceOf(address(this));
+            token.safeTransfer(to, amount);
+            // NOTE: if the balance increased, this will underflow to a massive number causing
+            // the burn to fail; furthermore, this scenario would indicate a very broken token
+            unchecked {
+                amount = initialBalance - token.balanceOf(address(this));
+            }
+        }
+
         assembly ("memory-safe") {
             // Compute the balance slot.
             mstore(0x20, _ERC6909_MASTER_SLOT_SEED)
@@ -1968,13 +1981,6 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
             mstore(0x20, amount)
             log4(0x00, 0x40, _TRANSFER_EVENT_SIGNATURE, account, 0, id)
             log4(0x20, 0x20, _WITHDRAWAL_EVENT_SIGNATURE, account, shr(0x60, shl(0x60, to)), id)
-        }
-
-        address token = id.toToken();
-        if (token == address(0)) {
-            to.safeTransferETH(amount);
-        } else {
-            token.safeTransfer(to, amount);
         }
 
         return true;
