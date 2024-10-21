@@ -142,14 +142,14 @@ contract TheCompactTest is Test {
     }
 
     function test_domainSeparator() public view {
-        bytes32 domainSeparator = keccak256(abi.encode(compactEIP712DomainHash, keccak256(bytes("The Compact")), keccak256(bytes("1")), block.chainid, address(theCompact)));
+        bytes32 domainSeparator = keccak256(abi.encode(compactEIP712DomainHash, keccak256(bytes("The Compact")), keccak256(bytes("0")), block.chainid, address(theCompact)));
         assertEq(domainSeparator, theCompact.DOMAIN_SEPARATOR());
     }
 
     function test_domainSeparatorOnNewChain() public {
         uint256 currentChainId = block.chainid;
         uint256 differentChainId = currentChainId + 42;
-        bytes32 domainSeparator = keccak256(abi.encode(compactEIP712DomainHash, keccak256(bytes("The Compact")), keccak256(bytes("1")), differentChainId, address(theCompact)));
+        bytes32 domainSeparator = keccak256(abi.encode(compactEIP712DomainHash, keccak256(bytes("The Compact")), keccak256(bytes("0")), differentChainId, address(theCompact)));
         vm.chainId(differentChainId);
         assertEq(block.chainid, differentChainId);
         assertEq(domainSeparator, theCompact.DOMAIN_SEPARATOR());

@@ -118,8 +118,8 @@ library HashLib {
     /// @dev `keccak256(bytes("The Compact"))`.
     bytes32 internal constant _NAME_HASH = 0x5e6f7b4e1ac3d625bac418bc955510b3e054cb6cc23cc27885107f080180b292;
 
-    /// @dev `keccak256("1")`.
-    bytes32 internal constant _VERSION_HASH = 0xc89efdaa54c0f20c7adf612882df0950f5a951637e0307cdcb4c672f298b8bc6;
+    /// @dev `keccak256("0")`.
+    bytes32 internal constant _VERSION_HASH = 0x044852b2a670ade5407e78fb2863c51de9fcb96542a07186fe3aeda6bb8a116d;
 
     function toMessageHash(BasicTransfer calldata transfer) internal view returns (bytes32 messageHash) {
         assembly ("memory-safe") {

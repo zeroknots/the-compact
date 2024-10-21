@@ -64,25 +64,6 @@ import {
 } from "./types/MultichainClaims.sol";
 
 import {
-    MultichainClaim,
-    QualifiedMultichainClaim,
-    MultichainClaimWithWitness,
-    QualifiedMultichainClaimWithWitness,
-    SplitMultichainClaim,
-    SplitMultichainClaimWithWitness,
-    QualifiedSplitMultichainClaim,
-    QualifiedSplitMultichainClaimWithWitness,
-    ExogenousMultichainClaim,
-    ExogenousQualifiedMultichainClaim,
-    ExogenousMultichainClaimWithWitness,
-    ExogenousQualifiedMultichainClaimWithWitness,
-    ExogenousSplitMultichainClaim,
-    ExogenousSplitMultichainClaimWithWitness,
-    ExogenousQualifiedSplitMultichainClaim,
-    ExogenousQualifiedSplitMultichainClaimWithWitness
-} from "./types/MultichainClaims.sol";
-
-import {
     BatchMultichainClaim,
     QualifiedBatchMultichainClaim,
     BatchMultichainClaimWithWitness,
@@ -110,7 +91,7 @@ import { MetadataRenderer } from "./lib/MetadataRenderer.sol";
 
 /**
  * @title The Compact
- * @custom:version 1 (early-stage proof-of-concept)
+ * @custom:version 0 (early-stage proof-of-concept)
  * @author 0age (0age.eth)
  * @notice The Compact is an ownerless ERC6909 contract that facilitates the voluntary
  *         formation (and, if necessary, involuntary dissolution) of "resource locks."

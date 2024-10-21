@@ -71,7 +71,7 @@ import {
 
 /**
  * @title The Compact
- * @custom:version 1 (early-stage proof-of-concept)
+ * @custom:version 0 (early-stage proof-of-concept)
  * @author 0age (0age.eth)
  * @notice The Compact is an ownerless ERC6909 contract that facilitates the voluntary
  *         formation (and, if necessary, involuntary dissolution) of "resource locks."
