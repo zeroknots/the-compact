@@ -2,6 +2,6 @@
 pragma solidity ^0.8.27;
 
 interface IAllocator {
-    // Called on standard transfers; must return this function selector.
+    // Called on standard transfers; must return this function selector (0x1a808f91).
     function attest(address operator, address from, address to, uint256 id, uint256 amount) external returns (bytes4);
 }

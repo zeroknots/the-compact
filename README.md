@@ -71,9 +71,105 @@ Depending on the selected properties of the resource lock, the number of tokens 
  - a non-payable deposit function that supplies an ERC20 token, amount, and associated Permit2 signature data (with sufficient allowance set on Permit2), and that specifies the allocator, the scope, the reset period, and the recipient of the 6909 tokens representing ownership of the lock (all of which are included as part of the Permit2 witness)
  - a payable deposit function that supplies an array of tokens and amounts (including an optional native token followed by any number of ERC20 tokens), and associated Permit2 batch signature data (with sufficient allowance set on Permit2 for each ERC20 token), and that specifies the allocator, the scope, the reset period, and the recipient of the 6909 tokens representing ownership of each lock (all of which are included as part of the Permit2 witness).
 
- > For ERC20 deposits, the amount of 6909 tokens minted is based on the actual token balance change after making the deposit, not the supplied amount; this enables support for making deposits of fee-on-transfer tokens where the fee is deducted from the recipient.
+ > For ERC20 deposits, the amount of 6909 tokens minted is based on the change in the actual token balance held by The Compact after making the deposit, not the supplied amount; this enables support for making deposits of fee-on-transfer tokens where the fee is deducted from the recipient.
 
 As long as allocators generally operate in an honest and reliable manner, this is the only direct interaction that end users will need to take; furthermore, in the case of the Permit2 deposit methods, the interaction can be made in a gasless fashion (where another party relays the signed message on behalf of the depositor).
 
-### 3a) Forced Withdrawals
+### X) Perform a Forced Withdrawal
+At any point after depositing tokens, if an allocator goes down or refuses to cosign for a given claim against a resource lock, the depositor can initiate and process a forced withdrawal subject to the reset period on the resource lock.
+
+First, the depositor calls `enableForcedWithdrawal` and supplies the ID of the associated resource lock. At this point, their allocator will almost certainly cease cosigning for any sponsored claims from that depositor, and fillers will similarly avoid fulfilling new claim requests, but any inflight claims will still be able to be processed as long as the reset period on the resource lock is sufficient.
+
+Next, the depositor calls `forcedWithdrawal` and supplies the id, amount, and recipient; assuming the reset period has transpired from the point when the forced withdrawal was enabled, the underlying tokens will be sent to the recipient and a corresponding amount of 6909 tokens held by the caller will be burned.
+
+ > For ERC20 withdrawals, the amount of 6909 tokens burned is based on the change in the actual token balance held by The Compact after making the withdrawal, not the supplied amount; this enables support for making withdrawals of fee-on-transfer tokens where the fee is deducted from the sender.
+
+ Finally, if the original depositor wants to "reactivate" the resource lock, they can call `disableForcedWithdrawal` and supply the ID of the resource lock, returning the lock to the default state and preventing forced withdrawals until it is reactivated again.
+
+### Y) Perform a Standard Transfer
+Each ERC6909 token ID representing a specific set of resource lock parameters can be transferred like any other token; however, there is one additional requirement that must be met. The Compact will perform a call to the allocator before performing the transfer, and that allocator must attest to the transfer before it can proceed; this is necessary to prevent the invalidation of inflight claims on the resource lock.
+
+```solidity
+interface IAllocator {
+    // Called on standard transfers; must return this function selector (0x1a808f91).
+    function attest(
+        address operator,
+        address from,
+        address to,
+        uint256 id,
+        uint256 amount
+    ) external returns (bytes4);
+}
+```
+
+> Note: this is a stateful callback; care must be taken on the part of the allocator to avoid situations that could lead to an overallocated outcome via reentrancy or other unintended side effects.
+
+ ### 3) Sign a Compact
+ In the default case, the owner and allocator of a resource lock both agree on a given course of action and attest to it by signing one of three EIP-712 payloads:
+  - a **Compact** deals with a specific resource lock and designates an **arbiter** tasked with verifying that the necessary conditions have been met choosing which accounts will receive the tokens and in what quantities
+  - a **BatchCompact** deals with a set of resource locks on a single chain and also designates an arbiter
+  - a **MultichainCompact** deals with a set of resource locks across multiple chains and designates a distinct arbiter for each chain.
+
+In this context, the owner is referred to as the **sponsor** as they are sponsoring a claim against the resource lock, and the beneficiary or recipient of the claim is referred to as the **claimant**.
+
+```solidity
+// Message signed by the sponsor that specifies the conditions under which their
+// tokens can be claimed; the specified arbiter verifies that those conditions
+// have been met and specifies a set of beneficiaries that will receive up to the
+// specified amount of tokens.
+struct Compact {
+    address arbiter; // The account tasked with verifying and submitting the claim.
+    address sponsor; // The account to source the tokens from.
+    uint256 nonce; // A parameter to enforce replay protection, scoped to allocator.
+    uint256 expires; // The time at which the claim expires.
+    uint256 id; // The token ID of the ERC6909 token to allocate.
+    uint256 amount; // The amount of ERC6909 tokens to allocate.
+    // Optional witness may follow.
+}
+
+// Message signed by the sponsor that specifies the conditions under which a set of
+// tokens, each sharing an allocator, can be claimed; the specified arbiter verifies
+// that those conditions have been met and specifies a set of beneficiaries that will
+// receive up to the specified amounts of each token.
+struct BatchCompact {
+    address arbiter; // The account tasked with verifying and submitting the claim.
+    address sponsor; // The account to source the tokens from.
+    uint256 nonce; // A parameter to enforce replay protection, scoped to allocator.
+    uint256 expires; // The time at which the claim expires.
+    uint256[2][] idsAndAmounts; // The allocated token IDs and amounts.
+    // Optional witness may follow.
+}
+
+// A multichain compact can declare tokens and amounts to allocate from multiple chains,
+// each designated by their chainId. Any allocated tokens must designate the Multichain
+// scope. Each allocation may designate a unique arbiter for the chain in question.
+struct Allocation {
+    address arbiter; // The account tasked with verifying and submitting the claim.
+    uint256 chainId;
+    uint256[2][] idsAndAmounts; // The allocated token IDs and amounts.
+    // Optional witness may follow.
+}
+
+// Message signed by the sponsor that specifies the conditions under which a set of
+// tokens across a number of different chains can be claimed; the specified arbiter on
+// each chain verifies that those conditions have been met and specifies a set of
+// beneficiaries that will receive up to the specified amounts of each token.
+struct MultichainCompact {
+    address sponsor; // The account to source the tokens from.
+    uint256 nonce; // A parameter to enforce replay protection, scoped to allocator.
+    uint256 expires; // The time at which the claim expires.
+    Allocation[] allocations;
+}
+```
+
+To be considered valid, each compact must meet the following requirements:
+ - the arbiter must submit the call (`arbiter == msg.sender`)
+ - the sponsor must sign the EIP-712 payload (either ECDSA or EIP-1271) or submit the call (i.e. `arbiter == sponsor`)
+ - the allocator must sign the EIP-712 payload (either ECDSA or EIP-1271) or a qualified payload referencing it, or submit the call (i.e. `arbiter == allocator`)
+ - the compact cannot be expired (`expires > block.timestamp`)
+ - the nonce cannot have been used previously
+
+Once this payload has been signed by both the sponsor and the allocator (or at least by one party if the other is the intended caller), a claim can be submitted against it by the designated arbiter using a wide variety of functions (104 to be exact) depending on the type of compact and the intended result.
+
+### 4 Submit a Claim
 ...

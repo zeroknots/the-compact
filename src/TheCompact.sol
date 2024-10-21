@@ -1997,7 +1997,7 @@ contract TheCompact is ITheCompact, ERC6909, Extsload, Tstorish {
             mstore(add(m, 0x60), to)
             mstore(add(m, 0x80), id)
             mstore(add(m, 0xa0), amount)
-            let success := staticcall(gas(), allocator, dataStart, 0xa4, 0, 0x20)
+            let success := call(gas(), allocator, 0, dataStart, 0xa4, 0, 0x20)
             if iszero(eq(mload(0), shl(224, _ATTEST_SELECTOR))) {
                 // bubble up if the call failed and there's data
                 // NOTE: consider evaluating remaining gas to protect against revert bombing
