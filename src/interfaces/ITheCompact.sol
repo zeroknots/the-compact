@@ -35,6 +35,8 @@ interface ITheCompact {
     error InvalidBatchDepositStructure();
     error AllocatedAmountExceeded(uint256 allocatedAmount, uint256 providedAmount);
     error InvalidScope(uint256 id);
+    error InvalidDepositTokenOrdering();
+    error InvalidDepositBalanceChange();
 
     function deposit(address allocator, ResetPeriod resetPeriod, Scope scope, address recipient) external payable returns (uint256 id);
 

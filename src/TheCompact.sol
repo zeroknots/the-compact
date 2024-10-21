@@ -234,12 +234,11 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         _deposit(msg.sender, msg.sender, id, msg.value);
     }
 
+    // TODO: add a reentrancy guard
     function deposit(address token, address allocator, uint256 amount) external returns (uint256 id) {
         id = token.excludingNative().toIdIfRegistered(Scope.Multichain, ResetPeriod.TenMinutes, allocator);
 
-        token.safeTransferFrom(msg.sender, address(this), amount);
-
-        _deposit(msg.sender, msg.sender, id, amount);
+        _transferAndDeposit(token, msg.sender, id, amount);
     }
 
     function deposit(address allocator, ResetPeriod resetPeriod, Scope scope, address recipient) external payable returns (uint256 id) {
@@ -248,14 +247,14 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         _deposit(msg.sender, recipient, id, msg.value);
     }
 
+    // TODO: add a reentrancy guard
     function deposit(address token, address allocator, ResetPeriod resetPeriod, Scope scope, uint256 amount, address recipient) external returns (uint256 id) {
         id = token.excludingNative().toIdIfRegistered(scope, resetPeriod, allocator);
 
-        token.safeTransferFrom(msg.sender, address(this), amount);
-
-        _deposit(msg.sender, recipient, id, amount);
+        _transferAndDeposit(token, recipient, id, amount);
     }
 
+    // TODO: add a reentrancy guard
     function deposit(uint256[2][] calldata idsAndAmounts, address recipient) external payable returns (bool) {
         uint256 totalIds = idsAndAmounts.length;
         bool firstUnderlyingTokenIsNative;
@@ -296,23 +295,19 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
                     currentAllocatorId = newAllocatorId;
                 }
 
-                id.toToken().safeTransferFrom(msg.sender, address(this), amount);
-
-                _deposit(msg.sender, recipient, id, amount);
+                _transferAndDeposit(id.toToken(), recipient, id, amount);
             }
         }
 
         return true;
     }
 
-    // TODO: still need to implement one of the following:
-    //  1) check if permit2 has been deployed (can cache as an immutable)
-    //  2) deposit based on balance changes
+    // TODO: add a reentrancy guard
     function deposit(
         address token,
-        uint256 amount,
-        uint256 nonce,
-        uint256 deadline,
+        uint256, // amount
+        uint256, // nonce
+        uint256, // deadline
         address depositor,
         address allocator,
         ResetPeriod resetPeriod,
@@ -323,6 +318,8 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         id = token.excludingNative().toIdIfRegistered(scope, resetPeriod, allocator);
 
         address permit2 = address(_PERMIT2);
+
+        uint256 initialBalance = token.balanceOf(address(this));
 
         assembly ("memory-safe") {
             let m := mload(0x40) // Grab the free memory pointer; memory will be left dirtied.
@@ -369,9 +366,19 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
             }
         }
 
-        _deposit(depositor, recipient, id, amount);
+        uint256 tokenBalance = token.balanceOf(address(this));
+
+        // TODO: use inline assembly to save codesize
+        if (initialBalance >= tokenBalance) {
+            revert InvalidDepositBalanceChange();
+        }
+
+        unchecked {
+            _deposit(depositor, recipient, id, tokenBalance - initialBalance);
+        }
     }
 
+    // TODO: add a reentrancy guard
     function deposit(
         address depositor,
         ISignatureTransfer.TokenPermissions[] calldata permitted,
@@ -1694,8 +1701,8 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
             ids[0] = initialId;
         }
 
-        (ISignatureTransfer.SignatureTransferDetails[] memory details, ISignatureTransfer.TokenPermissions[] memory permittedTokens) =
-            _preparePermit2ArraysAndPerformDeposits(ids, totalTokensLessInitialNative, firstUnderlyingTokenIsNative, permitted, initialId, recipient, depositor);
+        (ISignatureTransfer.SignatureTransferDetails[] memory details, ISignatureTransfer.TokenPermissions[] memory permittedTokens, uint256[] memory initialTokenBalances) =
+            _preparePermit2ArraysAndGetBalances(ids, totalTokensLessInitialNative, firstUnderlyingTokenIsNative, permitted, initialId);
 
         ISignatureTransfer.PermitBatchTransferFrom memory permitTransferFrom = ISignatureTransfer.PermitBatchTransferFrom({ permitted: permittedTokens, nonce: nonce, deadline: deadline });
 
@@ -1707,6 +1714,24 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
             "CompactDeposit witness)CompactDeposit(address depositor,address allocator,uint8 resetPeriod,uint8 scope,address recipient)TokenPermissions(address token,uint256 amount)",
             signature
         );
+
+        uint256 tokenBalance;
+        uint256 initialBalance;
+        uint256 errorBuffer;
+        unchecked {
+            for (uint256 i = 0; i < totalTokensLessInitialNative; ++i) {
+                tokenBalance = permittedTokens[i].token.balanceOf(address(this));
+                initialBalance = initialTokenBalances[i];
+                errorBuffer |= (initialBalance >= tokenBalance).asUint256();
+
+                _deposit(depositor, recipient, ids[i + firstUnderlyingTokenIsNative.asUint256()], tokenBalance - initialBalance);
+            }
+        }
+
+        // TODO: use inline assembly to save codesize
+        if (errorBuffer.asBool()) {
+            revert InvalidDepositBalanceChange();
+        }
     }
 
     function _verifyAndProcessBatchComponents(
@@ -1755,30 +1780,43 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         return true;
     }
 
-    function _preparePermit2ArraysAndPerformDeposits(
+    // NOTE: all tokens must be supplied in ascending order and cannot be duplicated.
+    // TODO: add reentrancy protection (otherwise token transfers could trigger reentrancy and change balances)
+    function _preparePermit2ArraysAndGetBalances(
         uint256[] memory ids,
         uint256 totalTokensLessInitialNative,
         bool firstUnderlyingTokenIsNative,
         ISignatureTransfer.TokenPermissions[] calldata permitted,
-        uint256 initialId,
-        address recipient,
-        address depositor
-    ) internal returns (ISignatureTransfer.SignatureTransferDetails[] memory details, ISignatureTransfer.TokenPermissions[] memory permittedTokens) {
+        uint256 id
+    ) internal view returns (ISignatureTransfer.SignatureTransferDetails[] memory details, ISignatureTransfer.TokenPermissions[] memory permittedTokens, uint256[] memory tokenBalances) {
         unchecked {
             details = new ISignatureTransfer.SignatureTransferDetails[](totalTokensLessInitialNative);
 
             permittedTokens = new ISignatureTransfer.TokenPermissions[](totalTokensLessInitialNative);
 
+            tokenBalances = new uint256[](totalTokensLessInitialNative);
+
+            address token;
+            uint256 candidateId;
+            uint256 errorBuffer;
+
             for (uint256 i = 0; i < totalTokensLessInitialNative; ++i) {
                 ISignatureTransfer.TokenPermissions calldata permittedToken = permitted[i + firstUnderlyingTokenIsNative.asUint256()];
-
                 permittedTokens[i] = permittedToken;
                 details[i] = ISignatureTransfer.SignatureTransferDetails({ to: address(this), requestedAmount: permittedToken.amount });
+                token = permittedToken.token;
+                candidateId = id.withReplacedToken(token);
+                errorBuffer |= (candidateId <= id).asUint256();
+                id = candidateId;
 
-                uint256 id = initialId.withReplacedToken(permittedToken.token);
                 ids[i + firstUnderlyingTokenIsNative.asUint256()] = id;
 
-                _deposit(depositor, recipient, id, permittedToken.amount);
+                tokenBalances[i] = token.balanceOf(address(this));
+            }
+
+            // TODO: use inline assembly to save codesize
+            if (errorBuffer.asBool()) {
+                revert InvalidDepositTokenOrdering();
             }
         }
     }
@@ -1855,6 +1893,25 @@ contract TheCompact is ITheCompact, ERC6909, Extsload {
         }
 
         return true;
+    }
+
+    /// @dev Transfers `amount` of `token` and mints the resulting balance change of `id` to `to`.
+    /// Emits {Transfer} and {Deposit} events.
+    function _transferAndDeposit(address token, address to, uint256 id, uint256 amount) internal {
+        uint256 initialBalance = token.balanceOf(address(this));
+
+        token.safeTransferFrom(msg.sender, address(this), amount);
+
+        uint256 tokenBalance = token.balanceOf(address(this));
+
+        // TODO: use inline assembly to save codesize
+        if (initialBalance >= tokenBalance) {
+            revert InvalidDepositBalanceChange();
+        }
+
+        unchecked {
+            _deposit(msg.sender, to, id, tokenBalance - initialBalance);
+        }
     }
 
     /// @dev Mints `amount` of token `id` to `to` without checking transfer hooks.
