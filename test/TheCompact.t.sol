@@ -168,6 +168,7 @@ contract TheCompactTest is Test {
 
         vm.prank(swapper);
         uint256 id = theCompact.deposit{ value: amount }(allocator);
+        vm.snapshotGasLastCall("depositETHBasic");
 
         (address derivedToken, address derivedAllocator, ResetPeriod derivedResetPeriod, Scope derivedScope) = theCompact.getLockDetails(id);
         assertEq(derivedToken, address(0));
@@ -192,6 +193,7 @@ contract TheCompactTest is Test {
 
         vm.prank(swapper);
         uint256 id = theCompact.deposit{ value: amount }(allocator, resetPeriod, scope, recipient);
+        vm.snapshotGasLastCall("depositETHAndURI");
 
         (address derivedToken, address derivedAllocator, ResetPeriod derivedResetPeriod, Scope derivedScope) = theCompact.getLockDetails(id);
         assertEq(derivedToken, address(0));
@@ -216,6 +218,7 @@ contract TheCompactTest is Test {
 
         vm.prank(swapper);
         uint256 id = theCompact.deposit(address(token), allocator, amount);
+        vm.snapshotGasLastCall("depositERC20Basic");
 
         (address derivedToken, address derivedAllocator, ResetPeriod derivedResetPeriod, Scope derivedScope) = theCompact.getLockDetails(id);
         assertEq(derivedToken, address(token));
@@ -240,6 +243,7 @@ contract TheCompactTest is Test {
 
         vm.prank(swapper);
         uint256 id = theCompact.deposit(address(token), allocator, resetPeriod, scope, amount, recipient);
+        vm.snapshotGasLastCall("depositERC20AndURI");
 
         (address derivedToken, address derivedAllocator, ResetPeriod derivedResetPeriod, Scope derivedScope) = theCompact.getLockDetails(id);
         assertEq(derivedToken, address(token));
@@ -269,6 +273,7 @@ contract TheCompactTest is Test {
 
         vm.prank(swapper);
         bool ok = theCompact.deposit(idsAndAmounts, recipient);
+        vm.snapshotGasLastCall("depositBatchSingleERC20");
         assert(ok);
 
         (address derivedToken, address derivedAllocator, ResetPeriod derivedResetPeriod, Scope derivedScope) = theCompact.getLockDetails(id);
@@ -326,6 +331,7 @@ contract TheCompactTest is Test {
         uint96 allocatorId = theCompact.__register(allocator, "");
 
         uint256 id = theCompact.deposit(address(token), amount, nonce, deadline, swapper, allocator, resetPeriod, scope, recipient, signature);
+        vm.snapshotGasLastCall("depositERC20ViaPermit2AndURI");
 
         (address derivedToken, address derivedAllocator, ResetPeriod derivedResetPeriod, Scope derivedScope) = theCompact.getLockDetails(id);
         assertEq(derivedToken, address(token));
@@ -384,6 +390,7 @@ contract TheCompactTest is Test {
         tokenPermissions[0] = ISignatureTransfer.TokenPermissions({ token: address(token), amount: amount });
 
         uint256[] memory ids = theCompact.deposit(swapper, tokenPermissions, allocator, resetPeriod, scope, recipient, nonce, deadline, signature);
+        vm.snapshotGasLastCall("depositBatchViaPermit2SingleERC20");
 
         assertEq(ids.length, 1);
 
@@ -429,6 +436,7 @@ contract TheCompactTest is Test {
 
         vm.prank(swapper);
         bool status = theCompact.allocatedTransfer(transfer);
+        vm.snapshotGasLastCall("basicTransfer");
         assert(status);
 
         assertEq(token.balanceOf(address(theCompact)), amount);
@@ -478,6 +486,7 @@ contract TheCompactTest is Test {
 
         vm.prank(swapper);
         bool status = theCompact.allocatedTransfer(transfer);
+        vm.snapshotGasLastCall("splitTransfer");
         assert(status);
 
         assertEq(token.balanceOf(address(theCompact)), amount);
@@ -539,6 +548,7 @@ contract TheCompactTest is Test {
 
         vm.prank(swapper);
         bool status = theCompact.allocatedTransfer(transfer);
+        vm.snapshotGasLastCall("batchTransfer");
         assert(status);
 
         assertEq(token.balanceOf(recipient), 0);
@@ -610,6 +620,7 @@ contract TheCompactTest is Test {
 
         vm.prank(swapper);
         bool status = theCompact.allocatedTransfer(transfer);
+        vm.snapshotGasLastCall("splitBatchTransfer");
         assert(status);
 
         assertEq(token.balanceOf(recipientOne), 0);
@@ -651,6 +662,7 @@ contract TheCompactTest is Test {
 
         vm.prank(swapper);
         bool status = theCompact.allocatedWithdrawal(transfer);
+        vm.snapshotGasLastCall("basicWithdrawal");
         assert(status);
 
         assertEq(token.balanceOf(address(theCompact)), 0);
@@ -700,6 +712,7 @@ contract TheCompactTest is Test {
 
         vm.prank(swapper);
         bool status = theCompact.allocatedWithdrawal(transfer);
+        vm.snapshotGasLastCall("splitWithdrawal");
         assert(status);
 
         assertEq(token.balanceOf(address(theCompact)), 0);
@@ -762,6 +775,7 @@ contract TheCompactTest is Test {
 
         vm.prank(swapper);
         bool status = theCompact.allocatedWithdrawal(transfer);
+        vm.snapshotGasLastCall("batchWithdrawal");
         assert(status);
 
         assertEq(token.balanceOf(recipient), amountOne);
@@ -836,6 +850,7 @@ contract TheCompactTest is Test {
 
         vm.prank(swapper);
         bool status = theCompact.allocatedWithdrawal(transfer);
+        vm.snapshotGasLastCall("splitBatchWithdrawal");
         assert(status);
 
         assertEq(token.balanceOf(recipientOne), amountOne);
@@ -880,6 +895,7 @@ contract TheCompactTest is Test {
 
         vm.prank(arbiter);
         (bool status) = theCompact.claim(claim);
+        vm.snapshotGasLastCall("claim");
         assert(status);
 
         assertEq(address(theCompact).balance, amount);
@@ -919,6 +935,7 @@ contract TheCompactTest is Test {
 
         vm.prank(arbiter);
         (bool status) = theCompact.claimAndWithdraw(claim);
+        vm.snapshotGasLastCall("claimAndWithdraw");
         assert(status);
 
         assertEq(address(theCompact).balance, 0);
@@ -967,6 +984,7 @@ contract TheCompactTest is Test {
 
         vm.prank(arbiter);
         (bool status) = theCompact.claim(claim);
+        vm.snapshotGasLastCall("qualifiedClaim");
         assert(status);
 
         assertEq(address(theCompact).balance, amount);
@@ -1020,6 +1038,7 @@ contract TheCompactTest is Test {
 
         vm.prank(arbiter);
         (bool status) = theCompact.claim(claim);
+        vm.snapshotGasLastCall("claimWithWitness");
         assert(status);
 
         assertEq(address(theCompact).balance, amount);
@@ -1084,6 +1103,7 @@ contract TheCompactTest is Test {
 
         vm.prank(arbiter);
         (bool status) = theCompact.claim(claim);
+        vm.snapshotGasLastCall("qualifiedClaimWithWitness");
         assert(status);
 
         assertEq(address(theCompact).balance, amount);
@@ -1134,6 +1154,7 @@ contract TheCompactTest is Test {
 
         vm.prank(arbiter);
         (bool status) = theCompact.claim(claim);
+        vm.snapshotGasLastCall("splitClaim");
         assert(status);
 
         assertEq(address(theCompact).balance, amount);
@@ -1195,6 +1216,7 @@ contract TheCompactTest is Test {
 
         vm.prank(arbiter);
         (bool status) = theCompact.claim(claim);
+        vm.snapshotGasLastCall("qualifiedSplitClaim");
         assert(status);
 
         assertEq(address(theCompact).balance, amount);
@@ -1261,6 +1283,7 @@ contract TheCompactTest is Test {
 
         vm.prank(arbiter);
         (bool status) = theCompact.claim(claim);
+        vm.snapshotGasLastCall("splitClaimWithWitness");
         assert(status);
 
         assertEq(address(theCompact).balance, amount);
@@ -1338,6 +1361,7 @@ contract TheCompactTest is Test {
 
         vm.prank(arbiter);
         (bool status) = theCompact.claim(claim);
+        vm.snapshotGasLastCall("qualifiedSplitClaimWithWitness");
         assert(status);
 
         assertEq(address(theCompact).balance, amount);
@@ -1408,6 +1432,7 @@ contract TheCompactTest is Test {
 
         vm.prank(arbiter);
         (bool status) = theCompact.claim(claim);
+        vm.snapshotGasLastCall("batchClaim");
         assert(status);
 
         assertEq(address(theCompact).balance, amount);
@@ -1488,6 +1513,7 @@ contract TheCompactTest is Test {
 
         vm.prank(arbiter);
         (bool status) = theCompact.claim(claim);
+        vm.snapshotGasLastCall("qualifiedBatchClaim");
         assert(status);
 
         assertEq(address(theCompact).balance, amount);
@@ -1564,6 +1590,7 @@ contract TheCompactTest is Test {
 
         vm.prank(arbiter);
         (bool status) = theCompact.claim(claim);
+        vm.snapshotGasLastCall("batchClaimWithWitness");
         assert(status);
 
         assertEq(address(theCompact).balance, amount);
@@ -1650,6 +1677,7 @@ contract TheCompactTest is Test {
 
         vm.prank(arbiter);
         (bool status) = theCompact.claim(claim);
+        vm.snapshotGasLastCall("qualifiedBatchClaimWithWitness");
         assert(status);
 
         assertEq(address(theCompact).balance, amount);
@@ -1732,6 +1760,7 @@ contract TheCompactTest is Test {
 
         vm.prank(arbiter);
         (bool status) = theCompact.claim(claim);
+        vm.snapshotGasLastCall("splitBatchClaim");
         assert(status);
 
         assertEq(address(theCompact).balance, amount);
@@ -1820,6 +1849,7 @@ contract TheCompactTest is Test {
 
         vm.prank(arbiter);
         (bool status) = theCompact.claim(claim);
+        vm.snapshotGasLastCall("splitBatchClaimWithWitness");
         assert(status);
 
         assertEq(address(theCompact).balance, amount);
@@ -1912,6 +1942,7 @@ contract TheCompactTest is Test {
 
         vm.prank(arbiter);
         (bool status) = theCompact.claim(claim);
+        vm.snapshotGasLastCall("qualifiedSplitBatchClaim");
         assert(status);
 
         assertEq(address(theCompact).balance, amount);
@@ -2010,6 +2041,7 @@ contract TheCompactTest is Test {
 
         vm.prank(arbiter);
         (bool status) = theCompact.claim(claim);
+        vm.snapshotGasLastCall("qualifiedSplitBatchClaimWithWitness");
         assert(status);
 
         assertEq(address(theCompact).balance, amount);
