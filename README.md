@@ -174,7 +174,7 @@ Once this payload has been signed by both the sponsor and the allocator (or at l
 ### 4) Submit a Claim
 An arbiter takes a signed compact designated to them and uses it to submit a claim to The Compact.
 
-#### 4a) Allocated Transfer & Allocated Withdrawal
+### 4a) Allocated Transfer & Allocated Withdrawal
 In the most straightforward variety of claim, where the arbiter is the sponsor, there are three key factors that result in eight distinct endpoints:
  - transfer vs. withdrawal: whether to transfer the ERC6909 tokens directly, or to withdraw the underlying tokens (e.g. calling `allocatedTransfer` or `allocatedWithdrawal`)
  - whether or not to perform a "split": with no split, the caller specifies a single recipient, whereas with a split the caller specifies multiple recipients and respective amounts
@@ -240,7 +240,7 @@ struct SplitByIdComponent {
  }
  ```
 
-#### 4b) Single Resource Lock Claims
+### 4b) Single Resource Lock Claims
 When the allocator is *not* necessarily the sponsor, and when the sponsor is only utilizing a single resource lock on a specific chain, the sponsor will sign a `Compact` EIP-712 payload. From that starting point, there are four key factors that result in sixteen distinct endpoints using two function names and eight input struct types:
  - transfer vs. withdrawal: whether to transfer the claimed ERC6909 tokens directly, or to withdraw the underlying claimed tokens (e.g. calling `claim` or `claimAndWithdraw`)
  - unqualified vs qualified: whether the allocator is cosigning the same claim hash as the sponsor, or if they are signing for additional data. This can be an arbitrary EIP-712 payload, with one exception: the first element must be the claim hash, which will be provided by The Compact directly as part of signature verification. These claims take two additional arguments: the EIP-712 typehash used in the qualification, and the data payload (not including the first claim hash argument). This data can then be utilized by the arbiter to inform and constrain the claim.
@@ -343,7 +343,7 @@ interface ICompactClaims {
 }
 ```
 
-#### 4c) Multiple Resource Lock Claims for a Single Chain
+### 4c) Multiple Resource Lock Claims for a Single Chain
 When the sponsor is utilizing multiple resource locks on a specific chain, they will sign a `BatchCompact` EIP-712 payload. There are another sixteen endpoints that map to the same combination as the single-resource lock cases.
 
 ```solidity
@@ -637,7 +637,9 @@ interface ICompactMultichainClaims {
 }
 ```
 
-#### 4d) Multiple Resource Lock Claim on Multiple Chains
+> Note: Given that sponsors sign a single payload covering multiple chains, they are only able to designate a single EIP-712 witness. If multiple chains require distinct witnesses, the parent witness will need to leverage a nested struct containing each child chain's respective witness or another similar scheme. Allocators can still easily provide distinct qualifications per-chain, as they still sign for each chain independently.
+
+### 4d) Multiple Resource Lock Claim on Multiple Chains
 Finally, there are thirty-two claim endpoints to cover cases where the sponsor is utilizing multiple resource locks against multiple chains where one or more chains contain more than one resource lock; these also utilize a `MultichainCompact` EIP-712 payload, but the `Allocation` structs can contain `idsAndAmounts` arrays of arbitrary length.
 
 ```
