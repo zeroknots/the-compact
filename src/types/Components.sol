@@ -2,13 +2,13 @@
 pragma solidity ^0.8.27;
 
 struct SplitComponent {
-    address claimant;
-    uint256 amount;
+    address claimant; // The recipient of the transfer or withdrawal.
+    uint256 amount; // The amount of tokens to transfer or withdraw.
 }
 
 struct SplitByIdComponent {
-    uint256 id;
-    SplitComponent[] portions;
+    uint256 id; // The token ID of the ERC6909 token to transfer or withdraw.
+    SplitComponent[] portions; // claimants and amounts.
 }
 
 struct TransferComponent {
@@ -25,5 +25,5 @@ struct BatchClaimComponent {
 struct SplitBatchClaimComponent {
     uint256 id; // The token ID of the ERC6909 token to allocate.
     uint256 allocatedAmount; // The original allocated amount of ERC6909 tokens.
-    SplitComponent[] portions;
+    SplitComponent[] portions; // claimants and amounts.
 }

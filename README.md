@@ -171,5 +171,529 @@ To be considered valid, each compact must meet the following requirements:
 
 Once this payload has been signed by both the sponsor and the allocator (or at least by one party if the other is the intended caller), a claim can be submitted against it by the designated arbiter using a wide variety of functions (104 to be exact) depending on the type of compact and the intended result.
 
-### 4 Submit a Claim
-...
+### 4) Submit a Claim
+An arbiter takes a signed compact designated to them and uses it to submit a claim to The Compact.
+
+#### 4a) Allocated Transfer & Allocated Withdrawal
+In the most straightforward variety of claim, where the arbiter is the sponsor, there are three key factors that result in eight distinct endpoints:
+ - transfer vs. withdrawal: whether to transfer the ERC6909 tokens directly, or to withdraw the underlying tokens (e.g. calling `allocatedTransfer` or `allocatedWithdrawal`)
+ - whether or not to perform a "split": with no split, the caller specifies a single recipient, whereas with a split the caller specifies multiple recipients and respective amounts
+ - whether or not the compact in question is a "batch" compact: with a batch compact, multiple resource locks and respective amounts are involved in the claim.
+
+ ```solidity
+struct BasicTransfer {
+    bytes allocatorSignature; // Authorization from the allocator.
+    uint256 nonce; // A parameter to enforce replay protection, scoped to allocator.
+    uint256 expires; // The time at which the transfer or withdrawal expires.
+    uint256 id; // The token ID of the ERC6909 token to transfer or withdraw.
+    uint256 amount; // The token amount to transfer or withdraw.
+    address recipient; // The recipient of the transfer or withdrawal.
+}
+
+struct SplitTransfer {
+    bytes allocatorSignature; // Authorization from the allocator.
+    uint256 nonce; // A parameter to enforce replay protection, scoped to allocator.
+    uint256 expires; // The time at which the transfer or withdrawal expires.
+    uint256 id; // The token ID of the ERC6909 token to transfer or withdraw.
+    SplitComponent[] recipients; // The recipients and amounts of each transfer.
+}
+
+struct SplitComponent {
+    address claimant; // The recipient of the transfer or withdrawal.
+    uint256 amount; // The amount of tokens to transfer or withdraw.
+}
+
+struct BatchTransfer {
+    bytes allocatorSignature; // Authorization from the allocator.
+    uint256 nonce; // A parameter to enforce replay protection, scoped to allocator.
+    uint256 expires; // The time at which the transfer or withdrawal expires.
+    TransferComponent[] transfers; // The token IDs and amounts to transfer.
+    address recipient; // The recipient of the batch transfers.
+}
+
+struct TransferComponent {
+    uint256 id; // The token ID of the ERC6909 token to transfer or withdraw.
+    uint256 amount; // The token amount to transfer or withdraw.
+}
+
+struct SplitBatchTransfer {
+    bytes allocatorSignature; // Authorization from the allocator.
+    uint256 nonce; // A parameter to enforce replay protection, scoped to allocator.
+    uint256 expires; // The time at which the transfer or withdrawal expires.
+    SplitByIdComponent[] transfers; // The recipients and amounts of each transfer for each ID.
+}
+
+struct SplitByIdComponent {
+    uint256 id; // The token ID of the ERC6909 token to transfer or withdraw.
+    SplitComponent[] portions; // claimants and amounts.
+}
+
+ interface ICompactAllocatedTransferAndWithdrawal {
+    function allocatedTransfer(BasicTransfer calldata transfer) external returns (bool);
+    function allocatedWithdrawal(BasicTransfer calldata withdrawal) external returns (bool);
+    function allocatedTransfer(SplitTransfer calldata transfer) external returns (bool);
+    function allocatedWithdrawal(SplitTransfer calldata withdrawal) external returns (bool);
+    function allocatedTransfer(BatchTransfer calldata transfer) external returns (bool);
+    function allocatedWithdrawal(BatchTransfer calldata withdrawal) external returns (bool);
+    function allocatedTransfer(SplitBatchTransfer calldata transfer) external returns (bool);
+    function allocatedWithdrawal(SplitBatchTransfer calldata withdrawal) external returns (bool);
+ }
+ ```
+
+#### 4b) Single Resource Lock Claims
+When the allocator is *not* necessarily the sponsor, and when the sponsor is only utilizing a single resource lock on a specific chain, the sponsor will sign a `Compact` EIP-712 payload. From that starting point, there are four key factors that result in sixteen distinct endpoints using two function names and eight input struct types:
+ - transfer vs. withdrawal: whether to transfer the claimed ERC6909 tokens directly, or to withdraw the underlying claimed tokens (e.g. calling `claim` or `claimAndWithdraw`)
+ - unqualified vs qualified: whether the allocator is cosigning the same claim hash as the sponsor, or if they are signing for additional data. This can be an arbitrary EIP-712 payload, with one exception: the first element must be the claim hash, which will be provided by The Compact directly as part of signature verification. These claims take two additional arguments: the EIP-712 typehash used in the qualification, and the data payload (not including the first claim hash argument). This data can then be utilized by the arbiter to inform and constrain the claim.
+ - no witness vs. witness: whether or not the sponsor has elected to extend the Compact EIP-712 payload with an additional witness argument (generally using a new struct). When witness data is utilized, the call takes two additional arguments: one representing the EIP-712 hash of the witness data (or the direct data if it is a single value) and one representing the additional EIP-712 typestring that will extend the default arguments to include the witness.
+ - whether or not to perform a "split": with no split, the caller specifies a single recipient, whereas with a split the caller specifies multiple recipients and respective amounts.
+
+
+```solidity
+struct AllClaimsStartWith {
+    bytes allocatorSignature; // Authorization from the allocator.
+    bytes sponsorSignature; // Authorization from the sponsor.
+    address sponsor; // The account to source the tokens from.
+    uint256 nonce; // A parameter to enforce replay protection, scoped to allocator.
+    uint256 expires; // The time at which the claim expires.
+    // rest of the parameters follow ...
+}
+
+struct BasicClaim {
+    bytes allocatorSignature; // Authorization from the allocator.
+    bytes sponsorSignature; // Authorization from the sponsor.
+    address sponsor; // The account to source the tokens from.
+    uint256 nonce; // A parameter to enforce replay protection, scoped to allocator.
+    uint256 expires; // The time at which the claim expires.
+    uint256 id; // The token ID of the ERC6909 token to allocate.
+    uint256 allocatedAmount; // The original allocated amount of ERC6909 tokens.
+    address claimant; // The claim recipient; specified by the arbiter.
+    uint256 amount; // The claimed token amount; specified by the arbiter.
+}
+
+struct QualifiedClaim {
+    // ... same first 5 parameters as all claims
+    bytes32 qualificationTypehash; // Typehash of the qualification payload.
+    bytes qualificationPayload; // Data used to derive qualification hash.
+    // ... same last 4 parameters as BasicClaim
+}
+
+struct ClaimWithWitness {
+    // ... same first 5 parameters as all claims
+    bytes32 witness; // Hash of the witness data.
+    string witnessTypestring; // Witness typestring appended to existing typestring.
+    // ... same last 4 parameters as BasicClaim
+}
+
+struct QualifiedClaimWithWitness {
+    // ... same first 5 parameters as all claims
+    bytes32 witness; // Hash of the witness data.
+    string witnessTypestring; // Witness typestring appended to existing typestring.
+    bytes32 qualificationTypehash; // Typehash of the qualification payload.
+    bytes qualificationPayload; // Data used to derive qualification hash.
+    // ... same last 4 parameters as BasicClaim
+}
+
+struct SplitClaim {
+    // ... same first 5 parameters as all claims
+    uint256 id; // The token ID of the ERC6909 token to allocate.
+    uint256 allocatedAmount; // The original allocated amount of ERC6909 tokens.
+    SplitComponent[] claimants; // The claim recipients and amounts; specified by the arbiter.
+}
+
+struct QualifiedSplitClaim {
+    // ... same first 5 parameters as all claims
+    bytes32 qualificationTypehash; // Typehash of the qualification payload.
+    bytes qualificationPayload; // Data used to derive qualification hash.
+    // ... same last 3 parameters as SplitClaim
+}
+
+struct SplitClaimWithWitness {
+    // ... same first 5 parameters as all claims
+    bytes32 witness; // Hash of the witness data.
+    string witnessTypestring; // Witness typestring appended to existing typestring.
+    // ... same last 3 parameters as SplitClaim
+}
+
+struct QualifiedSplitClaimWithWitness {
+    // ... same first 5 parameters as all claims
+    bytes32 witness; // Hash of the witness data.
+    string witnessTypestring; // Witness typestring appended to existing typestring.
+    bytes32 qualificationTypehash; // Typehash of the qualification payload.
+    bytes qualificationPayload; // Data used to derive qualification hash.
+    // ... same last 3 parameters as SplitClaim
+}
+
+interface ICompactClaims {
+    function claim(BasicClaim calldata claimPayload) external returns (bool);
+    function claimAndWithdraw(BasicClaim calldata claimPayload) external returns (bool);
+    function claim(QualifiedClaim calldata claimPayload) external returns (bool);
+    function claimAndWithdraw(QualifiedClaim calldata claimPayload) external returns (bool);
+    function claim(ClaimWithWitness calldata claimPayload) external returns (bool);
+    function claimAndWithdraw(ClaimWithWitness calldata claimPayload) external returns (bool);
+    function claim(QualifiedClaimWithWitness calldata claimPayload) external returns (bool);
+    function claimAndWithdraw(QualifiedClaimWithWitness calldata claimPayload) external returns (bool);
+    function claim(SplitClaim calldata claimPayload) external returns (bool);
+    function claimAndWithdraw(SplitClaim calldata claimPayload) external returns (bool);
+    function claim(QualifiedSplitClaim calldata claimPayload) external returns (bool);
+    function claimAndWithdraw(QualifiedSplitClaim calldata claimPayload) external returns (bool);
+    function claim(SplitClaimWithWitness calldata claimPayload) external returns (bool);
+    function claimAndWithdraw(SplitClaimWithWitness calldata claimPayload) external returns (bool);
+    function claim(QualifiedSplitClaimWithWitness calldata claimPayload) external returns (bool);
+    function claimAndWithdraw(QualifiedSplitClaimWithWitness calldata claimPayload) external returns (bool);
+}
+```
+
+#### 4c) Multiple Resource Lock Claims for a Single Chain
+When the sponsor is utilizing multiple resource locks on a specific chain, they will sign a `BatchCompact` EIP-712 payload. There are another sixteen endpoints that map to the same combination as the single-resource lock cases.
+
+```solidity
+struct BatchClaim {
+    bytes allocatorSignature; // Authorization from the allocator.
+    bytes sponsorSignature; // Authorization from the sponsor.
+    address sponsor; // The account to source the tokens from.
+    uint256 nonce; // A parameter to enforce replay protection, scoped to allocator.
+    uint256 expires; // The time at which the claim expires.
+    BatchClaimComponent[] claims; // IDs and amounts.
+    address claimant; // The claim recipient; specified by the arbiter.
+}
+
+struct BatchClaimComponent {
+    uint256 id; // The token ID of the ERC6909 token to allocate.
+    uint256 allocatedAmount; // The original allocated amount of ERC6909 tokens.
+    uint256 amount; // The claimed token amount; specified by the arbiter.
+}
+
+struct QualifiedBatchClaim {
+    // ... same first 5 parameters as all claims
+    uint256 expires; // The time at which the claim expires.
+    bytes32 qualificationTypehash; // Typehash of the qualification payload.
+    bytes qualificationPayload; // Data used to derive qualification hash.
+    BatchClaimComponent[] claims; // IDs and amounts.
+    address claimant; // The claim recipient; specified by the arbiter.
+}
+
+struct BatchClaimWithWitness {
+    // ... same first 5 parameters as all claims
+    bytes32 witness; // Hash of the witness data.
+    string witnessTypestring; // Witness typestring appended to existing typestring.
+    BatchClaimComponent[] claims; // IDs and amounts.
+    address claimant; // The claim recipient; specified by the arbiter.
+}
+
+struct QualifiedBatchClaimWithWitness {
+    // ... same first 5 parameters as all claims
+    bytes32 witness; // Hash of the witness data.
+    string witnessTypestring; // Witness typestring appended to existing typestring.
+    bytes32 qualificationTypehash; // Typehash of the qualification payload.
+    bytes qualificationPayload; // Data used to derive qualification hash.
+    BatchClaimComponent[] claims; // IDs and amounts.
+    address claimant; // The claim recipient; specified by the arbiter.
+}
+
+struct SplitBatchClaim {
+    // ... same first 5 parameters as all claims
+    SplitBatchClaimComponent[] claims; // The claim token IDs, recipients and amounts.
+}
+
+struct SplitBatchClaimComponent {
+    uint256 id; // The token ID of the ERC6909 token to allocate.
+    uint256 allocatedAmount; // The original allocated amount of ERC6909 tokens.
+    SplitComponent[] portions; // claimants and amounts.
+}
+
+struct SplitBatchClaimWithWitness {
+    // ... same first 5 parameters as all claims
+    bytes32 witness; // Hash of the witness data.
+    string witnessTypestring; // Witness typestring appended to existing typestring.
+    SplitBatchClaimComponent[] claims; // The claim token IDs, recipients and amounts.
+}
+
+struct QualifiedSplitBatchClaim {
+    // ... same first 5 parameters as all claims
+    bytes32 qualificationTypehash; // Typehash of the qualification payload.
+    bytes qualificationPayload; // Data used to derive qualification hash.
+    SplitBatchClaimComponent[] claims; // The claim token IDs, recipients and amounts.
+}
+
+struct QualifiedSplitBatchClaimWithWitness {
+    // ... same first 5 parameters as all claims
+    bytes32 witness; // Hash of the witness data.
+    string witnessTypestring; // Witness typestring appended to existing typestring.
+    bytes32 qualificationTypehash; // Typehash of the qualification payload.
+    bytes qualificationPayload; // Data used to derive qualification hash.
+    SplitBatchClaimComponent[] claims; // The claim token IDs, recipients and amounts.
+}
+
+interface ICompactBatchClaims {
+    function claim(BatchClaim calldata claimPayload) external returns (bool);
+    function claimAndWithdraw(BatchClaim calldata claimPayload) external returns (bool);
+    function claim(QualifiedBatchClaim calldata claimPayload) external returns (bool);
+    function claimAndWithdraw(QualifiedBatchClaim calldata claimPayload) external returns (bool);
+    function claim(BatchClaimWithWitness calldata claimPayload) external returns (bool);
+    function claimAndWithdraw(BatchClaimWithWitness calldata claimPayload) external returns (bool);
+    function claim(QualifiedBatchClaimWithWitness calldata claimPayload) external returns (bool);
+    function claimAndWithdraw(QualifiedBatchClaimWithWitness calldata claimPayload) external returns (bool);
+    function claim(SplitBatchClaim calldata claimPayload) external returns (bool);
+    function claimAndWithdraw(SplitBatchClaim calldata claimPayload) external returns (bool);
+    function claim(QualifiedSplitBatchClaim calldata claimPayload) external returns (bool);
+    function claimAndWithdraw(QualifiedSplitBatchClaim calldata claimPayload) external returns (bool);
+    function claim(SplitBatchClaimWithWitness calldata claimPayload) external returns (bool);
+    function claimAndWithdraw(SplitBatchClaimWithWitness calldata claimPayload) external returns (bool);
+    function claim(QualifiedSplitBatchClaimWithWitness calldata claimPayload) external returns (bool);
+    function claimAndWithdraw(QualifiedSplitBatchClaimWithWitness calldata claimPayload) external returns (bool);
+}
+```
+
+#### 4c) Single Resource Lock Claim on Multiple Chains
+When the sponsor wants to utilize multiple resource locks where each lock is on its own chain, they will sign a `MultichainCompact` EIP-712 payload that contains an array of `Allocation` structs, where each allocation indicates a specific arbiter, chainId, and array of length 1 containing the ID of the respective lock and an amount. The sponsor must sign the payload against the domain of the first allocation's chainId (called the "notarized" domain), and any subsequent allocations can only include resource locks with a "Multichain" scope. The allocator must sign the payload for each chain independently using its respective domain; these signatures can also each be uniquely qualified if necessary.
+
+There are thirty-two endpoints in this scenario, broken into two groups of sixteen that each map to the same combination as the cases above:
+    - sixteen "endogenous" versions that utilize the initial resource lock and therefore are considered "notarized": these take a single additional argument, an `additionalChains` array containing the additional allocation hashes (the initial allocation hash is excluded as it is derived as part of validation).
+    - sixteen "exogenous" versions that utilize subsequent resource locks outside of the "notarized" domain; these also take an `additionalChains` array (the allocation hash for the chain being claimed against is excluded, as it is derived as part of validation) as well as two additional arguments:
+        - a `chainIndex` argument indicating the index to insert the allocation hash of the current domain (a value of `0` indicates that it is the second allocation, an index of `1` indicates that it is the third allocation, etc)
+        - a `notarizedChainId` argument indicating the chainId of the domain used by the sponsor to authorize the claim
+
+```solidity
+struct MultichainClaim {
+    bytes allocatorSignature; // Authorization from the allocator.
+    bytes sponsorSignature; // Authorization from the sponsor.
+    address sponsor; // The account to source the tokens from.
+    uint256 nonce; // A parameter to enforce replay protection, scoped to allocator.
+    uint256 expires; // The time at which the claim expires.
+    bytes32[] additionalChains; // The allocation hashes from additional chains.
+    uint256 id; // The token ID of the ERC6909 token to allocate.
+    uint256 allocatedAmount; // The original allocated amount of ERC6909 tokens.
+    address claimant; // The claim recipient; specified by the arbiter.
+    uint256 amount; // The claimed token amount; specified by the arbiter.
+}
+
+struct ExogenousMultichainClaim {
+    // ... same first 5 parameters as all claims
+    bytes32[] additionalChains; // The allocation hashes from additional chains.
+    uint256 chainIndex; // The index after which to insert the current allocation hash.
+    uint256 notarizedChainId; // The chain id used to sign the multichain claim.
+    // ... same last 4 parameters as MultichainClaim
+}
+
+struct QualifiedMultichainClaim {
+    // ... same first 5 parameters as all claims
+    bytes32 qualificationTypehash; // Typehash of the qualification payload.
+    bytes qualificationPayload; // Data used to derive qualification hash.
+    // ... same last 5 parameters as MultichainClaim
+}
+
+struct ExogenousQualifiedMultichainClaim {
+    // ... same first 5 parameters as all claims
+    bytes32 qualificationTypehash; // Typehash of the qualification payload.
+    bytes qualificationPayload; // Data used to derive qualification hash.
+    bytes32[] additionalChains; // The allocation hashes from additional chains.
+    uint256 chainIndex; // The index after which to insert the current allocation hash.
+    uint256 notarizedChainId; // The chain id used to sign the multichain claim.
+    // ... same last 4 parameters as MultichainClaim
+}
+
+struct MultichainClaimWithWitness {
+    // ... same first 5 parameters as all claims
+    bytes32 witness; // Hash of the witness data.
+    string witnessTypestring; // Witness typestring appended to existing typestring.
+    // ... same last 5 parameters as MultichainClaim
+}
+
+struct ExogenousMultichainClaimWithWitness {
+    // ... same first 5 parameters as all claims
+    bytes32 witness; // Hash of the witness data.
+    string witnessTypestring; // Witness typestring appended to existing typestring.
+    bytes32[] additionalChains; // The allocation hashes from additional chains.
+    uint256 chainIndex; // The index after which to insert the current allocation hash.
+    uint256 notarizedChainId; // The chain id used to sign the multichain claim.
+    // ... same last 4 parameters as MultichainClaim
+}
+
+struct QualifiedMultichainClaimWithWitness {
+    // ... same first 5 parameters as all claims
+    bytes32 witness; // Hash of the witness data.
+    string witnessTypestring; // Witness typestring appended to existing typestring.
+    bytes32 qualificationTypehash; // Typehash of the qualification payload.
+    bytes qualificationPayload; // Data used to derive qualification hash.
+    // ... same last 5 parameters as MultichainClaim
+}
+
+struct ExogenousQualifiedMultichainClaimWithWitness {
+    // ... same first 5 parameters as all claims
+    bytes32 witness; // Hash of the witness data.
+    string witnessTypestring; // Witness typestring appended to existing typestring.
+    bytes32 qualificationTypehash; // Typehash of the qualification payload.
+    bytes qualificationPayload; // Data used to derive qualification hash.
+    bytes32[] additionalChains; // The allocation hashes from additional chains.
+    uint256 chainIndex; // The index after which to insert the current allocation hash.
+    uint256 notarizedChainId; // The chain id used to sign the multichain claim.
+    // ... same last 4 parameters as MultichainClaim
+}
+
+struct SplitMultichainClaim {
+    // ... same first 5 parameters as all claims
+    bytes32[] additionalChains; // The allocation hashes from additional chains.
+    uint256 id; // The token ID of the ERC6909 token to allocate.
+    uint256 allocatedAmount; // The original allocated amount of ERC6909 tokens.
+    SplitComponent[] claimants; // The claim recipients and amounts; specified by the arbiter.
+}
+
+struct ExogenousSplitMultichainClaim {
+    // ... same first 5 parameters as all claims
+    bytes32[] additionalChains; // The allocation hashes from additional chains.
+    uint256 chainIndex; // The index after which to insert the current allocation hash.
+    uint256 notarizedChainId; // The chain id used to sign the multichain claim.
+    // ... same last 3 parameters as MultichainSplitClaim
+}
+
+struct SplitMultichainClaimWithWitness {
+    // ... same first 5 parameters as all claims
+    bytes32 witness; // Hash of the witness data.
+    string witnessTypestring; // Witness typestring appended to existing typestring.
+    // ... same last 4 parameters as SplitMultichainClaim
+}
+
+struct ExogenousQualifiedSplitMultichainClaim {
+    // ... same first 5 parameters as all claims
+    bytes32 qualificationTypehash; // Typehash of the qualification payload.
+    bytes qualificationPayload; // Data used to derive qualification hash.
+    bytes32[] additionalChains; // The allocation hashes from additional chains.
+    uint256 chainIndex; // The index after which to insert the current allocation hash.
+    uint256 notarizedChainId; // The chain id used to sign the multichain claim.
+    // ... same last 3 parameters as MultichainSplitClaim
+}
+
+struct ExogenousSplitMultichainClaimWithWitness {
+    // ... same first 5 parameters as all claims
+    bytes32 witness; // Hash of the witness data.
+    string witnessTypestring; // Witness typestring appended to existing typestring.
+    bytes32[] additionalChains; // The allocation hashes from additional chains.
+    uint256 chainIndex; // The index after which to insert the current allocation hash.
+    uint256 notarizedChainId; // The chain id used to sign the multichain claim.
+    // ... same last 3 parameters as MultichainSplitClaim
+}
+
+struct QualifiedSplitMultichainClaim {
+    // ... same first 5 parameters as all claims
+    bytes32 qualificationTypehash; // Typehash of the qualification payload.
+    bytes qualificationPayload; // Data used to derive qualification hash.
+    // ... same last 4 parameters as SplitMultichainClaim
+}
+
+struct QualifiedSplitMultichainClaimWithWitness {
+    // ... same first 5 parameters as all claims
+    bytes32 witness; // Hash of the witness data.
+    string witnessTypestring; // Witness typestring appended to existing typestring.
+    bytes32 qualificationTypehash; // Typehash of the qualification payload.
+    bytes qualificationPayload; // Data used to derive qualification hash.
+    // ... same last 4 parameters as SplitMultichainClaim
+}
+
+struct ExogenousQualifiedSplitMultichainClaimWithWitness {
+    // ... same first 5 parameters as all claims
+    bytes32 witness; // Hash of the witness data.
+    string witnessTypestring; // Witness typestring appended to existing typestring.
+    bytes32 qualificationTypehash; // Typehash of the qualification payload.
+    bytes qualificationPayload; // Data used to derive qualification hash.
+    bytes32[] additionalChains; // The allocation hashes from additional chains.
+    uint256 chainIndex; // The index after which to insert the current allocation hash.
+    uint256 notarizedChainId; // The chain id used to sign the multichain claim.
+    // ... same last 3 parameters as MultichainSplitClaim
+}
+
+interface ICompactMultichainClaims {
+    function claim(MultichainClaim calldata claimPayload) external returns (bool);
+    function claimAndWithdraw(MultichainClaim calldata claimPayload) external returns (bool);
+    function claim(ExogenousMultichainClaim calldata claimPayload) external returns (bool);
+    function claimAndWithdraw(ExogenousMultichainClaim calldata claimPayload) external returns (bool);
+    function claim(QualifiedMultichainClaim calldata claimPayload) external returns (bool);
+    function claimAndWithdraw(QualifiedMultichainClaim calldata claimPayload) external returns (bool);
+    function claim(ExogenousQualifiedMultichainClaim calldata claimPayload) external returns (bool);
+    function claimAndWithdraw(ExogenousQualifiedMultichainClaim calldata claimPayload) external returns (bool);
+    function claim(MultichainClaimWithWitness calldata claimPayload) external returns (bool);
+    function claimAndWithdraw(MultichainClaimWithWitness calldata claimPayload) external returns (bool);
+    function claim(ExogenousMultichainClaimWithWitness calldata claimPayload) external returns (bool);
+    function claimAndWithdraw(ExogenousMultichainClaimWithWitness calldata claimPayload) external returns (bool);
+    function claim(QualifiedMultichainClaimWithWitness calldata claimPayload) external returns (bool);
+    function claimAndWithdraw(QualifiedMultichainClaimWithWitness calldata claimPayload) external returns (bool);
+    function claim(ExogenousQualifiedMultichainClaimWithWitness calldata claimPayload) external returns (bool);
+    function claimAndWithdraw(ExogenousQualifiedMultichainClaimWithWitness calldata claimPayload) external returns (bool);
+    function claim(SplitMultichainClaim calldata claimPayload) external returns (bool);
+    function claimAndWithdraw(SplitMultichainClaim calldata claimPayload) external returns (bool);
+    function claim(ExogenousSplitMultichainClaim calldata claimPayload) external returns (bool);
+    function claimAndWithdraw(ExogenousSplitMultichainClaim calldata claimPayload) external returns (bool);
+    function claim(QualifiedSplitMultichainClaim calldata claimPayload) external returns (bool);
+    function claimAndWithdraw(QualifiedSplitMultichainClaim calldata claimPayload) external returns (bool);
+    function claim(ExogenousQualifiedSplitMultichainClaim calldata claimPayload) external returns (bool);
+    function claimAndWithdraw(ExogenousQualifiedSplitMultichainClaim calldata claimPayload) external returns (bool);
+    function claim(SplitMultichainClaimWithWitness calldata claimPayload) external returns (bool);
+    function claimAndWithdraw(SplitMultichainClaimWithWitness calldata claimPayload) external returns (bool);
+    function claim(ExogenousSplitMultichainClaimWithWitness calldata claimPayload) external returns (bool);
+    function claimAndWithdraw(ExogenousSplitMultichainClaimWithWitness calldata claimPayload) external returns (bool);
+    function claim(QualifiedSplitMultichainClaimWithWitness calldata claimPayload) external returns (bool);
+    function claimAndWithdraw(QualifiedSplitMultichainClaimWithWitness calldata claimPayload) external returns (bool);
+    function claim(ExogenousQualifiedSplitMultichainClaimWithWitness calldata claimPayload) external returns (bool);
+    function claimAndWithdraw(ExogenousQualifiedSplitMultichainClaimWithWitness calldata claimPayload) external returns (bool);
+}
+```
+
+#### 4d) Multiple Resource Lock Claim on Multiple Chains
+Finally, there are thirty-two claim endpoints to cover cases where the sponsor is utilizing multiple resource locks against multiple chains where one or more chains contain more than one resource lock; these also utilize a `MultichainCompact` EIP-712 payload, but the `Allocation` structs can contain `idsAndAmounts` arrays of arbitrary length.
+
+```
+struct BatchMultichainClaim {
+    bytes allocatorSignature; // Authorization from the allocator.
+    bytes sponsorSignature; // Authorization from the sponsor.
+    address sponsor; // The account to source the tokens from.
+    uint256 nonce; // A parameter to enforce replay protection, scoped to allocator.
+    uint256 expires; // The time at which the claim expires.
+    bytes32[] additionalChains; // The allocation hashes from additional chains.
+    BatchClaimComponent[] claims; // IDs and amounts.
+    address claimant; // The claim recipient; specified by the arbiter.
+}
+
+// ... additional structs omitted for brevity ...
+
+interface ICompactBatchMultichainClaims{
+    function claim(BatchMultichainClaim calldata claimPayload) external returns (bool);
+    function claimAndWithdraw(BatchMultichainClaim calldata claimPayload) external returns (bool);
+    function claim(ExogenousBatchMultichainClaim calldata claimPayload) external returns (bool);
+    function claimAndWithdraw(ExogenousBatchMultichainClaim calldata claimPayload) external returns (bool);
+    function claim(QualifiedBatchMultichainClaim calldata claimPayload) external returns (bool);
+    function claimAndWithdraw(QualifiedBatchMultichainClaim calldata claimPayload) external returns (bool);
+    function claim(ExogenousQualifiedBatchMultichainClaim calldata claimPayload) external returns (bool);
+    function claimAndWithdraw(ExogenousQualifiedBatchMultichainClaim calldata claimPayload) external returns (bool);
+    function claim(BatchMultichainClaimWithWitness calldata claimPayload) external returns (bool);
+    function claimAndWithdraw(BatchMultichainClaimWithWitness calldata claimPayload) external returns (bool);
+    function claim(ExogenousBatchMultichainClaimWithWitness calldata claimPayload) external returns (bool);
+    function claimAndWithdraw(ExogenousBatchMultichainClaimWithWitness calldata claimPayload) external returns (bool);
+    function claim(QualifiedBatchMultichainClaimWithWitness calldata claimPayload) external returns (bool);
+    function claimAndWithdraw(QualifiedBatchMultichainClaimWithWitness calldata claimPayload) external returns (bool);
+    function claim(ExogenousQualifiedBatchMultichainClaimWithWitness calldata claimPayload) external returns (bool);
+    function claimAndWithdraw(ExogenousQualifiedBatchMultichainClaimWithWitness calldata claimPayload) external returns (bool);
+    function claim(SplitBatchMultichainClaim calldata claimPayload) external returns (bool);
+    function claimAndWithdraw(SplitBatchMultichainClaim calldata claimPayload) external returns (bool);
+    function claim(ExogenousSplitBatchMultichainClaim calldata claimPayload) external returns (bool);
+    function claimAndWithdraw(ExogenousSplitBatchMultichainClaim calldata claimPayload) external returns (bool);
+    function claim(QualifiedSplitBatchMultichainClaim calldata claimPayload) external returns (bool);
+    function claimAndWithdraw(QualifiedSplitBatchMultichainClaim calldata claimPayload) external returns (bool);
+    function claim(ExogenousQualifiedSplitBatchMultichainClaim calldata claimPayload) external returns (bool);
+    function claimAndWithdraw(ExogenousQualifiedSplitBatchMultichainClaim calldata claimPayload) external returns (bool);
+    function claim(SplitBatchMultichainClaimWithWitness calldata claimPayload) external returns (bool);
+    function claimAndWithdraw(SplitBatchMultichainClaimWithWitness calldata claimPayload) external returns (bool);
+    function claim(ExogenousSplitBatchMultichainClaimWithWitness calldata claimPayload) external returns (bool);
+    function claimAndWithdraw(ExogenousSplitBatchMultichainClaimWithWitness calldata claimPayload) external returns (bool);
+    function claim(QualifiedSplitBatchMultichainClaimWithWitness calldata claimPayload) external returns (bool);
+    function claimAndWithdraw(QualifiedSplitBatchMultichainClaimWithWitness calldata claimPayload) external returns (bool);
+    function claim(ExogenousQualifiedSplitBatchMultichainClaimWithWitness calldata claimPayload) external returns (bool);
+    function claimAndWithdraw(ExogenousQualifiedSplitBatchMultichainClaimWithWitness calldata claimPayload) external returns (bool);
+}
+```
+
+### 5. View Functions
+In addition to standard ERC6909 view functions, The Compact includes the following view functions:
+ - `getForcedWithdrawalStatus` gives the current forced withdrawal status of a given account (either deactivated, pending, or activated) for a given resource lock, and the time at which it becomes active if it is currently pending
+ - `getLockDetails` gives the address of the underlying token, the address of the allocator, the reset period, and the scope (Multichain vs. Chain-specific) for a given resource lock
+ - `check` determines if a given nonce has been consumed for a given allocator (note that nonces are scoped to allocators, not sponsors)
+ - `DOMAIN_SEPARATOR` returns the hash of the EIP-712 domain data for the chain in question
+ - `name` returns the name of the contract.
