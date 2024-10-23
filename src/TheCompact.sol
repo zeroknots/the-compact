@@ -82,7 +82,7 @@ import {
     ExogenousQualifiedSplitBatchMultichainClaimWithWitness
 } from "./types/BatchMultichainClaims.sol";
 
-import { PERMIT2_WITNESS_FRAGMENT_HASH } from "./types/EIP712Types.sol";
+import { PERMIT2_DEPOSIT_WITNESS_FRAGMENT_HASH } from "./types/EIP712Types.sol";
 
 import { SplitComponent, TransferComponent, SplitByIdComponent, BatchClaimComponent, SplitBatchClaimComponent } from "./types/Components.sol";
 
@@ -315,7 +315,7 @@ contract TheCompact is ITheCompact, ERC6909, Extsload, Tstorish {
             // NOTE: none of these arguments are sanitized; the assumption is that they have to
             // match the signed values anyway, so *should* be fine not to sanitize them but could
             // optionally check that there are no dirty upper bits on any of them.
-            mstore(m, PERMIT2_WITNESS_FRAGMENT_HASH)
+            mstore(m, PERMIT2_DEPOSIT_WITNESS_FRAGMENT_HASH)
             calldatacopy(add(m, 0x20), 0x84, 0xa0) // depositor, allocator, resetPeriod, scope, recipient
             let witness := keccak256(m, 0xc0)
 
@@ -401,7 +401,16 @@ contract TheCompact is ITheCompact, ERC6909, Extsload, Tstorish {
         uint256 initialId = address(0).toIdIfRegistered(scope, resetPeriod, allocator);
 
         return _processBatchPermit2Deposits(
-            firstUnderlyingTokenIsNative, recipient, initialId, totalTokens, permitted, depositor, nonce, deadline, allocator.toPermit2WitnessHash(depositor, resetPeriod, scope, recipient), signature
+            firstUnderlyingTokenIsNative,
+            recipient,
+            initialId,
+            totalTokens,
+            permitted,
+            depositor,
+            nonce,
+            deadline,
+            allocator.toPermit2DepositWitnessHash(depositor, resetPeriod, scope, recipient),
+            signature
         );
     }
 
