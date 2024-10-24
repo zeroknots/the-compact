@@ -6,6 +6,7 @@ import { Lock } from "./types/Lock.sol";
 import { Scope } from "./types/Scope.sol";
 import { ResetPeriod } from "./types/ResetPeriod.sol";
 import { ForcedWithdrawalStatus } from "./types/ForcedWithdrawalStatus.sol";
+import { ConsumerLib } from "./lib/ConsumerLib.sol";
 import { IdLib } from "./lib/IdLib.sol";
 import { EfficiencyLib } from "./lib/EfficiencyLib.sol";
 import { FunctionCastLib } from "./lib/FunctionCastLib.sol";
@@ -160,6 +161,7 @@ contract TheCompact is ITheCompact, ERC6909, Extsload, Tstorish {
     using IdLib for ResetPeriod;
     using SafeTransferLib for address;
     using FixedPointMathLib for uint256;
+    using ConsumerLib for uint256;
     using EfficiencyLib for bool;
     using EfficiencyLib for uint256;
     using ValidityLib for address;
@@ -201,6 +203,9 @@ contract TheCompact is ITheCompact, ERC6909, Extsload, Tstorish {
 
     // Rage-quit functionality (TODO: optimize storage layout)
     mapping(address => mapping(uint256 => uint256)) private _cutoffTime;
+
+    // TODO: optimize
+    mapping(address => mapping(bytes32 => bool)) private _registeredClaimHashes;
 
     uint256 private immutable _INITIAL_CHAIN_ID;
     bytes32 private immutable _INITIAL_DOMAIN_SEPARATOR;
@@ -874,7 +879,37 @@ contract TheCompact is ITheCompact, ERC6909, Extsload, Tstorish {
         return _withdraw(msg.sender, recipient, id, amount);
     }
 
-    function __register(address allocator, bytes calldata proof) external returns (uint96 allocatorId) {
+    function register(bytes32 claimHash) external returns (bool) {
+        _registeredClaimHashes[msg.sender][claimHash] = true;
+        return true;
+    }
+
+    function register(bytes32[] calldata claimHashes) external returns (bool) {
+        unchecked {
+            uint256 totalClaimHashes = claimHashes.length;
+            for (uint256 i = 0; i < totalClaimHashes; ++i) {
+                _registeredClaimHashes[msg.sender][claimHashes[i]] = true;
+            }
+        }
+
+        return true;
+    }
+
+    function consume(uint256[] calldata nonces) external returns (bool) {
+        // NOTE: this may not be necessary, consider removing
+        msg.sender.usingAllocatorId().mustHaveARegisteredAllocator();
+
+        unchecked {
+            uint256 noncesLength = nonces.length;
+            for (uint256 i = 0; i < noncesLength; ++i) {
+                nonces[i].consumeNonce(msg.sender);
+            }
+        }
+
+        return true;
+    }
+
+    function __registerAllocator(address allocator, bytes calldata proof) external returns (uint96 allocatorId) {
         allocator = uint256(uint160(allocator)).asSanitizedAddress();
         if (!allocator.canBeRegistered(proof)) {
             assembly ("memory-safe") {
@@ -1108,7 +1143,9 @@ contract TheCompact is ITheCompact, ERC6909, Extsload, Tstorish {
             sponsorDomainSeparator := add(sponsorDomainSeparator, mul(iszero(sponsorDomainSeparator), domainSeparator))
         }
 
-        messageHash.signedBy(sponsor, sponsorSignature, sponsorDomainSeparator);
+        if ((sponsorDomainSeparator != domainSeparator).or(sponsorSignature.length != 0) || !_registeredClaimHashes[sponsor][messageHash]) {
+            messageHash.signedBy(sponsor, sponsorSignature, sponsorDomainSeparator);
+        }
         qualificationMessageHash.signedBy(allocator, allocatorSignature, domainSeparator);
 
         _emitClaim(sponsor, messageHash, allocator);

@@ -164,7 +164,7 @@ contract TheCompactTest is Test {
         uint256 amount = 1e18;
 
         vm.prank(allocator);
-        uint96 allocatorId = theCompact.__register(allocator, "");
+        uint96 allocatorId = theCompact.__registerAllocator(allocator, "");
 
         vm.prank(swapper);
         uint256 id = theCompact.deposit{ value: amount }(allocator);
@@ -189,7 +189,7 @@ contract TheCompactTest is Test {
         uint256 amount = 1e18;
 
         vm.prank(allocator);
-        uint96 allocatorId = theCompact.__register(allocator, "");
+        uint96 allocatorId = theCompact.__registerAllocator(allocator, "");
 
         vm.prank(swapper);
         uint256 id = theCompact.deposit{ value: amount }(allocator, resetPeriod, scope, recipient);
@@ -214,7 +214,7 @@ contract TheCompactTest is Test {
         uint256 amount = 1e18;
 
         vm.prank(allocator);
-        uint96 allocatorId = theCompact.__register(allocator, "");
+        uint96 allocatorId = theCompact.__registerAllocator(allocator, "");
 
         vm.prank(swapper);
         uint256 id = theCompact.deposit(address(token), allocator, amount);
@@ -239,7 +239,7 @@ contract TheCompactTest is Test {
         uint256 amount = 1e18;
 
         vm.prank(allocator);
-        uint96 allocatorId = theCompact.__register(allocator, "");
+        uint96 allocatorId = theCompact.__registerAllocator(allocator, "");
 
         vm.prank(swapper);
         uint256 id = theCompact.deposit(address(token), allocator, resetPeriod, scope, amount, recipient);
@@ -264,7 +264,7 @@ contract TheCompactTest is Test {
         uint256 amount = 1e18;
 
         vm.prank(allocator);
-        uint96 allocatorId = theCompact.__register(allocator, "");
+        uint96 allocatorId = theCompact.__registerAllocator(allocator, "");
 
         uint256 id = ((uint256(scope) << 255) | (uint256(resetPeriod) << 252) | (uint256(allocatorId) << 160) | uint256(uint160(address(token))));
 
@@ -328,7 +328,7 @@ contract TheCompactTest is Test {
         bytes memory signature = abi.encodePacked(r, vs);
 
         vm.prank(allocator);
-        uint96 allocatorId = theCompact.__register(allocator, "");
+        uint96 allocatorId = theCompact.__registerAllocator(allocator, "");
 
         uint256 id = theCompact.deposit(address(token), amount, nonce, deadline, swapper, allocator, resetPeriod, scope, recipient, signature);
         vm.snapshotGasLastCall("depositERC20ViaPermit2AndURI");
@@ -384,7 +384,7 @@ contract TheCompactTest is Test {
         bytes memory signature = abi.encodePacked(r, vs);
 
         vm.prank(allocator);
-        uint96 allocatorId = theCompact.__register(allocator, "");
+        uint96 allocatorId = theCompact.__registerAllocator(allocator, "");
 
         ISignatureTransfer.TokenPermissions[] memory tokenPermissions = new ISignatureTransfer.TokenPermissions[](1);
         tokenPermissions[0] = ISignatureTransfer.TokenPermissions({ token: address(token), amount: amount });
@@ -415,7 +415,7 @@ contract TheCompactTest is Test {
         address recipient = 0x1111111111111111111111111111111111111111;
 
         vm.prank(allocator);
-        theCompact.__register(allocator, "");
+        theCompact.__registerAllocator(allocator, "");
 
         vm.prank(swapper);
         uint256 id = theCompact.deposit(address(token), allocator, resetPeriod, scope, amount, swapper);
@@ -457,7 +457,7 @@ contract TheCompactTest is Test {
         uint256 amountTwo = 6e17;
 
         vm.prank(allocator);
-        theCompact.__register(allocator, "");
+        theCompact.__registerAllocator(allocator, "");
 
         vm.prank(swapper);
         uint256 id = theCompact.deposit(address(token), allocator, resetPeriod, scope, amount, swapper);
@@ -506,7 +506,7 @@ contract TheCompactTest is Test {
         address recipient = 0x1111111111111111111111111111111111111111;
 
         vm.prank(allocator);
-        theCompact.__register(allocator, "");
+        theCompact.__registerAllocator(allocator, "");
 
         vm.startPrank(swapper);
         uint256 idOne = theCompact.deposit(address(token), allocator, resetPeriod, scope, amountOne, swapper);
@@ -570,7 +570,7 @@ contract TheCompactTest is Test {
         address recipientTwo = 0x2222222222222222222222222222222222222222;
 
         vm.prank(allocator);
-        theCompact.__register(allocator, "");
+        theCompact.__registerAllocator(allocator, "");
 
         vm.startPrank(swapper);
         uint256 idOne = theCompact.deposit(address(token), allocator, resetPeriod, scope, amountOne, swapper);
@@ -641,7 +641,7 @@ contract TheCompactTest is Test {
         address recipient = 0x1111111111111111111111111111111111111111;
 
         vm.prank(allocator);
-        theCompact.__register(allocator, "");
+        theCompact.__registerAllocator(allocator, "");
 
         vm.prank(swapper);
         uint256 id = theCompact.deposit(address(token), allocator, resetPeriod, scope, amount, swapper);
@@ -683,7 +683,7 @@ contract TheCompactTest is Test {
         uint256 amountTwo = 6e17;
 
         vm.prank(allocator);
-        theCompact.__register(allocator, "");
+        theCompact.__registerAllocator(allocator, "");
 
         vm.prank(swapper);
         uint256 id = theCompact.deposit(address(token), allocator, resetPeriod, scope, amount, swapper);
@@ -733,7 +733,7 @@ contract TheCompactTest is Test {
         address recipient = 0x1111111111111111111111111111111111111111;
 
         vm.prank(allocator);
-        theCompact.__register(allocator, "");
+        theCompact.__registerAllocator(allocator, "");
 
         vm.startPrank(swapper);
         uint256 idOne = theCompact.deposit(address(token), allocator, resetPeriod, scope, amountOne, swapper);
@@ -800,7 +800,7 @@ contract TheCompactTest is Test {
         address recipientTwo = 0x2222222222222222222222222222222222222222;
 
         vm.prank(allocator);
-        theCompact.__register(allocator, "");
+        theCompact.__registerAllocator(allocator, "");
 
         vm.startPrank(swapper);
         uint256 idOne = theCompact.deposit(address(token), allocator, resetPeriod, scope, amountOne, swapper);
@@ -874,7 +874,7 @@ contract TheCompactTest is Test {
         address arbiter = 0x2222222222222222222222222222222222222222;
 
         vm.prank(allocator);
-        theCompact.__register(allocator, "");
+        theCompact.__registerAllocator(allocator, "");
 
         vm.prank(swapper);
         uint256 id = theCompact.deposit{ value: amount }(allocator, resetPeriod, scope, swapper);
@@ -914,7 +914,7 @@ contract TheCompactTest is Test {
         address arbiter = 0x2222222222222222222222222222222222222222;
 
         vm.prank(allocator);
-        theCompact.__register(allocator, "");
+        theCompact.__registerAllocator(allocator, "");
 
         vm.prank(swapper);
         uint256 id = theCompact.deposit{ value: amount }(allocator, resetPeriod, scope, swapper);
@@ -954,7 +954,7 @@ contract TheCompactTest is Test {
         address arbiter = 0x2222222222222222222222222222222222222222;
 
         vm.prank(allocator);
-        theCompact.__register(allocator, "");
+        theCompact.__registerAllocator(allocator, "");
 
         vm.prank(swapper);
         uint256 id = theCompact.deposit{ value: amount }(allocator, resetPeriod, scope, swapper);
@@ -1003,7 +1003,7 @@ contract TheCompactTest is Test {
         address arbiter = 0x2222222222222222222222222222222222222222;
 
         vm.prank(allocator);
-        theCompact.__register(allocator, "");
+        theCompact.__registerAllocator(allocator, "");
 
         vm.prank(swapper);
         uint256 id = theCompact.deposit{ value: amount }(allocator, resetPeriod, scope, swapper);
@@ -1057,7 +1057,7 @@ contract TheCompactTest is Test {
         address arbiter = 0x2222222222222222222222222222222222222222;
 
         vm.prank(allocator);
-        theCompact.__register(allocator, "");
+        theCompact.__registerAllocator(allocator, "");
 
         vm.prank(swapper);
         uint256 id = theCompact.deposit{ value: amount }(allocator, resetPeriod, scope, swapper);
@@ -1125,7 +1125,7 @@ contract TheCompactTest is Test {
         uint256 amountTwo = 6e17;
 
         vm.prank(allocator);
-        theCompact.__register(allocator, "");
+        theCompact.__registerAllocator(allocator, "");
 
         vm.prank(swapper);
         uint256 id = theCompact.deposit{ value: amount }(allocator, resetPeriod, scope, swapper);
@@ -1178,7 +1178,7 @@ contract TheCompactTest is Test {
         uint256 amountTwo = 6e17;
 
         vm.prank(allocator);
-        theCompact.__register(allocator, "");
+        theCompact.__registerAllocator(allocator, "");
 
         vm.prank(swapper);
         uint256 id = theCompact.deposit{ value: amount }(allocator, resetPeriod, scope, swapper);
@@ -1240,7 +1240,7 @@ contract TheCompactTest is Test {
         uint256 amountTwo = 6e17;
 
         vm.prank(allocator);
-        theCompact.__register(allocator, "");
+        theCompact.__registerAllocator(allocator, "");
 
         vm.prank(swapper);
         uint256 id = theCompact.deposit{ value: amount }(allocator, resetPeriod, scope, swapper);
@@ -1307,7 +1307,7 @@ contract TheCompactTest is Test {
         uint256 amountTwo = 6e17;
 
         vm.prank(allocator);
-        theCompact.__register(allocator, "");
+        theCompact.__registerAllocator(allocator, "");
 
         vm.prank(swapper);
         uint256 id = theCompact.deposit{ value: amount }(allocator, resetPeriod, scope, swapper);
@@ -1382,7 +1382,7 @@ contract TheCompactTest is Test {
         address arbiter = 0x2222222222222222222222222222222222222222;
 
         vm.prank(allocator);
-        theCompact.__register(allocator, "");
+        theCompact.__registerAllocator(allocator, "");
 
         vm.startPrank(swapper);
         uint256 id = theCompact.deposit{ value: amount }(allocator, ResetPeriod.TenMinutes, Scope.Multichain, swapper);
@@ -1454,7 +1454,7 @@ contract TheCompactTest is Test {
         address arbiter = 0x2222222222222222222222222222222222222222;
 
         vm.prank(allocator);
-        theCompact.__register(allocator, "");
+        theCompact.__registerAllocator(allocator, "");
 
         vm.startPrank(swapper);
         uint256 id = theCompact.deposit{ value: amount }(allocator, ResetPeriod.TenMinutes, Scope.Multichain, swapper);
@@ -1535,7 +1535,7 @@ contract TheCompactTest is Test {
         address arbiter = 0x2222222222222222222222222222222222222222;
 
         vm.prank(allocator);
-        theCompact.__register(allocator, "");
+        theCompact.__registerAllocator(allocator, "");
 
         vm.startPrank(swapper);
         uint256 id = theCompact.deposit{ value: amount }(allocator, ResetPeriod.TenMinutes, Scope.Multichain, swapper);
@@ -1612,7 +1612,7 @@ contract TheCompactTest is Test {
         address arbiter = 0x2222222222222222222222222222222222222222;
 
         vm.prank(allocator);
-        theCompact.__register(allocator, "");
+        theCompact.__registerAllocator(allocator, "");
 
         vm.startPrank(swapper);
         uint256 id = theCompact.deposit{ value: amount }(allocator, ResetPeriod.TenMinutes, Scope.Multichain, swapper);
@@ -1703,7 +1703,7 @@ contract TheCompactTest is Test {
         uint256 amountTwo = 6e17;
 
         vm.prank(allocator);
-        theCompact.__register(allocator, "");
+        theCompact.__registerAllocator(allocator, "");
 
         vm.startPrank(swapper);
         uint256 id = theCompact.deposit{ value: amount }(allocator, ResetPeriod.TenMinutes, Scope.Multichain, swapper);
@@ -1787,7 +1787,7 @@ contract TheCompactTest is Test {
         uint256 amountTwo = 6e17;
 
         vm.prank(allocator);
-        theCompact.__register(allocator, "");
+        theCompact.__registerAllocator(allocator, "");
 
         vm.startPrank(swapper);
         uint256 id = theCompact.deposit{ value: amount }(allocator, ResetPeriod.TenMinutes, Scope.Multichain, swapper);
@@ -1876,7 +1876,7 @@ contract TheCompactTest is Test {
         uint256 amountTwo = 6e17;
 
         vm.prank(allocator);
-        theCompact.__register(allocator, "");
+        theCompact.__registerAllocator(allocator, "");
 
         vm.startPrank(swapper);
         uint256 id = theCompact.deposit{ value: amount }(allocator, ResetPeriod.TenMinutes, Scope.Multichain, swapper);
@@ -1969,7 +1969,7 @@ contract TheCompactTest is Test {
         uint256 amountTwo = 6e17;
 
         vm.prank(allocator);
-        theCompact.__register(allocator, "");
+        theCompact.__registerAllocator(allocator, "");
 
         vm.startPrank(swapper);
         uint256 id = theCompact.deposit{ value: amount }(allocator, ResetPeriod.TenMinutes, Scope.Multichain, swapper);
@@ -2066,7 +2066,7 @@ contract TheCompactTest is Test {
         uint256 anotherChainId = 7171717;
 
         vm.prank(allocator);
-        theCompact.__register(allocator, "");
+        theCompact.__registerAllocator(allocator, "");
 
         vm.startPrank(swapper);
         uint256 id = theCompact.deposit{ value: amount }(allocator, resetPeriod, scope, swapper);
@@ -2171,7 +2171,7 @@ contract TheCompactTest is Test {
         uint256 anotherChainId = 7171717;
 
         vm.prank(allocator);
-        theCompact.__register(allocator, "");
+        theCompact.__registerAllocator(allocator, "");
 
         vm.startPrank(swapper);
         uint256 id = theCompact.deposit{ value: amount }(allocator, resetPeriod, scope, swapper);
@@ -2299,7 +2299,7 @@ contract TheCompactTest is Test {
         uint256 anotherChainId = 7171717;
 
         vm.prank(allocator);
-        theCompact.__register(allocator, "");
+        theCompact.__registerAllocator(allocator, "");
 
         vm.startPrank(swapper);
         uint256 id = theCompact.deposit{ value: amount }(allocator, resetPeriod, scope, swapper);
@@ -2438,7 +2438,7 @@ contract TheCompactTest is Test {
         uint256 anotherChainId = 7171717;
 
         vm.prank(allocator);
-        theCompact.__register(allocator, "");
+        theCompact.__registerAllocator(allocator, "");
 
         vm.startPrank(swapper);
         uint256 id = theCompact.deposit{ value: amount }(allocator, resetPeriod, scope, swapper);
@@ -2593,7 +2593,7 @@ contract TheCompactTest is Test {
         uint256 amountTwo = 6e17;
 
         vm.prank(allocator);
-        theCompact.__register(allocator, "");
+        theCompact.__registerAllocator(allocator, "");
 
         vm.startPrank(swapper);
         uint256 id = theCompact.deposit{ value: amount }(allocator, resetPeriod, scope, swapper);
@@ -2711,7 +2711,7 @@ contract TheCompactTest is Test {
         uint256 amountTwo = 6e17;
 
         vm.prank(allocator);
-        theCompact.__register(allocator, "");
+        theCompact.__registerAllocator(allocator, "");
 
         vm.startPrank(swapper);
         uint256 id = theCompact.deposit{ value: amount }(allocator, resetPeriod, scope, swapper);
@@ -2852,7 +2852,7 @@ contract TheCompactTest is Test {
         uint256 amountTwo = 6e17;
 
         vm.prank(allocator);
-        theCompact.__register(allocator, "");
+        theCompact.__registerAllocator(allocator, "");
 
         vm.startPrank(swapper);
         uint256 id = theCompact.deposit{ value: amount }(allocator, resetPeriod, scope, swapper);
@@ -2992,7 +2992,7 @@ contract TheCompactTest is Test {
         uint256 amountTwo = 6e17;
 
         vm.prank(allocator);
-        theCompact.__register(allocator, "");
+        theCompact.__registerAllocator(allocator, "");
 
         vm.startPrank(swapper);
         uint256 id = theCompact.deposit{ value: amount }(allocator, resetPeriod, scope, swapper);
@@ -3150,7 +3150,7 @@ contract TheCompactTest is Test {
         address arbiter = 0x2222222222222222222222222222222222222222;
 
         vm.prank(allocator);
-        theCompact.__register(allocator, "");
+        theCompact.__registerAllocator(allocator, "");
 
         vm.startPrank(swapper);
         uint256 id = theCompact.deposit{ value: amount }(allocator, ResetPeriod.TenMinutes, Scope.Multichain, swapper);
@@ -3275,7 +3275,7 @@ contract TheCompactTest is Test {
         address arbiter = 0x2222222222222222222222222222222222222222;
 
         vm.prank(allocator);
-        theCompact.__register(allocator, "");
+        theCompact.__registerAllocator(allocator, "");
 
         vm.startPrank(swapper);
         uint256 id = theCompact.deposit{ value: amount }(allocator, ResetPeriod.TenMinutes, Scope.Multichain, swapper);
@@ -3411,7 +3411,7 @@ contract TheCompactTest is Test {
         address arbiter = 0x2222222222222222222222222222222222222222;
 
         vm.prank(allocator);
-        theCompact.__register(allocator, "");
+        theCompact.__registerAllocator(allocator, "");
 
         vm.startPrank(swapper);
         uint256 id = theCompact.deposit{ value: amount }(allocator, ResetPeriod.TenMinutes, Scope.Multichain, swapper);
@@ -3558,7 +3558,7 @@ contract TheCompactTest is Test {
         address arbiter = 0x2222222222222222222222222222222222222222;
 
         vm.prank(allocator);
-        theCompact.__register(allocator, "");
+        theCompact.__registerAllocator(allocator, "");
 
         vm.startPrank(swapper);
         uint256 id = theCompact.deposit{ value: amount }(allocator, ResetPeriod.TenMinutes, Scope.Multichain, swapper);
@@ -3732,7 +3732,7 @@ contract TheCompactTest is Test {
         uint256 amountTwo = 6e17;
 
         vm.prank(allocator);
-        theCompact.__register(allocator, "");
+        theCompact.__registerAllocator(allocator, "");
 
         vm.startPrank(swapper);
         uint256 id = theCompact.deposit{ value: amount }(allocator, ResetPeriod.TenMinutes, Scope.Multichain, swapper);
@@ -3878,7 +3878,7 @@ contract TheCompactTest is Test {
         uint256 amountTwo = 6e17;
 
         vm.prank(allocator);
-        theCompact.__register(allocator, "");
+        theCompact.__registerAllocator(allocator, "");
 
         vm.startPrank(swapper);
         uint256 id = theCompact.deposit{ value: amount }(allocator, ResetPeriod.TenMinutes, Scope.Multichain, swapper);
@@ -4061,7 +4061,7 @@ contract TheCompactTest is Test {
         uint256 amountTwo = 6e17;
 
         vm.prank(allocator);
-        theCompact.__register(allocator, "");
+        theCompact.__registerAllocator(allocator, "");
 
         vm.startPrank(swapper);
         uint256 id = theCompact.deposit{ value: amount }(allocator, ResetPeriod.TenMinutes, Scope.Multichain, swapper);
@@ -4253,7 +4253,7 @@ contract TheCompactTest is Test {
         uint256 amountTwo = 6e17;
 
         vm.prank(allocator);
-        theCompact.__register(allocator, "");
+        theCompact.__registerAllocator(allocator, "");
 
         vm.startPrank(swapper);
         uint256 id = theCompact.deposit{ value: amount }(allocator, ResetPeriod.TenMinutes, Scope.Multichain, swapper);
@@ -4450,7 +4450,7 @@ contract TheCompactTest is Test {
         address recipient = 0x1111111111111111111111111111111111111111;
         uint256 amount = 1e18;
 
-        theCompact.__register(alwaysOKAllocator, "");
+        theCompact.__registerAllocator(alwaysOKAllocator, "");
 
         vm.prank(swapper);
         uint256 id = theCompact.deposit{ value: amount }(alwaysOKAllocator);

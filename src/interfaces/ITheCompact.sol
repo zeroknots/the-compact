@@ -348,7 +348,13 @@ interface ITheCompact {
 
     function forcedWithdrawal(uint256 id, address recipient, uint256 amount) external returns (bool);
 
-    function __register(address allocator, bytes calldata proof) external returns (uint96 allocatorId);
+    function register(bytes32 claimHash) external returns (bool);
+
+    function register(bytes32[] calldata claimHashes) external returns (bool);
+
+    function consume(uint256[] calldata nonces) external returns (bool);
+
+    function __registerAllocator(address allocator, bytes calldata proof) external returns (uint96 allocatorId);
 
     function getForcedWithdrawalStatus(address account, uint256 id) external view returns (ForcedWithdrawalStatus status, uint256 forcedWithdrawalAvailableAt);
 
