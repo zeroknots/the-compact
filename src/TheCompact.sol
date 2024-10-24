@@ -83,7 +83,7 @@ import {
     ExogenousQualifiedSplitBatchMultichainClaimWithWitness
 } from "./types/BatchMultichainClaims.sol";
 
-import { PERMIT2_DEPOSIT_WITNESS_FRAGMENT_HASH } from "./types/EIP712Types.sol";
+import { PERMIT2_DEPOSIT_WITNESS_FRAGMENT_HASH, EMISSARY_ASSIGNMENT_TYPEHASH } from "./types/EIP712Types.sol";
 
 import { SplitComponent, TransferComponent, SplitByIdComponent, BatchClaimComponent, SplitBatchClaimComponent } from "./types/Components.sol";
 
@@ -206,6 +206,9 @@ contract TheCompact is ITheCompact, ERC6909, Extsload, Tstorish {
 
     // TODO: optimize
     mapping(address => mapping(bytes32 => bool)) private _registeredClaimHashes;
+
+    // TODO: optimize
+    mapping(address => mapping(address => bool)) private _emissaries;
 
     uint256 private immutable _INITIAL_CHAIN_ID;
     bytes32 private immutable _INITIAL_DOMAIN_SEPARATOR;
@@ -895,6 +898,56 @@ contract TheCompact is ITheCompact, ERC6909, Extsload, Tstorish {
         return true;
     }
 
+    function registerFor(address sponsor, bytes32 claimHash) external returns (bool) {
+        // TODO: optimize
+        if (!_emissaries[sponsor][msg.sender]) {
+            revert InvalidEmissary(sponsor, msg.sender);
+        }
+        _registeredClaimHashes[sponsor][claimHash] = true;
+        return true;
+    }
+
+    function registerFor(address sponsor, bytes32[] calldata claimHashes) external returns (bool) {
+        // TODO: optimize
+        if (!_emissaries[sponsor][msg.sender]) {
+            revert InvalidEmissary(sponsor, msg.sender);
+        }
+
+        unchecked {
+            uint256 totalClaimHashes = claimHashes.length;
+            for (uint256 i = 0; i < totalClaimHashes; ++i) {
+                _registeredClaimHashes[msg.sender][claimHashes[i]] = true;
+            }
+        }
+
+        return true;
+    }
+
+    function assignEmissary(address sponsor, address emissary, uint256 nonce, uint256 expires, bool assigned, bytes calldata sponsorSignature) external returns (bool) {
+        expires.later();
+
+        bytes32 messageHash;
+        assembly ("memory-safe") {
+            let m := mload(0x40) // Grab the free memory pointer; memory will be left dirtied.
+            mstore(m, EMISSARY_ASSIGNMENT_TYPEHASH)
+            mstore(add(m, 0x20), emissary)
+            mstore(add(m, 0x40), nonce)
+            mstore(add(m, 0x60), expires)
+            mstore(add(m, 0x80), assigned)
+            messageHash := keccak256(m, 0xa0)
+        }
+
+        messageHash.signedBy(sponsor, sponsorSignature, _INITIAL_DOMAIN_SEPARATOR.toLatest(_INITIAL_CHAIN_ID));
+
+        nonce.consumeNonceAsSponsor(sponsor);
+
+        return _assignEmissary(sponsor, emissary, assigned);
+    }
+
+    function assignEmissary(address emissary, bool assigned) external returns (bool) {
+        return _assignEmissary(msg.sender, emissary, assigned);
+    }
+
     function consume(uint256[] calldata nonces) external returns (bool) {
         // NOTE: this may not be necessary, consider removing
         msg.sender.usingAllocatorId().mustHaveARegisteredAllocator();
@@ -902,7 +955,7 @@ contract TheCompact is ITheCompact, ERC6909, Extsload, Tstorish {
         unchecked {
             uint256 noncesLength = nonces.length;
             for (uint256 i = 0; i < noncesLength; ++i) {
-                nonces[i].consumeNonce(msg.sender);
+                nonces[i].consumeNonceAsAllocator(msg.sender);
             }
         }
 
@@ -938,8 +991,12 @@ contract TheCompact is ITheCompact, ERC6909, Extsload, Tstorish {
         scope = id.toScope();
     }
 
-    function check(uint256 nonce, address allocator) external view returns (bool consumed) {
-        consumed = allocator.hasConsumed(nonce);
+    function hasConsumedAllocatorNonce(uint256 nonce, address allocator) external view returns (bool consumed) {
+        consumed = allocator.hasConsumedAllocatorNonce(nonce);
+    }
+
+    function hasConsumedEmissaryAssignmentNonce(uint256 nonce, address sponsor) external view returns (bool consumed) {
+        consumed = sponsor.hasConsumedEmissaryAssignmentNonce(nonce);
     }
 
     function DOMAIN_SEPARATOR() external view returns (bytes32 domainSeparator) {
@@ -977,6 +1034,14 @@ contract TheCompact is ITheCompact, ERC6909, Extsload, Tstorish {
         messageHash.signedBy(allocator, transferPayload.allocatorSignature, _INITIAL_DOMAIN_SEPARATOR.toLatest(_INITIAL_CHAIN_ID));
 
         _emitClaim(msg.sender, messageHash, allocator);
+    }
+
+    function _assignEmissary(address sponsor, address emissary, bool assigned) internal returns (bool) {
+        _emissaries[sponsor][emissary] = assigned;
+
+        emit EmissaryAssignment(sponsor, emissary, assigned);
+
+        return true;
     }
 
     function _processBasicTransfer(BasicTransfer calldata transfer, function(address, address, uint256, uint256) internal returns (bool) operation) internal returns (bool) {

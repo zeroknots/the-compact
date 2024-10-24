@@ -15,7 +15,7 @@ struct Compact {
         // Optional witness may follow.
 }
 
-// keccak256("Compact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256 id,uint256 amount)")
+// keccak256(bytes("Compact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256 id,uint256 amount)"))
 bytes32 constant COMPACT_TYPEHASH = 0xcdca950b17b5efc016b74b912d8527dfba5e404a688cbc3dab16cb943287fec2;
 
 // abi.decode(bytes("Compact(address arbiter,address "), (bytes32))
@@ -40,7 +40,7 @@ struct BatchCompact {
         // Optional witness may follow.
 }
 
-// keccak256("BatchCompact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256[2][] idsAndAmounts)")
+// keccak256(bytes("BatchCompact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256[2][] idsAndAmounts)"))
 bytes32 constant BATCH_COMPACT_TYPEHASH = 0x5a7fee8000a237929ef9be08f2933c4b4f320b00b38809f3c7aa104d5421049f;
 
 // abi.decode(bytes("BatchCompact(address arbiter,add"), (bytes32))
@@ -67,7 +67,7 @@ struct Segment {
         // Optional witness may follow.
 }
 
-// keccak256("Segment(address arbiter,uint256 chainId,uint256[2][] idsAndAmounts)")
+// keccak256(bytes("Segment(address arbiter,uint256 chainId,uint256[2][] idsAndAmounts)"))
 bytes32 constant SEGMENT_TYPEHASH = 0x295feb095767cc67d7e74695da0adaddede54d7b7194a8a5426fe8f0351e0337;
 
 // Message signed by the sponsor that specifies the conditions under which a set of
@@ -81,7 +81,7 @@ struct MultichainCompact {
     Segment[] segments; // Arbiter, chainId, ids & amounts, and witness for each chain.
 }
 
-// keccak256("MultichainCompact(address sponsor,uint256 nonce,uint256 expires,Segment[] segments)Segment(address arbiter,uint256 chainId,uint256[2][] idsAndAmounts)")
+// keccak256(bytes("MultichainCompact(address sponsor,uint256 nonce,uint256 expires,Segment[] segments)Segment(address arbiter,uint256 chainId,uint256[2][] idsAndAmounts)"))
 bytes32 constant MULTICHAIN_COMPACT_TYPEHASH = 0x5ca9a66b8bbf0d2316e90dfa3df465f0790b277b25393a3ef4d67e1f50865057;
 
 // abi.decode(bytes("MultichainCompact(address sponso"), (bytes32))
@@ -104,6 +104,19 @@ uint176 constant MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_FIVE = 0x35365b325d5b5d2
 // associated compact signed by the sponsor, which will be supplied by The Compact.
 // If additional parameters are not required, the allocator instead signs the same
 // payload as the sponsor.
+
+// An Emissary is an account that is authorized by a sponsor to register claims.
+// This could be a contract that facilitates the creation of dynamic claims, or
+// could relay multichain claims registerd on other domains.
+struct EmissaryAssignment {
+    address emissary; // The account to assign as the emissary.
+    uint256 nonce; // A parameter to enforce replay protection, scoped to sponsor.
+    uint256 expires; // The time at which the assignment expires.
+    bool assigned; // Whether to assign the emissary or to unassign them.
+}
+
+// keccak256(bytes("EmissaryAssignment(address emissary,uint256 nonce,uint256 expires)"))
+bytes32 constant EMISSARY_ASSIGNMENT_TYPEHASH = 0x5ca9a66b8bbf0d2316e90dfa3df465f0790b277b25393a3ef4d67e1f50865057;
 
 /// @dev `keccak256(bytes("CompactDeposit(address depositor,address allocator,uint8 resetPeriod,uint8 scope,address recipient)"))`.
 bytes32 constant PERMIT2_DEPOSIT_WITNESS_FRAGMENT_HASH = 0x0091bfc8f1539e204529602051ae82f3e6c6f0f86d0227c9ea890616cedbe646;

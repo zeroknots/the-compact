@@ -40,16 +40,20 @@ library ValidityLib {
 
     function fromRegisteredAllocatorIdWithConsumed(uint96 allocatorId, uint256 nonce) internal returns (address allocator) {
         allocator = allocatorId.toRegisteredAllocator();
-        nonce.consumeNonce(allocator);
+        nonce.consumeNonceAsAllocator(allocator);
     }
 
     function toRegisteredAllocatorWithConsumed(uint256 id, uint256 nonce) internal returns (address allocator) {
         allocator = id.toAllocator();
-        nonce.consumeNonce(allocator);
+        nonce.consumeNonceAsAllocator(allocator);
     }
 
-    function hasConsumed(address allocator, uint256 nonce) internal view returns (bool) {
-        return nonce.isConsumedBy(allocator);
+    function hasConsumedAllocatorNonce(address allocator, uint256 nonce) internal view returns (bool) {
+        return nonce.isConsumedByAllocator(allocator);
+    }
+
+    function hasConsumedEmissaryAssignmentNonce(address sponsor, uint256 nonce) internal view returns (bool) {
+        return nonce.isConsumedBySponsor(sponsor);
     }
 
     function excludingNative(address token) internal pure returns (address) {
