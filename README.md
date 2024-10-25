@@ -104,7 +104,10 @@ interface IAllocator {
 
 > Note: this is a stateful callback; care must be taken on the part of the allocator to avoid situations that could lead to an overallocated outcome via reentrancy or other unintended side effects.
 
- ### 3) Sign a Compact
+### 3) Create a Compact
+Once a resource lock (or group of resource locks) has been established, the owner of the lock can enter into an agreement where the resource lock (or resource locks) will become claimable upon meeting the specified conditions.
+
+ ### 3a) Sign a Compact
  In the default case, the owner and allocator of a resource lock both agree on a given course of action and attest to it by signing one of three EIP-712 payloads:
   - a **Compact** deals with a specific resource lock and designates an **arbiter** tasked with verifying that the necessary conditions have been met choosing which accounts will receive the tokens and in what quantities
   - a **BatchCompact** deals with a set of resource locks on a single chain and also designates an arbiter
@@ -170,6 +173,11 @@ To be considered valid, each compact must meet the following requirements:
  - the nonce cannot have been used previously
 
 Once this payload has been signed by both the sponsor and the allocator (or at least by one party if the other is the intended caller), a claim can be submitted against it by the designated arbiter using a wide variety of functions (104 to be exact) depending on the type of compact and the intended result.
+
+### 3b) Submit a Compact Directly
+Alternatively, the sponsor can register a compact (or group of compacts) by submitting a "claim hash" along with the typehash of the underlying compact (which maps to the EIP-712 message hash that would otherwise have been signed). Then, instead of supplying the signature of the sponsor as part of a claim, The Compact derives the claim hash based on the claim being submitted and attempts to locate a matching registered claim hash with the correct typehash. This flow supports more advanced functionality, such as sponsors without the ability to sign (like protocols or DAOs), smart wallet / EIP7702-enabled sponsors that have their own authorization or batching logic, and chained deposit & register operations.
+
+> Note: once registered, a claim cannot be unregistered. The only way to definitively cancel a registered claim is by either having the allocator consume the attached nonce, or by performing a forced withdrawal.
 
 ### 4) Submit a Claim
 An arbiter takes a signed compact designated to them and uses it to submit a claim to The Compact.
