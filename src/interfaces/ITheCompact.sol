@@ -350,13 +350,13 @@ interface ITheCompact {
 
     function forcedWithdrawal(uint256 id, address recipient, uint256 amount) external returns (bool);
 
-    function register(bytes32 claimHash) external returns (bool);
+    function register(bytes32 claimHash, bytes32 typehash) external returns (bool);
 
-    function register(bytes32[] calldata claimHashes) external returns (bool);
+    function register(bytes32[2][] calldata claimHashesAndTypehashes) external returns (bool);
 
-    function registerFor(address sponsor, bytes32 claimHash) external returns (bool);
+    function registerFor(address sponsor, bytes32 claimHash, bytes32 typehash) external returns (bool);
 
-    function registerFor(address sponsor, bytes32[] calldata claimHashes) external returns (bool);
+    function registerFor(address sponsor, bytes32[2][] calldata claimHashesAndTypehashes) external returns (bool);
 
     function assignEmissary(address sponsor, address emissary, uint256 nonce, uint256 expires, bool assigned, bytes calldata sponsorSignature) external returns (bool);
 
