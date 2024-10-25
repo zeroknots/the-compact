@@ -110,9 +110,9 @@ library HashLib {
     using FunctionCastLib for function(uint256, bytes32) internal view returns (bytes32, bytes32);
     using FunctionCastLib for function(uint256, uint256) internal view returns (bytes32);
     using FunctionCastLib for function(uint256, uint256, bytes32, bytes32, bytes32) internal view returns (bytes32);
-    using FunctionCastLib for function(ExogenousMultichainClaim calldata, uint256, bytes32, bytes32, bytes32) internal view returns (bytes32);
+    using FunctionCastLib for function(uint256, uint256, bytes32, bytes32, bytes32) internal view returns (bytes32);
     using FunctionCastLib for function(BatchClaimWithWitness calldata, bytes32) internal view returns (bytes32, bytes32);
-    using FunctionCastLib for function(MultichainClaimWithWitness calldata) pure returns (bytes32, bytes32);
+    using FunctionCastLib for function(uint256) pure returns (bytes32, bytes32);
     using FunctionCastLib for function(uint256, uint256) pure returns (bytes32);
 
     /// @dev `keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)")`.
@@ -123,6 +123,8 @@ library HashLib {
 
     /// @dev `keccak256("0")`.
     bytes32 internal constant _VERSION_HASH = 0x044852b2a670ade5407e78fb2863c51de9fcb96542a07186fe3aeda6bb8a116d;
+
+    ///// CATEGORY 1: Transfer message hashes /////
 
     function toMessageHash(BasicTransfer calldata transfer) internal view returns (bytes32 messageHash) {
         assembly ("memory-safe") {
@@ -229,9 +231,61 @@ library HashLib {
         messageHash = _deriveBatchCompactMessageHash.usingSplitBatchTransfer()(transfer, idsAndAmountsHash);
     }
 
+    ///// CATEGORY 2: Claim message hashes /////
+
     function toMessageHash(BasicClaim calldata claim) internal view returns (bytes32 messageHash) {
         return _toClaimMessageHash.usingBasicClaim()(claim, 0);
     }
+
+    function toMessageHash(SplitClaim calldata claim) internal view returns (bytes32 messageHash) {
+        return _toClaimMessageHash.usingSplitClaim()(claim, 0);
+    }
+
+    function toMessageHash(BatchClaim calldata claim) internal view returns (bytes32 messageHash) {
+        return _toBatchMessageHash.usingBatchClaim()(claim, _toIdsAndAmountsHash(claim.claims));
+    }
+
+    function toMessageHash(SplitBatchClaim calldata claim) internal view returns (bytes32 messageHash) {
+        return _toBatchMessageHash.usingSplitBatchClaim()(claim, _toSplitIdsAndAmountsHash(claim.claims));
+    }
+
+    function toMessageHash(MultichainClaim calldata claim) internal view returns (bytes32 messageHash) {
+        messageHash = _toMultichainClaimMessageHash.usingMultichainClaim()(claim, 0, SEGMENT_TYPEHASH, MULTICHAIN_COMPACT_TYPEHASH, _toSingleIdAndAmountHash.usingMultichainClaim()(claim, 0));
+    }
+
+    function toMessageHash(SplitMultichainClaim calldata claim) internal view returns (bytes32 messageHash) {
+        messageHash = _toMultichainClaimMessageHash.usingSplitMultichainClaim()(claim, 0, SEGMENT_TYPEHASH, MULTICHAIN_COMPACT_TYPEHASH, _toSingleIdAndAmountHash.usingSplitMultichainClaim()(claim, 0));
+    }
+
+    function toMessageHash(BatchMultichainClaim calldata claim) internal view returns (bytes32 messageHash) {
+        messageHash = _toMultichainClaimMessageHash.usingBatchMultichainClaim()(claim, 0, SEGMENT_TYPEHASH, MULTICHAIN_COMPACT_TYPEHASH, _toIdsAndAmountsHash(claim.claims));
+    }
+
+    function toMessageHash(SplitBatchMultichainClaim calldata claim) internal view returns (bytes32 messageHash) {
+        messageHash = _toMultichainClaimMessageHash.usingSplitBatchMultichainClaim()(claim, 0, SEGMENT_TYPEHASH, MULTICHAIN_COMPACT_TYPEHASH, _toSplitIdsAndAmountsHash(claim.claims));
+    }
+
+    function toMessageHash(ExogenousMultichainClaim calldata claim) internal view returns (bytes32 messageHash) {
+        return _toExogenousMultichainClaimMessageHash.usingExogenousMultichainClaim()(
+            claim, 0, SEGMENT_TYPEHASH, MULTICHAIN_COMPACT_TYPEHASH, _toSingleIdAndAmountHash.usingExogenousMultichainClaim()(claim, 0x40)
+        );
+    }
+
+    function toMessageHash(ExogenousSplitMultichainClaim calldata claim) internal view returns (bytes32 messageHash) {
+        return _toExogenousMultichainClaimMessageHash.usingExogenousSplitMultichainClaim()(
+            claim, 0, SEGMENT_TYPEHASH, MULTICHAIN_COMPACT_TYPEHASH, _toSingleIdAndAmountHash.usingExogenousSplitMultichainClaim()(claim, 0x40)
+        );
+    }
+
+    function toMessageHash(ExogenousBatchMultichainClaim calldata claim) internal view returns (bytes32 messageHash) {
+        return _toExogenousMultichainClaimMessageHash.usingExogenousBatchMultichainClaim()(claim, 0, SEGMENT_TYPEHASH, MULTICHAIN_COMPACT_TYPEHASH, _toIdsAndAmountsHash(claim.claims));
+    }
+
+    function toMessageHash(ExogenousSplitBatchMultichainClaim calldata claim) internal view returns (bytes32 messageHash) {
+        return _toExogenousMultichainClaimMessageHash.usingExogenousSplitBatchMultichainClaim()(claim, 0, SEGMENT_TYPEHASH, MULTICHAIN_COMPACT_TYPEHASH, _toSplitIdsAndAmountsHash(claim.claims));
+    }
+
+    ///// CATEGORY 3: Qualified claim message & qualification hashes /////
 
     function toMessageHash(QualifiedClaim calldata claim) internal view returns (bytes32 messageHash, bytes32 qualificationMessageHash) {
         messageHash = _toClaimMessageHash.usingQualifiedClaim()(claim, 0x40);
@@ -245,9 +299,145 @@ library HashLib {
         qualificationMessageHash = _toQualificationMessageHash.usingQualifiedSplitClaim()(claim, messageHash, 0);
     }
 
+    function toMessageHash(QualifiedBatchClaim calldata claim) internal view returns (bytes32 messageHash, bytes32 qualificationMessageHash) {
+        messageHash = _toBatchMessageHash.usingQualifiedBatchClaim()(claim, _toIdsAndAmountsHash(claim.claims));
+
+        qualificationMessageHash = _toQualificationMessageHash.usingQualifiedBatchClaim()(claim, messageHash, 0);
+    }
+
+    function toMessageHash(QualifiedSplitBatchClaim calldata claim) internal view returns (bytes32 messageHash, bytes32 qualificationMessageHash) {
+        messageHash = _toBatchMessageHash.usingQualifiedSplitBatchClaim()(claim, _toSplitIdsAndAmountsHash(claim.claims));
+
+        qualificationMessageHash = _toQualificationMessageHash.usingQualifiedSplitBatchClaim()(claim, messageHash, 0);
+    }
+
+    function toMessageHash(QualifiedMultichainClaim calldata claim) internal view returns (bytes32 messageHash, bytes32 qualificationMessageHash) {
+        messageHash = _toMultichainClaimMessageHash.usingQualifiedMultichainClaim()(
+            claim, 0x40, SEGMENT_TYPEHASH, MULTICHAIN_COMPACT_TYPEHASH, _toSingleIdAndAmountHash.usingQualifiedMultichainClaim()(claim, 0x40)
+        );
+        qualificationMessageHash = _toQualificationMessageHash.usingQualifiedMultichainClaim()(claim, messageHash, 0);
+    }
+
+    function toMessageHash(QualifiedSplitMultichainClaim calldata claim) internal view returns (bytes32 messageHash, bytes32 qualificationMessageHash) {
+        messageHash = _toMultichainClaimMessageHash.usingQualifiedSplitMultichainClaim()(
+            claim, 0x40, SEGMENT_TYPEHASH, MULTICHAIN_COMPACT_TYPEHASH, _toSingleIdAndAmountHash.usingQualifiedSplitMultichainClaim()(claim, 0x40)
+        );
+        qualificationMessageHash = _toQualificationMessageHash.usingQualifiedSplitMultichainClaim()(claim, messageHash, 0);
+    }
+
+    function toMessageHash(QualifiedBatchMultichainClaim calldata claim) internal view returns (bytes32 messageHash, bytes32 qualificationMessageHash) {
+        messageHash = _toMultichainClaimMessageHash.usingQualifiedBatchMultichainClaim()(claim, 0x40, SEGMENT_TYPEHASH, MULTICHAIN_COMPACT_TYPEHASH, _toIdsAndAmountsHash(claim.claims));
+        qualificationMessageHash = _toQualificationMessageHash.usingQualifiedBatchMultichainClaim()(claim, messageHash, 0);
+    }
+
+    function toMessageHash(QualifiedSplitBatchMultichainClaim calldata claim) internal view returns (bytes32 messageHash, bytes32 qualificationMessageHash) {
+        messageHash = _toMultichainClaimMessageHash.usingQualifiedSplitBatchMultichainClaim()(claim, 0x40, SEGMENT_TYPEHASH, MULTICHAIN_COMPACT_TYPEHASH, _toSplitIdsAndAmountsHash(claim.claims));
+        qualificationMessageHash = _toQualificationMessageHash.usingQualifiedSplitBatchMultichainClaim()(claim, messageHash, 0);
+    }
+
+    function toMessageHash(ExogenousQualifiedMultichainClaim calldata claim) internal view returns (bytes32 messageHash, bytes32 qualificationMessageHash) {
+        messageHash = _toExogenousMultichainClaimMessageHash.usingExogenousQualifiedMultichainClaim()(
+            claim, 0x40, SEGMENT_TYPEHASH, MULTICHAIN_COMPACT_TYPEHASH, _toSingleIdAndAmountHash.usingExogenousQualifiedMultichainClaim()(claim, 0x80)
+        );
+        qualificationMessageHash = _toQualificationMessageHash.usingExogenousQualifiedMultichainClaim()(claim, messageHash, 0);
+    }
+
+    function toMessageHash(ExogenousQualifiedSplitMultichainClaim calldata claim) internal view returns (bytes32 messageHash, bytes32 qualificationMessageHash) {
+        messageHash = _toExogenousMultichainClaimMessageHash.usingExogenousQualifiedSplitMultichainClaim()(
+            claim, 0x40, SEGMENT_TYPEHASH, MULTICHAIN_COMPACT_TYPEHASH, _toSingleIdAndAmountHash.usingExogenousQualifiedSplitMultichainClaim()(claim, 0x80)
+        );
+        qualificationMessageHash = _toQualificationMessageHash.usingExogenousQualifiedSplitMultichainClaim()(claim, messageHash, 0);
+    }
+
+    function toMessageHash(ExogenousQualifiedBatchMultichainClaim calldata claim) internal view returns (bytes32 messageHash, bytes32 qualificationMessageHash) {
+        messageHash =
+            _toExogenousMultichainClaimMessageHash.usingExogenousQualifiedBatchMultichainClaim()(claim, 0x40, SEGMENT_TYPEHASH, MULTICHAIN_COMPACT_TYPEHASH, _toIdsAndAmountsHash(claim.claims));
+        qualificationMessageHash = _toQualificationMessageHash.usingExogenousQualifiedBatchMultichainClaim()(claim, messageHash, 0);
+    }
+
+    function toMessageHash(ExogenousQualifiedSplitBatchMultichainClaim calldata claim) internal view returns (bytes32 messageHash, bytes32 qualificationMessageHash) {
+        messageHash = _toExogenousMultichainClaimMessageHash.usingExogenousQualifiedSplitBatchMultichainClaim()(
+            claim, 0x40, SEGMENT_TYPEHASH, MULTICHAIN_COMPACT_TYPEHASH, _toSplitIdsAndAmountsHash(claim.claims)
+        );
+        qualificationMessageHash = _toQualificationMessageHash.usingExogenousQualifiedSplitBatchMultichainClaim()(claim, messageHash, 0);
+    }
+
+    ///// CATEGORY 4: Claim with witness message & type hashes /////
+
     function toMessageHash(ClaimWithWitness calldata claim) internal view returns (bytes32 messageHash, bytes32 typehash) {
         return _toMessageHashWithWitness.usingClaimWithWitness()(claim, 0);
     }
+
+    function toMessageHash(SplitClaimWithWitness calldata claim) internal view returns (bytes32 messageHash, bytes32 typehash) {
+        return _toMessageHashWithWitness.usingSplitClaimWithWitness()(claim, 0);
+    }
+
+    function toMessageHash(BatchClaimWithWitness calldata claim) internal view returns (bytes32 messageHash, bytes32 typehash) {
+        return _toBatchClaimWithWitnessMessageHash.usingBatchClaimWithWitness()(claim, _toIdsAndAmountsHash(claim.claims));
+    }
+
+    function toMessageHash(SplitBatchClaimWithWitness calldata claim) internal view returns (bytes32 messageHash, bytes32 typehash) {
+        return _toBatchClaimWithWitnessMessageHash.usingSplitBatchClaimWithWitness()(claim, _toSplitIdsAndAmountsHash(claim.claims));
+    }
+
+    function toMessageHash(MultichainClaimWithWitness calldata claim) internal view returns (bytes32 messageHash, bytes32 typehash) {
+        bytes32 allocationTypehash;
+        (allocationTypehash, typehash) = _toMultichainTypehashes.usingMultichainClaimWithWitness()(claim);
+        messageHash =
+            _toMultichainClaimMessageHash.usingMultichainClaimWithWitness()(claim, 0x40, allocationTypehash, typehash, _toSingleIdAndAmountHash.usingMultichainClaimWithWitness()(claim, 0x40));
+    }
+
+    function toMessageHash(SplitMultichainClaimWithWitness calldata claim) internal view returns (bytes32 messageHash, bytes32 typehash) {
+        bytes32 allocationTypehash;
+        (allocationTypehash, typehash) = _toMultichainTypehashes.usingSplitMultichainClaimWithWitness()(claim);
+        messageHash = _toMultichainClaimMessageHash.usingSplitMultichainClaimWithWitness()(
+            claim, 0x40, allocationTypehash, typehash, _toSingleIdAndAmountHash.usingSplitMultichainClaimWithWitness()(claim, 0x40)
+        );
+    }
+
+    function toMessageHash(BatchMultichainClaimWithWitness calldata claim) internal view returns (bytes32 messageHash, bytes32 typehash) {
+        bytes32 allocationTypehash;
+        (allocationTypehash, typehash) = _toMultichainTypehashes.usingBatchMultichainClaimWithWitness()(claim);
+        messageHash = _toMultichainClaimMessageHash.usingBatchMultichainClaimWithWitness()(claim, 0x40, allocationTypehash, typehash, _toIdsAndAmountsHash(claim.claims));
+    }
+
+    function toMessageHash(SplitBatchMultichainClaimWithWitness calldata claim) internal view returns (bytes32 messageHash, bytes32 typehash) {
+        bytes32 allocationTypehash;
+        (allocationTypehash, typehash) = _toMultichainTypehashes.usingSplitBatchMultichainClaimWithWitness()(claim);
+
+        messageHash = _toMultichainClaimMessageHash.usingSplitBatchMultichainClaimWithWitness()(claim, 0x40, allocationTypehash, typehash, _toSplitIdsAndAmountsHash(claim.claims));
+    }
+
+    function toMessageHash(ExogenousMultichainClaimWithWitness calldata claim) internal view returns (bytes32 messageHash, bytes32 typehash) {
+        bytes32 allocationTypehash;
+        (allocationTypehash, typehash) = _toMultichainTypehashes.usingExogenousMultichainClaimWithWitness()(claim);
+        messageHash = _toExogenousMultichainClaimMessageHash.usingExogenousMultichainClaimWithWitness()(
+            claim, 0x40, allocationTypehash, typehash, _toSingleIdAndAmountHash.usingExogenousMultichainClaimWithWitness()(claim, 0x80)
+        );
+    }
+
+    function toMessageHash(ExogenousSplitMultichainClaimWithWitness calldata claim) internal view returns (bytes32 messageHash, bytes32 typehash) {
+        bytes32 allocationTypehash;
+        (allocationTypehash, typehash) = _toMultichainTypehashes.usingExogenousSplitMultichainClaimWithWitness()(claim);
+        messageHash = _toExogenousMultichainClaimMessageHash.usingExogenousSplitMultichainClaimWithWitness()(
+            claim, 0x40, allocationTypehash, typehash, _toSingleIdAndAmountHash.usingExogenousSplitMultichainClaimWithWitness()(claim, 0x80)
+        );
+    }
+
+    function toMessageHash(ExogenousBatchMultichainClaimWithWitness calldata claim) internal view returns (bytes32 messageHash, bytes32 typehash) {
+        bytes32 allocationTypehash;
+        (allocationTypehash, typehash) = _toMultichainTypehashes.usingExogenousBatchMultichainClaimWithWitness()(claim);
+        messageHash = _toExogenousMultichainClaimMessageHash.usingExogenousBatchMultichainClaimWithWitness()(claim, 0x40, allocationTypehash, typehash, _toIdsAndAmountsHash(claim.claims));
+    }
+
+    function toMessageHash(ExogenousSplitBatchMultichainClaimWithWitness calldata claim) internal view returns (bytes32 messageHash, bytes32 typehash) {
+        bytes32 allocationTypehash;
+        (allocationTypehash, typehash) = _toMultichainTypehashes.usingExogenousSplitBatchMultichainClaimWithWitness()(claim);
+
+        messageHash = _toExogenousMultichainClaimMessageHash.usingExogenousSplitBatchMultichainClaimWithWitness()(claim, 0x40, allocationTypehash, typehash, _toSplitIdsAndAmountsHash(claim.claims));
+    }
+
+    ///// CATEGORY 5: Qualified claim with witness message, qualification, & type hashes /////
 
     function toMessageHash(QualifiedClaimWithWitness calldata claim) internal view returns (bytes32 messageHash, bytes32 qualificationMessageHash, bytes32 typehash) {
         (messageHash, typehash) = _toMessageHashWithWitness.usingQualifiedClaimWithWitness()(claim, 0x40);
@@ -259,46 +449,10 @@ library HashLib {
         qualificationMessageHash = _toQualificationMessageHash.usingQualifiedSplitClaimWithWitness()(claim, messageHash, 0x40);
     }
 
-    function toMessageHash(BatchClaim calldata claim) internal view returns (bytes32 messageHash) {
-        return _toBatchMessageHash.usingBatchClaim()(claim, _toIdsAndAmountsHash(claim.claims));
-    }
-
-    function toMessageHash(SplitBatchClaim calldata claim) internal view returns (bytes32 messageHash) {
-        return _toBatchMessageHash.usingSplitBatchClaim()(claim, _toSplitIdsAndAmountsHash(claim.claims));
-    }
-
-    function toMessageHash(SplitBatchClaimWithWitness calldata claim) internal view returns (bytes32 messageHash, bytes32 typehash) {
-        return _toBatchClaimWithWitnessMessageHash.usingSplitBatchClaimWithWitness()(claim, _toSplitIdsAndAmountsHash(claim.claims));
-    }
-
-    function toMessageHash(QualifiedBatchClaim calldata claim) internal view returns (bytes32 messageHash, bytes32 qualificationMessageHash) {
-        messageHash = _toBatchMessageHash.usingQualifiedBatchClaim()(claim, _toIdsAndAmountsHash(claim.claims));
-
-        qualificationMessageHash = _toQualificationMessageHash.usingQualifiedBatchClaim()(claim, messageHash, 0);
-    }
-
-    function toMessageHash(BatchClaimWithWitness calldata claim) internal view returns (bytes32 messageHash, bytes32 typehash) {
-        return _toBatchClaimWithWitnessMessageHash.usingBatchClaimWithWitness()(claim, _toIdsAndAmountsHash(claim.claims));
-    }
-
     function toMessageHash(QualifiedBatchClaimWithWitness calldata claim) internal view returns (bytes32 messageHash, bytes32 qualificationMessageHash, bytes32 typehash) {
         (messageHash, typehash) = _toBatchClaimWithWitnessMessageHash.usingQualifiedBatchClaimWithWitness()(claim, _toIdsAndAmountsHash(claim.claims));
 
         qualificationMessageHash = _toQualificationMessageHash.usingQualifiedBatchClaimWithWitness()(claim, messageHash, 0x40);
-    }
-
-    function toMessageHash(SplitClaim calldata claim) internal view returns (bytes32 messageHash) {
-        return _toClaimMessageHash.usingSplitClaim()(claim, 0);
-    }
-
-    function toMessageHash(SplitClaimWithWitness calldata claim) internal view returns (bytes32 messageHash, bytes32 typehash) {
-        return _toMessageHashWithWitness.usingSplitClaimWithWitness()(claim, 0);
-    }
-
-    function toMessageHash(QualifiedSplitBatchClaim calldata claim) internal view returns (bytes32 messageHash, bytes32 qualificationMessageHash) {
-        messageHash = _toBatchMessageHash.usingQualifiedSplitBatchClaim()(claim, _toSplitIdsAndAmountsHash(claim.claims));
-
-        qualificationMessageHash = _toQualificationMessageHash.usingQualifiedSplitBatchClaim()(claim, messageHash, 0);
     }
 
     function toMessageHash(QualifiedSplitBatchClaimWithWitness calldata claim) internal view returns (bytes32 messageHash, bytes32 qualificationMessageHash, bytes32 typehash) {
@@ -307,288 +461,80 @@ library HashLib {
         qualificationMessageHash = _toQualificationMessageHash.usingQualifiedSplitBatchClaimWithWitness()(claim, messageHash, 0x40);
     }
 
-    function toMessageHash(MultichainClaim calldata claim) internal view returns (bytes32 messageHash) {
-        messageHash = _toMultichainClaimMessageHash.usingMultichainClaim()(claim, 0, SEGMENT_TYPEHASH, MULTICHAIN_COMPACT_TYPEHASH, _deriveIdsAndAmountsHash.usingMultichainClaim()(claim, 0));
-    }
-
-    function toMessageHash(BatchMultichainClaim calldata claim) internal view returns (bytes32 messageHash) {
-        messageHash = _toMultichainClaimMessageHash.usingBatchMultichainClaim()(claim, 0, SEGMENT_TYPEHASH, MULTICHAIN_COMPACT_TYPEHASH, _toIdsAndAmountsHash(claim.claims));
-    }
-
-    function toMessageHash(QualifiedBatchMultichainClaim calldata claim) internal view returns (bytes32 messageHash, bytes32 qualificationMessageHash) {
-        messageHash = _toMultichainClaimMessageHash.usingQualifiedBatchMultichainClaim()(claim, 0x40, SEGMENT_TYPEHASH, MULTICHAIN_COMPACT_TYPEHASH, _toIdsAndAmountsHash(claim.claims));
-        qualificationMessageHash = _toQualificationMessageHash.usingQualifiedBatchMultichainClaim()(claim, messageHash, 0);
-    }
-
-    function toMessageHash(BatchMultichainClaimWithWitness calldata claim) internal view returns (bytes32 messageHash, bytes32 typehash) {
+    function toMessageHash(QualifiedMultichainClaimWithWitness calldata claim) internal view returns (bytes32 messageHash, bytes32 qualificationMessageHash, bytes32 typehash) {
         bytes32 allocationTypehash;
-        (allocationTypehash, typehash) = getMultichainTypehashes.usingBatchMultichainClaimWithWitness()(claim);
-        messageHash = _toMultichainClaimMessageHash.usingBatchMultichainClaimWithWitness()(claim, 0x40, allocationTypehash, typehash, _toIdsAndAmountsHash(claim.claims));
+        (allocationTypehash, typehash) = _toMultichainTypehashes.usingQualifiedMultichainClaimWithWitness()(claim);
+
+        messageHash = _toMultichainClaimMessageHash.usingQualifiedMultichainClaimWithWitness()(
+            claim, 0x80, allocationTypehash, typehash, _toSingleIdAndAmountHash.usingQualifiedMultichainClaimWithWitness()(claim, 0x80)
+        );
+        qualificationMessageHash = _toQualificationMessageHash.usingQualifiedMultichainClaimWithWitness()(claim, messageHash, 0x40);
+    }
+
+    function toMessageHash(QualifiedSplitMultichainClaimWithWitness calldata claim) internal view returns (bytes32 messageHash, bytes32 qualificationMessageHash, bytes32 typehash) {
+        bytes32 allocationTypehash;
+        (allocationTypehash, typehash) = _toMultichainTypehashes.usingQualifiedSplitMultichainClaimWithWitness()(claim);
+
+        messageHash = _toMultichainClaimMessageHash.usingQualifiedSplitMultichainClaimWithWitness()(
+            claim, 0x80, allocationTypehash, typehash, _toSingleIdAndAmountHash.usingQualifiedSplitMultichainClaimWithWitness()(claim, 0x80)
+        );
+        qualificationMessageHash = _toQualificationMessageHash.usingQualifiedSplitMultichainClaimWithWitness()(claim, messageHash, 0x40);
     }
 
     function toMessageHash(QualifiedBatchMultichainClaimWithWitness calldata claim) internal view returns (bytes32 messageHash, bytes32 qualificationMessageHash, bytes32 typehash) {
         bytes32 allocationTypehash;
-        (allocationTypehash, typehash) = getMultichainTypehashes.usingQualifiedBatchMultichainClaimWithWitness()(claim);
+        (allocationTypehash, typehash) = _toMultichainTypehashes.usingQualifiedBatchMultichainClaimWithWitness()(claim);
 
         messageHash = _toMultichainClaimMessageHash.usingQualifiedBatchMultichainClaimWithWitness()(claim, 0x80, allocationTypehash, typehash, _toIdsAndAmountsHash(claim.claims));
         qualificationMessageHash = _toQualificationMessageHash.usingQualifiedBatchMultichainClaimWithWitness()(claim, messageHash, 0x40);
     }
 
-    function toMessageHash(SplitBatchMultichainClaim calldata claim) internal view returns (bytes32 messageHash) {
-        messageHash = _toMultichainClaimMessageHash.usingSplitBatchMultichainClaim()(claim, 0, SEGMENT_TYPEHASH, MULTICHAIN_COMPACT_TYPEHASH, _toSplitIdsAndAmountsHash(claim.claims));
-    }
-
-    function toMessageHash(QualifiedSplitBatchMultichainClaim calldata claim) internal view returns (bytes32 messageHash, bytes32 qualificationMessageHash) {
-        messageHash = _toMultichainClaimMessageHash.usingQualifiedSplitBatchMultichainClaim()(claim, 0x40, SEGMENT_TYPEHASH, MULTICHAIN_COMPACT_TYPEHASH, _toSplitIdsAndAmountsHash(claim.claims));
-        qualificationMessageHash = _toQualificationMessageHash.usingQualifiedSplitBatchMultichainClaim()(claim, messageHash, 0);
-    }
-
-    function toMessageHash(SplitBatchMultichainClaimWithWitness calldata claim) internal view returns (bytes32 messageHash, bytes32 typehash) {
-        bytes32 allocationTypehash;
-        (allocationTypehash, typehash) = getMultichainTypehashes.usingSplitBatchMultichainClaimWithWitness()(claim);
-
-        messageHash = _toMultichainClaimMessageHash.usingSplitBatchMultichainClaimWithWitness()(claim, 0x40, allocationTypehash, typehash, _toSplitIdsAndAmountsHash(claim.claims));
-    }
-
     function toMessageHash(QualifiedSplitBatchMultichainClaimWithWitness calldata claim) internal view returns (bytes32 messageHash, bytes32 qualificationMessageHash, bytes32 typehash) {
         bytes32 allocationTypehash;
-        (allocationTypehash, typehash) = getMultichainTypehashes.usingQualifiedSplitBatchMultichainClaimWithWitness()(claim);
+        (allocationTypehash, typehash) = _toMultichainTypehashes.usingQualifiedSplitBatchMultichainClaimWithWitness()(claim);
 
         messageHash = _toMultichainClaimMessageHash.usingQualifiedSplitBatchMultichainClaimWithWitness()(claim, 0x80, allocationTypehash, typehash, _toSplitIdsAndAmountsHash(claim.claims));
         qualificationMessageHash = _toQualificationMessageHash.usingQualifiedSplitBatchMultichainClaimWithWitness()(claim, messageHash, 0x40);
     }
 
-    function toMessageHash(MultichainClaimWithWitness calldata claim) internal view returns (bytes32 messageHash, bytes32 typehash) {
-        bytes32 allocationTypehash;
-        (allocationTypehash, typehash) = getMultichainTypehashes(claim);
-        messageHash =
-            _toMultichainClaimMessageHash.usingMultichainClaimWithWitness()(claim, 0x40, allocationTypehash, typehash, _deriveIdsAndAmountsHash.usingMultichainClaimWithWitness()(claim, 0x40));
-    }
-
-    function toMessageHash(ExogenousMultichainClaimWithWitness calldata claim) internal view returns (bytes32 messageHash, bytes32 typehash) {
-        bytes32 allocationTypehash;
-        (allocationTypehash, typehash) = getMultichainTypehashes.usingExogenousMultichainClaimWithWitness()(claim);
-        messageHash = _toExogenousMultichainClaimMessageHash.usingExogenousMultichainClaimWithWitness()(
-            claim, 0x40, allocationTypehash, typehash, _deriveIdsAndAmountsHash.usingExogenousMultichainClaimWithWitness()(claim, 0x80)
-        );
-    }
-
-    function toMessageHash(ExogenousSplitMultichainClaimWithWitness calldata claim) internal view returns (bytes32 messageHash, bytes32 typehash) {
-        bytes32 allocationTypehash;
-        (allocationTypehash, typehash) = getMultichainTypehashes.usingExogenousSplitMultichainClaimWithWitness()(claim);
-        messageHash = _toExogenousMultichainClaimMessageHash.usingExogenousSplitMultichainClaimWithWitness()(
-            claim, 0x40, allocationTypehash, typehash, _deriveIdsAndAmountsHash.usingExogenousSplitMultichainClaimWithWitness()(claim, 0x80)
-        );
-    }
-
-    function toMessageHash(QualifiedMultichainClaimWithWitness calldata claim) internal view returns (bytes32 messageHash, bytes32 qualificationMessageHash, bytes32 typehash) {
-        bytes32 allocationTypehash;
-        (allocationTypehash, typehash) = getMultichainTypehashes.usingQualifiedMultichainClaimWithWitness()(claim);
-
-        messageHash = _toMultichainClaimMessageHash.usingQualifiedMultichainClaimWithWitness()(
-            claim, 0x80, allocationTypehash, typehash, _deriveIdsAndAmountsHash.usingQualifiedMultichainClaimWithWitness()(claim, 0x80)
-        );
-        qualificationMessageHash = _toQualificationMessageHash.usingQualifiedMultichainClaimWithWitness()(claim, messageHash, 0x40);
-    }
-
-    function toMessageHash(QualifiedSplitMultichainClaim calldata claim) internal view returns (bytes32 messageHash, bytes32 qualificationMessageHash) {
-        messageHash = _toMultichainClaimMessageHash.usingQualifiedSplitMultichainClaim()(
-            claim, 0x40, SEGMENT_TYPEHASH, MULTICHAIN_COMPACT_TYPEHASH, _deriveIdsAndAmountsHash.usingQualifiedSplitMultichainClaim()(claim, 0x40)
-        );
-        qualificationMessageHash = _toQualificationMessageHash.usingQualifiedSplitMultichainClaim()(claim, messageHash, 0);
-    }
-
-    function toMessageHash(SplitMultichainClaimWithWitness calldata claim) internal view returns (bytes32 messageHash, bytes32 typehash) {
-        bytes32 allocationTypehash;
-        (allocationTypehash, typehash) = getMultichainTypehashes.usingSplitMultichainClaimWithWitness()(claim);
-        messageHash = _toMultichainClaimMessageHash.usingSplitMultichainClaimWithWitness()(
-            claim, 0x40, allocationTypehash, typehash, _deriveIdsAndAmountsHash.usingSplitMultichainClaimWithWitness()(claim, 0x40)
-        );
-    }
-
-    function toMessageHash(QualifiedSplitMultichainClaimWithWitness calldata claim) internal view returns (bytes32 messageHash, bytes32 qualificationMessageHash, bytes32 typehash) {
-        bytes32 allocationTypehash;
-        (allocationTypehash, typehash) = getMultichainTypehashes.usingQualifiedSplitMultichainClaimWithWitness()(claim);
-
-        messageHash = _toMultichainClaimMessageHash.usingQualifiedSplitMultichainClaimWithWitness()(
-            claim, 0x80, allocationTypehash, typehash, _deriveIdsAndAmountsHash.usingQualifiedSplitMultichainClaimWithWitness()(claim, 0x80)
-        );
-        qualificationMessageHash = _toQualificationMessageHash.usingQualifiedSplitMultichainClaimWithWitness()(claim, messageHash, 0x40);
-    }
-
-    function toMessageHash(QualifiedMultichainClaim calldata claim) internal view returns (bytes32 messageHash, bytes32 qualificationMessageHash) {
-        messageHash = _toMultichainClaimMessageHash.usingQualifiedMultichainClaim()(
-            claim, 0x40, SEGMENT_TYPEHASH, MULTICHAIN_COMPACT_TYPEHASH, _deriveIdsAndAmountsHash.usingQualifiedMultichainClaim()(claim, 0x40)
-        );
-        qualificationMessageHash = _toQualificationMessageHash.usingQualifiedMultichainClaim()(claim, messageHash, 0);
-    }
-
-    function getMultichainTypehashes(MultichainClaimWithWitness calldata claim) internal pure returns (bytes32 allocationTypehash, bytes32 multichainCompactTypehash) {
-        assembly ("memory-safe") {
-            let m := mload(0x40) // Grab the free memory pointer; memory will be left dirtied.
-
-            // prepare full typestring
-            let witnessTypestringPtr := add(claim, calldataload(add(claim, 0xc0)))
-            let witnessTypestringLength := calldataload(witnessTypestringPtr)
-
-            mstore(m, MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_ONE)
-            mstore(add(m, 0x20), MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_TWO)
-            mstore(add(m, 0x40), MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_THREE)
-            mstore(add(m, 0x76), MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_FIVE)
-            mstore(add(m, 0x60), MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_FOUR)
-
-            calldatacopy(add(m, 0x96), add(0x20, witnessTypestringPtr), witnessTypestringLength)
-            allocationTypehash := keccak256(add(m, 0x53), add(0x43, witnessTypestringLength))
-            multichainCompactTypehash := keccak256(m, add(0x96, witnessTypestringLength))
-        }
-    }
-
-    function _toExogenousMultichainClaimMessageHash(
-        ExogenousMultichainClaim calldata claim,
-        uint256 additionalOffset,
-        bytes32 allocationTypehash,
-        bytes32 multichainCompactTypehash,
-        bytes32 idsAndAmountsHash
-    ) internal view returns (bytes32 messageHash) {
-        assembly ("memory-safe") {
-            let m := mload(0x40) // Grab the free memory pointer; memory will be left dirtied.
-
-            mstore(add(m, 0x60), idsAndAmountsHash)
-            mstore(m, allocationTypehash)
-            mstore(add(m, 0x20), caller()) // arbiter
-            mstore(add(m, 0x40), chainid())
-
-            let hasWitness := iszero(eq(allocationTypehash, SEGMENT_TYPEHASH))
-            if hasWitness { mstore(add(m, 0x80), calldataload(add(claim, 0xa0))) } // witness
-
-            let allocationHash := keccak256(m, add(0x80, mul(0x20, hasWitness))) // allocation hash
-
-            // additional allocation hashes
-            let claimWithAdditionalOffset := add(claim, additionalOffset)
-            let additionalChainsPtr := add(claim, calldataload(add(claimWithAdditionalOffset, 0xa0)))
-            let additionalChainsLength := shl(5, calldataload(additionalChainsPtr))
-            let additionalChainsData := add(0x20, additionalChainsPtr)
-            let chainIndex := shl(5, calldataload(add(claimWithAdditionalOffset, 0xc0)))
-
-            // NOTE: rather than using extraOffset, consider breaking into two distinct
-            // loops or potentially even two calldatacopy operations based on chainIndex
-            let extraOffset := 0
-            for { let i := 0 } lt(i, additionalChainsLength) { i := add(i, 0x20) } {
-                mstore(add(m, i), calldataload(add(additionalChainsData, add(i, extraOffset))))
-                if eq(i, chainIndex) {
-                    extraOffset := 0x20
-                    mstore(add(m, add(i, extraOffset)), allocationHash)
-                }
-            }
-
-            // hash of allocation hashes
-            mstore(add(m, 0x80), keccak256(m, add(0x20, additionalChainsLength)))
-
-            mstore(m, multichainCompactTypehash)
-            calldatacopy(add(m, 0x20), add(claim, 0x40), 0x60) // sponsor, nonce, expires
-
-            messageHash := keccak256(m, 0xa0)
-        }
-    }
-
-    function toMessageHash(ExogenousMultichainClaim calldata claim) internal view returns (bytes32 messageHash) {
-        return _toExogenousMultichainClaimMessageHash(claim, 0, SEGMENT_TYPEHASH, MULTICHAIN_COMPACT_TYPEHASH, _deriveIdsAndAmountsHash.usingExogenousMultichainClaim()(claim, 0x40));
-    }
-
-    function toMessageHash(ExogenousSplitMultichainClaim calldata claim) internal view returns (bytes32 messageHash) {
-        return _toExogenousMultichainClaimMessageHash.usingExogenousSplitMultichainClaim()(
-            claim, 0, SEGMENT_TYPEHASH, MULTICHAIN_COMPACT_TYPEHASH, _deriveIdsAndAmountsHash.usingExogenousSplitMultichainClaim()(claim, 0x40)
-        );
-    }
-
-    function toMessageHash(ExogenousBatchMultichainClaim calldata claim) internal view returns (bytes32 messageHash) {
-        return _toExogenousMultichainClaimMessageHash.usingExogenousBatchMultichainClaim()(claim, 0, SEGMENT_TYPEHASH, MULTICHAIN_COMPACT_TYPEHASH, _toIdsAndAmountsHash(claim.claims));
-    }
-
-    function toMessageHash(ExogenousSplitBatchMultichainClaim calldata claim) internal view returns (bytes32 messageHash) {
-        return _toExogenousMultichainClaimMessageHash.usingExogenousSplitBatchMultichainClaim()(claim, 0, SEGMENT_TYPEHASH, MULTICHAIN_COMPACT_TYPEHASH, _toSplitIdsAndAmountsHash(claim.claims));
-    }
-
-    function toMessageHash(ExogenousQualifiedMultichainClaim calldata claim) internal view returns (bytes32 messageHash, bytes32 qualificationMessageHash) {
-        messageHash = _toExogenousMultichainClaimMessageHash.usingExogenousQualifiedMultichainClaim()(
-            claim, 0x40, SEGMENT_TYPEHASH, MULTICHAIN_COMPACT_TYPEHASH, _deriveIdsAndAmountsHash.usingExogenousQualifiedMultichainClaim()(claim, 0x80)
-        );
-        qualificationMessageHash = _toQualificationMessageHash.usingExogenousQualifiedMultichainClaim()(claim, messageHash, 0);
-    }
-
     function toMessageHash(ExogenousQualifiedMultichainClaimWithWitness calldata claim) internal view returns (bytes32 messageHash, bytes32 qualificationMessageHash, bytes32 typehash) {
         bytes32 allocationTypehash;
-        (allocationTypehash, typehash) = getMultichainTypehashes.usingExogenousQualifiedMultichainClaimWithWitness()(claim);
+        (allocationTypehash, typehash) = _toMultichainTypehashes.usingExogenousQualifiedMultichainClaimWithWitness()(claim);
 
         messageHash = _toExogenousMultichainClaimMessageHash.usingExogenousQualifiedMultichainClaimWithWitness()(
-            claim, 0x80, allocationTypehash, typehash, _deriveIdsAndAmountsHash.usingExogenousQualifiedMultichainClaimWithWitness()(claim, 0xc0)
+            claim, 0x80, allocationTypehash, typehash, _toSingleIdAndAmountHash.usingExogenousQualifiedMultichainClaimWithWitness()(claim, 0xc0)
         );
         qualificationMessageHash = _toQualificationMessageHash.usingExogenousQualifiedMultichainClaimWithWitness()(claim, messageHash, 0x40);
     }
 
-    function toMessageHash(ExogenousQualifiedSplitMultichainClaim calldata claim) internal view returns (bytes32 messageHash, bytes32 qualificationMessageHash) {
-        messageHash = _toExogenousMultichainClaimMessageHash.usingExogenousQualifiedSplitMultichainClaim()(
-            claim, 0x40, SEGMENT_TYPEHASH, MULTICHAIN_COMPACT_TYPEHASH, _deriveIdsAndAmountsHash.usingExogenousQualifiedSplitMultichainClaim()(claim, 0x80)
-        );
-        qualificationMessageHash = _toQualificationMessageHash.usingExogenousQualifiedSplitMultichainClaim()(claim, messageHash, 0);
-    }
-
     function toMessageHash(ExogenousQualifiedSplitMultichainClaimWithWitness calldata claim) internal view returns (bytes32 messageHash, bytes32 qualificationMessageHash, bytes32 typehash) {
         bytes32 allocationTypehash;
-        (allocationTypehash, typehash) = getMultichainTypehashes.usingExogenousQualifiedSplitMultichainClaimWithWitness()(claim);
+        (allocationTypehash, typehash) = _toMultichainTypehashes.usingExogenousQualifiedSplitMultichainClaimWithWitness()(claim);
 
         messageHash = _toExogenousMultichainClaimMessageHash.usingExogenousQualifiedSplitMultichainClaimWithWitness()(
-            claim, 0x80, allocationTypehash, typehash, _deriveIdsAndAmountsHash.usingExogenousQualifiedSplitMultichainClaimWithWitness()(claim, 0xc0)
+            claim, 0x80, allocationTypehash, typehash, _toSingleIdAndAmountHash.usingExogenousQualifiedSplitMultichainClaimWithWitness()(claim, 0xc0)
         );
         qualificationMessageHash = _toQualificationMessageHash.usingExogenousQualifiedSplitMultichainClaimWithWitness()(claim, messageHash, 0x40);
     }
 
-    function toMessageHash(ExogenousQualifiedBatchMultichainClaim calldata claim) internal view returns (bytes32 messageHash, bytes32 qualificationMessageHash) {
-        messageHash =
-            _toExogenousMultichainClaimMessageHash.usingExogenousQualifiedBatchMultichainClaim()(claim, 0x40, SEGMENT_TYPEHASH, MULTICHAIN_COMPACT_TYPEHASH, _toIdsAndAmountsHash(claim.claims));
-        qualificationMessageHash = _toQualificationMessageHash.usingExogenousQualifiedBatchMultichainClaim()(claim, messageHash, 0);
-    }
-
-    function toMessageHash(ExogenousBatchMultichainClaimWithWitness calldata claim) internal view returns (bytes32 messageHash, bytes32 typehash) {
-        bytes32 allocationTypehash;
-        (allocationTypehash, typehash) = getMultichainTypehashes.usingExogenousBatchMultichainClaimWithWitness()(claim);
-        messageHash = _toExogenousMultichainClaimMessageHash.usingExogenousBatchMultichainClaimWithWitness()(claim, 0x40, allocationTypehash, typehash, _toIdsAndAmountsHash(claim.claims));
-    }
-
     function toMessageHash(ExogenousQualifiedBatchMultichainClaimWithWitness calldata claim) internal view returns (bytes32 messageHash, bytes32 qualificationMessageHash, bytes32 typehash) {
         bytes32 allocationTypehash;
-        (allocationTypehash, typehash) = getMultichainTypehashes.usingExogenousQualifiedBatchMultichainClaimWithWitness()(claim);
+        (allocationTypehash, typehash) = _toMultichainTypehashes.usingExogenousQualifiedBatchMultichainClaimWithWitness()(claim);
 
         messageHash = _toExogenousMultichainClaimMessageHash.usingExogenousQualifiedBatchMultichainClaimWithWitness()(claim, 0x80, allocationTypehash, typehash, _toIdsAndAmountsHash(claim.claims));
         qualificationMessageHash = _toQualificationMessageHash.usingExogenousQualifiedBatchMultichainClaimWithWitness()(claim, messageHash, 0x40);
     }
 
-    function toMessageHash(ExogenousQualifiedSplitBatchMultichainClaim calldata claim) internal view returns (bytes32 messageHash, bytes32 qualificationMessageHash) {
-        messageHash = _toExogenousMultichainClaimMessageHash.usingExogenousQualifiedSplitBatchMultichainClaim()(
-            claim, 0x40, SEGMENT_TYPEHASH, MULTICHAIN_COMPACT_TYPEHASH, _toSplitIdsAndAmountsHash(claim.claims)
-        );
-        qualificationMessageHash = _toQualificationMessageHash.usingExogenousQualifiedSplitBatchMultichainClaim()(claim, messageHash, 0);
-    }
-
-    function toMessageHash(ExogenousSplitBatchMultichainClaimWithWitness calldata claim) internal view returns (bytes32 messageHash, bytes32 typehash) {
-        bytes32 allocationTypehash;
-        (allocationTypehash, typehash) = getMultichainTypehashes.usingExogenousSplitBatchMultichainClaimWithWitness()(claim);
-
-        messageHash = _toExogenousMultichainClaimMessageHash.usingExogenousSplitBatchMultichainClaimWithWitness()(claim, 0x40, allocationTypehash, typehash, _toSplitIdsAndAmountsHash(claim.claims));
-    }
-
     function toMessageHash(ExogenousQualifiedSplitBatchMultichainClaimWithWitness calldata claim) internal view returns (bytes32 messageHash, bytes32 qualificationMessageHash, bytes32 typehash) {
         bytes32 allocationTypehash;
-        (allocationTypehash, typehash) = getMultichainTypehashes.usingExogenousQualifiedSplitBatchMultichainClaimWithWitness()(claim);
+        (allocationTypehash, typehash) = _toMultichainTypehashes.usingExogenousQualifiedSplitBatchMultichainClaimWithWitness()(claim);
 
         messageHash =
             _toExogenousMultichainClaimMessageHash.usingExogenousQualifiedSplitBatchMultichainClaimWithWitness()(claim, 0x80, allocationTypehash, typehash, _toSplitIdsAndAmountsHash(claim.claims));
         qualificationMessageHash = _toQualificationMessageHash.usingExogenousQualifiedSplitBatchMultichainClaimWithWitness()(claim, messageHash, 0x40);
     }
 
-    function toMessageHash(SplitMultichainClaim calldata claim) internal view returns (bytes32 messageHash) {
-        messageHash = _toMultichainClaimMessageHash.usingSplitMultichainClaim()(claim, 0, SEGMENT_TYPEHASH, MULTICHAIN_COMPACT_TYPEHASH, _deriveIdsAndAmountsHash.usingSplitMultichainClaim()(claim, 0));
-    }
+    ///// CATEGORY 6: miscellaneous utilities /////
 
     function toPermit2DepositWitnessHash(address allocator, ResetPeriod resetPeriod, Scope scope, address recipient) internal pure returns (bytes32 witnessHash) {
         assembly ("memory-safe") {
@@ -648,6 +594,8 @@ library HashLib {
             mstore(0x40, m) // Restore the free memory pointer.
         }
     }
+
+    ///// Private helper functions /////
 
     function _toClaimMessageHash(uint256 claim, uint256 additionalOffset) private view returns (bytes32 messageHash) {
         assembly ("memory-safe") {
@@ -793,7 +741,7 @@ library HashLib {
         }
     }
 
-    function _deriveIdsAndAmountsHash(uint256 claim, uint256 additionalOffset) private pure returns (bytes32 idsAndAmountsHash) {
+    function _toSingleIdAndAmountHash(uint256 claim, uint256 additionalOffset) private pure returns (bytes32 idsAndAmountsHash) {
         assembly ("memory-safe") {
             let claimWithAdditionalOffset := add(claim, additionalOffset)
 
@@ -826,6 +774,72 @@ library HashLib {
             let additionalChainsPtr := add(claim, calldataload(add(add(claim, additionalOffset), 0xa0)))
             let additionalChainsLength := shl(5, calldataload(additionalChainsPtr))
             calldatacopy(add(m, 0x20), add(0x20, additionalChainsPtr), additionalChainsLength)
+
+            // hash of allocation hashes
+            mstore(add(m, 0x80), keccak256(m, add(0x20, additionalChainsLength)))
+
+            mstore(m, multichainCompactTypehash)
+            calldatacopy(add(m, 0x20), add(claim, 0x40), 0x60) // sponsor, nonce, expires
+
+            messageHash := keccak256(m, 0xa0)
+        }
+    }
+
+    function _toMultichainTypehashes(uint256 claim) internal pure returns (bytes32 allocationTypehash, bytes32 multichainCompactTypehash) {
+        assembly ("memory-safe") {
+            let m := mload(0x40) // Grab the free memory pointer; memory will be left dirtied.
+
+            // prepare full typestring
+            let witnessTypestringPtr := add(claim, calldataload(add(claim, 0xc0)))
+            let witnessTypestringLength := calldataload(witnessTypestringPtr)
+
+            mstore(m, MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_ONE)
+            mstore(add(m, 0x20), MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_TWO)
+            mstore(add(m, 0x40), MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_THREE)
+            mstore(add(m, 0x76), MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_FIVE)
+            mstore(add(m, 0x60), MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_FOUR)
+
+            calldatacopy(add(m, 0x96), add(0x20, witnessTypestringPtr), witnessTypestringLength)
+            allocationTypehash := keccak256(add(m, 0x53), add(0x43, witnessTypestringLength))
+            multichainCompactTypehash := keccak256(m, add(0x96, witnessTypestringLength))
+        }
+    }
+
+    function _toExogenousMultichainClaimMessageHash(uint256 claim, uint256 additionalOffset, bytes32 allocationTypehash, bytes32 multichainCompactTypehash, bytes32 idsAndAmountsHash)
+        internal
+        view
+        returns (bytes32 messageHash)
+    {
+        assembly ("memory-safe") {
+            let m := mload(0x40) // Grab the free memory pointer; memory will be left dirtied.
+
+            mstore(add(m, 0x60), idsAndAmountsHash)
+            mstore(m, allocationTypehash)
+            mstore(add(m, 0x20), caller()) // arbiter
+            mstore(add(m, 0x40), chainid())
+
+            let hasWitness := iszero(eq(allocationTypehash, SEGMENT_TYPEHASH))
+            if hasWitness { mstore(add(m, 0x80), calldataload(add(claim, 0xa0))) } // witness
+
+            let allocationHash := keccak256(m, add(0x80, mul(0x20, hasWitness))) // allocation hash
+
+            // additional allocation hashes
+            let claimWithAdditionalOffset := add(claim, additionalOffset)
+            let additionalChainsPtr := add(claim, calldataload(add(claimWithAdditionalOffset, 0xa0)))
+            let additionalChainsLength := shl(5, calldataload(additionalChainsPtr))
+            let additionalChainsData := add(0x20, additionalChainsPtr)
+            let chainIndex := shl(5, calldataload(add(claimWithAdditionalOffset, 0xc0)))
+
+            // NOTE: rather than using extraOffset, consider breaking into two distinct
+            // loops or potentially even two calldatacopy operations based on chainIndex
+            let extraOffset := 0
+            for { let i := 0 } lt(i, additionalChainsLength) { i := add(i, 0x20) } {
+                mstore(add(m, i), calldataload(add(additionalChainsData, add(i, extraOffset))))
+                if eq(i, chainIndex) {
+                    extraOffset := 0x20
+                    mstore(add(m, add(i, extraOffset)), allocationHash)
+                }
+            }
 
             // hash of allocation hashes
             mstore(add(m, 0x80), keccak256(m, add(0x20, additionalChainsLength)))

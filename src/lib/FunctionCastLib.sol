@@ -1898,10 +1898,20 @@ library FunctionCastLib {
         }
     }
 
-    function usingExogenousQualifiedMultichainClaim(function(ExogenousMultichainClaim calldata, uint256, bytes32, bytes32, bytes32) internal view returns (bytes32) fnIn)
+    function usingExogenousQualifiedMultichainClaim(function (uint256, uint256, bytes32, bytes32, bytes32) internal view returns (bytes32) fnIn)
         internal
         pure
         returns (function(ExogenousQualifiedMultichainClaim calldata, uint256, bytes32, bytes32, bytes32) internal view returns (bytes32) fnOut)
+    {
+        assembly ("memory-safe") {
+            fnOut := fnIn
+        }
+    }
+
+    function usingExogenousQualifiedSplitMultichainClaim(function (uint256, uint256, bytes32, bytes32, bytes32) internal view returns (bytes32) fnIn)
+        internal
+        pure
+        returns (function(ExogenousQualifiedSplitMultichainClaim calldata, uint256, bytes32, bytes32, bytes32) internal view returns (bytes32) fnOut)
     {
         assembly ("memory-safe") {
             fnOut := fnIn
@@ -1958,7 +1968,7 @@ library FunctionCastLib {
         }
     }
 
-    function usingExogenousMultichainClaimWithWitness(function (MultichainClaimWithWitness calldata) internal pure returns (bytes32, bytes32) fnIn)
+    function usingExogenousMultichainClaimWithWitness(function (uint256) internal pure returns (bytes32, bytes32) fnIn)
         internal
         pure
         returns (function (ExogenousMultichainClaimWithWitness calldata) internal pure returns (bytes32, bytes32) fnOut)
@@ -1968,7 +1978,7 @@ library FunctionCastLib {
         }
     }
 
-    function usingExogenousSplitMultichainClaimWithWitness(function (MultichainClaimWithWitness calldata) internal pure returns (bytes32, bytes32) fnIn)
+    function usingExogenousSplitMultichainClaimWithWitness(function (uint256) internal pure returns (bytes32, bytes32) fnIn)
         internal
         pure
         returns (function (ExogenousSplitMultichainClaimWithWitness calldata) internal pure returns (bytes32, bytes32) fnOut)
@@ -1978,7 +1988,7 @@ library FunctionCastLib {
         }
     }
 
-    function usingExogenousBatchMultichainClaimWithWitness(function (MultichainClaimWithWitness calldata) internal pure returns (bytes32, bytes32) fnIn)
+    function usingExogenousBatchMultichainClaimWithWitness(function (uint256) internal pure returns (bytes32, bytes32) fnIn)
         internal
         pure
         returns (function (ExogenousBatchMultichainClaimWithWitness calldata) internal pure returns (bytes32, bytes32) fnOut)
@@ -1988,7 +1998,7 @@ library FunctionCastLib {
         }
     }
 
-    function usingExogenousQualifiedMultichainClaimWithWitness(function (MultichainClaimWithWitness calldata) internal pure returns (bytes32, bytes32) fnIn)
+    function usingExogenousQualifiedMultichainClaimWithWitness(function (uint256) internal pure returns (bytes32, bytes32) fnIn)
         internal
         pure
         returns (function (ExogenousQualifiedMultichainClaimWithWitness calldata) internal pure returns (bytes32, bytes32) fnOut)
@@ -1998,7 +2008,7 @@ library FunctionCastLib {
         }
     }
 
-    function usingExogenousQualifiedSplitMultichainClaimWithWitness(function (MultichainClaimWithWitness calldata) internal pure returns (bytes32, bytes32) fnIn)
+    function usingExogenousQualifiedSplitMultichainClaimWithWitness(function (uint256) internal pure returns (bytes32, bytes32) fnIn)
         internal
         pure
         returns (function (ExogenousQualifiedSplitMultichainClaimWithWitness calldata) internal pure returns (bytes32, bytes32) fnOut)
@@ -2008,7 +2018,7 @@ library FunctionCastLib {
         }
     }
 
-    function usingExogenousQualifiedBatchMultichainClaimWithWitness(function (MultichainClaimWithWitness calldata) internal pure returns (bytes32, bytes32) fnIn)
+    function usingExogenousQualifiedBatchMultichainClaimWithWitness(function (uint256) internal pure returns (bytes32, bytes32) fnIn)
         internal
         pure
         returns (function (ExogenousQualifiedBatchMultichainClaimWithWitness calldata) internal pure returns (bytes32, bytes32) fnOut)
@@ -2018,7 +2028,17 @@ library FunctionCastLib {
         }
     }
 
-    function usingQualifiedMultichainClaimWithWitness(function (MultichainClaimWithWitness calldata) internal pure returns (bytes32, bytes32) fnIn)
+    function usingMultichainClaimWithWitness(function (uint256) internal pure returns (bytes32, bytes32) fnIn)
+        internal
+        pure
+        returns (function (MultichainClaimWithWitness calldata) internal pure returns (bytes32, bytes32) fnOut)
+    {
+        assembly ("memory-safe") {
+            fnOut := fnIn
+        }
+    }
+
+    function usingQualifiedMultichainClaimWithWitness(function (uint256) internal pure returns (bytes32, bytes32) fnIn)
         internal
         pure
         returns (function (QualifiedMultichainClaimWithWitness calldata) internal pure returns (bytes32, bytes32) fnOut)
@@ -2028,7 +2048,7 @@ library FunctionCastLib {
         }
     }
 
-    function usingQualifiedSplitMultichainClaimWithWitness(function (MultichainClaimWithWitness calldata) internal pure returns (bytes32, bytes32) fnIn)
+    function usingQualifiedSplitMultichainClaimWithWitness(function (uint256) internal pure returns (bytes32, bytes32) fnIn)
         internal
         pure
         returns (function (QualifiedSplitMultichainClaimWithWitness calldata) internal pure returns (bytes32, bytes32) fnOut)
@@ -2038,7 +2058,7 @@ library FunctionCastLib {
         }
     }
 
-    function usingQualifiedBatchMultichainClaimWithWitness(function (MultichainClaimWithWitness calldata) internal pure returns (bytes32, bytes32) fnIn)
+    function usingQualifiedBatchMultichainClaimWithWitness(function (uint256) internal pure returns (bytes32, bytes32) fnIn)
         internal
         pure
         returns (function (QualifiedBatchMultichainClaimWithWitness calldata) internal pure returns (bytes32, bytes32) fnOut)
@@ -2048,7 +2068,7 @@ library FunctionCastLib {
         }
     }
 
-    function usingQualifiedSplitBatchMultichainClaimWithWitness(function (MultichainClaimWithWitness calldata) internal pure returns (bytes32, bytes32) fnIn)
+    function usingQualifiedSplitBatchMultichainClaimWithWitness(function (uint256) internal pure returns (bytes32, bytes32) fnIn)
         internal
         pure
         returns (function (QualifiedSplitBatchMultichainClaimWithWitness calldata) internal pure returns (bytes32, bytes32) fnOut)
@@ -2058,7 +2078,7 @@ library FunctionCastLib {
         }
     }
 
-    function usingSplitBatchMultichainClaimWithWitness(function (MultichainClaimWithWitness calldata) internal pure returns (bytes32, bytes32) fnIn)
+    function usingSplitBatchMultichainClaimWithWitness(function (uint256) internal pure returns (bytes32, bytes32) fnIn)
         internal
         pure
         returns (function (SplitBatchMultichainClaimWithWitness calldata) internal pure returns (bytes32, bytes32) fnOut)
@@ -2068,7 +2088,7 @@ library FunctionCastLib {
         }
     }
 
-    function usingExogenousQualifiedSplitBatchMultichainClaimWithWitness(function (MultichainClaimWithWitness calldata) internal pure returns (bytes32, bytes32) fnIn)
+    function usingExogenousQualifiedSplitBatchMultichainClaimWithWitness(function (uint256) internal pure returns (bytes32, bytes32) fnIn)
         internal
         pure
         returns (function (ExogenousQualifiedSplitBatchMultichainClaimWithWitness calldata) internal pure returns (bytes32, bytes32) fnOut)
@@ -2078,7 +2098,7 @@ library FunctionCastLib {
         }
     }
 
-    function usingExogenousSplitBatchMultichainClaimWithWitness(function (MultichainClaimWithWitness calldata) internal pure returns (bytes32, bytes32) fnIn)
+    function usingExogenousSplitBatchMultichainClaimWithWitness(function (uint256) internal pure returns (bytes32, bytes32) fnIn)
         internal
         pure
         returns (function (ExogenousSplitBatchMultichainClaimWithWitness calldata) internal pure returns (bytes32, bytes32) fnOut)
@@ -2384,17 +2404,17 @@ library FunctionCastLib {
         }
     }
 
-    function usingExogenousQualifiedSplitMultichainClaim(function (ExogenousMultichainClaim calldata, uint256, bytes32, bytes32, bytes32) internal view returns (bytes32) fnIn)
+    function usingExogenousMultichainClaim(function (uint256, uint256, bytes32, bytes32, bytes32) internal view returns (bytes32) fnIn)
         internal
         pure
-        returns (function (ExogenousQualifiedSplitMultichainClaim calldata, uint256, bytes32, bytes32, bytes32) internal view returns (bytes32) fnOut)
+        returns (function (ExogenousMultichainClaim calldata, uint256, bytes32, bytes32, bytes32) internal view returns (bytes32) fnOut)
     {
         assembly ("memory-safe") {
             fnOut := fnIn
         }
     }
 
-    function usingExogenousQualifiedBatchMultichainClaim(function (ExogenousMultichainClaim calldata, uint256, bytes32, bytes32, bytes32) internal view returns (bytes32) fnIn)
+    function usingExogenousQualifiedBatchMultichainClaim(function (uint256, uint256, bytes32, bytes32, bytes32) internal view returns (bytes32) fnIn)
         internal
         pure
         returns (function (ExogenousQualifiedBatchMultichainClaim calldata, uint256, bytes32, bytes32, bytes32) internal view returns (bytes32) fnOut)
@@ -2464,7 +2484,7 @@ library FunctionCastLib {
         }
     }
 
-    function usingExogenousQualifiedSplitBatchMultichainClaimWithWitness(function (ExogenousMultichainClaim calldata, uint256, bytes32, bytes32, bytes32) internal view returns (bytes32) fnIn)
+    function usingExogenousQualifiedSplitBatchMultichainClaimWithWitness(function (uint256, uint256, bytes32, bytes32, bytes32) internal view returns (bytes32) fnIn)
         internal
         pure
         returns (function (ExogenousQualifiedSplitBatchMultichainClaimWithWitness calldata, uint256, bytes32, bytes32, bytes32) internal view returns (bytes32) fnOut)
@@ -2474,7 +2494,7 @@ library FunctionCastLib {
         }
     }
 
-    function usingExogenousQualifiedSplitBatchMultichainClaim(function (ExogenousMultichainClaim calldata, uint256, bytes32, bytes32, bytes32) internal view returns (bytes32) fnIn)
+    function usingExogenousQualifiedSplitBatchMultichainClaim(function (uint256, uint256, bytes32, bytes32, bytes32) internal view returns (bytes32) fnIn)
         internal
         pure
         returns (function (ExogenousQualifiedSplitBatchMultichainClaim calldata, uint256, bytes32, bytes32, bytes32) internal view returns (bytes32) fnOut)
@@ -2484,7 +2504,7 @@ library FunctionCastLib {
         }
     }
 
-    function usingExogenousSplitBatchMultichainClaimWithWitness(function (ExogenousMultichainClaim calldata, uint256, bytes32, bytes32, bytes32) internal view returns (bytes32) fnIn)
+    function usingExogenousSplitBatchMultichainClaimWithWitness(function (uint256, uint256, bytes32, bytes32, bytes32) internal view returns (bytes32) fnIn)
         internal
         pure
         returns (function (ExogenousSplitBatchMultichainClaimWithWitness calldata, uint256, bytes32, bytes32, bytes32) internal view returns (bytes32) fnOut)
@@ -2554,7 +2574,7 @@ library FunctionCastLib {
         }
     }
 
-    function usingExogenousMultichainClaimWithWitness(function (ExogenousMultichainClaim calldata, uint256, bytes32, bytes32, bytes32) internal view returns (bytes32) fnIn)
+    function usingExogenousMultichainClaimWithWitness(function (uint256, uint256, bytes32, bytes32, bytes32) internal view returns (bytes32) fnIn)
         internal
         pure
         returns (function (ExogenousMultichainClaimWithWitness calldata, uint256, bytes32, bytes32, bytes32) internal view returns (bytes32) fnOut)
@@ -2564,7 +2584,7 @@ library FunctionCastLib {
         }
     }
 
-    function usingExogenousSplitMultichainClaimWithWitness(function (ExogenousMultichainClaim calldata, uint256, bytes32, bytes32, bytes32) internal view returns (bytes32) fnIn)
+    function usingExogenousSplitMultichainClaimWithWitness(function (uint256, uint256, bytes32, bytes32, bytes32) internal view returns (bytes32) fnIn)
         internal
         pure
         returns (function (ExogenousSplitMultichainClaimWithWitness calldata, uint256, bytes32, bytes32, bytes32) internal view returns (bytes32) fnOut)
@@ -2574,7 +2594,7 @@ library FunctionCastLib {
         }
     }
 
-    function usingExogenousBatchMultichainClaimWithWitness(function (ExogenousMultichainClaim calldata, uint256, bytes32, bytes32, bytes32) internal view returns (bytes32) fnIn)
+    function usingExogenousBatchMultichainClaimWithWitness(function (uint256, uint256, bytes32, bytes32, bytes32) internal view returns (bytes32) fnIn)
         internal
         pure
         returns (function (ExogenousBatchMultichainClaimWithWitness calldata, uint256, bytes32, bytes32, bytes32) internal view returns (bytes32) fnOut)
@@ -2584,7 +2604,7 @@ library FunctionCastLib {
         }
     }
 
-    function usingExogenousQualifiedMultichainClaimWithWitness(function (ExogenousMultichainClaim calldata, uint256, bytes32, bytes32, bytes32) internal view returns (bytes32) fnIn)
+    function usingExogenousQualifiedMultichainClaimWithWitness(function (uint256, uint256, bytes32, bytes32, bytes32) internal view returns (bytes32) fnIn)
         internal
         pure
         returns (function (ExogenousQualifiedMultichainClaimWithWitness calldata, uint256, bytes32, bytes32, bytes32) internal view returns (bytes32) fnOut)
@@ -2594,7 +2614,7 @@ library FunctionCastLib {
         }
     }
 
-    function usingExogenousQualifiedSplitMultichainClaimWithWitness(function (ExogenousMultichainClaim calldata, uint256, bytes32, bytes32, bytes32) internal view returns (bytes32) fnIn)
+    function usingExogenousQualifiedSplitMultichainClaimWithWitness(function (uint256, uint256, bytes32, bytes32, bytes32) internal view returns (bytes32) fnIn)
         internal
         pure
         returns (function (ExogenousQualifiedSplitMultichainClaimWithWitness calldata, uint256, bytes32, bytes32, bytes32) internal view returns (bytes32) fnOut)
@@ -2604,7 +2624,7 @@ library FunctionCastLib {
         }
     }
 
-    function usingExogenousQualifiedBatchMultichainClaimWithWitness(function (ExogenousMultichainClaim calldata, uint256, bytes32, bytes32, bytes32) internal view returns (bytes32) fnIn)
+    function usingExogenousQualifiedBatchMultichainClaimWithWitness(function (uint256, uint256, bytes32, bytes32, bytes32) internal view returns (bytes32) fnIn)
         internal
         pure
         returns (function (ExogenousQualifiedBatchMultichainClaimWithWitness calldata, uint256, bytes32, bytes32, bytes32) internal view returns (bytes32) fnOut)
@@ -2614,7 +2634,7 @@ library FunctionCastLib {
         }
     }
 
-    function usingExogenousSplitMultichainClaim(function (ExogenousMultichainClaim calldata, uint256, bytes32, bytes32, bytes32) internal view returns (bytes32) fnIn)
+    function usingExogenousSplitMultichainClaim(function (uint256, uint256, bytes32, bytes32, bytes32) internal view returns (bytes32) fnIn)
         internal
         pure
         returns (function (ExogenousSplitMultichainClaim calldata, uint256, bytes32, bytes32, bytes32) internal view returns (bytes32) fnOut)
@@ -2624,7 +2644,7 @@ library FunctionCastLib {
         }
     }
 
-    function usingExogenousBatchMultichainClaim(function (ExogenousMultichainClaim calldata, uint256, bytes32, bytes32, bytes32) internal view returns (bytes32) fnIn)
+    function usingExogenousBatchMultichainClaim(function (uint256, uint256, bytes32, bytes32, bytes32) internal view returns (bytes32) fnIn)
         internal
         pure
         returns (function (ExogenousBatchMultichainClaim calldata, uint256, bytes32, bytes32, bytes32) internal view returns (bytes32) fnOut)
@@ -2634,7 +2654,7 @@ library FunctionCastLib {
         }
     }
 
-    function usingExogenousSplitBatchMultichainClaim(function (ExogenousMultichainClaim calldata, uint256, bytes32, bytes32, bytes32) internal view returns (bytes32) fnIn)
+    function usingExogenousSplitBatchMultichainClaim(function (uint256, uint256, bytes32, bytes32, bytes32) internal view returns (bytes32) fnIn)
         internal
         pure
         returns (function (ExogenousSplitBatchMultichainClaim calldata, uint256, bytes32, bytes32, bytes32) internal view returns (bytes32) fnOut)
@@ -2744,7 +2764,7 @@ library FunctionCastLib {
         }
     }
 
-    function usingSplitMultichainClaimWithWitness(function (MultichainClaimWithWitness calldata) internal pure returns (bytes32, bytes32) fnIn)
+    function usingSplitMultichainClaimWithWitness(function (uint256) internal pure returns (bytes32, bytes32) fnIn)
         internal
         pure
         returns (function (SplitMultichainClaimWithWitness calldata) internal pure returns (bytes32, bytes32) fnOut)
@@ -2754,7 +2774,7 @@ library FunctionCastLib {
         }
     }
 
-    function usingBatchMultichainClaimWithWitness(function (MultichainClaimWithWitness calldata) internal pure returns (bytes32, bytes32) fnIn)
+    function usingBatchMultichainClaimWithWitness(function (uint256) internal pure returns (bytes32, bytes32) fnIn)
         internal
         pure
         returns (function (BatchMultichainClaimWithWitness calldata) internal pure returns (bytes32, bytes32) fnOut)
