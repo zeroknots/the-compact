@@ -101,20 +101,19 @@ library HashLib {
     using EfficiencyLib for bool;
     using FunctionCastLib for function(BatchTransfer calldata, bytes32) internal view returns (bytes32);
     using FunctionCastLib for function(QualifiedClaim calldata) internal view returns (bytes32, bytes32);
-    using FunctionCastLib for function(ClaimWithWitness calldata, uint256) internal view returns (bytes32, bytes32);
-    using FunctionCastLib for function(QualifiedClaim calldata, bytes32, uint256) internal pure returns (bytes32);
+    using FunctionCastLib for function(uint256, uint256) internal view returns (bytes32, bytes32);
+    using FunctionCastLib for function(uint256, bytes32, uint256) internal pure returns (bytes32);
     using FunctionCastLib for function(QualifiedClaimWithWitness calldata) internal view returns (bytes32, bytes32, bytes32);
     using FunctionCastLib for function(SplitBatchClaim calldata, SplitBatchClaimComponent[] calldata) internal view returns (bytes32);
     using FunctionCastLib for function(SplitBatchClaimWithWitness calldata, SplitBatchClaimComponent[] calldata) internal view returns (bytes32, bytes32);
-    using FunctionCastLib for function(BatchClaim calldata, BatchClaimComponent[] calldata) internal view returns (bytes32);
-    using FunctionCastLib for function(BatchClaimWithWitness calldata, BatchClaimComponent[] calldata) internal view returns (bytes32, bytes32);
-    using FunctionCastLib for function(BasicClaim calldata, uint256) internal view returns (bytes32);
-    using FunctionCastLib for function(ClaimWithWitness calldata, uint256) internal view returns (bytes32, bytes32);
-    using FunctionCastLib for function(MultichainClaim calldata, uint256, bytes32, bytes32, bytes32) internal view returns (bytes32);
+    using FunctionCastLib for function(uint256, bytes32) internal view returns (bytes32);
+    using FunctionCastLib for function(uint256, bytes32) internal view returns (bytes32, bytes32);
+    using FunctionCastLib for function(uint256, uint256) internal view returns (bytes32);
+    using FunctionCastLib for function(uint256, uint256, bytes32, bytes32, bytes32) internal view returns (bytes32);
     using FunctionCastLib for function(ExogenousMultichainClaim calldata, uint256, bytes32, bytes32, bytes32) internal view returns (bytes32);
     using FunctionCastLib for function(BatchClaimWithWitness calldata, bytes32) internal view returns (bytes32, bytes32);
     using FunctionCastLib for function(MultichainClaimWithWitness calldata) pure returns (bytes32, bytes32);
-    using FunctionCastLib for function(MultichainClaim calldata, uint256) pure returns (bytes32);
+    using FunctionCastLib for function(uint256, uint256) pure returns (bytes32);
 
     /// @dev `keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)")`.
     bytes32 internal constant _DOMAIN_TYPEHASH = 0x8b73c3c69bb8fe3d512ecc4cf759cc79239f7b179b0ffacaa9a75d522b39400f;
@@ -231,13 +230,13 @@ library HashLib {
     }
 
     function toMessageHash(BasicClaim calldata claim) internal view returns (bytes32 messageHash) {
-        return _toClaimMessageHash(claim, 0);
+        return _toClaimMessageHash.usingBasicClaim()(claim, 0);
     }
 
     function toMessageHash(QualifiedClaim calldata claim) internal view returns (bytes32 messageHash, bytes32 qualificationMessageHash) {
         messageHash = _toClaimMessageHash.usingQualifiedClaim()(claim, 0x40);
 
-        qualificationMessageHash = _toQualificationMessageHash(claim, messageHash, 0);
+        qualificationMessageHash = _toQualificationMessageHash.usingQualifiedClaim()(claim, messageHash, 0);
     }
 
     function toMessageHash(QualifiedSplitClaim calldata claim) internal view returns (bytes32 messageHash, bytes32 qualificationMessageHash) {
@@ -247,7 +246,7 @@ library HashLib {
     }
 
     function toMessageHash(ClaimWithWitness calldata claim) internal view returns (bytes32 messageHash, bytes32 typehash) {
-        return _toMessageHashWithWitness(claim, 0);
+        return _toMessageHashWithWitness.usingClaimWithWitness()(claim, 0);
     }
 
     function toMessageHash(QualifiedClaimWithWitness calldata claim) internal view returns (bytes32 messageHash, bytes32 qualificationMessageHash, bytes32 typehash) {
@@ -261,11 +260,11 @@ library HashLib {
     }
 
     function toMessageHash(BatchClaim calldata claim) internal view returns (bytes32 messageHash) {
-        return _deriveBatchMessageHash(claim, claim.claims);
+        return _toBatchMessageHash.usingBatchClaim()(claim, _toIdsAndAmountsHash(claim.claims));
     }
 
     function toMessageHash(SplitBatchClaim calldata claim) internal view returns (bytes32 messageHash) {
-        return _toSplitBatchMessageHash(claim, claim.claims);
+        return _toBatchMessageHash.usingSplitBatchClaim()(claim, _toSplitIdsAndAmountsHash(claim.claims));
     }
 
     function toMessageHash(SplitBatchClaimWithWitness calldata claim) internal view returns (bytes32 messageHash, bytes32 typehash) {
@@ -273,13 +272,13 @@ library HashLib {
     }
 
     function toMessageHash(QualifiedBatchClaim calldata claim) internal view returns (bytes32 messageHash, bytes32 qualificationMessageHash) {
-        messageHash = _deriveBatchMessageHash.usingQualifiedBatchClaim()(claim, claim.claims);
+        messageHash = _toBatchMessageHash.usingQualifiedBatchClaim()(claim, _toIdsAndAmountsHash(claim.claims));
 
         qualificationMessageHash = _toQualificationMessageHash.usingQualifiedBatchClaim()(claim, messageHash, 0);
     }
 
     function toMessageHash(BatchClaimWithWitness calldata claim) internal view returns (bytes32 messageHash, bytes32 typehash) {
-        return _toBatchClaimWithWitnessMessageHash(claim, _toIdsAndAmountsHash(claim.claims));
+        return _toBatchClaimWithWitnessMessageHash.usingBatchClaimWithWitness()(claim, _toIdsAndAmountsHash(claim.claims));
     }
 
     function toMessageHash(QualifiedBatchClaimWithWitness calldata claim) internal view returns (bytes32 messageHash, bytes32 qualificationMessageHash, bytes32 typehash) {
@@ -297,7 +296,7 @@ library HashLib {
     }
 
     function toMessageHash(QualifiedSplitBatchClaim calldata claim) internal view returns (bytes32 messageHash, bytes32 qualificationMessageHash) {
-        messageHash = _toSplitBatchMessageHash.usingQualifiedSplitBatchClaim()(claim, claim.claims);
+        messageHash = _toBatchMessageHash.usingQualifiedSplitBatchClaim()(claim, _toSplitIdsAndAmountsHash(claim.claims));
 
         qualificationMessageHash = _toQualificationMessageHash.usingQualifiedSplitBatchClaim()(claim, messageHash, 0);
     }
@@ -309,7 +308,7 @@ library HashLib {
     }
 
     function toMessageHash(MultichainClaim calldata claim) internal view returns (bytes32 messageHash) {
-        messageHash = _toMultichainClaimMessageHash(claim, 0, SEGMENT_TYPEHASH, MULTICHAIN_COMPACT_TYPEHASH, _deriveIdsAndAmountsHash(claim, 0));
+        messageHash = _toMultichainClaimMessageHash.usingMultichainClaim()(claim, 0, SEGMENT_TYPEHASH, MULTICHAIN_COMPACT_TYPEHASH, _deriveIdsAndAmountsHash.usingMultichainClaim()(claim, 0));
     }
 
     function toMessageHash(BatchMultichainClaim calldata claim) internal view returns (bytes32 messageHash) {
@@ -650,7 +649,7 @@ library HashLib {
         }
     }
 
-    function _toClaimMessageHash(BasicClaim calldata claim, uint256 additionalOffset) private view returns (bytes32 messageHash) {
+    function _toClaimMessageHash(uint256 claim, uint256 additionalOffset) private view returns (bytes32 messageHash) {
         assembly ("memory-safe") {
             let m := mload(0x40) // Grab the free memory pointer; memory will be left dirtied.
 
@@ -665,7 +664,7 @@ library HashLib {
         }
     }
 
-    function _toQualificationMessageHash(QualifiedClaim calldata claim, bytes32 messageHash, uint256 witnessOffset) private pure returns (bytes32 qualificationMessageHash) {
+    function _toQualificationMessageHash(uint256 claim, bytes32 messageHash, uint256 witnessOffset) private pure returns (bytes32 qualificationMessageHash) {
         assembly ("memory-safe") {
             let m := mload(0x40) // Grab the free memory pointer; memory will be left dirtied.
 
@@ -680,7 +679,7 @@ library HashLib {
         }
     }
 
-    function _toMessageHashWithWitness(ClaimWithWitness calldata claim, uint256 qualificationOffset) private view returns (bytes32 messageHash, bytes32 typehash) {
+    function _toMessageHashWithWitness(uint256 claim, uint256 qualificationOffset) private view returns (bytes32 messageHash, bytes32 typehash) {
         assembly ("memory-safe") {
             let m := mload(0x40) // Grab the free memory pointer; memory will be left dirtied.
 
@@ -758,9 +757,7 @@ library HashLib {
         }
     }
 
-    function _deriveBatchMessageHash(BatchClaim calldata claim, BatchClaimComponent[] calldata claims) private view returns (bytes32 messageHash) {
-        bytes32 idsAndAmountsHash = _toIdsAndAmountsHash(claims);
-
+    function _toBatchMessageHash(uint256 claim, bytes32 idsAndAmountsHash) private view returns (bytes32 messageHash) {
         assembly ("memory-safe") {
             let m := mload(0x40) // Grab the free memory pointer; memory will be left dirtied.
 
@@ -772,21 +769,7 @@ library HashLib {
         }
     }
 
-    function _toSplitBatchMessageHash(SplitBatchClaim calldata claim, SplitBatchClaimComponent[] calldata claims) private view returns (bytes32 messageHash) {
-        bytes32 idsAndAmountsHash = _toSplitIdsAndAmountsHash(claims);
-
-        assembly ("memory-safe") {
-            let m := mload(0x40) // Grab the free memory pointer; memory will be left dirtied.
-
-            mstore(m, BATCH_COMPACT_TYPEHASH)
-            mstore(add(m, 0x20), caller()) // arbiter: msg.sender
-            calldatacopy(add(m, 0x40), add(claim, 0x40), 0x60) // sponsor, nonce, expires
-            mstore(add(m, 0xa0), idsAndAmountsHash)
-            messageHash := keccak256(m, 0xc0)
-        }
-    }
-
-    function _toBatchClaimWithWitnessMessageHash(BatchClaimWithWitness calldata claim, bytes32 idsAndAmountsHash) private view returns (bytes32 messageHash, bytes32 typehash) {
+    function _toBatchClaimWithWitnessMessageHash(uint256 claim, bytes32 idsAndAmountsHash) private view returns (bytes32 messageHash, bytes32 typehash) {
         assembly ("memory-safe") {
             let m := mload(0x40) // Grab the free memory pointer; memory will be left dirtied.
 
@@ -810,7 +793,7 @@ library HashLib {
         }
     }
 
-    function _deriveIdsAndAmountsHash(MultichainClaim calldata claim, uint256 additionalOffset) private pure returns (bytes32 idsAndAmountsHash) {
+    function _deriveIdsAndAmountsHash(uint256 claim, uint256 additionalOffset) private pure returns (bytes32 idsAndAmountsHash) {
         assembly ("memory-safe") {
             let claimWithAdditionalOffset := add(claim, additionalOffset)
 
@@ -821,7 +804,7 @@ library HashLib {
         }
     }
 
-    function _toMultichainClaimMessageHash(MultichainClaim calldata claim, uint256 additionalOffset, bytes32 allocationTypehash, bytes32 multichainCompactTypehash, bytes32 idsAndAmountsHash)
+    function _toMultichainClaimMessageHash(uint256 claim, uint256 additionalOffset, bytes32 allocationTypehash, bytes32 multichainCompactTypehash, bytes32 idsAndAmountsHash)
         private
         view
         returns (bytes32 messageHash)
