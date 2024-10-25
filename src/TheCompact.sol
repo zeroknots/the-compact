@@ -83,7 +83,7 @@ import {
     ExogenousQualifiedSplitBatchMultichainClaimWithWitness
 } from "./types/BatchMultichainClaims.sol";
 
-import { COMPACT_TYPEHASH, BATCH_COMPACT_TYPEHASH, MULTICHAIN_COMPACT_TYPEHASH, PERMIT2_DEPOSIT_WITNESS_FRAGMENT_HASH, EMISSARY_ASSIGNMENT_TYPEHASH } from "./types/EIP712Types.sol";
+import { COMPACT_TYPEHASH, BATCH_COMPACT_TYPEHASH, MULTICHAIN_COMPACT_TYPEHASH, PERMIT2_DEPOSIT_WITNESS_FRAGMENT_HASH } from "./types/EIP712Types.sol";
 
 import { SplitComponent, TransferComponent, SplitByIdComponent, BatchClaimComponent, SplitBatchClaimComponent } from "./types/Components.sol";
 
@@ -98,7 +98,7 @@ import { MetadataRenderer } from "./lib/MetadataRenderer.sol";
  *         formation (and, if necessary, involuntary dissolution) of "resource locks."
  *         This contract has not yet been properly tested, audited, or reviewed.
  */
-contract TheCompact is ITheCompact, ERC6909, Extsload, Tstorish {
+contract TheCompact is ITheCompact, ERC6909, Tstorish {
     using HashLib for address;
     using HashLib for bytes32;
     using HashLib for uint256;
@@ -201,9 +201,6 @@ contract TheCompact is ITheCompact, ERC6909, Extsload, Tstorish {
     // TODO: optimize
     mapping(address => mapping(bytes32 => bytes32)) private _registeredClaimHashes;
 
-    // TODO: optimize
-    mapping(address => mapping(address => bool)) private _emissaries;
-
     uint256 private immutable _INITIAL_CHAIN_ID;
     bytes32 private immutable _INITIAL_DOMAIN_SEPARATOR;
     MetadataRenderer private immutable _METADATA_RENDERER;
@@ -247,13 +244,7 @@ contract TheCompact is ITheCompact, ERC6909, Extsload, Tstorish {
     }
 
     function depositAndRegister(uint256[2][] calldata idsAndAmounts, bytes32[2][] calldata claimHashesAndTypehashes) external payable returns (bool) {
-        unchecked {
-            uint256 totalClaimHashes = claimHashesAndTypehashes.length;
-            for (uint256 i = 0; i < totalClaimHashes; ++i) {
-                bytes32[2] calldata claimHashAndTypehash = claimHashesAndTypehashes[i];
-                _registeredClaimHashes[msg.sender][claimHashAndTypehash[0]] = claimHashAndTypehash[1];
-            }
-        }
+        _registerFor(msg.sender, claimHashesAndTypehashes);
 
         return _processBatchDeposit(idsAndAmounts, msg.sender);
     }
@@ -891,66 +882,19 @@ contract TheCompact is ITheCompact, ERC6909, Extsload, Tstorish {
     }
 
     function register(bytes32[2][] calldata claimHashesAndTypehashes) external returns (bool) {
+        return _registerFor(msg.sender, claimHashesAndTypehashes);
+    }
+
+    function _registerFor(address sponsor, bytes32[2][] calldata claimHashesAndTypehashes) internal returns (bool) {
         unchecked {
             uint256 totalClaimHashes = claimHashesAndTypehashes.length;
             for (uint256 i = 0; i < totalClaimHashes; ++i) {
                 bytes32[2] calldata claimHashAndTypehash = claimHashesAndTypehashes[i];
-                _registeredClaimHashes[msg.sender][claimHashAndTypehash[0]] = claimHashAndTypehash[1];
+                _registeredClaimHashes[sponsor][claimHashAndTypehash[0]] = claimHashAndTypehash[1];
             }
         }
 
         return true;
-    }
-
-    function registerFor(address sponsor, bytes32 claimHash, bytes32 typehash) external returns (bool) {
-        // TODO: optimize
-        if (!_emissaries[sponsor][msg.sender]) {
-            revert InvalidEmissary(sponsor, msg.sender);
-        }
-        _registeredClaimHashes[sponsor][claimHash] = typehash;
-        return true;
-    }
-
-    function registerFor(address sponsor, bytes32[2][] calldata claimHashesAndTypehashes) external returns (bool) {
-        // TODO: optimize
-        if (!_emissaries[sponsor][msg.sender]) {
-            revert InvalidEmissary(sponsor, msg.sender);
-        }
-
-        unchecked {
-            uint256 totalClaimHashes = claimHashesAndTypehashes.length;
-            for (uint256 i = 0; i < totalClaimHashes; ++i) {
-                bytes32[2] calldata claimHashAndTypehash = claimHashesAndTypehashes[i];
-                _registeredClaimHashes[msg.sender][claimHashAndTypehash[0]] = claimHashAndTypehash[1];
-            }
-        }
-
-        return true;
-    }
-
-    function assignEmissary(address sponsor, address emissary, uint256 nonce, uint256 expires, bool assigned, bytes calldata sponsorSignature) external returns (bool) {
-        expires.later();
-
-        bytes32 messageHash;
-        assembly ("memory-safe") {
-            let m := mload(0x40) // Grab the free memory pointer; memory will be left dirtied.
-            mstore(m, EMISSARY_ASSIGNMENT_TYPEHASH)
-            mstore(add(m, 0x20), emissary)
-            mstore(add(m, 0x40), nonce)
-            mstore(add(m, 0x60), expires)
-            mstore(add(m, 0x80), assigned)
-            messageHash := keccak256(m, 0xa0)
-        }
-
-        messageHash.signedBy(sponsor, sponsorSignature, _INITIAL_DOMAIN_SEPARATOR.toLatest(_INITIAL_CHAIN_ID));
-
-        nonce.consumeNonceAsSponsor(sponsor);
-
-        return _assignEmissary(sponsor, emissary, assigned);
-    }
-
-    function assignEmissary(address emissary, bool assigned) external returns (bool) {
-        return _assignEmissary(msg.sender, emissary, assigned);
     }
 
     function consume(uint256[] calldata nonces) external returns (bool) {
@@ -1000,10 +944,6 @@ contract TheCompact is ITheCompact, ERC6909, Extsload, Tstorish {
         consumed = allocator.hasConsumedAllocatorNonce(nonce);
     }
 
-    function hasConsumedEmissaryAssignmentNonce(uint256 nonce, address sponsor) external view returns (bool consumed) {
-        consumed = sponsor.hasConsumedEmissaryAssignmentNonce(nonce);
-    }
-
     function DOMAIN_SEPARATOR() external view returns (bytes32 domainSeparator) {
         return _INITIAL_DOMAIN_SEPARATOR.toLatest(_INITIAL_CHAIN_ID);
     }
@@ -1039,14 +979,6 @@ contract TheCompact is ITheCompact, ERC6909, Extsload, Tstorish {
         messageHash.signedBy(allocator, transferPayload.allocatorSignature, _INITIAL_DOMAIN_SEPARATOR.toLatest(_INITIAL_CHAIN_ID));
 
         _emitClaim(msg.sender, messageHash, allocator);
-    }
-
-    function _assignEmissary(address sponsor, address emissary, bool assigned) internal returns (bool) {
-        _emissaries[sponsor][emissary] = assigned;
-
-        emit EmissaryAssignment(sponsor, emissary, assigned);
-
-        return true;
     }
 
     function _processBasicTransfer(BasicTransfer calldata transfer, function(address, address, uint256, uint256) internal returns (bool) operation) internal returns (bool) {

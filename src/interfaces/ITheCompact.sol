@@ -82,7 +82,6 @@ interface ITheCompact {
     event ForcedWithdrawalEnabled(address indexed account, uint256 indexed id, uint256 withdrawableAt);
     event ForcedWithdrawalDisabled(address indexed account, uint256 indexed id);
     event AllocatorRegistered(uint96 allocatorId, address allocator);
-    event EmissaryAssignment(address indexed sponsor, address indexed emissary, bool assigned);
 
     error InvalidToken(address token);
     error Expired(uint256 expiration);
@@ -97,7 +96,6 @@ interface ITheCompact {
     error InvalidScope(uint256 id);
     error InvalidDepositTokenOrdering();
     error InvalidDepositBalanceChange();
-    error InvalidEmissary(address sponsor, address emissary);
 
     function deposit(address allocator) external payable returns (uint256 id);
 
@@ -352,14 +350,6 @@ interface ITheCompact {
 
     function register(bytes32[2][] calldata claimHashesAndTypehashes) external returns (bool);
 
-    function registerFor(address sponsor, bytes32 claimHash, bytes32 typehash) external returns (bool);
-
-    function registerFor(address sponsor, bytes32[2][] calldata claimHashesAndTypehashes) external returns (bool);
-
-    function assignEmissary(address sponsor, address emissary, uint256 nonce, uint256 expires, bool assigned, bytes calldata sponsorSignature) external returns (bool);
-
-    function assignEmissary(address emissary, bool assigned) external returns (bool);
-
     function consume(uint256[] calldata nonces) external returns (bool);
 
     function __registerAllocator(address allocator, bytes calldata proof) external returns (uint96 allocatorId);
@@ -369,8 +359,6 @@ interface ITheCompact {
     function getLockDetails(uint256 id) external view returns (address token, address allocator, ResetPeriod resetPeriod, Scope scope);
 
     function hasConsumedAllocatorNonce(uint256 nonce, address allocator) external view returns (bool consumed);
-
-    function hasConsumedEmissaryAssignmentNonce(uint256 nonce, address sponsor) external view returns (bool consumed);
 
     function DOMAIN_SEPARATOR() external view returns (bytes32 domainSeparator);
 
