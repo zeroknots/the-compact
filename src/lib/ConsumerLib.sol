@@ -2,8 +2,8 @@
 pragma solidity ^0.8.27;
 
 library ConsumerLib {
-    bytes4 private constant _ALLOCATOR_NONCE_SCOPE = 0x03f37b1a;
-    bytes4 private constant _SPONSOR_NONCE_SCOPE = 0x8ccd9613;
+    uint256 private constant _ALLOCATOR_NONCE_SCOPE = 0x03f37b1a;
+    uint256 private constant _SPONSOR_NONCE_SCOPE = 0x8ccd9613;
 
     error InvalidNonce(address account, uint256 nonce);
 
@@ -23,7 +23,7 @@ library ConsumerLib {
         return _isConsumedBy(nonceToCheck, sponsor, _SPONSOR_NONCE_SCOPE);
     }
 
-    function _consumeNonce(uint256 nonce, address account, bytes4 scope) internal {
+    function _consumeNonce(uint256 nonce, address account, uint256 scope) internal {
         // The last byte of the nonce is used to assign a bit in a 256-bit bucket;
         // specific nonces are consumed for each account and can only be used once.
         // NOTE: this function temporarily overwrites the free memory pointer, but
@@ -51,7 +51,7 @@ library ConsumerLib {
         }
     }
 
-    function _isConsumedBy(uint256 nonceToCheck, address account, bytes4 scope) internal view returns (bool consumed) {
+    function _isConsumedBy(uint256 nonceToCheck, address account, uint256 scope) internal view returns (bool consumed) {
         assembly ("memory-safe") {
             let freeMemoryPointer := mload(0x40)
 

@@ -308,17 +308,13 @@ contract TheCompactTest is Test {
                 keccak256(
                     abi.encode(
                         keccak256(
-                            "PermitWitnessTransferFrom(TokenPermissions permitted,address spender,uint256 nonce,uint256 deadline,CompactDeposit witness)CompactDeposit(address depositor,address allocator,uint8 resetPeriod,uint8 scope,address recipient)TokenPermissions(address token,uint256 amount)"
+                            "PermitWitnessTransferFrom(TokenPermissions permitted,address spender,uint256 nonce,uint256 deadline,CompactDeposit witness)CompactDeposit(address allocator,uint8 resetPeriod,uint8 scope,address recipient)TokenPermissions(address token,uint256 amount)"
                         ),
                         keccak256(abi.encode(keccak256("TokenPermissions(address token,uint256 amount)"), address(token), amount)),
                         address(theCompact), // spender
                         nonce,
                         deadline,
-                        keccak256(
-                            abi.encode(
-                                keccak256("CompactDeposit(address depositor,address allocator,uint8 resetPeriod,uint8 scope,address recipient)"), swapper, allocator, resetPeriod, scope, recipient
-                            )
-                        )
+                        keccak256(abi.encode(keccak256("CompactDeposit(address allocator,uint8 resetPeriod,uint8 scope,address recipient)"), allocator, resetPeriod, scope, recipient))
                     )
                 )
             )
@@ -364,17 +360,13 @@ contract TheCompactTest is Test {
                 keccak256(
                     abi.encode(
                         keccak256(
-                            "PermitBatchWitnessTransferFrom(TokenPermissions[] permitted,address spender,uint256 nonce,uint256 deadline,CompactDeposit witness)CompactDeposit(address depositor,address allocator,uint8 resetPeriod,uint8 scope,address recipient)TokenPermissions(address token,uint256 amount)"
+                            "PermitBatchWitnessTransferFrom(TokenPermissions[] permitted,address spender,uint256 nonce,uint256 deadline,CompactDeposit witness)CompactDeposit(address allocator,uint8 resetPeriod,uint8 scope,address recipient)TokenPermissions(address token,uint256 amount)"
                         ),
                         keccak256(abi.encode(keccak256(abi.encode(keccak256("TokenPermissions(address token,uint256 amount)"), address(token), amount)))),
                         address(theCompact), // spender
                         nonce,
                         deadline,
-                        keccak256(
-                            abi.encode(
-                                keccak256("CompactDeposit(address depositor,address allocator,uint8 resetPeriod,uint8 scope,address recipient)"), swapper, allocator, resetPeriod, scope, recipient
-                            )
-                        )
+                        keccak256(abi.encode(keccak256("CompactDeposit(address allocator,uint8 resetPeriod,uint8 scope,address recipient)"), allocator, resetPeriod, scope, recipient))
                     )
                 )
             )
