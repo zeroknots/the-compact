@@ -1458,11 +1458,36 @@ library FunctionCastLib {
         }
     }
 
+    function usingQualifiedSplitClaimWithWitness(function(ClaimWithWitness calldata, uint256) internal view returns (bytes32, bytes32) fnIn)
+        internal
+        pure
+        returns (function(QualifiedSplitClaimWithWitness calldata, uint256) internal view returns (bytes32, bytes32) fnOut)
+    {
+        assembly ("memory-safe") {
+            fnOut := fnIn
+        }
+    }
+
     function usingQualifiedClaimWithWitness(function(QualifiedClaim calldata, bytes32, uint256) internal pure returns (bytes32) fnIn)
         internal
         pure
         returns (
             function(QualifiedClaimWithWitness calldata, bytes32, uint256)
+            internal
+            pure
+            returns (bytes32) fnOut
+        )
+    {
+        assembly ("memory-safe") {
+            fnOut := fnIn
+        }
+    }
+
+    function usingQualifiedSplitClaimWithWitness(function(QualifiedClaim calldata, bytes32, uint256) internal pure returns (bytes32) fnIn)
+        internal
+        pure
+        returns (
+            function(QualifiedSplitClaimWithWitness calldata, bytes32, uint256)
             internal
             pure
             returns (bytes32) fnOut
@@ -1588,10 +1613,20 @@ library FunctionCastLib {
         }
     }
 
-    function usingQualifiedBatchClaimWithWitness(function(BatchClaimWithWitness calldata, BatchClaimComponent[] calldata) internal view returns (bytes32, bytes32) fnIn)
+    function usingQualifiedBatchClaimWithWitness(function(BatchClaimWithWitness calldata, bytes32) internal view returns (bytes32, bytes32) fnIn)
         internal
         pure
-        returns (function(QualifiedBatchClaimWithWitness calldata, BatchClaimComponent[] calldata) internal view returns (bytes32, bytes32) fnOut)
+        returns (function(QualifiedBatchClaimWithWitness calldata, bytes32) internal view returns (bytes32, bytes32) fnOut)
+    {
+        assembly ("memory-safe") {
+            fnOut := fnIn
+        }
+    }
+
+    function usingQualifiedSplitBatchClaimWithWitness(function(BatchClaimWithWitness calldata, bytes32) internal view returns (bytes32, bytes32) fnIn)
+        internal
+        pure
+        returns (function(QualifiedSplitBatchClaimWithWitness calldata, bytes32) internal view returns (bytes32, bytes32) fnOut)
     {
         assembly ("memory-safe") {
             fnOut := fnIn
