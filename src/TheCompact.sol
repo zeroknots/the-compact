@@ -1463,12 +1463,12 @@ contract TheCompact is ITheCompact, ERC6909, Extsload, Tstorish {
     }
 
     function _processBasicClaim(BasicClaim calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation) internal returns (bool) {
-        return _processSimpleClaim.usingBasicClaim()(claimPayload.toMessageHash(), claimPayload, 0xa0, _typehashes(_stubborn(0)), operation);
+        return _processSimpleClaim.usingBasicClaim()(claimPayload.toMessageHash(), claimPayload, 0xa0, _typehashes(uint256(0).asStubborn()), operation);
     }
 
     function _processQualifiedClaim(QualifiedClaim calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation) internal returns (bool) {
         (bytes32 messageHash, bytes32 qualificationMessageHash) = claimPayload.toMessageHash();
-        return _processClaimWithQualification.usingQualifiedClaim()(messageHash, qualificationMessageHash, claimPayload, 0xe0, _typehashes(_stubborn(0)), operation);
+        return _processClaimWithQualification.usingQualifiedClaim()(messageHash, qualificationMessageHash, claimPayload, 0xe0, _typehashes(uint256(0).asStubborn()), operation);
     }
 
     function _processClaimWithWitness(ClaimWithWitness calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation) internal returns (bool) {
@@ -1485,12 +1485,12 @@ contract TheCompact is ITheCompact, ERC6909, Extsload, Tstorish {
     }
 
     function _processMultichainClaim(MultichainClaim calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation) internal returns (bool) {
-        return _processSimpleClaim.usingMultichainClaim()(claimPayload.toMessageHash(), claimPayload, 0xc0, _typehashes(_stubborn(2)), operation);
+        return _processSimpleClaim.usingMultichainClaim()(claimPayload.toMessageHash(), claimPayload, 0xc0, _typehashes(uint256(2).asStubborn()), operation);
     }
 
     function _processQualifiedMultichainClaim(QualifiedMultichainClaim calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation) internal returns (bool) {
         (bytes32 messageHash, bytes32 qualificationMessageHash) = claimPayload.toMessageHash();
-        return _processClaimWithQualification.usingQualifiedMultichainClaim()(messageHash, qualificationMessageHash, claimPayload, 0x100, _typehashes(_stubborn(2)), operation);
+        return _processClaimWithQualification.usingQualifiedMultichainClaim()(messageHash, qualificationMessageHash, claimPayload, 0x100, _typehashes(uint256(2).asStubborn()), operation);
     }
 
     function _processMultichainClaimWithWitness(MultichainClaimWithWitness calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation)
@@ -1514,7 +1514,9 @@ contract TheCompact is ITheCompact, ERC6909, Extsload, Tstorish {
         returns (bool)
     {
         (bytes32 messageHash, bytes32 qualificationMessageHash) = claimPayload.toMessageHash();
-        return _processSplitBatchClaimWithQualification.usingQualifiedSplitBatchMultichainClaim()(messageHash, qualificationMessageHash, claimPayload, 0x100, _typehashes(_stubborn(1)), operation);
+        return _processSplitBatchClaimWithQualification.usingQualifiedSplitBatchMultichainClaim()(
+            messageHash, qualificationMessageHash, claimPayload, 0x100, _typehashes(uint256(1).asStubborn()), operation
+        );
     }
 
     function _processSplitBatchMultichainClaimWithWitness(SplitBatchMultichainClaimWithWitness calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation)
@@ -1534,7 +1536,7 @@ contract TheCompact is ITheCompact, ERC6909, Extsload, Tstorish {
     }
 
     function _processSplitMultichainClaim(SplitMultichainClaim calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation) internal returns (bool) {
-        return _processSimpleSplitClaim.usingSplitMultichainClaim()(claimPayload.toMessageHash(), claimPayload, 0xc0, _typehashes(_stubborn(2)), operation);
+        return _processSimpleSplitClaim.usingSplitMultichainClaim()(claimPayload.toMessageHash(), claimPayload, 0xc0, _typehashes(uint256(2).asStubborn()), operation);
     }
 
     function _processQualifiedSplitMultichainClaim(QualifiedSplitMultichainClaim calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation)
@@ -1542,7 +1544,7 @@ contract TheCompact is ITheCompact, ERC6909, Extsload, Tstorish {
         returns (bool)
     {
         (bytes32 messageHash, bytes32 qualificationMessageHash) = claimPayload.toMessageHash();
-        return _processSplitClaimWithQualification.usingQualifiedSplitMultichainClaim()(messageHash, qualificationMessageHash, claimPayload, 0x100, _typehashes(_stubborn(2)), operation);
+        return _processSplitClaimWithQualification.usingQualifiedSplitMultichainClaim()(messageHash, qualificationMessageHash, claimPayload, 0x100, _typehashes(uint256(2).asStubborn()), operation);
     }
 
     function _processSplitMultichainClaimWithWitness(SplitMultichainClaimWithWitness calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation)
@@ -1562,7 +1564,7 @@ contract TheCompact is ITheCompact, ERC6909, Extsload, Tstorish {
     }
 
     function _processBatchMultichainClaim(BatchMultichainClaim calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation) internal returns (bool) {
-        return _processSimpleBatchClaim.usingBatchMultichainClaim()(claimPayload.toMessageHash(), claimPayload, 0xc0, _typehashes(_stubborn(2)), operation);
+        return _processSimpleBatchClaim.usingBatchMultichainClaim()(claimPayload.toMessageHash(), claimPayload, 0xc0, _typehashes(uint256(2).asStubborn()), operation);
     }
 
     function _processQualifiedBatchMultichainClaim(QualifiedBatchMultichainClaim calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation)
@@ -1570,7 +1572,7 @@ contract TheCompact is ITheCompact, ERC6909, Extsload, Tstorish {
         returns (bool)
     {
         (bytes32 messageHash, bytes32 qualificationMessageHash) = claimPayload.toMessageHash();
-        return _processBatchClaimWithQualification.usingQualifiedBatchMultichainClaim()(messageHash, qualificationMessageHash, claimPayload, 0x100, _typehashes(_stubborn(2)), operation);
+        return _processBatchClaimWithQualification.usingQualifiedBatchMultichainClaim()(messageHash, qualificationMessageHash, claimPayload, 0x100, _typehashes(uint256(2).asStubborn()), operation);
     }
 
     function _processBatchMultichainClaimWithWitness(BatchMultichainClaimWithWitness calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation)
@@ -1595,7 +1597,7 @@ contract TheCompact is ITheCompact, ERC6909, Extsload, Tstorish {
     ) internal returns (bool) {
         (bytes32 messageHash, bytes32 qualificationMessageHash) = claimPayload.toMessageHash();
         return _processBatchClaimWithQualificationAndSponsorDomain.usingExogenousQualifiedBatchMultichainClaim()(
-            messageHash, qualificationMessageHash, claimPayload, 0x140, claimPayload.notarizedChainId.toNotarizedDomainSeparator(), _typehashes(_stubborn(2)), operation
+            messageHash, qualificationMessageHash, claimPayload, 0x140, claimPayload.notarizedChainId.toNotarizedDomainSeparator(), _typehashes(uint256(2).asStubborn()), operation
         );
     }
 
@@ -1619,13 +1621,6 @@ contract TheCompact is ITheCompact, ERC6909, Extsload, Tstorish {
         );
     }
 
-    // hack to work around function specializer
-    function _stubborn(uint256 a) internal pure returns (uint256 b) {
-        assembly ("memory-safe") {
-            b := or(iszero(calldatasize()), a)
-        }
-    }
-
     function _typehashes(uint256 i) internal pure returns (bytes32 typehash) {
         assembly ("memory-safe") {
             let j := sub(i, 1)
@@ -1635,7 +1630,7 @@ contract TheCompact is ITheCompact, ERC6909, Extsload, Tstorish {
 
     function _processExogenousMultichainClaim(ExogenousMultichainClaim calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation) internal returns (bool) {
         return _processClaimWithSponsorDomain.usingExogenousMultichainClaim()(
-            claimPayload.toMessageHash(), claimPayload, 0x100, claimPayload.notarizedChainId.toNotarizedDomainSeparator(), _typehashes(_stubborn(2)), operation
+            claimPayload.toMessageHash(), claimPayload, 0x100, claimPayload.notarizedChainId.toNotarizedDomainSeparator(), _typehashes(uint256(2).asStubborn()), operation
         );
     }
 
@@ -1643,7 +1638,7 @@ contract TheCompact is ITheCompact, ERC6909, Extsload, Tstorish {
         internal
         returns (bool)
     {
-        return _processSimpleSplitBatchClaim.usingSplitBatchMultichainClaim()(claimPayload.toMessageHash(), claimPayload, 0xc0, _typehashes(_stubborn(2)), operation);
+        return _processSimpleSplitBatchClaim.usingSplitBatchMultichainClaim()(claimPayload.toMessageHash(), claimPayload, 0xc0, _typehashes(uint256(2).asStubborn()), operation);
     }
 
     function _processExogenousMultichainClaimWithWitness(ExogenousMultichainClaimWithWitness calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation)
@@ -1661,7 +1656,7 @@ contract TheCompact is ITheCompact, ERC6909, Extsload, Tstorish {
     {
         (bytes32 messageHash, bytes32 qualificationMessageHash) = claimPayload.toMessageHash();
         return _processClaimWithQualificationAndSponsorDomain.usingExogenousQualifiedMultichainClaim()(
-            messageHash, qualificationMessageHash, claimPayload, 0x140, claimPayload.notarizedChainId.toNotarizedDomainSeparator(), _typehashes(_stubborn(2)), operation
+            messageHash, qualificationMessageHash, claimPayload, 0x140, claimPayload.notarizedChainId.toNotarizedDomainSeparator(), _typehashes(uint256(2).asStubborn()), operation
         );
     }
 
@@ -1671,7 +1666,7 @@ contract TheCompact is ITheCompact, ERC6909, Extsload, Tstorish {
     ) internal returns (bool) {
         (bytes32 messageHash, bytes32 qualificationMessageHash) = claimPayload.toMessageHash();
         return _processSplitClaimWithQualificationAndSponsorDomain.usingExogenousQualifiedSplitMultichainClaim()(
-            messageHash, qualificationMessageHash, claimPayload, 0x140, claimPayload.notarizedChainId.toNotarizedDomainSeparator(), _typehashes(_stubborn(2)), operation
+            messageHash, qualificationMessageHash, claimPayload, 0x140, claimPayload.notarizedChainId.toNotarizedDomainSeparator(), _typehashes(uint256(2).asStubborn()), operation
         );
     }
 
@@ -1690,7 +1685,7 @@ contract TheCompact is ITheCompact, ERC6909, Extsload, Tstorish {
         returns (bool)
     {
         return _processSplitClaimWithSponsorDomain.usingExogenousSplitMultichainClaim()(
-            claimPayload.toMessageHash(), claimPayload, 0x100, claimPayload.notarizedChainId.toNotarizedDomainSeparator(), _typehashes(_stubborn(2)), operation
+            claimPayload.toMessageHash(), claimPayload, 0x100, claimPayload.notarizedChainId.toNotarizedDomainSeparator(), _typehashes(uint256(2).asStubborn()), operation
         );
     }
 
@@ -1719,7 +1714,7 @@ contract TheCompact is ITheCompact, ERC6909, Extsload, Tstorish {
         returns (bool)
     {
         return _processBatchClaimWithSponsorDomain.usingExogenousBatchMultichainClaim()(
-            claimPayload.toMessageHash(), claimPayload, 0x100, claimPayload.notarizedChainId.toNotarizedDomainSeparator(), _typehashes(_stubborn(2)), operation
+            claimPayload.toMessageHash(), claimPayload, 0x100, claimPayload.notarizedChainId.toNotarizedDomainSeparator(), _typehashes(uint256(2).asStubborn()), operation
         );
     }
 
@@ -1728,7 +1723,7 @@ contract TheCompact is ITheCompact, ERC6909, Extsload, Tstorish {
         returns (bool)
     {
         return _processSplitBatchClaimWithSponsorDomain.usingExogenousSplitBatchMultichainClaim()(
-            claimPayload.toMessageHash(), claimPayload, 0x100, claimPayload.notarizedChainId.toNotarizedDomainSeparator(), _typehashes(_stubborn(2)), operation
+            claimPayload.toMessageHash(), claimPayload, 0x100, claimPayload.notarizedChainId.toNotarizedDomainSeparator(), _typehashes(uint256(2).asStubborn()), operation
         );
     }
 
@@ -1738,7 +1733,7 @@ contract TheCompact is ITheCompact, ERC6909, Extsload, Tstorish {
     ) internal returns (bool) {
         (bytes32 messageHash, bytes32 qualificationMessageHash) = claimPayload.toMessageHash();
         return _processSplitBatchClaimWithQualificationAndSponsorDomain.usingExogenousQualifiedSplitBatchMultichainClaim()(
-            messageHash, qualificationMessageHash, claimPayload, 0x140, claimPayload.notarizedChainId.toNotarizedDomainSeparator(), _typehashes(_stubborn(2)), operation
+            messageHash, qualificationMessageHash, claimPayload, 0x140, claimPayload.notarizedChainId.toNotarizedDomainSeparator(), _typehashes(uint256(2).asStubborn()), operation
         );
     }
 
@@ -1763,12 +1758,12 @@ contract TheCompact is ITheCompact, ERC6909, Extsload, Tstorish {
     }
 
     function _processSplitClaim(SplitClaim calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation) internal returns (bool) {
-        return _processSimpleSplitClaim.usingSplitClaim()(claimPayload.toMessageHash(), claimPayload, 0xa0, _typehashes(_stubborn(0)), operation);
+        return _processSimpleSplitClaim.usingSplitClaim()(claimPayload.toMessageHash(), claimPayload, 0xa0, _typehashes(uint256(0).asStubborn()), operation);
     }
 
     function _processQualifiedSplitClaim(QualifiedSplitClaim calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation) internal returns (bool) {
         (bytes32 messageHash, bytes32 qualificationMessageHash) = claimPayload.toMessageHash();
-        return _processSplitClaimWithQualification.usingQualifiedSplitClaim()(messageHash, qualificationMessageHash, claimPayload, 0xe0, _typehashes(_stubborn(0)), operation);
+        return _processSplitClaimWithQualification.usingQualifiedSplitClaim()(messageHash, qualificationMessageHash, claimPayload, 0xe0, _typehashes(uint256(0).asStubborn()), operation);
     }
 
     function _processSplitClaimWithWitness(SplitClaimWithWitness calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation) internal returns (bool) {
@@ -1785,16 +1780,16 @@ contract TheCompact is ITheCompact, ERC6909, Extsload, Tstorish {
     }
 
     function _processBatchClaim(BatchClaim calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation) internal returns (bool) {
-        return _processSimpleBatchClaim.usingBatchClaim()(claimPayload.toMessageHash(), claimPayload, 0xa0, _typehashes(_stubborn(1)), operation);
+        return _processSimpleBatchClaim.usingBatchClaim()(claimPayload.toMessageHash(), claimPayload, 0xa0, _typehashes(uint256(1).asStubborn()), operation);
     }
 
     function _processSplitBatchClaim(SplitBatchClaim calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation) internal returns (bool) {
-        return _processSimpleSplitBatchClaim.usingSplitBatchClaim()(claimPayload.toMessageHash(), claimPayload, 0xa0, _typehashes(_stubborn(1)), operation);
+        return _processSimpleSplitBatchClaim.usingSplitBatchClaim()(claimPayload.toMessageHash(), claimPayload, 0xa0, _typehashes(uint256(1).asStubborn()), operation);
     }
 
     function _processQualifiedSplitBatchClaim(QualifiedSplitBatchClaim calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation) internal returns (bool) {
         (bytes32 messageHash, bytes32 qualificationMessageHash) = claimPayload.toMessageHash();
-        return _processSplitBatchClaimWithQualification.usingQualifiedSplitBatchClaim()(messageHash, qualificationMessageHash, claimPayload, 0xe0, _typehashes(_stubborn(1)), operation);
+        return _processSplitBatchClaimWithQualification.usingQualifiedSplitBatchClaim()(messageHash, qualificationMessageHash, claimPayload, 0xe0, _typehashes(uint256(1).asStubborn()), operation);
     }
 
     function _processQualifiedSplitBatchClaimWithWitness(QualifiedSplitBatchClaimWithWitness calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation)
@@ -1815,7 +1810,7 @@ contract TheCompact is ITheCompact, ERC6909, Extsload, Tstorish {
 
     function _processQualifiedBatchClaim(QualifiedBatchClaim calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation) internal returns (bool) {
         (bytes32 messageHash, bytes32 qualificationMessageHash) = claimPayload.toMessageHash();
-        return _processBatchClaimWithQualification.usingQualifiedBatchClaim()(messageHash, qualificationMessageHash, claimPayload, 0xe0, _typehashes(_stubborn(1)), operation);
+        return _processBatchClaimWithQualification.usingQualifiedBatchClaim()(messageHash, qualificationMessageHash, claimPayload, 0xe0, _typehashes(uint256(1).asStubborn()), operation);
     }
 
     function _processBatchClaimWithWitness(BatchClaimWithWitness calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation) internal returns (bool) {

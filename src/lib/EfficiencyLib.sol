@@ -81,4 +81,11 @@ library EfficiencyLib {
             b := a
         }
     }
+
+    // hack to work around function specializer
+    function asStubborn(uint256 a) internal pure returns (uint256 b) {
+        assembly ("memory-safe") {
+            b := or(iszero(calldatasize()), a)
+        }
+    }
 }
