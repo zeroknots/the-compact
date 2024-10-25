@@ -118,8 +118,8 @@ struct EmissaryAssignment {
 // keccak256(bytes("EmissaryAssignment(address emissary,uint256 nonce,uint256 expires)"))
 bytes32 constant EMISSARY_ASSIGNMENT_TYPEHASH = 0x5ca9a66b8bbf0d2316e90dfa3df465f0790b277b25393a3ef4d67e1f50865057;
 
-/// @dev `keccak256(bytes("CompactDeposit(address depositor,address allocator,uint8 resetPeriod,uint8 scope,address recipient)"))`.
-bytes32 constant PERMIT2_DEPOSIT_WITNESS_FRAGMENT_HASH = 0x0091bfc8f1539e204529602051ae82f3e6c6f0f86d0227c9ea890616cedbe646;
+/// @dev `keccak256(bytes("CompactDeposit(address allocator,uint8 resetPeriod,uint8 scope,address recipient)"))`.
+bytes32 constant PERMIT2_DEPOSIT_WITNESS_FRAGMENT_HASH = 0xe055493563385cc588fffacbffe2dab023fef807baa449530431169b0eeb5b69;
 
 /// @dev `keccak256(bytes("PermitWitnessTransferFrom(TokenPermissions permitted,address spender,uint256 nonce,uint256 deadline,Activation witness)Activation(uint256 id,Compact compact)Compact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256 id,uint256 amount)TokenPermissions(address token,uint256 amount)"))`.
 bytes32 constant PERMIT2_DEPOSIT_WITH_ACTIVATION_TYPEHASH = 0xf653f659d3a9d0c2d3b3e901b5f71b67ad949a927c0c27b41dcdf4ecddd9b489;

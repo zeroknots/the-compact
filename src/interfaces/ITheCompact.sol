@@ -78,9 +78,7 @@ import {
  *         This contract has not yet been properly tested, audited, or reviewed.
  */
 interface ITheCompact {
-    event Deposit(address indexed depositor, address indexed recipient, uint256 indexed id, uint256 depositedAmount);
     event Claim(address indexed sponsor, address indexed allocator, address indexed arbiter, bytes32 claimHash);
-    event Withdrawal(address indexed account, address indexed recipient, uint256 indexed id, uint256 withdrawnAmount);
     event ForcedWithdrawalEnabled(address indexed account, uint256 indexed id, uint256 withdrawableAt);
     event ForcedWithdrawalDisabled(address indexed account, uint256 indexed id);
     event AllocatorRegistered(uint96 allocatorId, address allocator);

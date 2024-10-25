@@ -809,17 +809,16 @@ library HashLib {
         messageHash = toMultichainClaimMessageHash.usingSplitMultichainClaim()(claim, 0, SEGMENT_TYPEHASH, MULTICHAIN_COMPACT_TYPEHASH, deriveIdsAndAmountsHash.usingSplitMultichainClaim()(claim, 0));
     }
 
-    function toPermit2DepositWitnessHash(address allocator, address depositor, ResetPeriod resetPeriod, Scope scope, address recipient) internal pure returns (bytes32 witnessHash) {
+    function toPermit2DepositWitnessHash(address allocator, ResetPeriod resetPeriod, Scope scope, address recipient) internal pure returns (bytes32 witnessHash) {
         assembly ("memory-safe") {
             let m := mload(0x40) // Grab the free memory pointer; memory will be left dirtied.
 
             mstore(m, PERMIT2_DEPOSIT_WITNESS_FRAGMENT_HASH)
-            mstore(add(m, 0x20), depositor)
-            mstore(add(m, 0x40), allocator)
-            mstore(add(m, 0x60), resetPeriod)
-            mstore(add(m, 0x80), scope)
-            mstore(add(m, 0xa0), recipient)
-            witnessHash := keccak256(m, 0xc0)
+            mstore(add(m, 0x20), allocator)
+            mstore(add(m, 0x40), resetPeriod)
+            mstore(add(m, 0x60), scope)
+            mstore(add(m, 0x80), recipient)
+            witnessHash := keccak256(m, 0xa0)
         }
     }
 

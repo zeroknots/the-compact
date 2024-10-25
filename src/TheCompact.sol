@@ -192,12 +192,6 @@ contract TheCompact is ITheCompact, ERC6909, Extsload, Tstorish {
     /// @dev `keccak256(bytes("Claim(address,address,address,bytes32)"))`.
     uint256 private constant _CLAIM_EVENT_SIGNATURE = 0x770c32a2314b700d6239ee35ba23a9690f2fceb93a55d8c753e953059b3b18d4;
 
-    /// @dev `keccak256(bytes("Deposit(address,address,uint256,uint256)"))`.
-    uint256 private constant _DEPOSIT_EVENT_SIGNATURE = 0xdcbc1c05240f31ff3ad067ef1ee35ce4997762752e3a095284754544f4c709d7;
-
-    /// @dev `keccak256(bytes("Withdrawal(address,address,uint256,uint256)"))`.
-    uint256 private constant _WITHDRAWAL_EVENT_SIGNATURE = 0xc2b4a290c20fb28939d29f102514fbffd2b73c059ffba8b78250c94161d5fcc6;
-
     uint32 private constant _ATTEST_SELECTOR = 0x1a808f91;
     uint32 private constant _PERMIT_WITNESS_TRANSFER_FROM_SELECTOR = 0x137c29fe;
 
@@ -223,7 +217,7 @@ contract TheCompact is ITheCompact, ERC6909, Extsload, Tstorish {
     function deposit(address allocator) external payable returns (uint256 id) {
         id = address(0).toIdIfRegistered(Scope.Multichain, ResetPeriod.TenMinutes, allocator);
 
-        _deposit(msg.sender, msg.sender, id, msg.value);
+        _deposit(msg.sender, id, msg.value);
     }
 
     function deposit(address token, address allocator, uint256 amount) external returns (uint256 id) {
@@ -237,7 +231,7 @@ contract TheCompact is ITheCompact, ERC6909, Extsload, Tstorish {
     function deposit(address allocator, ResetPeriod resetPeriod, Scope scope, address recipient) external payable returns (uint256 id) {
         id = address(0).toIdIfRegistered(scope, resetPeriod, allocator);
 
-        _deposit(msg.sender, recipient, id, msg.value);
+        _deposit(recipient, id, msg.value);
     }
 
     function deposit(address token, address allocator, ResetPeriod resetPeriod, Scope scope, uint256 amount, address recipient) external returns (uint256 id) {
@@ -290,7 +284,7 @@ contract TheCompact is ITheCompact, ERC6909, Extsload, Tstorish {
         uint96 currentAllocatorId = id.toRegisteredAllocatorId();
 
         if (firstUnderlyingTokenIsNative) {
-            _deposit(msg.sender, recipient, id, msg.value);
+            _deposit(recipient, id, msg.value);
         }
 
         unchecked {
@@ -319,7 +313,7 @@ contract TheCompact is ITheCompact, ERC6909, Extsload, Tstorish {
         uint256, // amount
         uint256, // nonce
         uint256, // deadline
-        address depositor,
+        address, // depositor
         address allocator,
         ResetPeriod resetPeriod,
         Scope scope,
@@ -340,8 +334,8 @@ contract TheCompact is ITheCompact, ERC6909, Extsload, Tstorish {
             // match the signed values anyway, so *should* be fine not to sanitize them but could
             // optionally check that there are no dirty upper bits on any of them.
             mstore(m, PERMIT2_DEPOSIT_WITNESS_FRAGMENT_HASH)
-            calldatacopy(add(m, 0x20), 0x84, 0xa0) // depositor, allocator, resetPeriod, scope, recipient
-            let witness := keccak256(m, 0xc0)
+            calldatacopy(add(m, 0x20), 0xa4, 0x80) // allocator, resetPeriod, scope, recipient
+            let witness := keccak256(m, 0xa0)
 
             let signatureLength := signature.length
             let dataStart := add(m, 0x1c)
@@ -353,19 +347,18 @@ contract TheCompact is ITheCompact, ERC6909, Extsload, Tstorish {
             mstore(add(m, 0xe0), calldataload(0x84)) // depositor
             mstore(add(m, 0x100), witness)
             mstore(add(m, 0x120), 0x140)
-            mstore(add(m, 0x140), 0x220)
-            // "CompactDeposit witness)CompactDeposit(address depositor,address allocator,uint8 resetPeriod,uint8 scope,address recipient)TokenPermissions(address token,uint256 amount)"
-            mstore(add(m, 0x160), 0xa8)
+            mstore(add(m, 0x140), 0x200)
+            // "CompactDeposit witness)CompactDeposit(address allocator,uint8 resetPeriod,uint8 scope,address recipient)TokenPermissions(address token,uint256 amount)"
+            mstore(add(m, 0x160), 0x96)
             mstore(add(m, 0x180), 0x436f6d706163744465706f736974207769746e65737329436f6d706163744465)
-            mstore(add(m, 0x1a0), 0x706f7369742861646472657373206465706f7369746f722c6164647265737320)
-            mstore(add(m, 0x1c0), 0x616c6c6f6361746f722c75696e7438207265736574506572696f642c75696e74)
-            mstore(add(m, 0x1e0), 0x382073636f70652c6164647265737320726563697069656e7429546f6b656e50)
-            mstore(add(m, 0x208), 0x20616d6f756e7429)
-            mstore(add(m, 0x200), 0x65726d697373696f6e73286164647265737320746f6b656e2c75696e74323536)
-            mstore(add(m, 0x240), signatureLength)
-            calldatacopy(add(m, 0x260), signature.offset, signatureLength)
+            mstore(add(m, 0x1a0), 0x706f736974286164647265737320616c6c6f6361746f722c75696e7438207265)
+            mstore(add(m, 0x1c0), 0x736574506572696f642c75696e74382073636f70652c61646472657373207265)
+            mstore(add(m, 0x1f6), 0x20746f6b656e2c75696e7432353620616d6f756e7429)
+            mstore(add(m, 0x1e0), 0x63697069656e7429546f6b656e5065726d697373696f6e732861646472657373)
+            mstore(add(m, 0x220), signatureLength)
+            calldatacopy(add(m, 0x240), signature.offset, signatureLength)
 
-            if iszero(call(gas(), permit2, 0, add(m, 0x1c), add(0x244, signatureLength), 0, 0)) {
+            if iszero(call(gas(), permit2, 0, add(m, 0x1c), add(0x224, signatureLength), 0, 0)) {
                 // bubble up if the call failed and there's data
                 // NOTE: consider evaluating remaining gas to protect against revert bombing
                 if returndatasize() {
@@ -386,7 +379,7 @@ contract TheCompact is ITheCompact, ERC6909, Extsload, Tstorish {
         }
 
         unchecked {
-            _deposit(depositor, recipient, id, tokenBalance - initialBalance);
+            _deposit(recipient, id, tokenBalance - initialBalance);
         }
 
         _clearTstorish(_REENTRANCY_GUARD_SLOT);
@@ -425,16 +418,7 @@ contract TheCompact is ITheCompact, ERC6909, Extsload, Tstorish {
         uint256 initialId = address(0).toIdIfRegistered(scope, resetPeriod, allocator);
 
         return _processBatchPermit2Deposits(
-            firstUnderlyingTokenIsNative,
-            recipient,
-            initialId,
-            totalTokens,
-            permitted,
-            depositor,
-            nonce,
-            deadline,
-            allocator.toPermit2DepositWitnessHash(depositor, resetPeriod, scope, recipient),
-            signature
+            firstUnderlyingTokenIsNative, recipient, initialId, totalTokens, permitted, depositor, nonce, deadline, allocator.toPermit2DepositWitnessHash(resetPeriod, scope, recipient), signature
         );
     }
 
@@ -1866,7 +1850,7 @@ contract TheCompact is ITheCompact, ERC6909, Extsload, Tstorish {
         }
 
         if (firstUnderlyingTokenIsNative) {
-            _deposit(msg.sender, recipient, initialId, msg.value);
+            _deposit(recipient, initialId, msg.value);
             ids[0] = initialId;
         }
 
@@ -1880,7 +1864,7 @@ contract TheCompact is ITheCompact, ERC6909, Extsload, Tstorish {
             details,
             depositor,
             witness,
-            "CompactDeposit witness)CompactDeposit(address depositor,address allocator,uint8 resetPeriod,uint8 scope,address recipient)TokenPermissions(address token,uint256 amount)",
+            "CompactDeposit witness)CompactDeposit(address allocator,uint8 resetPeriod,uint8 scope,address recipient)TokenPermissions(address token,uint256 amount)",
             signature
         );
 
@@ -1893,13 +1877,16 @@ contract TheCompact is ITheCompact, ERC6909, Extsload, Tstorish {
                 initialBalance = initialTokenBalances[i];
                 errorBuffer |= (initialBalance >= tokenBalance).asUint256();
 
-                _deposit(depositor, recipient, ids[i + firstUnderlyingTokenIsNative.asUint256()], tokenBalance - initialBalance);
+                _deposit(recipient, ids[i + firstUnderlyingTokenIsNative.asUint256()], tokenBalance - initialBalance);
             }
         }
 
-        // TODO: use inline assembly to save codesize
-        if (errorBuffer.asBool()) {
-            revert InvalidDepositBalanceChange();
+        assembly ("memory-safe") {
+            if errorBuffer {
+                // revert InvalidDepositBalanceChange()
+                mstore(0, 0x426d8dcf)
+                revert(0x1c, 0x04)
+            }
         }
 
         _clearTstorish(_REENTRANCY_GUARD_SLOT);
@@ -2066,7 +2053,7 @@ contract TheCompact is ITheCompact, ERC6909, Extsload, Tstorish {
     }
 
     /// @dev Transfers `amount` of `token` and mints the resulting balance change of `id` to `to`.
-    /// Emits {Transfer} and {Deposit} events.
+    /// Emits a {Transfer} event.
     function _transferAndDeposit(address token, address to, uint256 id, uint256 amount) internal {
         uint256 initialBalance = token.balanceOf(address(this));
 
@@ -2080,13 +2067,13 @@ contract TheCompact is ITheCompact, ERC6909, Extsload, Tstorish {
         }
 
         unchecked {
-            _deposit(msg.sender, to, id, tokenBalance - initialBalance);
+            _deposit(to, id, tokenBalance - initialBalance);
         }
     }
 
     /// @dev Mints `amount` of token `id` to `to` without checking transfer hooks.
-    /// Emits {Transfer} and {Deposit} events.
-    function _deposit(address from, address to, uint256 id, uint256 amount) internal {
+    /// Emits a {Transfer} event.
+    function _deposit(address to, uint256 id, uint256 amount) internal {
         assembly ("memory-safe") {
             // Compute the balance slot.
             mstore(0x20, _ERC6909_MASTER_SLOT_SEED)
@@ -2109,12 +2096,11 @@ contract TheCompact is ITheCompact, ERC6909, Extsload, Tstorish {
             mstore(0x00, caller())
             mstore(0x20, amount)
             log4(0, 0x40, _TRANSFER_EVENT_SIGNATURE, 0, recipient, id)
-            log4(0x20, 0x20, _DEPOSIT_EVENT_SIGNATURE, shr(0x60, shl(0x60, from)), recipient, id)
         }
     }
 
     /// @dev Burns `amount` token `id` from `from` without checking transfer hooks and sends
-    /// the corresponding underlying tokens to `to`. Emits {Transfer} & {Withdrawal} events.
+    /// the corresponding underlying tokens to `to`. Emits a {Transfer} event.
     function _withdraw(address from, address to, uint256 id, uint256 amount) internal returns (bool) {
         _setTstorish(_REENTRANCY_GUARD_SLOT, 1);
         address token = id.toToken();
@@ -2152,7 +2138,6 @@ contract TheCompact is ITheCompact, ERC6909, Extsload, Tstorish {
             mstore(0x00, caller())
             mstore(0x20, amount)
             log4(0x00, 0x40, _TRANSFER_EVENT_SIGNATURE, account, 0, id)
-            log4(0x20, 0x20, _WITHDRAWAL_EVENT_SIGNATURE, account, shr(0x60, shl(0x60, to)), id)
         }
 
         _clearTstorish(_REENTRANCY_GUARD_SLOT);
