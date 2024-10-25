@@ -373,9 +373,12 @@ contract TheCompact is ITheCompact, ERC6909, Extsload, Tstorish {
 
         uint256 tokenBalance = token.balanceOf(address(this));
 
-        // TODO: use inline assembly to save codesize
-        if (initialBalance >= tokenBalance) {
-            revert InvalidDepositBalanceChange();
+        assembly ("memory-safe") {
+            if iszero(lt(initialBalance, tokenBalance)) {
+                // revert InvalidDepositBalanceChange()
+                mstore(0, 0x426d8dcf)
+                revert(0x1c, 0x04)
+            }
         }
 
         unchecked {
@@ -1971,9 +1974,12 @@ contract TheCompact is ITheCompact, ERC6909, Extsload, Tstorish {
                 tokenBalances[i] = token.balanceOf(address(this));
             }
 
-            // TODO: use inline assembly to save codesize
-            if (errorBuffer.asBool()) {
-                revert InvalidDepositTokenOrdering();
+            assembly ("memory-safe") {
+                if errorBuffer {
+                    // revert InvalidDepositTokenOrdering()
+                    mstore(0, 0x0f2f1e51)
+                    revert(0x1c, 0x04)
+                }
             }
         }
     }
@@ -2061,9 +2067,12 @@ contract TheCompact is ITheCompact, ERC6909, Extsload, Tstorish {
 
         uint256 tokenBalance = token.balanceOf(address(this));
 
-        // TODO: use inline assembly to save codesize
-        if (initialBalance >= tokenBalance) {
-            revert InvalidDepositBalanceChange();
+        assembly ("memory-safe") {
+            if iszero(lt(initialBalance, tokenBalance)) {
+                // revert InvalidDepositBalanceChange()
+                mstore(0, 0x426d8dcf)
+                revert(0x1c, 0x04)
+            }
         }
 
         unchecked {

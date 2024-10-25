@@ -1428,10 +1428,20 @@ library FunctionCastLib {
         }
     }
 
-    function usingQualifiedSplitClaim(function(QualifiedClaim calldata) internal view returns (bytes32, bytes32) fnIn)
+    function usingQualifiedSplitClaim(function(BasicClaim calldata, uint256) internal view returns (bytes32) fnIn)
         internal
         pure
-        returns (function(QualifiedSplitClaim calldata) internal view returns (bytes32, bytes32) fnOut)
+        returns (function(QualifiedSplitClaim calldata, uint256) internal view returns (bytes32) fnOut)
+    {
+        assembly ("memory-safe") {
+            fnOut := fnIn
+        }
+    }
+
+    function usingQualifiedClaim(function(BasicClaim calldata, uint256) internal view returns (bytes32) fnIn)
+        internal
+        pure
+        returns (function(QualifiedClaim calldata, uint256) internal view returns (bytes32) fnOut)
     {
         assembly ("memory-safe") {
             fnOut := fnIn
@@ -1453,6 +1463,21 @@ library FunctionCastLib {
         pure
         returns (
             function(QualifiedClaimWithWitness calldata, bytes32, uint256)
+            internal
+            pure
+            returns (bytes32) fnOut
+        )
+    {
+        assembly ("memory-safe") {
+            fnOut := fnIn
+        }
+    }
+
+    function usingQualifiedSplitClaim(function(QualifiedClaim calldata, bytes32, uint256) internal pure returns (bytes32) fnIn)
+        internal
+        pure
+        returns (
+            function(QualifiedSplitClaim calldata, bytes32, uint256)
             internal
             pure
             returns (bytes32) fnOut
@@ -1573,7 +1598,11 @@ library FunctionCastLib {
         }
     }
 
-    function usingSplitClaim(function (BasicClaim calldata) internal view returns (bytes32) fnIn) internal pure returns (function (SplitClaim calldata) internal view returns (bytes32) fnOut) {
+    function usingSplitClaim(function (BasicClaim calldata, uint256) internal view returns (bytes32) fnIn)
+        internal
+        pure
+        returns (function (SplitClaim calldata, uint256) internal view returns (bytes32) fnOut)
+    {
         assembly ("memory-safe") {
             fnOut := fnIn
         }
