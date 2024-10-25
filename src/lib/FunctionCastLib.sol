@@ -90,10 +90,10 @@ library FunctionCastLib {
         }
     }
 
-    function usingSplitBatchTransfer(function(BatchTransfer calldata, bytes32) internal view returns (bytes32) fnIn)
+    function usingSplitBatchTransfer(function(BatchTransfer calldata, uint256) internal view returns (bytes32) fnIn)
         internal
         pure
-        returns (function(SplitBatchTransfer calldata, bytes32) internal view returns (bytes32) fnOut)
+        returns (function(SplitBatchTransfer calldata, uint256) internal view returns (bytes32) fnOut)
     {
         assembly ("memory-safe") {
             fnOut := fnIn
@@ -1702,76 +1702,76 @@ library FunctionCastLib {
         }
     }
 
-    function usingBatchClaim(function (uint256, bytes32) internal view returns (bytes32) fnIn) internal pure returns (function (BatchClaim calldata, bytes32) internal view returns (bytes32) fnOut) {
+    function usingBatchClaim(function (uint256, uint256) internal view returns (bytes32) fnIn) internal pure returns (function (BatchClaim calldata, uint256) internal view returns (bytes32) fnOut) {
         assembly ("memory-safe") {
             fnOut := fnIn
         }
     }
 
-    function usingBatchClaimWithWitness(function (uint256, bytes32) internal view returns (bytes32, bytes32) fnIn)
+    function usingBatchClaimWithWitness(function (uint256, uint256) internal view returns (bytes32, bytes32) fnIn)
         internal
         pure
-        returns (function (BatchClaimWithWitness calldata, bytes32) internal view returns (bytes32, bytes32) fnOut)
+        returns (function (BatchClaimWithWitness calldata, uint256) internal view returns (bytes32, bytes32) fnOut)
     {
         assembly ("memory-safe") {
             fnOut := fnIn
         }
     }
 
-    function usingQualifiedBatchClaim(function (uint256, bytes32) internal view returns (bytes32) fnIn)
+    function usingQualifiedBatchClaim(function (uint256, uint256) internal view returns (bytes32) fnIn)
         internal
         pure
-        returns (function (QualifiedBatchClaim calldata, bytes32) internal view returns (bytes32) fnOut)
+        returns (function (QualifiedBatchClaim calldata, uint256) internal view returns (bytes32) fnOut)
     {
         assembly ("memory-safe") {
             fnOut := fnIn
         }
     }
 
-    function usingQualifiedBatchClaimWithWitness(function (uint256, bytes32) internal view returns (bytes32, bytes32) fnIn)
+    function usingQualifiedBatchClaimWithWitness(function (uint256, uint256) internal view returns (bytes32, bytes32) fnIn)
         internal
         pure
-        returns (function (QualifiedBatchClaimWithWitness calldata, bytes32) internal view returns (bytes32, bytes32) fnOut)
+        returns (function (QualifiedBatchClaimWithWitness calldata, uint256) internal view returns (bytes32, bytes32) fnOut)
     {
         assembly ("memory-safe") {
             fnOut := fnIn
         }
     }
 
-    function usingSplitBatchClaim(function (uint256, bytes32) internal view returns (bytes32) fnIn)
+    function usingSplitBatchClaim(function (uint256, uint256) internal view returns (bytes32) fnIn)
         internal
         pure
-        returns (function (SplitBatchClaim calldata, bytes32) internal view returns (bytes32) fnOut)
+        returns (function (SplitBatchClaim calldata, uint256) internal view returns (bytes32) fnOut)
     {
         assembly ("memory-safe") {
             fnOut := fnIn
         }
     }
 
-    function usingQualifiedSplitBatchClaim(function (uint256, bytes32) internal view returns (bytes32) fnIn)
+    function usingQualifiedSplitBatchClaim(function (uint256, uint256) internal view returns (bytes32) fnIn)
         internal
         pure
-        returns (function (QualifiedSplitBatchClaim calldata, bytes32) internal view returns (bytes32) fnOut)
+        returns (function (QualifiedSplitBatchClaim calldata, uint256) internal view returns (bytes32) fnOut)
     {
         assembly ("memory-safe") {
             fnOut := fnIn
         }
     }
 
-    function usingSplitBatchClaimWithWitness(function (uint256, bytes32) internal view returns (bytes32, bytes32) fnIn)
+    function usingSplitBatchClaimWithWitness(function (uint256, uint256) internal view returns (bytes32, bytes32) fnIn)
         internal
         pure
-        returns (function (SplitBatchClaimWithWitness calldata, bytes32) internal view returns (bytes32, bytes32) fnOut)
+        returns (function (SplitBatchClaimWithWitness calldata, uint256) internal view returns (bytes32, bytes32) fnOut)
     {
         assembly ("memory-safe") {
             fnOut := fnIn
         }
     }
 
-    function usingQualifiedSplitBatchClaimWithWitness(function (uint256, bytes32) internal view returns (bytes32, bytes32) fnIn)
+    function usingQualifiedSplitBatchClaimWithWitness(function (uint256, uint256) internal view returns (bytes32, bytes32) fnIn)
         internal
         pure
-        returns (function (QualifiedSplitBatchClaimWithWitness calldata, bytes32) internal view returns (bytes32, bytes32) fnOut)
+        returns (function (QualifiedSplitBatchClaimWithWitness calldata, uint256) internal view returns (bytes32, bytes32) fnOut)
     {
         assembly ("memory-safe") {
             fnOut := fnIn
@@ -1898,20 +1898,30 @@ library FunctionCastLib {
         }
     }
 
-    function usingExogenousQualifiedMultichainClaim(function (uint256, uint256, bytes32, bytes32, bytes32) internal view returns (bytes32) fnIn)
+    function usingExogenousQualifiedMultichainClaim(function (uint256, uint256, bytes32, bytes32, uint256) internal view returns (bytes32) fnIn)
         internal
         pure
-        returns (function(ExogenousQualifiedMultichainClaim calldata, uint256, bytes32, bytes32, bytes32) internal view returns (bytes32) fnOut)
+        returns (function(ExogenousQualifiedMultichainClaim calldata, uint256, bytes32, bytes32, uint256) internal view returns (bytes32) fnOut)
     {
         assembly ("memory-safe") {
             fnOut := fnIn
         }
     }
 
-    function usingExogenousQualifiedSplitMultichainClaim(function (uint256, uint256, bytes32, bytes32, bytes32) internal view returns (bytes32) fnIn)
+    function usingExogenousQualifiedSplitMultichainClaim(function (uint256, uint256, bytes32, bytes32, uint256) internal view returns (bytes32) fnIn)
         internal
         pure
-        returns (function(ExogenousQualifiedSplitMultichainClaim calldata, uint256, bytes32, bytes32, bytes32) internal view returns (bytes32) fnOut)
+        returns (function(ExogenousQualifiedSplitMultichainClaim calldata, uint256, bytes32, bytes32, uint256) internal view returns (bytes32) fnOut)
+    {
+        assembly ("memory-safe") {
+            fnOut := fnIn
+        }
+    }
+
+    function usingExogenousQualifiedMultichainClaim(function(uint256, uint256) internal pure returns (uint256) fnIn)
+        internal
+        pure
+        returns (function(ExogenousQualifiedMultichainClaim calldata, uint256) internal pure returns (uint256) fnOut)
     {
         assembly ("memory-safe") {
             fnOut := fnIn
@@ -2118,20 +2128,20 @@ library FunctionCastLib {
         }
     }
 
-    function usingQualifiedMultichainClaim(function (uint256, uint256, bytes32, bytes32, bytes32) internal view returns (bytes32) fnIn)
+    function usingQualifiedMultichainClaim(function (uint256, uint256, bytes32, bytes32, uint256) internal view returns (bytes32) fnIn)
         internal
         pure
-        returns (function (QualifiedMultichainClaim calldata, uint256, bytes32, bytes32, bytes32) internal view returns (bytes32) fnOut)
+        returns (function (QualifiedMultichainClaim calldata, uint256, bytes32, bytes32, uint256) internal view returns (bytes32) fnOut)
     {
         assembly ("memory-safe") {
             fnOut := fnIn
         }
     }
 
-    function usingQualifiedMultichainClaim(function (uint256, uint256) internal pure returns (bytes32) fnIn)
+    function usingQualifiedMultichainClaim(function (uint256, uint256) internal pure returns (uint256) fnIn)
         internal
         pure
-        returns (function (QualifiedMultichainClaim calldata, uint256) internal pure returns (bytes32) fnOut)
+        returns (function (QualifiedMultichainClaim calldata, uint256) internal pure returns (uint256) fnOut)
     {
         assembly ("memory-safe") {
             fnOut := fnIn
@@ -2148,130 +2158,130 @@ library FunctionCastLib {
         }
     }
 
-    function usingQualifiedMultichainClaimWithWitness(function (uint256, uint256, bytes32, bytes32, bytes32) internal view returns (bytes32) fnIn)
+    function usingQualifiedMultichainClaimWithWitness(function (uint256, uint256, bytes32, bytes32, uint256) internal view returns (bytes32) fnIn)
         internal
         pure
-        returns (function (QualifiedMultichainClaimWithWitness calldata, uint256, bytes32, bytes32, bytes32) internal view returns (bytes32) fnOut)
+        returns (function (QualifiedMultichainClaimWithWitness calldata, uint256, bytes32, bytes32, uint256) internal view returns (bytes32) fnOut)
     {
         assembly ("memory-safe") {
             fnOut := fnIn
         }
     }
 
-    function usingQualifiedSplitMultichainClaimWithWitness(function (uint256, uint256, bytes32, bytes32, bytes32) internal view returns (bytes32) fnIn)
+    function usingQualifiedSplitMultichainClaimWithWitness(function (uint256, uint256, bytes32, bytes32, uint256) internal view returns (bytes32) fnIn)
         internal
         pure
-        returns (function (QualifiedSplitMultichainClaimWithWitness calldata, uint256, bytes32, bytes32, bytes32) internal view returns (bytes32) fnOut)
+        returns (function (QualifiedSplitMultichainClaimWithWitness calldata, uint256, bytes32, bytes32, uint256) internal view returns (bytes32) fnOut)
     {
         assembly ("memory-safe") {
             fnOut := fnIn
         }
     }
 
-    function usingQualifiedBatchMultichainClaimWithWitness(function (uint256, uint256, bytes32, bytes32, bytes32) internal view returns (bytes32) fnIn)
+    function usingQualifiedBatchMultichainClaimWithWitness(function (uint256, uint256, bytes32, bytes32, uint256) internal view returns (bytes32) fnIn)
         internal
         pure
-        returns (function (QualifiedBatchMultichainClaimWithWitness calldata, uint256, bytes32, bytes32, bytes32) internal view returns (bytes32) fnOut)
+        returns (function (QualifiedBatchMultichainClaimWithWitness calldata, uint256, bytes32, bytes32, uint256) internal view returns (bytes32) fnOut)
     {
         assembly ("memory-safe") {
             fnOut := fnIn
         }
     }
 
-    function usingQualifiedMultichainClaimWithWitness(function (uint256, uint256) internal pure returns (bytes32) fnIn)
+    function usingQualifiedMultichainClaimWithWitness(function (uint256, uint256) internal pure returns (uint256) fnIn)
         internal
         pure
-        returns (function (QualifiedMultichainClaimWithWitness calldata, uint256) internal pure returns (bytes32) fnOut)
+        returns (function (QualifiedMultichainClaimWithWitness calldata, uint256) internal pure returns (uint256) fnOut)
     {
         assembly ("memory-safe") {
             fnOut := fnIn
         }
     }
 
-    function usingQualifiedSplitMultichainClaimWithWitness(function (uint256, uint256) internal pure returns (bytes32) fnIn)
+    function usingQualifiedSplitMultichainClaimWithWitness(function (uint256, uint256) internal pure returns (uint256) fnIn)
         internal
         pure
-        returns (function (QualifiedSplitMultichainClaimWithWitness calldata, uint256) internal pure returns (bytes32) fnOut)
+        returns (function (QualifiedSplitMultichainClaimWithWitness calldata, uint256) internal pure returns (uint256) fnOut)
     {
         assembly ("memory-safe") {
             fnOut := fnIn
         }
     }
 
-    function usingQualifiedBatchMultichainClaimWithWitness(function (uint256, uint256) internal pure returns (bytes32) fnIn)
+    function usingQualifiedBatchMultichainClaimWithWitness(function (uint256, uint256) internal pure returns (uint256) fnIn)
         internal
         pure
-        returns (function (QualifiedBatchMultichainClaimWithWitness calldata, uint256) internal pure returns (bytes32) fnOut)
+        returns (function (QualifiedBatchMultichainClaimWithWitness calldata, uint256) internal pure returns (uint256) fnOut)
     {
         assembly ("memory-safe") {
             fnOut := fnIn
         }
     }
 
-    function usingQualifiedSplitMultichainClaim(function (uint256, uint256) internal pure returns (bytes32) fnIn)
+    function usingQualifiedSplitMultichainClaim(function (uint256, uint256) internal pure returns (uint256) fnIn)
         internal
         pure
-        returns (function (QualifiedSplitMultichainClaim calldata, uint256) internal pure returns (bytes32) fnOut)
+        returns (function (QualifiedSplitMultichainClaim calldata, uint256) internal pure returns (uint256) fnOut)
     {
         assembly ("memory-safe") {
             fnOut := fnIn
         }
     }
 
-    function usingQualifiedBatchMultichainClaim(function (uint256, uint256) internal pure returns (bytes32) fnIn)
+    function usingQualifiedBatchMultichainClaim(function (uint256, uint256) internal pure returns (uint256) fnIn)
         internal
         pure
-        returns (function (QualifiedBatchMultichainClaim calldata, uint256) internal pure returns (bytes32) fnOut)
+        returns (function (QualifiedBatchMultichainClaim calldata, uint256) internal pure returns (uint256) fnOut)
     {
         assembly ("memory-safe") {
             fnOut := fnIn
         }
     }
 
-    function usingExogenousQualifiedSplitMultichainClaim(function (uint256, uint256) internal pure returns (bytes32) fnIn)
+    function usingExogenousQualifiedSplitMultichainClaim(function (uint256, uint256) internal pure returns (uint256) fnIn)
         internal
         pure
-        returns (function (ExogenousQualifiedSplitMultichainClaim calldata, uint256) internal pure returns (bytes32) fnOut)
+        returns (function (ExogenousQualifiedSplitMultichainClaim calldata, uint256) internal pure returns (uint256) fnOut)
     {
         assembly ("memory-safe") {
             fnOut := fnIn
         }
     }
 
-    function usingExogenousQualifiedBatchMultichainClaim(function (uint256, uint256) internal pure returns (bytes32) fnIn)
+    function usingExogenousQualifiedBatchMultichainClaim(function (uint256, uint256) internal pure returns (uint256) fnIn)
         internal
         pure
-        returns (function (ExogenousQualifiedBatchMultichainClaim calldata, uint256) internal pure returns (bytes32) fnOut)
+        returns (function (ExogenousQualifiedBatchMultichainClaim calldata, uint256) internal pure returns (uint256) fnOut)
     {
         assembly ("memory-safe") {
             fnOut := fnIn
         }
     }
 
-    function usingExogenousQualifiedMultichainClaimWithWitness(function (uint256, uint256) internal pure returns (bytes32) fnIn)
+    function usingExogenousQualifiedMultichainClaimWithWitness(function (uint256, uint256) internal pure returns (uint256) fnIn)
         internal
         pure
-        returns (function (ExogenousQualifiedMultichainClaimWithWitness calldata, uint256) internal pure returns (bytes32) fnOut)
+        returns (function (ExogenousQualifiedMultichainClaimWithWitness calldata, uint256) internal pure returns (uint256) fnOut)
     {
         assembly ("memory-safe") {
             fnOut := fnIn
         }
     }
 
-    function usingExogenousQualifiedSplitMultichainClaimWithWitness(function (uint256, uint256) internal pure returns (bytes32) fnIn)
+    function usingExogenousQualifiedSplitMultichainClaimWithWitness(function (uint256, uint256) internal pure returns (uint256) fnIn)
         internal
         pure
-        returns (function (ExogenousQualifiedSplitMultichainClaimWithWitness calldata, uint256) internal pure returns (bytes32) fnOut)
+        returns (function (ExogenousQualifiedSplitMultichainClaimWithWitness calldata, uint256) internal pure returns (uint256) fnOut)
     {
         assembly ("memory-safe") {
             fnOut := fnIn
         }
     }
 
-    function usingExogenousQualifiedBatchMultichainClaimWithWitness(function (uint256, uint256) internal pure returns (bytes32) fnIn)
+    function usingExogenousQualifiedBatchMultichainClaimWithWitness(function (uint256, uint256) internal pure returns (uint256) fnIn)
         internal
         pure
-        returns (function (ExogenousQualifiedBatchMultichainClaimWithWitness calldata, uint256) internal pure returns (bytes32) fnOut)
+        returns (function (ExogenousQualifiedBatchMultichainClaimWithWitness calldata, uint256) internal pure returns (uint256) fnOut)
     {
         assembly ("memory-safe") {
             fnOut := fnIn
@@ -2374,160 +2384,160 @@ library FunctionCastLib {
         }
     }
 
-    function usingSplitMultichainClaim(function (uint256, uint256, bytes32, bytes32, bytes32) internal view returns (bytes32) fnIn)
+    function usingSplitMultichainClaim(function (uint256, uint256, bytes32, bytes32, uint256) internal view returns (bytes32) fnIn)
         internal
         pure
-        returns (function (SplitMultichainClaim calldata, uint256, bytes32, bytes32, bytes32) internal view returns (bytes32) fnOut)
+        returns (function (SplitMultichainClaim calldata, uint256, bytes32, bytes32, uint256) internal view returns (bytes32) fnOut)
     {
         assembly ("memory-safe") {
             fnOut := fnIn
         }
     }
 
-    function usingQualifiedSplitMultichainClaim(function (uint256, uint256, bytes32, bytes32, bytes32) internal view returns (bytes32) fnIn)
+    function usingQualifiedSplitMultichainClaim(function (uint256, uint256, bytes32, bytes32, uint256) internal view returns (bytes32) fnIn)
         internal
         pure
-        returns (function (QualifiedSplitMultichainClaim calldata, uint256, bytes32, bytes32, bytes32) internal view returns (bytes32) fnOut)
+        returns (function (QualifiedSplitMultichainClaim calldata, uint256, bytes32, bytes32, uint256) internal view returns (bytes32) fnOut)
     {
         assembly ("memory-safe") {
             fnOut := fnIn
         }
     }
 
-    function usingQualifiedBatchMultichainClaim(function (uint256, uint256, bytes32, bytes32, bytes32) internal view returns (bytes32) fnIn)
+    function usingQualifiedBatchMultichainClaim(function (uint256, uint256, bytes32, bytes32, uint256) internal view returns (bytes32) fnIn)
         internal
         pure
-        returns (function (QualifiedBatchMultichainClaim calldata, uint256, bytes32, bytes32, bytes32) internal view returns (bytes32) fnOut)
+        returns (function (QualifiedBatchMultichainClaim calldata, uint256, bytes32, bytes32, uint256) internal view returns (bytes32) fnOut)
     {
         assembly ("memory-safe") {
             fnOut := fnIn
         }
     }
 
-    function usingExogenousMultichainClaim(function (uint256, uint256, bytes32, bytes32, bytes32) internal view returns (bytes32) fnIn)
+    function usingExogenousMultichainClaim(function (uint256, uint256, bytes32, bytes32, uint256) internal view returns (bytes32) fnIn)
         internal
         pure
-        returns (function (ExogenousMultichainClaim calldata, uint256, bytes32, bytes32, bytes32) internal view returns (bytes32) fnOut)
+        returns (function (ExogenousMultichainClaim calldata, uint256, bytes32, bytes32, uint256) internal view returns (bytes32) fnOut)
     {
         assembly ("memory-safe") {
             fnOut := fnIn
         }
     }
 
-    function usingExogenousQualifiedBatchMultichainClaim(function (uint256, uint256, bytes32, bytes32, bytes32) internal view returns (bytes32) fnIn)
+    function usingExogenousQualifiedBatchMultichainClaim(function (uint256, uint256, bytes32, bytes32, uint256) internal view returns (bytes32) fnIn)
         internal
         pure
-        returns (function (ExogenousQualifiedBatchMultichainClaim calldata, uint256, bytes32, bytes32, bytes32) internal view returns (bytes32) fnOut)
+        returns (function (ExogenousQualifiedBatchMultichainClaim calldata, uint256, bytes32, bytes32, uint256) internal view returns (bytes32) fnOut)
     {
         assembly ("memory-safe") {
             fnOut := fnIn
         }
     }
 
-    function usingMultichainClaim(function (uint256, uint256, bytes32, bytes32, bytes32) internal view returns (bytes32) fnIn)
+    function usingMultichainClaim(function (uint256, uint256, bytes32, bytes32, uint256) internal view returns (bytes32) fnIn)
         internal
         pure
-        returns (function (MultichainClaim calldata, uint256, bytes32, bytes32, bytes32) internal view returns (bytes32) fnOut)
+        returns (function (MultichainClaim calldata, uint256, bytes32, bytes32, uint256) internal view returns (bytes32) fnOut)
     {
         assembly ("memory-safe") {
             fnOut := fnIn
         }
     }
 
-    function usingBatchMultichainClaim(function (uint256, uint256, bytes32, bytes32, bytes32) internal view returns (bytes32) fnIn)
+    function usingBatchMultichainClaim(function (uint256, uint256, bytes32, bytes32, uint256) internal view returns (bytes32) fnIn)
         internal
         pure
-        returns (function (BatchMultichainClaim calldata, uint256, bytes32, bytes32, bytes32) internal view returns (bytes32) fnOut)
+        returns (function (BatchMultichainClaim calldata, uint256, bytes32, bytes32, uint256) internal view returns (bytes32) fnOut)
     {
         assembly ("memory-safe") {
             fnOut := fnIn
         }
     }
 
-    function usingSplitBatchMultichainClaim(function (uint256, uint256, bytes32, bytes32, bytes32) internal view returns (bytes32) fnIn)
+    function usingSplitBatchMultichainClaim(function (uint256, uint256, bytes32, bytes32, uint256) internal view returns (bytes32) fnIn)
         internal
         pure
-        returns (function (SplitBatchMultichainClaim calldata, uint256, bytes32, bytes32, bytes32) internal view returns (bytes32) fnOut)
+        returns (function (SplitBatchMultichainClaim calldata, uint256, bytes32, bytes32, uint256) internal view returns (bytes32) fnOut)
     {
         assembly ("memory-safe") {
             fnOut := fnIn
         }
     }
 
-    function usingQualifiedSplitBatchMultichainClaimWithWitness(function (uint256, uint256, bytes32, bytes32, bytes32) internal view returns (bytes32) fnIn)
+    function usingQualifiedSplitBatchMultichainClaimWithWitness(function (uint256, uint256, bytes32, bytes32, uint256) internal view returns (bytes32) fnIn)
         internal
         pure
-        returns (function (QualifiedSplitBatchMultichainClaimWithWitness calldata, uint256, bytes32, bytes32, bytes32) internal view returns (bytes32) fnOut)
+        returns (function (QualifiedSplitBatchMultichainClaimWithWitness calldata, uint256, bytes32, bytes32, uint256) internal view returns (bytes32) fnOut)
     {
         assembly ("memory-safe") {
             fnOut := fnIn
         }
     }
 
-    function usingQualifiedSplitBatchMultichainClaim(function (uint256, uint256, bytes32, bytes32, bytes32) internal view returns (bytes32) fnIn)
+    function usingQualifiedSplitBatchMultichainClaim(function (uint256, uint256, bytes32, bytes32, uint256) internal view returns (bytes32) fnIn)
         internal
         pure
-        returns (function (QualifiedSplitBatchMultichainClaim calldata, uint256, bytes32, bytes32, bytes32) internal view returns (bytes32) fnOut)
+        returns (function (QualifiedSplitBatchMultichainClaim calldata, uint256, bytes32, bytes32, uint256) internal view returns (bytes32) fnOut)
     {
         assembly ("memory-safe") {
             fnOut := fnIn
         }
     }
 
-    function usingSplitBatchMultichainClaimWithWitness(function (uint256, uint256, bytes32, bytes32, bytes32) internal view returns (bytes32) fnIn)
+    function usingSplitBatchMultichainClaimWithWitness(function (uint256, uint256, bytes32, bytes32, uint256) internal view returns (bytes32) fnIn)
         internal
         pure
-        returns (function (SplitBatchMultichainClaimWithWitness calldata, uint256, bytes32, bytes32, bytes32) internal view returns (bytes32) fnOut)
+        returns (function (SplitBatchMultichainClaimWithWitness calldata, uint256, bytes32, bytes32, uint256) internal view returns (bytes32) fnOut)
     {
         assembly ("memory-safe") {
             fnOut := fnIn
         }
     }
 
-    function usingExogenousQualifiedSplitBatchMultichainClaimWithWitness(function (uint256, uint256, bytes32, bytes32, bytes32) internal view returns (bytes32) fnIn)
+    function usingExogenousQualifiedSplitBatchMultichainClaimWithWitness(function (uint256, uint256, bytes32, bytes32, uint256) internal view returns (bytes32) fnIn)
         internal
         pure
-        returns (function (ExogenousQualifiedSplitBatchMultichainClaimWithWitness calldata, uint256, bytes32, bytes32, bytes32) internal view returns (bytes32) fnOut)
+        returns (function (ExogenousQualifiedSplitBatchMultichainClaimWithWitness calldata, uint256, bytes32, bytes32, uint256) internal view returns (bytes32) fnOut)
     {
         assembly ("memory-safe") {
             fnOut := fnIn
         }
     }
 
-    function usingExogenousQualifiedSplitBatchMultichainClaim(function (uint256, uint256, bytes32, bytes32, bytes32) internal view returns (bytes32) fnIn)
+    function usingExogenousQualifiedSplitBatchMultichainClaim(function (uint256, uint256, bytes32, bytes32, uint256) internal view returns (bytes32) fnIn)
         internal
         pure
-        returns (function (ExogenousQualifiedSplitBatchMultichainClaim calldata, uint256, bytes32, bytes32, bytes32) internal view returns (bytes32) fnOut)
+        returns (function (ExogenousQualifiedSplitBatchMultichainClaim calldata, uint256, bytes32, bytes32, uint256) internal view returns (bytes32) fnOut)
     {
         assembly ("memory-safe") {
             fnOut := fnIn
         }
     }
 
-    function usingExogenousSplitBatchMultichainClaimWithWitness(function (uint256, uint256, bytes32, bytes32, bytes32) internal view returns (bytes32) fnIn)
+    function usingExogenousSplitBatchMultichainClaimWithWitness(function (uint256, uint256, bytes32, bytes32, uint256) internal view returns (bytes32) fnIn)
         internal
         pure
-        returns (function (ExogenousSplitBatchMultichainClaimWithWitness calldata, uint256, bytes32, bytes32, bytes32) internal view returns (bytes32) fnOut)
+        returns (function (ExogenousSplitBatchMultichainClaimWithWitness calldata, uint256, bytes32, bytes32, uint256) internal view returns (bytes32) fnOut)
     {
         assembly ("memory-safe") {
             fnOut := fnIn
         }
     }
 
-    function usingMultichainClaim(function (uint256, uint256) internal pure returns (bytes32) fnIn)
+    function usingMultichainClaim(function (uint256, uint256) internal pure returns (uint256) fnIn)
         internal
         pure
-        returns (function (MultichainClaim calldata, uint256) internal pure returns (bytes32) fnOut)
+        returns (function (MultichainClaim calldata, uint256) internal pure returns (uint256) fnOut)
     {
         assembly ("memory-safe") {
             fnOut := fnIn
         }
     }
 
-    function usingSplitMultichainClaim(function (uint256, uint256) internal pure returns (bytes32) fnIn)
+    function usingSplitMultichainClaim(function (uint256, uint256) internal pure returns (uint256) fnIn)
         internal
         pure
-        returns (function (SplitMultichainClaim calldata, uint256) internal pure returns (bytes32) fnOut)
+        returns (function (SplitMultichainClaim calldata, uint256) internal pure returns (uint256) fnOut)
     {
         assembly ("memory-safe") {
             fnOut := fnIn
@@ -2574,100 +2584,100 @@ library FunctionCastLib {
         }
     }
 
-    function usingExogenousMultichainClaimWithWitness(function (uint256, uint256, bytes32, bytes32, bytes32) internal view returns (bytes32) fnIn)
+    function usingExogenousMultichainClaimWithWitness(function (uint256, uint256, bytes32, bytes32, uint256) internal view returns (bytes32) fnIn)
         internal
         pure
-        returns (function (ExogenousMultichainClaimWithWitness calldata, uint256, bytes32, bytes32, bytes32) internal view returns (bytes32) fnOut)
+        returns (function (ExogenousMultichainClaimWithWitness calldata, uint256, bytes32, bytes32, uint256) internal view returns (bytes32) fnOut)
     {
         assembly ("memory-safe") {
             fnOut := fnIn
         }
     }
 
-    function usingExogenousSplitMultichainClaimWithWitness(function (uint256, uint256, bytes32, bytes32, bytes32) internal view returns (bytes32) fnIn)
+    function usingExogenousSplitMultichainClaimWithWitness(function (uint256, uint256, bytes32, bytes32, uint256) internal view returns (bytes32) fnIn)
         internal
         pure
-        returns (function (ExogenousSplitMultichainClaimWithWitness calldata, uint256, bytes32, bytes32, bytes32) internal view returns (bytes32) fnOut)
+        returns (function (ExogenousSplitMultichainClaimWithWitness calldata, uint256, bytes32, bytes32, uint256) internal view returns (bytes32) fnOut)
     {
         assembly ("memory-safe") {
             fnOut := fnIn
         }
     }
 
-    function usingExogenousBatchMultichainClaimWithWitness(function (uint256, uint256, bytes32, bytes32, bytes32) internal view returns (bytes32) fnIn)
+    function usingExogenousBatchMultichainClaimWithWitness(function (uint256, uint256, bytes32, bytes32, uint256) internal view returns (bytes32) fnIn)
         internal
         pure
-        returns (function (ExogenousBatchMultichainClaimWithWitness calldata, uint256, bytes32, bytes32, bytes32) internal view returns (bytes32) fnOut)
+        returns (function (ExogenousBatchMultichainClaimWithWitness calldata, uint256, bytes32, bytes32, uint256) internal view returns (bytes32) fnOut)
     {
         assembly ("memory-safe") {
             fnOut := fnIn
         }
     }
 
-    function usingExogenousQualifiedMultichainClaimWithWitness(function (uint256, uint256, bytes32, bytes32, bytes32) internal view returns (bytes32) fnIn)
+    function usingExogenousQualifiedMultichainClaimWithWitness(function (uint256, uint256, bytes32, bytes32, uint256) internal view returns (bytes32) fnIn)
         internal
         pure
-        returns (function (ExogenousQualifiedMultichainClaimWithWitness calldata, uint256, bytes32, bytes32, bytes32) internal view returns (bytes32) fnOut)
+        returns (function (ExogenousQualifiedMultichainClaimWithWitness calldata, uint256, bytes32, bytes32, uint256) internal view returns (bytes32) fnOut)
     {
         assembly ("memory-safe") {
             fnOut := fnIn
         }
     }
 
-    function usingExogenousQualifiedSplitMultichainClaimWithWitness(function (uint256, uint256, bytes32, bytes32, bytes32) internal view returns (bytes32) fnIn)
+    function usingExogenousQualifiedSplitMultichainClaimWithWitness(function (uint256, uint256, bytes32, bytes32, uint256) internal view returns (bytes32) fnIn)
         internal
         pure
-        returns (function (ExogenousQualifiedSplitMultichainClaimWithWitness calldata, uint256, bytes32, bytes32, bytes32) internal view returns (bytes32) fnOut)
+        returns (function (ExogenousQualifiedSplitMultichainClaimWithWitness calldata, uint256, bytes32, bytes32, uint256) internal view returns (bytes32) fnOut)
     {
         assembly ("memory-safe") {
             fnOut := fnIn
         }
     }
 
-    function usingExogenousQualifiedBatchMultichainClaimWithWitness(function (uint256, uint256, bytes32, bytes32, bytes32) internal view returns (bytes32) fnIn)
+    function usingExogenousQualifiedBatchMultichainClaimWithWitness(function (uint256, uint256, bytes32, bytes32, uint256) internal view returns (bytes32) fnIn)
         internal
         pure
-        returns (function (ExogenousQualifiedBatchMultichainClaimWithWitness calldata, uint256, bytes32, bytes32, bytes32) internal view returns (bytes32) fnOut)
+        returns (function (ExogenousQualifiedBatchMultichainClaimWithWitness calldata, uint256, bytes32, bytes32, uint256) internal view returns (bytes32) fnOut)
     {
         assembly ("memory-safe") {
             fnOut := fnIn
         }
     }
 
-    function usingExogenousSplitMultichainClaim(function (uint256, uint256, bytes32, bytes32, bytes32) internal view returns (bytes32) fnIn)
+    function usingExogenousSplitMultichainClaim(function (uint256, uint256, bytes32, bytes32, uint256) internal view returns (bytes32) fnIn)
         internal
         pure
-        returns (function (ExogenousSplitMultichainClaim calldata, uint256, bytes32, bytes32, bytes32) internal view returns (bytes32) fnOut)
+        returns (function (ExogenousSplitMultichainClaim calldata, uint256, bytes32, bytes32, uint256) internal view returns (bytes32) fnOut)
     {
         assembly ("memory-safe") {
             fnOut := fnIn
         }
     }
 
-    function usingExogenousBatchMultichainClaim(function (uint256, uint256, bytes32, bytes32, bytes32) internal view returns (bytes32) fnIn)
+    function usingExogenousBatchMultichainClaim(function (uint256, uint256, bytes32, bytes32, uint256) internal view returns (bytes32) fnIn)
         internal
         pure
-        returns (function (ExogenousBatchMultichainClaim calldata, uint256, bytes32, bytes32, bytes32) internal view returns (bytes32) fnOut)
+        returns (function (ExogenousBatchMultichainClaim calldata, uint256, bytes32, bytes32, uint256) internal view returns (bytes32) fnOut)
     {
         assembly ("memory-safe") {
             fnOut := fnIn
         }
     }
 
-    function usingExogenousSplitBatchMultichainClaim(function (uint256, uint256, bytes32, bytes32, bytes32) internal view returns (bytes32) fnIn)
+    function usingExogenousSplitBatchMultichainClaim(function (uint256, uint256, bytes32, bytes32, uint256) internal view returns (bytes32) fnIn)
         internal
         pure
-        returns (function (ExogenousSplitBatchMultichainClaim calldata, uint256, bytes32, bytes32, bytes32) internal view returns (bytes32) fnOut)
+        returns (function (ExogenousSplitBatchMultichainClaim calldata, uint256, bytes32, bytes32, uint256) internal view returns (bytes32) fnOut)
     {
         assembly ("memory-safe") {
             fnOut := fnIn
         }
     }
 
-    function usingExogenousSplitMultichainClaim(function (uint256, uint256) internal pure returns (bytes32) fnIn)
+    function usingExogenousSplitMultichainClaim(function (uint256, uint256) internal pure returns (uint256) fnIn)
         internal
         pure
-        returns (function (ExogenousSplitMultichainClaim calldata, uint256) internal pure returns (bytes32) fnOut)
+        returns (function (ExogenousSplitMultichainClaim calldata, uint256) internal pure returns (uint256) fnOut)
     {
         assembly ("memory-safe") {
             fnOut := fnIn
@@ -2704,50 +2714,50 @@ library FunctionCastLib {
         }
     }
 
-    function usingMultichainClaimWithWitness(function (uint256, uint256, bytes32, bytes32, bytes32) internal view returns (bytes32) fnIn)
+    function usingMultichainClaimWithWitness(function (uint256, uint256, bytes32, bytes32, uint256) internal view returns (bytes32) fnIn)
         internal
         pure
-        returns (function (MultichainClaimWithWitness calldata, uint256, bytes32, bytes32, bytes32) internal view returns (bytes32) fnOut)
+        returns (function (MultichainClaimWithWitness calldata, uint256, bytes32, bytes32, uint256) internal view returns (bytes32) fnOut)
     {
         assembly ("memory-safe") {
             fnOut := fnIn
         }
     }
 
-    function usingSplitMultichainClaimWithWitness(function (uint256, uint256, bytes32, bytes32, bytes32) internal view returns (bytes32) fnIn)
+    function usingSplitMultichainClaimWithWitness(function (uint256, uint256, bytes32, bytes32, uint256) internal view returns (bytes32) fnIn)
         internal
         pure
-        returns (function (SplitMultichainClaimWithWitness calldata, uint256, bytes32, bytes32, bytes32) internal view returns (bytes32) fnOut)
+        returns (function (SplitMultichainClaimWithWitness calldata, uint256, bytes32, bytes32, uint256) internal view returns (bytes32) fnOut)
     {
         assembly ("memory-safe") {
             fnOut := fnIn
         }
     }
 
-    function usingBatchMultichainClaimWithWitness(function (uint256, uint256, bytes32, bytes32, bytes32) internal view returns (bytes32) fnIn)
+    function usingBatchMultichainClaimWithWitness(function (uint256, uint256, bytes32, bytes32, uint256) internal view returns (bytes32) fnIn)
         internal
         pure
-        returns (function (BatchMultichainClaimWithWitness calldata, uint256, bytes32, bytes32, bytes32) internal view returns (bytes32) fnOut)
+        returns (function (BatchMultichainClaimWithWitness calldata, uint256, bytes32, bytes32, uint256) internal view returns (bytes32) fnOut)
     {
         assembly ("memory-safe") {
             fnOut := fnIn
         }
     }
 
-    function usingMultichainClaimWithWitness(function (uint256, uint256) internal pure returns (bytes32) fnIn)
+    function usingMultichainClaimWithWitness(function (uint256, uint256) internal pure returns (uint256) fnIn)
         internal
         pure
-        returns (function (MultichainClaimWithWitness calldata, uint256) internal pure returns (bytes32) fnOut)
+        returns (function (MultichainClaimWithWitness calldata, uint256) internal pure returns (uint256) fnOut)
     {
         assembly ("memory-safe") {
             fnOut := fnIn
         }
     }
 
-    function usingSplitMultichainClaimWithWitness(function (uint256, uint256) internal pure returns (bytes32) fnIn)
+    function usingSplitMultichainClaimWithWitness(function (uint256, uint256) internal pure returns (uint256) fnIn)
         internal
         pure
-        returns (function (SplitMultichainClaimWithWitness calldata, uint256) internal pure returns (bytes32) fnOut)
+        returns (function (SplitMultichainClaimWithWitness calldata, uint256) internal pure returns (uint256) fnOut)
     {
         assembly ("memory-safe") {
             fnOut := fnIn
@@ -2784,40 +2794,40 @@ library FunctionCastLib {
         }
     }
 
-    function usingExogenousMultichainClaimWithWitness(function (uint256, uint256) internal pure returns (bytes32) fnIn)
+    function usingExogenousMultichainClaimWithWitness(function (uint256, uint256) internal pure returns (uint256) fnIn)
         internal
         pure
-        returns (function (ExogenousMultichainClaimWithWitness calldata, uint256) internal pure returns (bytes32) fnOut)
+        returns (function (ExogenousMultichainClaimWithWitness calldata, uint256) internal pure returns (uint256) fnOut)
     {
         assembly ("memory-safe") {
             fnOut := fnIn
         }
     }
 
-    function usingExogenousSplitMultichainClaimWithWitness(function (uint256, uint256) internal pure returns (bytes32) fnIn)
+    function usingExogenousSplitMultichainClaimWithWitness(function (uint256, uint256) internal pure returns (uint256) fnIn)
         internal
         pure
-        returns (function (ExogenousSplitMultichainClaimWithWitness calldata, uint256) internal pure returns (bytes32) fnOut)
+        returns (function (ExogenousSplitMultichainClaimWithWitness calldata, uint256) internal pure returns (uint256) fnOut)
     {
         assembly ("memory-safe") {
             fnOut := fnIn
         }
     }
 
-    function usingExogenousBatchMultichainClaimWithWitness(function (uint256, uint256) internal pure returns (bytes32) fnIn)
+    function usingExogenousBatchMultichainClaimWithWitness(function (uint256, uint256) internal pure returns (uint256) fnIn)
         internal
         pure
-        returns (function (ExogenousBatchMultichainClaimWithWitness calldata, uint256) internal pure returns (bytes32) fnOut)
+        returns (function (ExogenousBatchMultichainClaimWithWitness calldata, uint256) internal pure returns (uint256) fnOut)
     {
         assembly ("memory-safe") {
             fnOut := fnIn
         }
     }
 
-    function usingExogenousMultichainClaim(function (uint256, uint256) internal pure returns (bytes32) fnIn)
+    function usingExogenousMultichainClaim(function (uint256, uint256) internal pure returns (uint256) fnIn)
         internal
         pure
-        returns (function (ExogenousMultichainClaim calldata, uint256) internal pure returns (bytes32) fnOut)
+        returns (function (ExogenousMultichainClaim calldata, uint256) internal pure returns (uint256) fnOut)
     {
         assembly ("memory-safe") {
             fnOut := fnIn

@@ -99,7 +99,7 @@ import { EfficiencyLib } from "./EfficiencyLib.sol";
 
 library HashLib {
     using EfficiencyLib for bool;
-    using FunctionCastLib for function(BatchTransfer calldata, bytes32) internal view returns (bytes32);
+    using FunctionCastLib for function(BatchTransfer calldata, uint256) internal view returns (bytes32);
     using FunctionCastLib for function(QualifiedClaim calldata) internal view returns (bytes32, bytes32);
     using FunctionCastLib for function(uint256, uint256) internal view returns (bytes32, bytes32);
     using FunctionCastLib for function(uint256, bytes32, uint256) internal pure returns (bytes32);
@@ -109,11 +109,10 @@ library HashLib {
     using FunctionCastLib for function(uint256, bytes32) internal view returns (bytes32);
     using FunctionCastLib for function(uint256, bytes32) internal view returns (bytes32, bytes32);
     using FunctionCastLib for function(uint256, uint256) internal view returns (bytes32);
-    using FunctionCastLib for function(uint256, uint256, bytes32, bytes32, bytes32) internal view returns (bytes32);
-    using FunctionCastLib for function(uint256, uint256, bytes32, bytes32, bytes32) internal view returns (bytes32);
+    using FunctionCastLib for function(uint256, uint256, bytes32, bytes32, uint256) internal view returns (bytes32);
     using FunctionCastLib for function(BatchClaimWithWitness calldata, bytes32) internal view returns (bytes32, bytes32);
     using FunctionCastLib for function(uint256) pure returns (bytes32, bytes32);
-    using FunctionCastLib for function(uint256, uint256) pure returns (bytes32);
+    using FunctionCastLib for function(uint256, uint256) internal pure returns (uint256);
 
     /// @dev `keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)")`.
     bytes32 internal constant _DOMAIN_TYPEHASH = 0x8b73c3c69bb8fe3d512ecc4cf759cc79239f7b179b0ffacaa9a75d522b39400f;
@@ -175,7 +174,7 @@ library HashLib {
 
     function toMessageHash(BatchTransfer calldata transfer) internal view returns (bytes32 messageHash) {
         TransferComponent[] calldata transfers = transfer.transfers;
-        bytes32 idsAndAmountsHash;
+        uint256 idsAndAmountsHash;
         assembly ("memory-safe") {
             let m := mload(0x40) // Grab the free memory pointer; memory will be left dirtied.
 
@@ -217,7 +216,7 @@ library HashLib {
             }
         }
 
-        bytes32 idsAndAmountsHash;
+        uint256 idsAndAmountsHash;
         assembly ("memory-safe") {
             if errorBuffer {
                 // Revert Panic(0x11) (arithmetic overflow)
@@ -651,7 +650,7 @@ library HashLib {
         }
     }
 
-    function _deriveBatchCompactMessageHash(BatchTransfer calldata transfer, bytes32 idsAndAmountsHash) private view returns (bytes32 messageHash) {
+    function _deriveBatchCompactMessageHash(BatchTransfer calldata transfer, uint256 idsAndAmountsHash) private view returns (bytes32 messageHash) {
         assembly ("memory-safe") {
             let m := mload(0x40) // Grab the free memory pointer; memory will be left dirtied.
 
@@ -665,7 +664,7 @@ library HashLib {
         }
     }
 
-    function _toIdsAndAmountsHash(BatchClaimComponent[] calldata claims) private pure returns (bytes32 idsAndAmountsHash) {
+    function _toIdsAndAmountsHash(BatchClaimComponent[] calldata claims) private pure returns (uint256 idsAndAmountsHash) {
         uint256 totalIds = claims.length;
         bytes memory idsAndAmounts = new bytes(totalIds * 0x40);
 
@@ -685,7 +684,7 @@ library HashLib {
         }
     }
 
-    function _toSplitIdsAndAmountsHash(SplitBatchClaimComponent[] calldata claims) private pure returns (bytes32 idsAndAmountsHash) {
+    function _toSplitIdsAndAmountsHash(SplitBatchClaimComponent[] calldata claims) private pure returns (uint256 idsAndAmountsHash) {
         uint256 totalIds = claims.length;
         bytes memory idsAndAmounts = new bytes(totalIds * 0x40);
 
@@ -705,7 +704,7 @@ library HashLib {
         }
     }
 
-    function _toBatchMessageHash(uint256 claim, bytes32 idsAndAmountsHash) private view returns (bytes32 messageHash) {
+    function _toBatchMessageHash(uint256 claim, uint256 idsAndAmountsHash) private view returns (bytes32 messageHash) {
         assembly ("memory-safe") {
             let m := mload(0x40) // Grab the free memory pointer; memory will be left dirtied.
 
@@ -717,7 +716,7 @@ library HashLib {
         }
     }
 
-    function _toBatchClaimWithWitnessMessageHash(uint256 claim, bytes32 idsAndAmountsHash) private view returns (bytes32 messageHash, bytes32 typehash) {
+    function _toBatchClaimWithWitnessMessageHash(uint256 claim, uint256 idsAndAmountsHash) private view returns (bytes32 messageHash, bytes32 typehash) {
         assembly ("memory-safe") {
             let m := mload(0x40) // Grab the free memory pointer; memory will be left dirtied.
 
@@ -741,7 +740,7 @@ library HashLib {
         }
     }
 
-    function _toSingleIdAndAmountHash(uint256 claim, uint256 additionalOffset) private pure returns (bytes32 idsAndAmountsHash) {
+    function _toSingleIdAndAmountHash(uint256 claim, uint256 additionalOffset) private pure returns (uint256 idsAndAmountsHash) {
         assembly ("memory-safe") {
             let claimWithAdditionalOffset := add(claim, additionalOffset)
 
@@ -752,7 +751,11 @@ library HashLib {
         }
     }
 
-    function _toMultichainClaimMessageHash(uint256 claim, uint256 additionalOffset, bytes32 allocationTypehash, bytes32 multichainCompactTypehash, bytes32 idsAndAmountsHash)
+    function _toSimpleMultichainClaimMessageHash(uint256 claim, uint256 idsAndAmountsHash) private view returns (bytes32 messageHash) {
+        return _toMultichainClaimMessageHash(claim, 0, SEGMENT_TYPEHASH, MULTICHAIN_COMPACT_TYPEHASH, idsAndAmountsHash);
+    }
+
+    function _toMultichainClaimMessageHash(uint256 claim, uint256 additionalOffset, bytes32 allocationTypehash, bytes32 multichainCompactTypehash, uint256 idsAndAmountsHash)
         private
         view
         returns (bytes32 messageHash)
@@ -805,7 +808,11 @@ library HashLib {
         }
     }
 
-    function _toExogenousMultichainClaimMessageHash(uint256 claim, uint256 additionalOffset, bytes32 allocationTypehash, bytes32 multichainCompactTypehash, bytes32 idsAndAmountsHash)
+    function _toSimpleExogenousMultichainClaimMessageHash(uint256 claim, uint256 idsAndAmountsHash) internal view returns (bytes32 messageHash) {
+        return _toExogenousMultichainClaimMessageHash(claim, 0, SEGMENT_TYPEHASH, MULTICHAIN_COMPACT_TYPEHASH, idsAndAmountsHash);
+    }
+
+    function _toExogenousMultichainClaimMessageHash(uint256 claim, uint256 additionalOffset, bytes32 allocationTypehash, bytes32 multichainCompactTypehash, uint256 idsAndAmountsHash)
         internal
         view
         returns (bytes32 messageHash)
