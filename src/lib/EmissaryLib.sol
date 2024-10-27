@@ -43,7 +43,7 @@ abstract contract EmissaryLib {
         return _registerFor(sponsor, claimHashesAndTypehashes);
     }
 
-    function assignEmissary(address sponsor, address emissary, uint256 nonce, uint256 expires, bool assigned, bytes calldata sponsorSignature) external returns (bool) {
+    function assignEmissary(address sponsor, address emissary, uint256 nonce, uint256 expires, bool assigned, bytes calldata /*sponsorSignature*/ ) external returns (bool) {
         expires.later();
 
         bytes32 messageHash;
