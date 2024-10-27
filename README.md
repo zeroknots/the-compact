@@ -8,15 +8,16 @@
 ## Summary
 The Compact is an ownerless ERC6909 contract that facilitates the voluntary formation (and, if necessary, eventual dissolution) of resource locks.
 
-Resource locks are entered into by ERC20 or native token holders, called the "sponsor". Once a resource lock has been established, sponsors can commit to allow interested parties to claim their tokens through an "arbiter" indicated by the sponsor that attests to the specified conditions having been met.
+Resource locks are entered into by ERC20 or native token holders, called the **sponsor**. Once a resource lock has been established, sponsors can create a compact, or a commitment allowing interested parties to claim their tokens through an **arbiter** indicated by the sponsor that attests to the specified conditions of the compact having been met.
 
-These resource locks are mediated by "allocators" who are tasked with attesting to the availability of the underlying token balances and preserving the balances required for the commitments they have attested to; in other words, allocators ensure that sponsors do not "double-spend," transfer, or withdraw any token balances that are already committed to a specific intent.
+Each resource lock is mediated by an **allocator**, tasked with attesting to the availability of the underlying token balances and preserving the balances required for the commitments they have attested to; in other words, an allocator ensures that sponsors do not "double-spend," transfer, or withdraw any token balances that are already committed to a specific compact.
 
-Once a sponsor and their designated allocator have both committed to a claimable token condition, a "claimant" may then immediately perform the attached condition (such as delivering another token on some destination chain) and then claim the allocated tokens by calling the associated arbiter, which will verify and mediate the terms and conditions of the intent and relay the confirmation to The Compact.
+Once a sponsor and their designated allocator have both committed to a compact, a **claimant** may then immediately perform the attached condition (such as delivering another token on some destination chain) and then claim the allocated tokens by initiating a call to the associated arbiter, which will verify and mediate the terms and conditions of the associated compact and relay the confirmation to process the claim.
 
 The Compact effectively "activates" any deposited tokens to be instantly spent or swapped across arbitrary, asynchronous environments as long as:
  - the claimant is confident that the allocator is sound and will not leave the resource lock underallocated,
- - the sponsor and the claimant are both confident that the arbiter is sound and will not report erroneously, and
+ - the sponsor is confident that the arbiter is sound and will not process claims where the conditions were not successfully met,
+ - the claimant is confident that the arbiter is sound and will not *fail* to process claims where the conditions *were* successfully met, and
  - the sponsor is confident that the allocator will not unduly censor fully allocated requests.
 
 Sponsors have recourse from potential censorship in the form of a "forced withdrawal." When depositing tokens into a resource lock, the sponsor provides a "reset period" as a parameter. Then, the sponsor can initiate a forced withdrawal at any point; after the reset period has elapsed, the full token balance can be withdrawn regardless of any pending claims on their balance. In the case of cross-chain swaps, reset periods only need to be long enough for the claim to finalize (generally some multiple of the slowest blockchain involved in the swap).
