@@ -114,7 +114,7 @@ Once a resource lock (or group of resource locks) has been established, the owne
   - a **BatchCompact** deals with a set of resource locks on a single chain and also designates an arbiter
   - a **MultichainCompact** deals with a set of resource locks across multiple chains and designates a distinct arbiter for each chain.
 
-In this context, the owner is referred to as the **sponsor** as they are sponsoring a claim against the resource lock, and the beneficiary or recipient of the claim is referred to as the **claimant**.
+In this context, the owner is referred to as the **sponsor** as they are sponsoring a claim against the resource lock, and each beneficiary or recipient of a portion of the claim is referred to as a **claimant**.
 
 ```solidity
 // Message signed by the sponsor that specifies the conditions under which their
