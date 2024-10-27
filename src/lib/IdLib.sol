@@ -7,6 +7,8 @@ import { Lock } from "../types/Lock.sol";
 import { MetadataLib } from "./MetadataLib.sol";
 import { EfficiencyLib } from "./EfficiencyLib.sol";
 import { SignatureCheckerLib } from "solady/utils/SignatureCheckerLib.sol";
+import { CompactCategory } from "../types/CompactCategory.sol";
+import { ActivatedCompactCategory } from "../types/ActivatedCompactCategory.sol";
 
 library IdLib {
     using IdLib for uint96;
@@ -190,6 +192,12 @@ library IdLib {
 
     function canBeRegistered(address allocator, bytes calldata proof) internal view returns (bool) {
         return (msg.sender == allocator).or(allocator.code.length > 0).or(proof.length == 86 && (proof[0] == 0xff).and(allocator == address(uint160(uint256(keccak256(proof))))));
+    }
+
+    function toActivated(CompactCategory category, bool batch) internal pure returns (ActivatedCompactCategory activatedCategory) {
+        assembly ("memory-safe") {
+            activatedCategory := add(category, mul(batch, 3))
+        }
     }
 
     function register(address allocator) internal returns (uint96 allocatorId) {

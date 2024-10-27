@@ -53,7 +53,15 @@ import {
     PERMIT2_ACTIVATION_MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_THREE,
     PERMIT2_ACTIVATION_MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_FOUR,
     PERMIT2_ACTIVATION_MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_FIVE,
-    PERMIT2_ACTIVATION_MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_SIX
+    PERMIT2_ACTIVATION_MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_SIX,
+    COMPACT_ACTIVATION_TYPEHASH,
+    BATCH_COMPACT_ACTIVATION_TYPEHASH,
+    MULTICHAIN_COMPACT_ACTIVATION_TYPEHASH,
+    COMPACT_BATCH_ACTIVATION_TYPEHASH,
+    BATCH_COMPACT_BATCH_ACTIVATION_TYPEHASH,
+    MULTICHAIN_COMPACT_BATCH_ACTIVATION_TYPEHASH,
+    TOKEN_PERMISSIONS_TYPSTRING_FRAGMENT_ONE,
+    TOKEN_PERMISSIONS_TYPSTRING_FRAGMENT_TWO
 } from "../types/EIP712Types.sol";
 
 import {
@@ -922,13 +930,20 @@ library HashLib {
         }
     }
 
-    function toPermit2ActivatedCompactTypehash(ActivatedCompactCategory category, string calldata witness) internal pure returns (bytes32 typehash) {
+    function toPermit2DepositAndRegisterTypehashes(ActivatedCompactCategory category, string calldata compactWitnessTypestringFragment)
+        internal
+        pure
+        returns (bytes32 permit2Typehash, bytes32 activationTypehash, bytes32 compactTypehash)
+    {
         assembly ("memory-safe") {
-            function toTypehash(c, witnessOffset, witnessLength) -> t {
+            function toTypehash(c, witnessOffset, witnessLength) -> p, a, t {
                 let m := mload(0x40) // Grab the free memory pointer; memory will be left dirtied
 
                 let isBatch := gt(c, 2)
                 c := sub(c, mul(isBatch, 3))
+                let indexWords := shl(5, c)
+
+                let activationStart
 
                 // 1. handle no-witness cases or prepare first witness fragment based on deposit vs batch deposit
                 let fragmentTwoStart
@@ -937,7 +952,18 @@ library HashLib {
                         mstore(0, PERMIT2_DEPOSIT_WITH_COMPACT_ACTIVATION_TYPEHASH)
                         mstore(0x20, PERMIT2_DEPOSIT_WITH_BATCH_COMPACT_ACTIVATION_TYPEHASH)
                         mstore(0x40, PERMIT2_DEPOSIT_WITH_MULTICHAIN_COMPACT_ACTIVATION_TYPEHASH)
-                        t := mload(shl(5, c))
+                        p := mload(indexWords)
+
+                        mstore(0, COMPACT_ACTIVATION_TYPEHASH)
+                        mstore(0x20, BATCH_COMPACT_ACTIVATION_TYPEHASH)
+                        mstore(0x40, MULTICHAIN_COMPACT_ACTIVATION_TYPEHASH)
+                        a := mload(indexWords)
+
+                        mstore(0, COMPACT_TYPEHASH)
+                        mstore(0x20, BATCH_COMPACT_TYPEHASH)
+                        mstore(0x40, MULTICHAIN_COMPACT_TYPEHASH)
+                        t := mload(indexWords)
+
                         mstore(0x40, m)
                         leave
                     }
@@ -948,6 +974,7 @@ library HashLib {
                     mstore(add(m, 0x6d), PERMIT2_DEPOSIT_WITH_ACTIVATION_TYPESTRING_FRAGMENT_FIVE)
                     mstore(add(m, 0x60), PERMIT2_DEPOSIT_WITH_ACTIVATION_TYPESTRING_FRAGMENT_FOUR)
                     fragmentTwoStart := add(m, 0x8d)
+                    activationStart := add(m, 0x77)
                 }
 
                 if iszero(fragmentTwoStart) {
@@ -955,7 +982,18 @@ library HashLib {
                         mstore(0, PERMIT2_BATCH_DEPOSIT_WITH_COMPACT_ACTIVATION_TYPEHASH)
                         mstore(0x20, PERMIT2_BATCH_DEPOSIT_WITH_BATCH_COMPACT_ACTIVATION_TYPEHASH)
                         mstore(0x40, PERMIT2_BATCH_DEPOSIT_WITH_MULTICHAIN_COMPACT_ACTIVATION_TYPEHASH)
-                        t := mload(shl(5, c))
+                        p := mload(indexWords)
+
+                        mstore(0, COMPACT_BATCH_ACTIVATION_TYPEHASH)
+                        mstore(0x20, BATCH_COMPACT_BATCH_ACTIVATION_TYPEHASH)
+                        mstore(0x40, MULTICHAIN_COMPACT_BATCH_ACTIVATION_TYPEHASH)
+                        a := mload(indexWords)
+
+                        mstore(0, COMPACT_TYPEHASH)
+                        mstore(0x20, BATCH_COMPACT_TYPEHASH)
+                        mstore(0x40, MULTICHAIN_COMPACT_TYPEHASH)
+                        t := mload(indexWords)
+
                         mstore(0x40, m)
                         leave
                     }
@@ -967,6 +1005,7 @@ library HashLib {
                     mstore(add(m, 0x80), PERMIT2_BATCH_DEPOSIT_WITH_ACTIVATION_TYPESTRING_FRAGMENT_FIVE)
                     mstore8(add(m, 0xa0), PERMIT2_BATCH_DEPOSIT_WITH_ACTIVATION_TYPESTRING_FRAGMENT_SIX)
                     fragmentTwoStart := add(m, 0xa1)
+                    activationStart := add(m, 0x83)
                 }
 
                 // 2. prepare second witness fragment based on compact category
@@ -997,14 +1036,26 @@ library HashLib {
                     fragmentThreeStart := add(fragmentTwoStart, 0xb0)
                 }
 
-                // 3. insert the supplied witness (must also include TokenPermissions)
+                // 3. insert the supplied compact witness
                 calldatacopy(fragmentThreeStart, witnessOffset, witnessLength)
 
-                // 4. derive the typehash
-                t := keccak256(m, add(sub(fragmentThreeStart, m), witnessLength))
+                // 4. insert tokenPermissions
+                let tokenPermissionsFragmentStart := add(fragmentThreeStart, witnessLength)
+                mstore(add(tokenPermissionsFragmentStart, 0x0e), TOKEN_PERMISSIONS_TYPSTRING_FRAGMENT_TWO)
+                mstore(tokenPermissionsFragmentStart, TOKEN_PERMISSIONS_TYPSTRING_FRAGMENT_ONE)
+
+                // 5. derive the permit2 typehash
+                let totalPayloadSizeWithoutTokenPermissions := sub(tokenPermissionsFragmentStart, m)
+                p := keccak256(m, add(totalPayloadSizeWithoutTokenPermissions, 0x2e))
+
+                // 6. derive the activation typehash
+                a := keccak256(activationStart, sub(totalPayloadSizeWithoutTokenPermissions, activationStart))
+
+                // 7. derive the compact typehash
+                t := keccak256(fragmentTwoStart, sub(totalPayloadSizeWithoutTokenPermissions, fragmentTwoStart))
             }
 
-            typehash := toTypehash(category, witness.offset, witness.length)
+            permit2Typehash, activationTypehash, compactTypehash := toTypehash(category, compactWitnessTypestringFragment.offset, compactWitnessTypestringFragment.length)
         }
     }
 }

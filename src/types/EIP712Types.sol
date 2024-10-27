@@ -124,20 +124,38 @@ bytes32 constant PERMIT2_DEPOSIT_WITNESS_FRAGMENT_HASH = 0xe055493563385cc588fff
 /// @dev `keccak256(bytes("PermitWitnessTransferFrom(TokenPermissions permitted,address spender,uint256 nonce,uint256 deadline,Activation witness)Activation(uint256 id,Compact compact)Compact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256 id,uint256 amount)TokenPermissions(address token,uint256 amount)"))`.
 bytes32 constant PERMIT2_DEPOSIT_WITH_COMPACT_ACTIVATION_TYPEHASH = 0xf653f659d3a9d0c2d3b3e901b5f71b67ad949a927c0c27b41dcdf4ecddd9b489;
 
+/// @dev `keccak256(bytes("Activation(uint256 id,Compact compact)Compact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256 id,uint256 amount)"))`.
+bytes32 constant COMPACT_ACTIVATION_TYPEHASH = 0x2bf981c42c7f423b06fa49ba996d2930887e2f1f53d9a26b8c7423ac1cf83e61;
+
 /// @dev `keccak256(bytes("PermitWitnessTransferFrom(TokenPermissions permitted,address spender,uint256 nonce,uint256 deadline,Activation witness)Activation(uint256 id,BatchCompact compact)BatchCompact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256[2][] idsAndAmounts)TokenPermissions(address token,uint256 amount)"))`.
 bytes32 constant PERMIT2_DEPOSIT_WITH_BATCH_COMPACT_ACTIVATION_TYPEHASH = 0x17513dd8a454440fed0be792cc9b0b440ce3fc8ee96c1b1b1a836d2846eb6756;
+
+/// @dev `keccak256(bytes("Activation(uint256 id,BatchCompact compact)BatchCompact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256[2][] idsAndAmounts)"))`.
+bytes32 constant BATCH_COMPACT_ACTIVATION_TYPEHASH = 0xd14445d78213a5acddfa89171b0199de521c3b36738b835264cae18f5a53dbf3;
 
 /// @dev `keccak256(bytes("PermitWitnessTransferFrom(TokenPermissions permitted,address spender,uint256 nonce,uint256 deadline,Activation witness)Activation(uint256 id,MultichainCompact compact)MultichainCompact(address sponsor,uint256 nonce,uint256 expires,Segment[] segments)Segment(address arbiter,uint256 chainId,uint256[2][] idsAndAmounts)TokenPermissions(address token,uint256 amount)"))`.
 bytes32 constant PERMIT2_DEPOSIT_WITH_MULTICHAIN_COMPACT_ACTIVATION_TYPEHASH = 0x6a707dd548c9a14542ee33ebe7c7bedffc0f1a3bc827c73459e910b3b7f7ebe1;
 
+/// @dev `keccak256(bytes("Activation(uint256 id,MultichainCompact compact)MultichainCompact(address sponsor,uint256 nonce,uint256 expires,Segment[] segments)Segment(address arbiter,uint256 chainId,uint256[2][] idsAndAmounts)"))`.
+bytes32 constant MULTICHAIN_COMPACT_ACTIVATION_TYPEHASH = 0x329b3c527a3c74b8cabc51c304669d1866b87352cafdf440ef2becd6dc261d1e;
+
 /// @dev `keccak256(bytes("PermitBatchWitnessTransferFrom(TokenPermissions[] permitted,address spender,uint256 nonce,uint256 deadline,BatchActivation witness)BatchActivation(uint256[] ids,Compact compact)Compact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256 id,uint256 amount)TokenPermissions(address token,uint256 amount)"))`.
 bytes32 constant PERMIT2_BATCH_DEPOSIT_WITH_COMPACT_ACTIVATION_TYPEHASH = 0xc57615aa5f4f1313fa11445825d867465f56dfccd036e04265bfe0dd050822fd;
+
+/// @dev `keccak256(bytes("BatchActivation(uint256[] ids,Compact compact)Compact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256 id,uint256 amount)"))`.
+bytes32 constant COMPACT_BATCH_ACTIVATION_TYPEHASH = 0x45012d42fad8c9e937cff5a2d750ee18713dd45aadcd718660d5523056618d99;
 
 /// @dev `keccak256(bytes("PermitBatchWitnessTransferFrom(TokenPermissions[] permitted,address spender,uint256 nonce,uint256 deadline,BatchActivation witness)BatchActivation(uint256[] ids,BatchCompact compact)BatchCompact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256[2][] idsAndAmounts)TokenPermissions(address token,uint256 amount)"))`.
 bytes32 constant PERMIT2_BATCH_DEPOSIT_WITH_BATCH_COMPACT_ACTIVATION_TYPEHASH = 0x95e426a66b0811209294f67c0bf2ae0aab045490466d04cd6bf18cb70295c0ad;
 
-/// @dev `keccak256(bytes("PermitBatchWitnessTransferFrom(TokenPermissions[] permitted,address spender,uint256 nonce,uint256 deadline,BatchActivation witness)BatchActivation(uint256[] ids,MultichainCompact compact)MultichainCompact(address sponsor,uint256 nonce,uint256 expires,Segment[] segments)Segment(address arbiter,uint256 chainId,uint256[2][] idsAndAmounts)TokenPermissions(address token,uint256 amount)"))`.
+/// @dev `keccak256(bytes("BatchActivation(uint256[] ids,BatchCompact compact)BatchCompact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256[2][] idsAndAmounts)"))`.
+bytes32 constant BATCH_COMPACT_BATCH_ACTIVATION_TYPEHASH = 0xc2e16a823b8cdddfdf889991d7a461f0a19faf1f8e608f1c164495a52151cc3e;
+
+/// @dev `keccak256(bytes("PermitBatchWitnessTransferFrom(TokenPermissions[] permitted,address spender,uint256 nonce,uint256 deadline,BatchActivation witness)BatchActivation(uint256[] ids,MultichainCompact compact)MultichainCompact(address sponsor,uint256 nonce,uint256 expires,Segment[] segments)Segment(address arbiter,uint256 chainId,uint256[2][] idsAndAmounts)"))`.
 bytes32 constant PERMIT2_BATCH_DEPOSIT_WITH_MULTICHAIN_COMPACT_ACTIVATION_TYPEHASH = 0x142f91d42a44f5b5264d0eac9eddd2080a6c1649a31d76457dcc0ff612ff69d6;
+
+/// @dev `keccak256(bytes("BatchActivation(uint256[] ids,MultichainCompact compact)MultichainCompact(address sponsor,uint256 nonce,uint256 expires,Segment[] segments)Segment(address arbiter,uint256 chainId,uint256[2][] idsAndAmounts)"))`.
+bytes32 constant MULTICHAIN_COMPACT_BATCH_ACTIVATION_TYPEHASH = 0xd2f6ad391328936f118250f231e63c7e639f9756a9ebf972d81763870a772d87;
 
 // abi.decode(bytes("PermitWitnessTransferFrom(TokenP"), (bytes32))
 bytes32 constant PERMIT2_DEPOSIT_WITH_ACTIVATION_TYPESTRING_FRAGMENT_ONE = 0x5065726d69745769746e6573735472616e7366657246726f6d28546f6b656e50;
@@ -169,7 +187,7 @@ bytes32 constant PERMIT2_BATCH_DEPOSIT_WITH_ACTIVATION_TYPESTRING_FRAGMENT_FOUR 
 // abi.decode(bytes("ss)BatchActivation(uint256[] ids"), (bytes32))
 bytes32 constant PERMIT2_BATCH_DEPOSIT_WITH_ACTIVATION_TYPESTRING_FRAGMENT_FIVE = 0x737329426174636841637469766174696f6e2875696e743235365b5d20696473;
 
-// uint8(abi.decode(bytes("n(uint256 id,"), (bytes1)))
+// uint8(abi.decode(bytes(","), (bytes1)))
 uint8 constant PERMIT2_BATCH_DEPOSIT_WITH_ACTIVATION_TYPESTRING_FRAGMENT_SIX = 0x2c;
 
 // abi.decode(bytes("Compact compact)Compact(address "), (bytes32))
@@ -213,3 +231,9 @@ bytes32 constant PERMIT2_ACTIVATION_MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_FIVE 
 
 // uint128(abi.decode(bytes("] idsAndAmounts,"), (bytes16)))
 uint128 constant PERMIT2_ACTIVATION_MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_SIX = 0x5d20696473416e64416d6f756e74732c;
+
+// abi.decode(bytes("TokenPermissions(address token,u"), (bytes32))
+bytes32 constant TOKEN_PERMISSIONS_TYPSTRING_FRAGMENT_ONE = 0x546f6b656e5065726d697373696f6e73286164647265737320746f6b656e2c75;
+
+// uint112(abi.decode(bytes("int256 amount)"), (bytes14)))
+uint112 constant TOKEN_PERMISSIONS_TYPSTRING_FRAGMENT_TWO = 0x696e7432353620616d6f756e7429;
