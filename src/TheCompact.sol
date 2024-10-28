@@ -310,8 +310,9 @@ contract TheCompact is ITheCompact, ITheCompactClaims, ERC6909, Tstorish {
         address recipient,
         bytes calldata signature
     ) external returns (uint256 id) {
-        _setTstorish(_REENTRANCY_GUARD_SLOT, 1);
         id = token.excludingNative().toIdIfRegistered(scope, resetPeriod, allocator);
+
+        _setTstorish(_REENTRANCY_GUARD_SLOT, 1);
 
         address permit2 = address(_PERMIT2);
 
@@ -356,8 +357,9 @@ contract TheCompact is ITheCompact, ITheCompactClaims, ERC6909, Tstorish {
                     revert(0, returndatasize())
                 }
 
-                // TODO: add proper revert on no data
-                revert(0, 0)
+                // revert Permit2CallFailed();
+                mstore(0, 0x7f28c61e)
+                revert(0x1c, 0x04)
             }
         }
 
@@ -516,8 +518,9 @@ contract TheCompact is ITheCompact, ITheCompactClaims, ERC6909, Tstorish {
                     revert(0, returndatasize())
                 }
 
-                // TODO: add proper revert on no data
-                revert(0, 0)
+                // revert Permit2CallFailed();
+                mstore(0, 0x7f28c61e)
+                revert(0x1c, 0x04)
             }
         }
 
@@ -540,7 +543,6 @@ contract TheCompact is ITheCompact, ITheCompactClaims, ERC6909, Tstorish {
         _clearTstorish(_REENTRANCY_GUARD_SLOT);
     }
 
-    /* TODO: put these two batch deposit methods back in after finding some room for them
     function deposit(
         address depositor,
         ISignatureTransfer.TokenPermissions[] calldata permitted,
@@ -556,14 +558,14 @@ contract TheCompact is ITheCompact, ITheCompactClaims, ERC6909, Tstorish {
         bool firstUnderlyingTokenIsNative;
         assembly ("memory-safe") {
             let permittedOffset := permitted.offset
-            firstUnderlyingTokenIsNative := iszero(shr(96, shl(96, add(permittedOffset, 0x20))))
+            firstUnderlyingTokenIsNative := iszero(shr(96, shl(96, calldataload(permittedOffset))))
 
             // Revert if:
             //  * the array is empty
             //  * the callvalue is zero but the first token is native
             //  * the callvalue is nonzero but the first token is non-native
             //  * the first token is non-native and the callvalue doesn't equal the first amount
-            if or(iszero(totalTokens), or(eq(firstUnderlyingTokenIsNative, iszero(callvalue())), and(firstUnderlyingTokenIsNative, iszero(eq(callvalue(), calldataload(add(permittedOffset, 0x40)))))))
+            if or(iszero(totalTokens), or(eq(firstUnderlyingTokenIsNative, iszero(callvalue())), and(firstUnderlyingTokenIsNative, iszero(eq(callvalue(), calldataload(add(permittedOffset, 0x20)))))))
             {
                 // revert InvalidBatchDepositStructure()
                 mstore(0, 0xca0fc08e)
@@ -594,7 +596,6 @@ contract TheCompact is ITheCompact, ITheCompactClaims, ERC6909, Tstorish {
         address allocator,
         ResetPeriod resetPeriod,
         Scope scope,
-        address recipient,
         uint256 nonce,
         uint256 deadline,
         bytes32 claimHash,
@@ -608,14 +609,15 @@ contract TheCompact is ITheCompact, ITheCompactClaims, ERC6909, Tstorish {
         bool firstUnderlyingTokenIsNative;
         assembly ("memory-safe") {
             let permittedOffset := permitted.offset
-            firstUnderlyingTokenIsNative := iszero(shr(96, shl(96, add(permittedOffset, 0x20))))
+
+            firstUnderlyingTokenIsNative := iszero(shr(96, shl(96, calldataload(permittedOffset))))
 
             // Revert if:
             //  * the array is empty
             //  * the callvalue is zero but the first token is native
             //  * the callvalue is nonzero but the first token is non-native
             //  * the first token is non-native and the callvalue doesn't equal the first amount
-            if or(iszero(totalTokens), or(eq(firstUnderlyingTokenIsNative, iszero(callvalue())), and(firstUnderlyingTokenIsNative, iszero(eq(callvalue(), calldataload(add(permittedOffset, 0x40)))))))
+            if or(iszero(totalTokens), or(eq(firstUnderlyingTokenIsNative, iszero(callvalue())), and(firstUnderlyingTokenIsNative, iszero(eq(callvalue(), calldataload(add(permittedOffset, 0x20)))))))
             {
                 // revert InvalidBatchDepositStructure()
                 mstore(0, 0xca0fc08e)
@@ -652,20 +654,20 @@ contract TheCompact is ITheCompact, ITheCompactClaims, ERC6909, Tstorish {
         }
 
         if (firstUnderlyingTokenIsNative) {
-            _deposit(recipient, initialId, msg.value);
+            _deposit(depositor, initialId, msg.value);
             ids[0] = initialId;
         }
 
         (ISignatureTransfer.SignatureTransferDetails[] memory details, ISignatureTransfer.TokenPermissions[] memory permittedTokens, uint256[] memory initialTokenBalances) =
             _preparePermit2ArraysAndGetBalances(ids, totalTokensLessInitialNative, firstUnderlyingTokenIsNative, permitted, initialId);
 
-        ISignatureTransfer.PermitBatchTransferFrom memory permitTransferFrom = ISignatureTransfer.PermitBatchTransferFrom({ permitted: permittedTokens, nonce: nonce, deadline: deadline });
-
         string memory witnessTypestring = string.concat("BatchActivation witness)", activationTypestring, "TokenPermissions(address token,uint256 amount)");
 
         bytes32 witnessHash = keccak256(abi.encodePacked(keccak256(bytes(activationTypestring)), keccak256(abi.encodePacked(ids)), claimHash));
 
-        _PERMIT2.permitWitnessTransferFrom(permitTransferFrom, details, depositor, witnessHash, witnessTypestring, signature);
+        _PERMIT2.permitWitnessTransferFrom(
+            ISignatureTransfer.PermitBatchTransferFrom({ permitted: permittedTokens, nonce: nonce, deadline: deadline }), details, depositor, witnessHash, witnessTypestring, signature
+        );
 
         uint256 tokenBalance;
         uint256 initialBalance;
@@ -676,7 +678,7 @@ contract TheCompact is ITheCompact, ITheCompactClaims, ERC6909, Tstorish {
                 initialBalance = initialTokenBalances[i];
                 errorBuffer |= (initialBalance >= tokenBalance).asUint256();
 
-                _deposit(recipient, ids[i + firstUnderlyingTokenIsNative.asUint256()], tokenBalance - initialBalance);
+                _deposit(depositor, ids[i + firstUnderlyingTokenIsNative.asUint256()], tokenBalance - initialBalance);
             }
         }
 
@@ -688,11 +690,10 @@ contract TheCompact is ITheCompact, ITheCompactClaims, ERC6909, Tstorish {
             }
         }
 
-        _register(depositor, claimHash], keccak256(bytes(compactTypestring));
+        _register(depositor, claimHash, keccak256(bytes(compactTypestring)));
 
         _clearTstorish(_REENTRANCY_GUARD_SLOT);
     }
-    */
 
     function allocatedTransfer(BasicTransfer calldata transfer) external returns (bool) {
         return _processBasicTransfer(transfer, _release);
