@@ -898,6 +898,51 @@ contract TheCompactTest is Test {
         assertEq(theCompact.balanceOf(claimant, id), amount);
     }
 
+    function test_registerAndClaim() public {
+        ResetPeriod resetPeriod = ResetPeriod.TenMinutes;
+        Scope scope = Scope.Multichain;
+        uint256 amount = 1e18;
+        uint256 nonce = 0;
+        uint256 expires = block.timestamp + 1000;
+        address claimant = 0x1111111111111111111111111111111111111111;
+        address arbiter = 0x2222222222222222222222222222222222222222;
+
+        vm.prank(allocator);
+        theCompact.__registerAllocator(allocator, "");
+
+        vm.prank(swapper);
+        uint256 id = theCompact.deposit{ value: amount }(allocator, resetPeriod, scope, swapper);
+        assertEq(theCompact.balanceOf(swapper, id), amount);
+
+        bytes32 typehash = keccak256("Compact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256 id,uint256 amount)");
+
+        bytes32 claimHash = keccak256(abi.encode(typehash, arbiter, swapper, nonce, expires, id, amount));
+
+        bytes32 digest = keccak256(abi.encodePacked(bytes2(0x1901), theCompact.DOMAIN_SEPARATOR(), claimHash));
+
+        vm.prank(swapper);
+        (bool status) = theCompact.register(claimHash, typehash);
+        vm.snapshotGasLastCall("register");
+        assert(status);
+
+        bytes memory sponsorSignature = "";
+
+        (bytes32 r, bytes32 vs) = vm.signCompact(allocatorPrivateKey, digest);
+        bytes memory allocatorSignature = abi.encodePacked(r, vs);
+
+        BasicClaim memory claim = BasicClaim(allocatorSignature, sponsorSignature, swapper, nonce, expires, id, amount, claimant, amount);
+
+        vm.prank(arbiter);
+        (status) = theCompact.claim(claim);
+        vm.snapshotGasLastCall("claim");
+        assert(status);
+
+        assertEq(address(theCompact).balance, amount);
+        assertEq(claimant.balance, 0);
+        assertEq(theCompact.balanceOf(swapper, id), 0);
+        assertEq(theCompact.balanceOf(claimant, id), amount);
+    }
+
     function test_claimAndWithdraw() public {
         ResetPeriod resetPeriod = ResetPeriod.TenMinutes;
         Scope scope = Scope.Multichain;

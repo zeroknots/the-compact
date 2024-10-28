@@ -519,7 +519,7 @@ contract TheCompact is ITheCompact, ERC6909, Tstorish {
             _deposit(depositor, id, tokenBalance - initialBalance);
         }
 
-        _registeredClaimHashes[depositor][claimHash] = compactTypehash;
+        _register(depositor, claimHash, compactTypehash);
 
         _clearTstorish(_REENTRANCY_GUARD_SLOT);
     }
@@ -672,7 +672,7 @@ contract TheCompact is ITheCompact, ERC6909, Tstorish {
             }
         }
 
-        _registeredClaimHashes[depositor][claimHash] = keccak256(bytes(compactTypestring));
+        _register(depositor, claimHash], keccak256(bytes(compactTypestring));
 
         _clearTstorish(_REENTRANCY_GUARD_SLOT);
     }
@@ -1139,8 +1139,13 @@ contract TheCompact is ITheCompact, ERC6909, Tstorish {
     }
 
     function register(bytes32 claimHash, bytes32 typehash) external returns (bool) {
-        _registeredClaimHashes[msg.sender][claimHash] = typehash;
+        _register(msg.sender, claimHash, typehash);
         return true;
+    }
+
+    function _register(address sponsor, bytes32 claimHash, bytes32 typehash) internal {
+        _registeredClaimHashes[sponsor][claimHash] = typehash;
+        emit CompactRegistered(sponsor, claimHash, typehash);
     }
 
     function register(bytes32[2][] calldata claimHashesAndTypehashes) external returns (bool) {
@@ -1152,7 +1157,7 @@ contract TheCompact is ITheCompact, ERC6909, Tstorish {
             uint256 totalClaimHashes = claimHashesAndTypehashes.length;
             for (uint256 i = 0; i < totalClaimHashes; ++i) {
                 bytes32[2] calldata claimHashAndTypehash = claimHashesAndTypehashes[i];
-                _registeredClaimHashes[sponsor][claimHashAndTypehash[0]] = claimHashAndTypehash[1];
+                _register(sponsor, claimHashAndTypehash[0], claimHashAndTypehash[1]);
             }
         }
 
@@ -1867,8 +1872,12 @@ contract TheCompact is ITheCompact, ERC6909, Tstorish {
 
     function _typehashes(uint256 i) internal pure returns (bytes32 typehash) {
         assembly ("memory-safe") {
-            let j := sub(i, 1)
-            typehash := add(mul(iszero(i), COMPACT_TYPEHASH), add(mul(iszero(j), BATCH_COMPACT_TYPEHASH), mul(iszero(iszero(j)), MULTICHAIN_COMPACT_TYPEHASH)))
+            let m := mload(0x40)
+            mstore(0, COMPACT_TYPEHASH)
+            mstore(0x20, BATCH_COMPACT_TYPEHASH)
+            mstore(0x40, MULTICHAIN_COMPACT_TYPEHASH)
+            typehash := mload(shl(5, i))
+            mstore(0x40, m)
         }
     }
 

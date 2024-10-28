@@ -83,6 +83,7 @@ interface ITheCompact {
     event ForcedWithdrawalEnabled(address indexed account, uint256 indexed id, uint256 withdrawableAt);
     event ForcedWithdrawalDisabled(address indexed account, uint256 indexed id);
     event AllocatorRegistered(uint96 allocatorId, address allocator);
+    event CompactRegistered(address indexed sponsor, bytes32 claimHash, bytes32 typehash);
 
     error InvalidToken(address token);
     error Expired(uint256 expiration);
