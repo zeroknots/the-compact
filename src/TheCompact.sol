@@ -451,17 +451,15 @@ contract TheCompact is ITheCompact, ERC6909, Tstorish {
 
                 // 4. insert tokenPermissions
                 let tokenPermissionsFragmentStart := add(categorySpecificEnd, witnessLength)
-                mstore(add(tokenPermissionsFragmentStart, 0x0f), TOKEN_PERMISSIONS_TYPESTRING_FRAGMENT_TWO)
-                mstore(tokenPermissionsFragmentStart, TOKEN_PERMISSIONS_TYPESTRING_FRAGMENT_ONE)
-                mstore(memoryLocation, sub(add(tokenPermissionsFragmentStart, 0x2f), memoryOffset))
-
-                categorySpecificEnd := add(tokenPermissionsFragmentStart, 1)
+                mstore(add(tokenPermissionsFragmentStart, 0x0e), TOKEN_PERMISSIONS_TYPESTRING_FRAGMENT_TWO)
+                mstore(sub(tokenPermissionsFragmentStart, 1), TOKEN_PERMISSIONS_TYPESTRING_FRAGMENT_ONE)
+                mstore(memoryLocation, sub(add(tokenPermissionsFragmentStart, 0x2e), memoryOffset))
 
                 // 5. derive the activation typehash
-                derivedActivationTypehash := keccak256(activationStart, sub(categorySpecificEnd, activationStart))
+                derivedActivationTypehash := keccak256(activationStart, sub(tokenPermissionsFragmentStart, activationStart))
 
                 // 6. derive the compact typehash
-                derivedCompactTypehash := keccak256(categorySpecificStart, sub(categorySpecificEnd, categorySpecificStart))
+                derivedCompactTypehash := keccak256(categorySpecificStart, sub(tokenPermissionsFragmentStart, categorySpecificStart))
             }
 
             let m := mload(0x40) // Grab the free memory pointer; memory will be left dirtied.
