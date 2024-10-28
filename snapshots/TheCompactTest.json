@@ -8,6 +8,7 @@
   "claim": "57450",
   "claimAndWithdraw": "73712",
   "claimWithWitness": "59909",
+  "depositAndRegisterViaPermit2": "123640",
   "depositBatchSingleERC20": "67728",
   "depositERC20AndURI": "67021",
   "depositERC20Basic": "67026",
