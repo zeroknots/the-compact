@@ -343,7 +343,6 @@ contract TheCompactTest is Test {
     }
 
     function test_depositAndRegisterViaPermit2ThenClaim() public {
-        address recipient = 0x1111111111111111111111111111111111111111;
         ResetPeriod resetPeriod = ResetPeriod.TenMinutes;
         Scope scope = Scope.Multichain;
         uint256 amount = 1e18;
@@ -360,11 +359,15 @@ contract TheCompactTest is Test {
 
         assertEq(domainSeparator, EIP712(permit2).DOMAIN_SEPARATOR());
 
-        bytes32 typehash = keccak256("Compact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256 id,uint256 amount)");
+        string memory compactTypestring = "Compact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256 id,uint256 amount)";
+
+        bytes32 typehash = keccak256(bytes(compactTypestring));
 
         uint256 id = (uint256(scope) << 255) | (uint256(resetPeriod) << 252) | (uint256(allocatorId) << 160) | uint256(uint160(address(token)));
 
         bytes32 claimHash = keccak256(abi.encode(typehash, arbiter, swapper, nonce, expires, id, amount));
+
+        bytes32 activationTypehash = keccak256(bytes(string.concat("Activation(uint256 id,Compact compact)", compactTypestring)));
 
         bytes32 digest = keccak256(
             abi.encodePacked(
@@ -373,17 +376,13 @@ contract TheCompactTest is Test {
                 keccak256(
                     abi.encode(
                         keccak256(
-                            "PermitWitnessTransferFrom(TokenPermissions permitted,address spender,uint256 nonce,uint256 deadline,Activation(uint256 id,Compact compact)Compact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256 id,uint256 amount)TokenPermissions(address token,uint256 amount)"
+                            "PermitWitnessTransferFrom(TokenPermissions permitted,address spender,uint256 nonce,uint256 deadline,Activation witness)Activation(uint256 id,Compact compact)Compact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256 id,uint256 amount)TokenPermissions(address token,uint256 amount)"
                         ),
                         keccak256(abi.encode(keccak256("TokenPermissions(address token,uint256 amount)"), address(token), amount)),
                         address(theCompact), // spender
                         nonce,
                         deadline,
-                        keccak256(
-                            abi.encode(
-                                keccak256("Activation(uint256 id,Compact compact)Compact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256 id,uint256 amount)"), id, claimHash
-                            )
-                        )
+                        keccak256(abi.encode(activationTypehash, id, claimHash))
                     )
                 )
             )
@@ -403,7 +402,7 @@ contract TheCompactTest is Test {
         assertEq(uint256(derivedScope), uint256(scope));
 
         assertEq(token.balanceOf(address(theCompact)), amount);
-        assertEq(theCompact.balanceOf(recipient, id), amount);
+        assertEq(theCompact.balanceOf(swapper, id), amount);
 
         digest = keccak256(abi.encodePacked(bytes2(0x1901), theCompact.DOMAIN_SEPARATOR(), claimHash));
 
@@ -419,8 +418,7 @@ contract TheCompactTest is Test {
         vm.snapshotGasLastCall("claim");
         assert(status);
 
-        assertEq(address(theCompact).balance, amount);
-        assertEq(claimant.balance, 0);
+        assertEq(token.balanceOf(address(theCompact)), amount);
         assertEq(theCompact.balanceOf(swapper, id), 0);
         assertEq(theCompact.balanceOf(claimant, id), amount);
     }
