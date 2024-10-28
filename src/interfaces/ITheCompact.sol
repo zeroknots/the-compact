@@ -101,13 +101,19 @@ interface ITheCompact {
 
     function deposit(address allocator) external payable returns (uint256 id);
 
+    function depositAndRegister(address allocator, bytes32 claimHash, bytes32 typehash) external payable returns (uint256 id);
+
     function deposit(address token, address allocator, uint256 amount) external returns (uint256 id);
+
+    function depositAndRegister(address token, address allocator, uint256 amount, bytes32 claimHash, bytes32 typehash) external returns (uint256 id);
 
     function deposit(address allocator, ResetPeriod resetPeriod, Scope scope, address recipient) external payable returns (uint256 id);
 
     function deposit(address token, address allocator, ResetPeriod resetPeriod, Scope scope, uint256 amount, address recipient) external returns (uint256 id);
 
     function deposit(uint256[2][] calldata idsAndAmounts, address recipient) external payable returns (bool);
+
+    function depositAndRegister(uint256[2][] calldata idsAndAmounts, bytes32[2][] calldata claimHashesAndTypehashes) external payable returns (bool);
 
     function deposit(
         address token,

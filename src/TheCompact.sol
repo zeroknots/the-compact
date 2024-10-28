@@ -247,11 +247,29 @@ contract TheCompact is ITheCompact, ERC6909, Tstorish {
         _deposit(msg.sender, id, msg.value);
     }
 
+    function depositAndRegister(address allocator, bytes32 claimHash, bytes32 typehash) external payable returns (uint256 id) {
+        id = address(0).toIdIfRegistered(Scope.Multichain, ResetPeriod.TenMinutes, allocator);
+
+        _deposit(msg.sender, id, msg.value);
+
+        _register(msg.sender, claimHash, typehash);
+    }
+
     function deposit(address token, address allocator, uint256 amount) external returns (uint256 id) {
         _setTstorish(_REENTRANCY_GUARD_SLOT, 1);
         id = token.excludingNative().toIdIfRegistered(Scope.Multichain, ResetPeriod.TenMinutes, allocator);
 
         _transferAndDeposit(token, msg.sender, id, amount);
+        _clearTstorish(_REENTRANCY_GUARD_SLOT);
+    }
+
+    function depositAndRegister(address token, address allocator, uint256 amount, bytes32 claimHash, bytes32 typehash) external returns (uint256 id) {
+        _setTstorish(_REENTRANCY_GUARD_SLOT, 1);
+        id = token.excludingNative().toIdIfRegistered(Scope.Multichain, ResetPeriod.TenMinutes, allocator);
+
+        _transferAndDeposit(token, msg.sender, id, amount);
+
+        _register(msg.sender, claimHash, typehash);
         _clearTstorish(_REENTRANCY_GUARD_SLOT);
     }
 
