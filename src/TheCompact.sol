@@ -2,6 +2,7 @@
 pragma solidity ^0.8.27;
 
 import { ITheCompact } from "./interfaces/ITheCompact.sol";
+import { ITheCompactClaims } from "./interfaces/ITheCompactClaims.sol";
 import { CompactCategory } from "./types/CompactCategory.sol";
 import { Lock } from "./types/Lock.sol";
 import { Scope } from "./types/Scope.sol";
@@ -125,7 +126,7 @@ import { MetadataRenderer } from "./lib/MetadataRenderer.sol";
  *         formation (and, if necessary, involuntary dissolution) of "resource locks."
  *         This contract has not yet been properly tested, audited, or reviewed.
  */
-contract TheCompact is ITheCompact, ERC6909, Tstorish {
+contract TheCompact is ITheCompact, ITheCompactClaims, ERC6909, Tstorish {
     using HashLib for address;
     using HashLib for bytes32;
     using HashLib for uint256;
