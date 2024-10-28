@@ -91,8 +91,8 @@ import {
     PERMIT2_DEPOSIT_WITNESS_FRAGMENT_HASH,
     PERMIT2_DEPOSIT_WITH_ACTIVATION_TYPESTRING_FRAGMENT_ONE,
     PERMIT2_DEPOSIT_WITH_ACTIVATION_TYPESTRING_FRAGMENT_TWO,
-    TOKEN_PERMISSIONS_TYPSTRING_FRAGMENT_ONE,
-    TOKEN_PERMISSIONS_TYPSTRING_FRAGMENT_TWO,
+    TOKEN_PERMISSIONS_TYPESTRING_FRAGMENT_ONE,
+    TOKEN_PERMISSIONS_TYPESTRING_FRAGMENT_TWO,
     COMPACT_ACTIVATION_TYPEHASH,
     BATCH_COMPACT_ACTIVATION_TYPEHASH,
     MULTICHAIN_COMPACT_ACTIVATION_TYPEHASH,
@@ -426,8 +426,8 @@ contract TheCompact is ITheCompact, ERC6909, Tstorish {
                 if iszero(witnessLength) {
                     let indexWords := shl(5, c)
 
-                    mstore(add(categorySpecificEnd, 0x0e), TOKEN_PERMISSIONS_TYPSTRING_FRAGMENT_TWO)
-                    mstore(sub(categorySpecificEnd, 1), TOKEN_PERMISSIONS_TYPSTRING_FRAGMENT_ONE)
+                    mstore(add(categorySpecificEnd, 0x0e), TOKEN_PERMISSIONS_TYPESTRING_FRAGMENT_TWO)
+                    mstore(sub(categorySpecificEnd, 1), TOKEN_PERMISSIONS_TYPESTRING_FRAGMENT_ONE)
                     mstore(memoryLocation, sub(add(categorySpecificEnd, 0x2e), memoryOffset))
 
                     let m := mload(0x40)
@@ -451,8 +451,8 @@ contract TheCompact is ITheCompact, ERC6909, Tstorish {
 
                 // 4. insert tokenPermissions
                 let tokenPermissionsFragmentStart := add(categorySpecificEnd, witnessLength)
-                mstore(add(tokenPermissionsFragmentStart, 0x0f), TOKEN_PERMISSIONS_TYPSTRING_FRAGMENT_TWO)
-                mstore(tokenPermissionsFragmentStart, TOKEN_PERMISSIONS_TYPSTRING_FRAGMENT_ONE)
+                mstore(add(tokenPermissionsFragmentStart, 0x0f), TOKEN_PERMISSIONS_TYPESTRING_FRAGMENT_TWO)
+                mstore(tokenPermissionsFragmentStart, TOKEN_PERMISSIONS_TYPESTRING_FRAGMENT_ONE)
                 mstore(memoryLocation, sub(add(tokenPermissionsFragmentStart, 0x2f), memoryOffset))
 
                 categorySpecificEnd := add(tokenPermissionsFragmentStart, 1)
@@ -479,9 +479,11 @@ contract TheCompact is ITheCompact, ERC6909, Tstorish {
             let permit2WitnessOffset := add(m, 0x160)
             let activationTypehash
             activationTypehash, compactTypehash := writeWitnessAndGetTypehashes(permit2WitnessOffset, compactCategory, witness.offset, witness.length)
-            let signatureOffset := and(add(mload(permit2WitnessOffset), 0x5f), not(0x1f))
-            mstore(add(m, 0x140), signatureOffset)
-            signatureOffset := add(m, add(signatureOffset, 0x20))
+            let signatureOffsetValue := and(add(mload(permit2WitnessOffset), 0x17f), not(0x1f))
+            mstore(add(m, 0x140), signatureOffsetValue)
+            let signatureOffset := add(m, add(signatureOffsetValue, 0x20))
+            mstore(signatureOffset, signatureLength)
+            calldatacopy(add(signatureOffset, 0x20), signature.offset, signatureLength)
 
             mstore(0, activationTypehash)
             mstore(0x20, id)
@@ -489,10 +491,7 @@ contract TheCompact is ITheCompact, ERC6909, Tstorish {
             mstore(add(m, 0x100), keccak256(0, 0x60))
             mstore(0x40, m)
 
-            mstore(signatureOffset, signatureLength)
-            calldatacopy(add(signatureOffset, 0x20), signature.offset, signatureLength)
-
-            if iszero(and(isPermit2Deployed, call(gas(), permit2, 0, add(m, 0x1c), add(0x24, add(signatureOffset, signatureLength)), 0, 0))) {
+            if iszero(and(isPermit2Deployed, call(gas(), permit2, 0, add(m, 0x1c), add(0x24, add(signatureOffsetValue, signatureLength)), 0, 0))) {
                 // bubble up if the call failed and there's data
                 // NOTE: consider evaluating remaining gas to protect against revert bombing
                 if returndatasize() {
