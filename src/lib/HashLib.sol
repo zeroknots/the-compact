@@ -22,24 +22,6 @@ import {
     MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_THREE,
     MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_FOUR,
     MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_FIVE,
-    PERMIT2_DEPOSIT_WITNESS_FRAGMENT_HASH,
-    PERMIT2_DEPOSIT_WITH_COMPACT_ACTIVATION_TYPEHASH,
-    PERMIT2_DEPOSIT_WITH_BATCH_COMPACT_ACTIVATION_TYPEHASH,
-    PERMIT2_DEPOSIT_WITH_MULTICHAIN_COMPACT_ACTIVATION_TYPEHASH,
-    PERMIT2_BATCH_DEPOSIT_WITH_COMPACT_ACTIVATION_TYPEHASH,
-    PERMIT2_BATCH_DEPOSIT_WITH_BATCH_COMPACT_ACTIVATION_TYPEHASH,
-    PERMIT2_BATCH_DEPOSIT_WITH_MULTICHAIN_COMPACT_ACTIVATION_TYPEHASH,
-    PERMIT2_DEPOSIT_WITH_ACTIVATION_TYPESTRING_FRAGMENT_ONE,
-    PERMIT2_DEPOSIT_WITH_ACTIVATION_TYPESTRING_FRAGMENT_TWO,
-    PERMIT2_DEPOSIT_WITH_ACTIVATION_TYPESTRING_FRAGMENT_THREE,
-    PERMIT2_DEPOSIT_WITH_ACTIVATION_TYPESTRING_FRAGMENT_FOUR,
-    PERMIT2_DEPOSIT_WITH_ACTIVATION_TYPESTRING_FRAGMENT_FIVE,
-    PERMIT2_BATCH_DEPOSIT_WITH_ACTIVATION_TYPESTRING_FRAGMENT_ONE,
-    PERMIT2_BATCH_DEPOSIT_WITH_ACTIVATION_TYPESTRING_FRAGMENT_TWO,
-    PERMIT2_BATCH_DEPOSIT_WITH_ACTIVATION_TYPESTRING_FRAGMENT_THREE,
-    PERMIT2_BATCH_DEPOSIT_WITH_ACTIVATION_TYPESTRING_FRAGMENT_FOUR,
-    PERMIT2_BATCH_DEPOSIT_WITH_ACTIVATION_TYPESTRING_FRAGMENT_FIVE,
-    PERMIT2_BATCH_DEPOSIT_WITH_ACTIVATION_TYPESTRING_FRAGMENT_SIX,
     PERMIT2_ACTIVATION_COMPACT_TYPESTRING_FRAGMENT_ONE,
     PERMIT2_ACTIVATION_COMPACT_TYPESTRING_FRAGMENT_TWO,
     PERMIT2_ACTIVATION_COMPACT_TYPESTRING_FRAGMENT_THREE,
@@ -53,7 +35,16 @@ import {
     PERMIT2_ACTIVATION_MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_THREE,
     PERMIT2_ACTIVATION_MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_FOUR,
     PERMIT2_ACTIVATION_MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_FIVE,
-    PERMIT2_ACTIVATION_MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_SIX
+    PERMIT2_ACTIVATION_MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_SIX,
+    COMPACT_ACTIVATION_TYPEHASH,
+    BATCH_COMPACT_ACTIVATION_TYPEHASH,
+    MULTICHAIN_COMPACT_ACTIVATION_TYPEHASH,
+    COMPACT_BATCH_ACTIVATION_TYPEHASH,
+    BATCH_COMPACT_BATCH_ACTIVATION_TYPEHASH,
+    MULTICHAIN_COMPACT_BATCH_ACTIVATION_TYPEHASH,
+    TOKEN_PERMISSIONS_TYPESTRING_FRAGMENT_ONE,
+    TOKEN_PERMISSIONS_TYPESTRING_FRAGMENT_TWO,
+    PERMIT2_DEPOSIT_WITNESS_FRAGMENT_HASH
 } from "../types/EIP712Types.sol";
 
 import {
@@ -122,7 +113,6 @@ import {
 
 import { TransferComponent, SplitComponent, SplitByIdComponent, BatchClaimComponent, SplitBatchClaimComponent } from "../types/Components.sol";
 
-import { ActivatedCompactCategory } from "../types/ActivatedCompactCategory.sol";
 import { ResetPeriod } from "../types/ResetPeriod.sol";
 import { Scope } from "../types/Scope.sol";
 
@@ -919,92 +909,6 @@ library HashLib {
             calldatacopy(add(m, 0x20), add(claim, 0x40), 0x60) // sponsor, nonce, expires
 
             messageHash := keccak256(m, 0xa0)
-        }
-    }
-
-    function toPermit2ActivatedCompactTypehash(ActivatedCompactCategory category, string calldata witness) internal pure returns (bytes32 typehash) {
-        assembly ("memory-safe") {
-            function toTypehash(c, witnessOffset, witnessLength) -> t {
-                let m := mload(0x40) // Grab the free memory pointer; memory will be left dirtied
-
-                let isBatch := gt(c, 2)
-                c := sub(c, mul(isBatch, 3))
-
-                // 1. handle no-witness cases or prepare first witness fragment based on deposit vs batch deposit
-                let fragmentTwoStart
-                if iszero(isBatch) {
-                    if iszero(witnessLength) {
-                        mstore(0, PERMIT2_DEPOSIT_WITH_COMPACT_ACTIVATION_TYPEHASH)
-                        mstore(0x20, PERMIT2_DEPOSIT_WITH_BATCH_COMPACT_ACTIVATION_TYPEHASH)
-                        mstore(0x40, PERMIT2_DEPOSIT_WITH_MULTICHAIN_COMPACT_ACTIVATION_TYPEHASH)
-                        t := mload(shl(5, c))
-                        mstore(0x40, m)
-                        leave
-                    }
-
-                    mstore(m, PERMIT2_DEPOSIT_WITH_ACTIVATION_TYPESTRING_FRAGMENT_ONE)
-                    mstore(add(m, 0x20), PERMIT2_DEPOSIT_WITH_ACTIVATION_TYPESTRING_FRAGMENT_TWO)
-                    mstore(add(m, 0x40), PERMIT2_DEPOSIT_WITH_ACTIVATION_TYPESTRING_FRAGMENT_THREE)
-                    mstore(add(m, 0x6d), PERMIT2_DEPOSIT_WITH_ACTIVATION_TYPESTRING_FRAGMENT_FIVE)
-                    mstore(add(m, 0x60), PERMIT2_DEPOSIT_WITH_ACTIVATION_TYPESTRING_FRAGMENT_FOUR)
-                    fragmentTwoStart := add(m, 0x8d)
-                }
-
-                if iszero(fragmentTwoStart) {
-                    if iszero(witnessLength) {
-                        mstore(0, PERMIT2_BATCH_DEPOSIT_WITH_COMPACT_ACTIVATION_TYPEHASH)
-                        mstore(0x20, PERMIT2_BATCH_DEPOSIT_WITH_BATCH_COMPACT_ACTIVATION_TYPEHASH)
-                        mstore(0x40, PERMIT2_BATCH_DEPOSIT_WITH_MULTICHAIN_COMPACT_ACTIVATION_TYPEHASH)
-                        t := mload(shl(5, c))
-                        mstore(0x40, m)
-                        leave
-                    }
-
-                    mstore(m, PERMIT2_DEPOSIT_WITH_ACTIVATION_TYPESTRING_FRAGMENT_ONE)
-                    mstore(add(m, 0x20), PERMIT2_BATCH_DEPOSIT_WITH_ACTIVATION_TYPESTRING_FRAGMENT_TWO)
-                    mstore(add(m, 0x40), PERMIT2_BATCH_DEPOSIT_WITH_ACTIVATION_TYPESTRING_FRAGMENT_THREE)
-                    mstore(add(m, 0x60), PERMIT2_BATCH_DEPOSIT_WITH_ACTIVATION_TYPESTRING_FRAGMENT_FOUR)
-                    mstore(add(m, 0x80), PERMIT2_BATCH_DEPOSIT_WITH_ACTIVATION_TYPESTRING_FRAGMENT_FIVE)
-                    mstore8(add(m, 0xa0), PERMIT2_BATCH_DEPOSIT_WITH_ACTIVATION_TYPESTRING_FRAGMENT_SIX)
-                    fragmentTwoStart := add(m, 0xa1)
-                }
-
-                // 2. prepare second witness fragment based on compact category
-                let fragmentThreeStart
-                if iszero(c) {
-                    mstore(fragmentTwoStart, PERMIT2_ACTIVATION_COMPACT_TYPESTRING_FRAGMENT_ONE)
-                    mstore(add(fragmentTwoStart, 0x20), PERMIT2_ACTIVATION_COMPACT_TYPESTRING_FRAGMENT_TWO)
-                    mstore(add(fragmentTwoStart, 0x50), PERMIT2_ACTIVATION_COMPACT_TYPESTRING_FRAGMENT_FOUR)
-                    mstore(add(fragmentTwoStart, 0x40), PERMIT2_ACTIVATION_COMPACT_TYPESTRING_FRAGMENT_THREE)
-                    fragmentThreeStart := add(fragmentTwoStart, 0x70)
-                }
-
-                if iszero(sub(c, 1)) {
-                    mstore(fragmentTwoStart, PERMIT2_ACTIVATION_BATCH_COMPACT_TYPESTRING_FRAGMENT_ONE)
-                    mstore(add(fragmentTwoStart, 0x20), PERMIT2_ACTIVATION_BATCH_COMPACT_TYPESTRING_FRAGMENT_TWO)
-                    mstore(add(fragmentTwoStart, 0x5b), PERMIT2_ACTIVATION_BATCH_COMPACT_TYPESTRING_FRAGMENT_FOUR)
-                    mstore(add(fragmentTwoStart, 0x40), PERMIT2_ACTIVATION_BATCH_COMPACT_TYPESTRING_FRAGMENT_THREE)
-                    fragmentThreeStart := add(fragmentTwoStart, 0x7b)
-                }
-
-                if iszero(fragmentThreeStart) {
-                    mstore(fragmentTwoStart, PERMIT2_ACTIVATION_MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_ONE)
-                    mstore(add(fragmentTwoStart, 0x20), PERMIT2_ACTIVATION_MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_TWO)
-                    mstore(add(fragmentTwoStart, 0x40), PERMIT2_ACTIVATION_MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_THREE)
-                    mstore(add(fragmentTwoStart, 0x60), PERMIT2_ACTIVATION_MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_FOUR)
-                    mstore(add(fragmentTwoStart, 0x90), PERMIT2_ACTIVATION_MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_SIX)
-                    mstore(add(fragmentTwoStart, 0x80), PERMIT2_ACTIVATION_MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_FIVE)
-                    fragmentThreeStart := add(fragmentTwoStart, 0xb0)
-                }
-
-                // 3. insert the supplied witness (must also include TokenPermissions)
-                calldatacopy(fragmentThreeStart, witnessOffset, witnessLength)
-
-                // 4. derive the typehash
-                t := keccak256(m, add(sub(fragmentThreeStart, m), witnessLength))
-            }
-
-            typehash := toTypehash(category, witness.offset, witness.length)
         }
     }
 }

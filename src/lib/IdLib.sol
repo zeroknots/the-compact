@@ -7,6 +7,7 @@ import { Lock } from "../types/Lock.sol";
 import { MetadataLib } from "./MetadataLib.sol";
 import { EfficiencyLib } from "./EfficiencyLib.sol";
 import { SignatureCheckerLib } from "solady/utils/SignatureCheckerLib.sol";
+import { CompactCategory } from "../types/CompactCategory.sol";
 
 library IdLib {
     using IdLib for uint96;
