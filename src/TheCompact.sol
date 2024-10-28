@@ -626,6 +626,11 @@ contract TheCompact is ITheCompact, ITheCompactClaims, ERC6909, Tstorish {
         }
 
         uint256 initialId = address(0).toIdIfRegistered(scope, resetPeriod, allocator);
+        ids = new uint256[](totalTokens);
+        if (firstUnderlyingTokenIsNative) {
+            _deposit(depositor, initialId, msg.value);
+            ids[0] = initialId;
+        }
 
         string memory activationTypestring;
         string memory compactTypestring;
@@ -646,51 +651,27 @@ contract TheCompact is ITheCompact, ITheCompactClaims, ERC6909, Tstorish {
             activationTypestring = string.concat("BatchActivation(uint256[] ids,MultichainCompact compact)", compactTypestring);
         }
 
-        ids = new uint256[](totalTokens);
+        bytes32 compactTypehash = keccak256(bytes(compactTypestring));
+        bytes32 activationTypehash = keccak256(bytes(activationTypestring));
+        string memory witnessTypestring = string.concat("BatchActivation witness)", activationTypestring, "TokenPermissions(address token,uint256 amount)");
 
         uint256 totalTokensLessInitialNative;
         unchecked {
             totalTokensLessInitialNative = totalTokens - firstUnderlyingTokenIsNative.asUint256();
         }
 
-        if (firstUnderlyingTokenIsNative) {
-            _deposit(depositor, initialId, msg.value);
-            ids[0] = initialId;
-        }
-
         (ISignatureTransfer.SignatureTransferDetails[] memory details, ISignatureTransfer.TokenPermissions[] memory permittedTokens, uint256[] memory initialTokenBalances) =
             _preparePermit2ArraysAndGetBalances(ids, totalTokensLessInitialNative, firstUnderlyingTokenIsNative, permitted, initialId);
 
-        string memory witnessTypestring = string.concat("BatchActivation witness)", activationTypestring, "TokenPermissions(address token,uint256 amount)");
-
-        bytes32 witnessHash = keccak256(abi.encodePacked(keccak256(bytes(activationTypestring)), keccak256(abi.encodePacked(ids)), claimHash));
+        bytes32 witnessHash = keccak256(abi.encodePacked(activationTypehash, keccak256(abi.encodePacked(ids)), claimHash));
 
         _PERMIT2.permitWitnessTransferFrom(
             ISignatureTransfer.PermitBatchTransferFrom({ permitted: permittedTokens, nonce: nonce, deadline: deadline }), details, depositor, witnessHash, witnessTypestring, signature
         );
 
-        uint256 tokenBalance;
-        uint256 initialBalance;
-        uint256 errorBuffer;
-        unchecked {
-            for (uint256 i = 0; i < totalTokensLessInitialNative; ++i) {
-                tokenBalance = permittedTokens[i].token.balanceOf(address(this));
-                initialBalance = initialTokenBalances[i];
-                errorBuffer |= (initialBalance >= tokenBalance).asUint256();
+        _verifyBalancesAndPerformDeposits(ids, permittedTokens, initialTokenBalances, depositor, firstUnderlyingTokenIsNative);
 
-                _deposit(depositor, ids[i + firstUnderlyingTokenIsNative.asUint256()], tokenBalance - initialBalance);
-            }
-        }
-
-        assembly ("memory-safe") {
-            if errorBuffer {
-                // revert InvalidDepositBalanceChange()
-                mstore(0, 0x426d8dcf)
-                revert(0x1c, 0x04)
-            }
-        }
-
-        _register(depositor, claimHash, keccak256(bytes(compactTypestring)));
+        _register(depositor, claimHash, compactTypehash);
 
         _clearTstorish(_REENTRANCY_GUARD_SLOT);
     }
@@ -2130,9 +2111,22 @@ contract TheCompact is ITheCompact, ITheCompactClaims, ERC6909, Tstorish {
 
         _PERMIT2.permitWitnessTransferFrom(permitTransferFrom, details, depositor, witness, witnessTypestring, signature);
 
+        _verifyBalancesAndPerformDeposits(ids, permittedTokens, initialTokenBalances, recipient, firstUnderlyingTokenIsNative);
+
+        _clearTstorish(_REENTRANCY_GUARD_SLOT);
+    }
+
+    function _verifyBalancesAndPerformDeposits(
+        uint256[] memory ids,
+        ISignatureTransfer.TokenPermissions[] memory permittedTokens,
+        uint256[] memory initialTokenBalances,
+        address recipient,
+        bool firstUnderlyingTokenIsNative
+    ) internal {
         uint256 tokenBalance;
         uint256 initialBalance;
         uint256 errorBuffer;
+        uint256 totalTokensLessInitialNative = initialTokenBalances.length;
         unchecked {
             for (uint256 i = 0; i < totalTokensLessInitialNative; ++i) {
                 tokenBalance = permittedTokens[i].token.balanceOf(address(this));
@@ -2150,8 +2144,6 @@ contract TheCompact is ITheCompact, ITheCompactClaims, ERC6909, Tstorish {
                 revert(0x1c, 0x04)
             }
         }
-
-        _clearTstorish(_REENTRANCY_GUARD_SLOT);
     }
 
     function _verifyAndProcessSplitComponents(
