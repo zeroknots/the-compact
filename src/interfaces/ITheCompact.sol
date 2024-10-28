@@ -4,6 +4,7 @@ pragma solidity ^0.8.27;
 import { ForcedWithdrawalStatus } from "../types/ForcedWithdrawalStatus.sol";
 import { ResetPeriod } from "../types/ResetPeriod.sol";
 import { Scope } from "../types/Scope.sol";
+import { CompactCategory } from "../types/CompactCategory.sol";
 import { ISignatureTransfer } from "permit2/src/interfaces/ISignatureTransfer.sol";
 import {
     BasicTransfer,
@@ -120,17 +121,20 @@ interface ITheCompact {
         bytes calldata signature
     ) external returns (uint256 id);
 
-    function deposit(
+    function depositAndRegister(
+        address token,
+        uint256 amount,
+        uint256 nonce,
+        uint256 deadline,
         address depositor,
-        ISignatureTransfer.TokenPermissions[] calldata permitted,
         address allocator,
         ResetPeriod resetPeriod,
         Scope scope,
-        address recipient,
-        uint256 nonce,
-        uint256 deadline,
+        bytes32 claimHash,
+        CompactCategory compactCategory,
+        string calldata witness,
         bytes calldata signature
-    ) external payable returns (uint256[] memory ids);
+    ) external returns (uint256 id);
 
     function allocatedTransfer(BasicTransfer calldata transfer) external returns (bool);
 

@@ -3,7 +3,6 @@ pragma solidity ^0.8.27;
 
 import { ITheCompact } from "./interfaces/ITheCompact.sol";
 import { CompactCategory } from "./types/CompactCategory.sol";
-import { ActivatedCompactCategory } from "./types/ActivatedCompactCategory.sol";
 import { Lock } from "./types/Lock.sol";
 import { Scope } from "./types/Scope.sol";
 import { ResetPeriod } from "./types/ResetPeriod.sol";
@@ -85,7 +84,33 @@ import {
     ExogenousQualifiedSplitBatchMultichainClaimWithWitness
 } from "./types/BatchMultichainClaims.sol";
 
-import { COMPACT_TYPEHASH, BATCH_COMPACT_TYPEHASH, MULTICHAIN_COMPACT_TYPEHASH, PERMIT2_DEPOSIT_WITNESS_FRAGMENT_HASH } from "./types/EIP712Types.sol";
+import {
+    COMPACT_TYPEHASH,
+    BATCH_COMPACT_TYPEHASH,
+    MULTICHAIN_COMPACT_TYPEHASH,
+    PERMIT2_DEPOSIT_WITNESS_FRAGMENT_HASH,
+    PERMIT2_DEPOSIT_WITH_ACTIVATION_TYPESTRING_FRAGMENT_ONE,
+    PERMIT2_DEPOSIT_WITH_ACTIVATION_TYPESTRING_FRAGMENT_TWO,
+    TOKEN_PERMISSIONS_TYPSTRING_FRAGMENT_ONE,
+    TOKEN_PERMISSIONS_TYPSTRING_FRAGMENT_TWO,
+    COMPACT_ACTIVATION_TYPEHASH,
+    BATCH_COMPACT_ACTIVATION_TYPEHASH,
+    MULTICHAIN_COMPACT_ACTIVATION_TYPEHASH,
+    PERMIT2_ACTIVATION_COMPACT_TYPESTRING_FRAGMENT_ONE,
+    PERMIT2_ACTIVATION_COMPACT_TYPESTRING_FRAGMENT_TWO,
+    PERMIT2_ACTIVATION_COMPACT_TYPESTRING_FRAGMENT_THREE,
+    PERMIT2_ACTIVATION_COMPACT_TYPESTRING_FRAGMENT_FOUR,
+    PERMIT2_ACTIVATION_BATCH_COMPACT_TYPESTRING_FRAGMENT_ONE,
+    PERMIT2_ACTIVATION_BATCH_COMPACT_TYPESTRING_FRAGMENT_TWO,
+    PERMIT2_ACTIVATION_BATCH_COMPACT_TYPESTRING_FRAGMENT_THREE,
+    PERMIT2_ACTIVATION_BATCH_COMPACT_TYPESTRING_FRAGMENT_FOUR,
+    PERMIT2_ACTIVATION_MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_ONE,
+    PERMIT2_ACTIVATION_MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_TWO,
+    PERMIT2_ACTIVATION_MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_THREE,
+    PERMIT2_ACTIVATION_MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_FOUR,
+    PERMIT2_ACTIVATION_MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_FIVE,
+    PERMIT2_ACTIVATION_MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_SIX
+} from "./types/EIP712Types.sol";
 
 import { SplitComponent, TransferComponent, SplitByIdComponent, BatchClaimComponent, SplitBatchClaimComponent } from "./types/Components.sol";
 
@@ -156,7 +181,6 @@ contract TheCompact is ITheCompact, ERC6909, Tstorish {
     using HashLib for ExogenousSplitBatchMultichainClaimWithWitness;
     using HashLib for ExogenousQualifiedSplitBatchMultichainClaim;
     using HashLib for ExogenousQualifiedSplitBatchMultichainClaimWithWitness;
-    using HashLib for ActivatedCompactCategory;
     using IdLib for uint96;
     using IdLib for uint256;
     using IdLib for address;
@@ -208,11 +232,13 @@ contract TheCompact is ITheCompact, ERC6909, Tstorish {
     uint256 private immutable _INITIAL_CHAIN_ID;
     bytes32 private immutable _INITIAL_DOMAIN_SEPARATOR;
     MetadataRenderer private immutable _METADATA_RENDERER;
+    bool private immutable _PERMIT2_INITIALLY_DEPLOYED;
 
     constructor() {
         _INITIAL_CHAIN_ID = block.chainid;
         _INITIAL_DOMAIN_SEPARATOR = block.chainid.toNotarizedDomainSeparator();
         _METADATA_RENDERER = new MetadataRenderer();
+        _PERMIT2_INITIALLY_DEPLOYED = _checkPermit2Deployment();
     }
 
     function deposit(address allocator) external payable returns (uint256 id) {
@@ -251,56 +277,6 @@ contract TheCompact is ITheCompact, ERC6909, Tstorish {
         _registerFor(msg.sender, claimHashesAndTypehashes);
 
         return _processBatchDeposit(idsAndAmounts, msg.sender);
-    }
-
-    function _processBatchDeposit(uint256[2][] calldata idsAndAmounts, address recipient) internal returns (bool) {
-        _setTstorish(_REENTRANCY_GUARD_SLOT, 1);
-        uint256 totalIds = idsAndAmounts.length;
-        bool firstUnderlyingTokenIsNative;
-        uint256 id;
-
-        assembly ("memory-safe") {
-            let idsAndAmountsOffset := idsAndAmounts.offset
-            id := calldataload(idsAndAmountsOffset)
-            firstUnderlyingTokenIsNative := iszero(shr(96, shl(96, id)))
-            // Revert if:
-            //  * the array is empty
-            //  * the callvalue is zero but the first token is native
-            //  * the callvalue is nonzero but the first token is non-native
-            //  * the first token is non-native and the callvalue doesn't equal the first amount
-            if or(iszero(totalIds), or(eq(firstUnderlyingTokenIsNative, iszero(callvalue())), and(firstUnderlyingTokenIsNative, iszero(eq(callvalue(), calldataload(add(idsAndAmountsOffset, 0x20)))))))
-            {
-                // revert InvalidBatchDepositStructure()
-                mstore(0, 0xca0fc08e)
-                revert(0x1c, 0x04)
-            }
-        }
-
-        uint96 currentAllocatorId = id.toRegisteredAllocatorId();
-
-        if (firstUnderlyingTokenIsNative) {
-            _deposit(recipient, id, msg.value);
-        }
-
-        unchecked {
-            for (uint256 i = firstUnderlyingTokenIsNative.asUint256(); i < totalIds; ++i) {
-                uint256[2] calldata idAndAmount = idsAndAmounts[i];
-                id = idAndAmount[0];
-                uint256 amount = idAndAmount[1];
-
-                uint96 newAllocatorId = id.toAllocatorId();
-                if (newAllocatorId != currentAllocatorId) {
-                    newAllocatorId.mustHaveARegisteredAllocator();
-                    currentAllocatorId = newAllocatorId;
-                }
-
-                _transferAndDeposit(id.toToken(), recipient, id, amount);
-            }
-        }
-
-        _clearTstorish(_REENTRANCY_GUARD_SLOT);
-
-        return true;
     }
 
     function deposit(
@@ -384,51 +360,150 @@ contract TheCompact is ITheCompact, ERC6909, Tstorish {
     }
 
     function depositAndRegister(
-        uint256 id,
-        uint256 amount,
-        uint256 nonce,
-        uint256 deadline,
-        address depositor,
+        address token,
+        uint256, // amount
+        uint256, // nonce
+        uint256, // deadline
+        address depositor, // also recipient
+        address allocator,
+        ResetPeriod resetPeriod,
+        Scope scope,
         bytes32 claimHash,
         CompactCategory compactCategory,
         string calldata witness,
         bytes calldata signature
-    ) external returns (bool) {
+    ) external returns (uint256 id) {
         _setTstorish(_REENTRANCY_GUARD_SLOT, 1);
-        id.toAllocatorId().mustHaveARegisteredAllocator();
-        address token = id.toToken().excludingNative();
+        id = token.excludingNative().toIdIfRegistered(scope, resetPeriod, allocator);
+
+        address permit2 = address(_PERMIT2);
 
         uint256 initialBalance = token.balanceOf(address(this));
 
-        string memory activationTypestring;
-        string memory compactTypestring;
-        if (compactCategory == CompactCategory.Compact) {
-            compactTypestring = string.concat("Compact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256 id,uint256 amount", bytes(witness).length != 0 ? "," : "", witness, ")");
-            activationTypestring = string.concat("Activation(uint256 id,Compact compact)", compactTypestring);
-        } else if (compactCategory == CompactCategory.BatchCompact) {
-            compactTypestring =
-                string.concat("BatchCompact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256[2][] idsAndAmounts", bytes(witness).length != 0 ? "," : "", witness, ")");
-            activationTypestring = string.concat("Activation(uint256 id,BatchCompact compact)", compactTypestring);
-        } else {
-            compactTypestring = string.concat(
-                "MultichainCompact(address sponsor,uint256 nonce,uint256 expires,Segment[] segments)Segment(address arbiter,uint256 chainId,uint256[2][] idsAndAmounts",
-                bytes(witness).length != 0 ? "," : "",
-                witness,
-                ")"
-            );
-            activationTypestring = string.concat("Activation(uint256 id,MultichainCompact compact)", compactTypestring);
+        bool isPermit2Deployed = _isPermit2Deployed();
+
+        bytes32 compactTypehash;
+
+        assembly ("memory-safe") {
+            function writeWitnessAndGetTypehashes(memoryLocation, c, witnessOffset, witnessLength) -> derivedActivationTypehash, derivedCompactTypehash {
+                let memoryOffset := add(memoryLocation, 0x20)
+                // 1. prepare initial witness string at offset
+                mstore(add(memoryOffset, 0x09), PERMIT2_DEPOSIT_WITH_ACTIVATION_TYPESTRING_FRAGMENT_TWO)
+                mstore(memoryOffset, PERMIT2_DEPOSIT_WITH_ACTIVATION_TYPESTRING_FRAGMENT_ONE)
+                let activationStart := add(memoryOffset, 0x13)
+                let categorySpecificStart := add(memoryOffset, 0x29)
+                let categorySpecificEnd
+                if iszero(c) {
+                    mstore(categorySpecificStart, PERMIT2_ACTIVATION_COMPACT_TYPESTRING_FRAGMENT_ONE)
+                    mstore(add(categorySpecificStart, 0x20), PERMIT2_ACTIVATION_COMPACT_TYPESTRING_FRAGMENT_TWO)
+                    mstore(add(categorySpecificStart, 0x50), PERMIT2_ACTIVATION_COMPACT_TYPESTRING_FRAGMENT_FOUR)
+                    mstore(add(categorySpecificStart, 0x40), PERMIT2_ACTIVATION_COMPACT_TYPESTRING_FRAGMENT_THREE)
+                    categorySpecificEnd := add(categorySpecificStart, 0x70)
+                    categorySpecificStart := add(categorySpecificStart, 0x10)
+                }
+
+                if iszero(sub(c, 1)) {
+                    mstore(categorySpecificStart, PERMIT2_ACTIVATION_BATCH_COMPACT_TYPESTRING_FRAGMENT_ONE)
+                    mstore(add(categorySpecificStart, 0x20), PERMIT2_ACTIVATION_BATCH_COMPACT_TYPESTRING_FRAGMENT_TWO)
+                    mstore(add(categorySpecificStart, 0x5b), PERMIT2_ACTIVATION_BATCH_COMPACT_TYPESTRING_FRAGMENT_FOUR)
+                    mstore(add(categorySpecificStart, 0x40), PERMIT2_ACTIVATION_BATCH_COMPACT_TYPESTRING_FRAGMENT_THREE)
+                    categorySpecificEnd := add(categorySpecificStart, 0x7b)
+                    categorySpecificStart := add(categorySpecificStart, 0x15)
+                }
+
+                if iszero(categorySpecificEnd) {
+                    mstore(categorySpecificStart, PERMIT2_ACTIVATION_MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_ONE)
+                    mstore(add(categorySpecificStart, 0x20), PERMIT2_ACTIVATION_MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_TWO)
+                    mstore(add(categorySpecificStart, 0x40), PERMIT2_ACTIVATION_MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_THREE)
+                    mstore(add(categorySpecificStart, 0x60), PERMIT2_ACTIVATION_MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_FOUR)
+                    mstore(add(categorySpecificStart, 0x70), PERMIT2_ACTIVATION_MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_SIX)
+                    mstore(add(categorySpecificStart, 0x60), PERMIT2_ACTIVATION_MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_FIVE)
+                    categorySpecificEnd := add(categorySpecificStart, 0x90)
+                    categorySpecificStart := add(categorySpecificStart, 0x1a)
+                }
+
+                // 2. handle no-witness cases
+                if iszero(witnessLength) {
+                    let indexWords := shl(5, c)
+
+                    mstore(add(categorySpecificEnd, 0x0e), TOKEN_PERMISSIONS_TYPSTRING_FRAGMENT_TWO)
+                    mstore(sub(categorySpecificEnd, 1), TOKEN_PERMISSIONS_TYPSTRING_FRAGMENT_ONE)
+                    mstore(memoryLocation, sub(add(categorySpecificEnd, 0x2e), memoryOffset))
+
+                    let m := mload(0x40)
+
+                    mstore(0, COMPACT_ACTIVATION_TYPEHASH)
+                    mstore(0x20, BATCH_COMPACT_ACTIVATION_TYPEHASH)
+                    mstore(0x40, MULTICHAIN_COMPACT_ACTIVATION_TYPEHASH)
+                    derivedActivationTypehash := mload(indexWords)
+
+                    mstore(0, COMPACT_TYPEHASH)
+                    mstore(0x20, BATCH_COMPACT_TYPEHASH)
+                    mstore(0x40, MULTICHAIN_COMPACT_TYPEHASH)
+                    derivedCompactTypehash := mload(indexWords)
+
+                    mstore(0x40, m)
+                    leave
+                }
+
+                // 3. insert the supplied compact witness
+                calldatacopy(categorySpecificEnd, witnessOffset, witnessLength)
+
+                // 4. insert tokenPermissions
+                let tokenPermissionsFragmentStart := add(categorySpecificEnd, witnessLength)
+                mstore(add(tokenPermissionsFragmentStart, 0x0f), TOKEN_PERMISSIONS_TYPSTRING_FRAGMENT_TWO)
+                mstore(tokenPermissionsFragmentStart, TOKEN_PERMISSIONS_TYPSTRING_FRAGMENT_ONE)
+                mstore(memoryLocation, sub(add(tokenPermissionsFragmentStart, 0x2f), memoryOffset))
+
+                categorySpecificEnd := add(tokenPermissionsFragmentStart, 1)
+
+                // 5. derive the activation typehash
+                derivedActivationTypehash := keccak256(activationStart, sub(categorySpecificEnd, activationStart))
+
+                // 6. derive the compact typehash
+                derivedCompactTypehash := keccak256(categorySpecificStart, sub(categorySpecificEnd, categorySpecificStart))
+            }
+
+            let m := mload(0x40) // Grab the free memory pointer; memory will be left dirtied.
+
+            let signatureLength := signature.length
+            let dataStart := add(m, 0x1c)
+
+            mstore(m, _PERMIT_WITNESS_TRANSFER_FROM_SELECTOR)
+            calldatacopy(add(m, 0x20), 0x04, 0x80) // token, amount, nonce, deadline
+            mstore(add(m, 0xa0), address())
+            mstore(add(m, 0xc0), calldataload(0x24)) // amount
+            mstore(add(m, 0xe0), calldataload(0x84)) // depositor
+            mstore(add(m, 0x120), 0x140)
+
+            let permit2WitnessOffset := add(m, 0x160)
+            let activationTypehash
+            activationTypehash, compactTypehash := writeWitnessAndGetTypehashes(permit2WitnessOffset, compactCategory, witness.offset, witness.length)
+            let signatureOffset := and(add(mload(permit2WitnessOffset), 0x5f), not(0x1f))
+            mstore(add(m, 0x140), signatureOffset)
+            signatureOffset := add(m, add(signatureOffset, 0x20))
+
+            mstore(0, activationTypehash)
+            mstore(0x20, id)
+            mstore(0x40, claimHash)
+            mstore(add(m, 0x100), keccak256(0, 0x60))
+            mstore(0x40, m)
+
+            mstore(signatureOffset, signatureLength)
+            calldatacopy(add(signatureOffset, 0x20), signature.offset, signatureLength)
+
+            if iszero(and(isPermit2Deployed, call(gas(), permit2, 0, add(m, 0x1c), add(0x24, add(signatureOffset, signatureLength)), 0, 0))) {
+                // bubble up if the call failed and there's data
+                // NOTE: consider evaluating remaining gas to protect against revert bombing
+                if returndatasize() {
+                    returndatacopy(0, 0, returndatasize())
+                    revert(0, returndatasize())
+                }
+
+                // TODO: add proper revert on no data
+                revert(0, 0)
+            }
         }
-
-        string memory witnessTypestring = string.concat("Activation witness)", activationTypestring, "TokenPermissions(address token,uint256 amount)");
-
-        bytes32 witnessHash = keccak256(abi.encodePacked(keccak256(bytes(activationTypestring)), id, claimHash));
-
-        ISignatureTransfer.SignatureTransferDetails memory details = ISignatureTransfer.SignatureTransferDetails({ to: address(this), requestedAmount: amount });
-
-        ISignatureTransfer.PermitTransferFrom memory permitTransferFrom =
-            ISignatureTransfer.PermitTransferFrom({ permitted: ISignatureTransfer.TokenPermissions({ token: token, amount: amount }), nonce: nonce, deadline: deadline });
-
-        _PERMIT2.permitWitnessTransferFrom(permitTransferFrom, details, depositor, witnessHash, witnessTypestring, signature);
 
         uint256 tokenBalance = token.balanceOf(address(this));
 
@@ -444,11 +519,57 @@ contract TheCompact is ITheCompact, ERC6909, Tstorish {
             _deposit(depositor, id, tokenBalance - initialBalance);
         }
 
-        _registeredClaimHashes[depositor][claimHash] = keccak256(bytes(compactTypestring));
+        _registeredClaimHashes[depositor][claimHash] = compactTypehash;
 
         _clearTstorish(_REENTRANCY_GUARD_SLOT);
+    }
 
-        return true;
+    /* TODO: put these two batch deposit methods back in after finding some room for them
+    function deposit(
+        address depositor,
+        ISignatureTransfer.TokenPermissions[] calldata permitted,
+        address allocator,
+        ResetPeriod resetPeriod,
+        Scope scope,
+        address recipient,
+        uint256 nonce,
+        uint256 deadline,
+        bytes calldata signature
+    ) external payable returns (uint256[] memory) {
+        uint256 totalTokens = permitted.length;
+        bool firstUnderlyingTokenIsNative;
+        assembly ("memory-safe") {
+            let permittedOffset := permitted.offset
+            firstUnderlyingTokenIsNative := iszero(shr(96, shl(96, add(permittedOffset, 0x20))))
+
+            // Revert if:
+            //  * the array is empty
+            //  * the callvalue is zero but the first token is native
+            //  * the callvalue is nonzero but the first token is non-native
+            //  * the first token is non-native and the callvalue doesn't equal the first amount
+            if or(iszero(totalTokens), or(eq(firstUnderlyingTokenIsNative, iszero(callvalue())), and(firstUnderlyingTokenIsNative, iszero(eq(callvalue(), calldataload(add(permittedOffset, 0x40)))))))
+            {
+                // revert InvalidBatchDepositStructure()
+                mstore(0, 0xca0fc08e)
+                revert(0x1c, 0x04)
+            }
+        }
+
+        uint256 initialId = address(0).toIdIfRegistered(scope, resetPeriod, allocator);
+
+        return _processBatchPermit2Deposits(
+            firstUnderlyingTokenIsNative,
+            recipient,
+            initialId,
+            totalTokens,
+            permitted,
+            depositor,
+            nonce,
+            deadline,
+            allocator.toPermit2DepositWitnessHash(resetPeriod, scope, recipient),
+            "CompactDeposit witness)CompactDeposit(address allocator,uint8 resetPeriod,uint8 scope,address recipient)TokenPermissions(address token,uint256 amount)",
+            signature
+        );
     }
 
     function depositAndRegister(
@@ -555,53 +676,7 @@ contract TheCompact is ITheCompact, ERC6909, Tstorish {
 
         _clearTstorish(_REENTRANCY_GUARD_SLOT);
     }
-
-    function deposit(
-        address depositor,
-        ISignatureTransfer.TokenPermissions[] calldata permitted,
-        address allocator,
-        ResetPeriod resetPeriod,
-        Scope scope,
-        address recipient,
-        uint256 nonce,
-        uint256 deadline,
-        bytes calldata signature
-    ) external payable returns (uint256[] memory) {
-        uint256 totalTokens = permitted.length;
-        bool firstUnderlyingTokenIsNative;
-        assembly ("memory-safe") {
-            let permittedOffset := permitted.offset
-            firstUnderlyingTokenIsNative := iszero(shr(96, shl(96, add(permittedOffset, 0x20))))
-
-            // Revert if:
-            //  * the array is empty
-            //  * the callvalue is zero but the first token is native
-            //  * the callvalue is nonzero but the first token is non-native
-            //  * the first token is non-native and the callvalue doesn't equal the first amount
-            if or(iszero(totalTokens), or(eq(firstUnderlyingTokenIsNative, iszero(callvalue())), and(firstUnderlyingTokenIsNative, iszero(eq(callvalue(), calldataload(add(permittedOffset, 0x40)))))))
-            {
-                // revert InvalidBatchDepositStructure()
-                mstore(0, 0xca0fc08e)
-                revert(0x1c, 0x04)
-            }
-        }
-
-        uint256 initialId = address(0).toIdIfRegistered(scope, resetPeriod, allocator);
-
-        return _processBatchPermit2Deposits(
-            firstUnderlyingTokenIsNative,
-            recipient,
-            initialId,
-            totalTokens,
-            permitted,
-            depositor,
-            nonce,
-            deadline,
-            allocator.toPermit2DepositWitnessHash(resetPeriod, scope, recipient),
-            "CompactDeposit witness)CompactDeposit(address allocator,uint8 resetPeriod,uint8 scope,address recipient)TokenPermissions(address token,uint256 amount)",
-            signature
-        );
-    }
+    */
 
     function allocatedTransfer(BasicTransfer calldata transfer) external returns (bool) {
         return _processBasicTransfer(transfer, _release);
@@ -1158,6 +1233,56 @@ contract TheCompact is ITheCompact, ERC6909, Tstorish {
             mstore(0x4b, 0x0b54686520436f6d70616374)
             return(0x20, 0x60)
         }
+    }
+
+    function _processBatchDeposit(uint256[2][] calldata idsAndAmounts, address recipient) internal returns (bool) {
+        _setTstorish(_REENTRANCY_GUARD_SLOT, 1);
+        uint256 totalIds = idsAndAmounts.length;
+        bool firstUnderlyingTokenIsNative;
+        uint256 id;
+
+        assembly ("memory-safe") {
+            let idsAndAmountsOffset := idsAndAmounts.offset
+            id := calldataload(idsAndAmountsOffset)
+            firstUnderlyingTokenIsNative := iszero(shr(96, shl(96, id)))
+            // Revert if:
+            //  * the array is empty
+            //  * the callvalue is zero but the first token is native
+            //  * the callvalue is nonzero but the first token is non-native
+            //  * the first token is non-native and the callvalue doesn't equal the first amount
+            if or(iszero(totalIds), or(eq(firstUnderlyingTokenIsNative, iszero(callvalue())), and(firstUnderlyingTokenIsNative, iszero(eq(callvalue(), calldataload(add(idsAndAmountsOffset, 0x20)))))))
+            {
+                // revert InvalidBatchDepositStructure()
+                mstore(0, 0xca0fc08e)
+                revert(0x1c, 0x04)
+            }
+        }
+
+        uint96 currentAllocatorId = id.toRegisteredAllocatorId();
+
+        if (firstUnderlyingTokenIsNative) {
+            _deposit(recipient, id, msg.value);
+        }
+
+        unchecked {
+            for (uint256 i = firstUnderlyingTokenIsNative.asUint256(); i < totalIds; ++i) {
+                uint256[2] calldata idAndAmount = idsAndAmounts[i];
+                id = idAndAmount[0];
+                uint256 amount = idAndAmount[1];
+
+                uint96 newAllocatorId = id.toAllocatorId();
+                if (newAllocatorId != currentAllocatorId) {
+                    newAllocatorId.mustHaveARegisteredAllocator();
+                    currentAllocatorId = newAllocatorId;
+                }
+
+                _transferAndDeposit(id.toToken(), recipient, id, amount);
+            }
+        }
+
+        _clearTstorish(_REENTRANCY_GUARD_SLOT);
+
+        return true;
     }
 
     function _notExpiredAndSignedByAllocator(bytes32 messageHash, address allocator, BasicTransfer calldata transferPayload) internal {
@@ -2003,14 +2128,6 @@ contract TheCompact is ITheCompact, ERC6909, Tstorish {
         _clearTstorish(_REENTRANCY_GUARD_SLOT);
     }
 
-    function _verifyAndProcessBatchComponents(
-        uint96 allocatorId,
-        address sponsor,
-        address claimant,
-        BatchClaimComponent[] calldata claims,
-        function(address, address, uint256, uint256) internal returns (bool) operation
-    ) internal returns (bool) { }
-
     function _verifyAndProcessSplitComponents(
         address sponsor,
         uint256 id,
@@ -2292,6 +2409,21 @@ contract TheCompact is ITheCompact, ERC6909, Tstorish {
                 mstore(m, 0x014c9310)
                 revert(dataStart, 0xa4)
             }
+        }
+    }
+
+    function _isPermit2Deployed() internal view returns (bool) {
+        if (_PERMIT2_INITIALLY_DEPLOYED) {
+            return true;
+        }
+
+        return _checkPermit2Deployment();
+    }
+
+    function _checkPermit2Deployment() internal view returns (bool permit2Deployed) {
+        address permit2 = address(_PERMIT2);
+        assembly ("memory-safe") {
+            permit2Deployed := iszero(iszero(extcodesize(permit2)))
         }
     }
 }

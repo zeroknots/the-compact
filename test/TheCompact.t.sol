@@ -341,6 +341,7 @@ contract TheCompactTest is Test {
         assert(bytes(theCompact.tokenURI(id)).length > 0);
     }
 
+    /* TODO: add this test back once there's room for batch permit2 deposits again
     function test_depositBatchViaPermit2SingleERC20() public {
         address recipient = 0x1111111111111111111111111111111111111111;
         ResetPeriod resetPeriod = ResetPeriod.TenMinutes;
@@ -397,6 +398,7 @@ contract TheCompactTest is Test {
         assertEq(theCompact.balanceOf(recipient, ids[0]), amount);
         assert(bytes(theCompact.tokenURI(ids[0])).length > 0);
     }
+    */
 
     function test_basicTransfer() public {
         ResetPeriod resetPeriod = ResetPeriod.TenMinutes;
