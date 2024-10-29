@@ -351,6 +351,7 @@ contract TheCompact is ITheCompact, ITheCompactClaims, ERC6909, Tstorish {
             payloadSize := add(0x224, signatureLength)
         }
 
+        // ABC
         unchecked {
             _insertCompactDepositTypestringAt(m + 0x160);
         }
@@ -518,11 +519,7 @@ contract TheCompact is ITheCompact, ITheCompactClaims, ERC6909, Tstorish {
         _setTstorish(_REENTRANCY_GUARD_SLOT, 1);
         id = token.excludingNative().toIdIfRegistered(scope, resetPeriod, allocator);
 
-        address permit2 = address(_PERMIT2);
-
         uint256 initialBalance = token.balanceOf(address(this));
-
-        bool isPermit2Deployed = _isPermit2Deployed();
 
         bytes32 compactTypehash;
 
@@ -551,35 +548,14 @@ contract TheCompact is ITheCompact, ITheCompactClaims, ERC6909, Tstorish {
             (activationTypehash, compactTypehash) = _writeWitnessAndGetTypehashes(m + 0x160, compactCategory, witness, false);
         }
 
-        bytes32 witnessHash = _getWitnessHash(activationTypehash, id, claimHash);
+        _deriveAndWriteWitnessHash(activationTypehash, id, claimHash, m, 0x100);
 
+        uint256 signatureOffsetValue;
         assembly ("memory-safe") {
-            mstore(add(m, 0x100), witnessHash)
-
-            let permit2WitnessMemoryOffset := add(m, 0x160)
-            let signatureLength := signature.length
-            let signatureOffsetValue := and(add(mload(permit2WitnessMemoryOffset), 0x17f), not(0x1f))
-
-            mstore(add(m, 0x140), signatureOffsetValue)
-            let signatureOffset := add(m, add(signatureOffsetValue, 0x20))
-            mstore(signatureOffset, signatureLength)
-            calldatacopy(add(signatureOffset, 0x20), signature.offset, signatureLength)
-
-            payloadSize := add(0x24, add(signatureOffsetValue, signatureLength))
-
-            if iszero(and(isPermit2Deployed, call(gas(), permit2, 0, add(m, 0x1c), payloadSize, 0, 0))) {
-                // bubble up if the call failed and there's data
-                // NOTE: consider evaluating remaining gas to protect against revert bombing
-                if returndatasize() {
-                    returndatacopy(0, 0, returndatasize())
-                    revert(0, returndatasize())
-                }
-
-                // revert Permit2CallFailed();
-                mstore(0, 0x7f28c61e)
-                revert(0x1c, 0x04)
-            }
+            signatureOffsetValue := and(add(mload(add(m, 0x160)), 0x17f), not(0x1f))
         }
+
+        _writeSignatureAndPerformPermit2Call(m, 0x140, signatureOffsetValue, signature);
 
         uint256 tokenBalance = token.balanceOf(address(this));
 
@@ -600,13 +576,41 @@ contract TheCompact is ITheCompact, ITheCompactClaims, ERC6909, Tstorish {
         _clearTstorish(_REENTRANCY_GUARD_SLOT);
     }
 
-    function _getWitnessHash(bytes32 activationTypehash, uint256 idOrIdsHash, bytes32 claimHash) internal pure returns (bytes32 witnessHash) {
+    function _writeSignatureAndPerformPermit2Call(uint256 m, uint256 signatureOffsetLocation, uint256 signatureOffsetValue, bytes calldata signature) internal {
+        address permit2 = address(_PERMIT2);
+        bool isPermit2Deployed = _isPermit2Deployed();
+
+        assembly ("memory-safe") {
+            mstore(add(m, signatureOffsetLocation), signatureOffsetValue) // signature offset
+
+            let signatureLength := signature.length
+            let signatureMemoryOffset := add(m, add(0x20, signatureOffsetValue))
+
+            mstore(signatureMemoryOffset, signatureLength)
+            calldatacopy(add(signatureMemoryOffset, 0x20), signature.offset, signatureLength)
+
+            if iszero(and(isPermit2Deployed, call(gas(), permit2, 0, add(m, 0x1c), add(0x24, add(signatureOffsetValue, signatureLength)), 0, 0))) {
+                // bubble up if the call failed and there's data
+                // NOTE: consider evaluating remaining gas to protect against revert bombing
+                if returndatasize() {
+                    returndatacopy(0, 0, returndatasize())
+                    revert(0, returndatasize())
+                }
+
+                // revert Permit2CallFailed();
+                mstore(0, 0x7f28c61e)
+                revert(0x1c, 0x04)
+            }
+        }
+    }
+
+    function _deriveAndWriteWitnessHash(bytes32 activationTypehash, uint256 idOrIdsHash, bytes32 claimHash, uint256 memoryPointer, uint256 offset) internal pure {
         assembly ("memory-safe") {
             let m := mload(0x40)
             mstore(0, activationTypehash)
             mstore(0x20, idOrIdsHash)
             mstore(0x40, claimHash)
-            witnessHash := keccak256(0, 0x60)
+            mstore(add(memoryPointer, offset), keccak256(0, 0x60))
             mstore(0x40, m)
         }
     }
@@ -621,7 +625,9 @@ contract TheCompact is ITheCompact, ITheCompactClaims, ERC6909, Tstorish {
         uint256 nonce,
         uint256 deadline,
         bytes calldata signature
-    ) external payable returns (uint256[] memory) {
+    ) external payable returns (uint256[] memory ids) {
+        _setTstorish(_REENTRANCY_GUARD_SLOT, 1);
+
         uint256 totalTokens = permitted.length;
         bool firstUnderlyingTokenIsNative;
         assembly ("memory-safe") {
@@ -643,19 +649,88 @@ contract TheCompact is ITheCompact, ITheCompactClaims, ERC6909, Tstorish {
 
         uint256 initialId = address(0).toIdIfRegistered(scope, resetPeriod, allocator);
 
-        return _processBatchPermit2Deposits(
-            firstUnderlyingTokenIsNative,
-            recipient,
-            initialId,
-            totalTokens,
-            permitted,
-            depositor,
-            nonce,
-            deadline,
-            allocator.toPermit2DepositWitnessHash(resetPeriod, scope, recipient),
-            "CompactDeposit witness)CompactDeposit(address allocator,uint8 resetPeriod,uint8 scope,address recipient)TokenPermissions(address token,uint256 amount)",
-            signature
-        );
+        ids = new uint256[](totalTokens);
+
+        uint256 totalTokensLessInitialNative;
+        unchecked {
+            totalTokensLessInitialNative = totalTokens - firstUnderlyingTokenIsNative.asUint256();
+        }
+
+        if (firstUnderlyingTokenIsNative) {
+            _deposit(recipient, initialId, msg.value);
+            ids[0] = initialId;
+        }
+
+        uint256[] memory initialTokenBalances = _prepareIdsAndGetBalances(ids, totalTokensLessInitialNative, firstUnderlyingTokenIsNative, permitted, initialId);
+
+        uint256 m;
+        uint256 payloadSize;
+        uint256 typestringMemoryLocation;
+        assembly ("memory-safe") {
+            m := mload(0x40) // Grab the free memory pointer; memory will be left dirtied.
+
+            // NOTE: none of these arguments are sanitized; the assumption is that they have to
+            // match the signed values anyway, so *should* be fine not to sanitize them but could
+            // optionally check that there are no dirty upper bits on any of them.
+            mstore(m, PERMIT2_DEPOSIT_WITNESS_FRAGMENT_HASH)
+            calldatacopy(add(m, 0x20), 0x44, 0x80) // allocator, resetPeriod, scope, recipient
+            let witness := keccak256(m, 0xa0)
+
+            let tokenChunk := mul(totalTokensLessInitialNative, 0x40)
+            let twoTokenChunks := shl(1, tokenChunk)
+
+            let signatureLength := signature.length
+            let dataStart := add(m, 0x1c)
+
+            let permittedCalldataLocation := add(add(0x24, calldataload(0x24)), mul(firstUnderlyingTokenIsNative, 0x40))
+
+            mstore(m, _BATCH_PERMIT_WITNESS_TRANSFER_FROM_SELECTOR)
+            mstore(add(m, 0x20), 0xc0) // permitted offset
+            mstore(add(m, 0x40), add(0x140, tokenChunk)) // details offset
+            mstore(add(m, 0x60), depositor)
+            mstore(add(m, 0x80), witness)
+            mstore(add(m, 0xa0), add(0x160, twoTokenChunks)) // witness offset
+            // 0xc0 => signatureOffset
+            mstore(add(m, 0xe0), 0x60) // permitted tokens relative offset
+            mstore(add(m, 0x100), nonce)
+            mstore(add(m, 0x120), deadline)
+            mstore(add(m, 0x140), totalTokensLessInitialNative) // permitted.length
+
+            calldatacopy(add(m, 0x160), permittedCalldataLocation, tokenChunk) // permitted data
+
+            let detailsOffset := add(add(m, 0x160), tokenChunk)
+            mstore(detailsOffset, totalTokensLessInitialNative) // details.length
+
+            // details data
+            let starting := add(detailsOffset, 0x20)
+            let next := add(detailsOffset, 0x40)
+            let end := mul(totalTokensLessInitialNative, 0x40)
+            for { let i := 0 } lt(i, end) { i := add(i, 0x40) } {
+                mstore(add(starting, i), address())
+                mstore(add(next, i), calldataload(add(permittedCalldataLocation, add(0x20, i))))
+            }
+
+            typestringMemoryLocation := add(m, add(0x180, twoTokenChunks))
+
+            // TODO: strongly consider allocating memory here as the inline assembly scope
+            // is being left (it *should* be fine for now as the function between assembly
+            // blocks does not allocate any new memory).
+        }
+
+        unchecked {
+            _insertCompactDepositTypestringAt(typestringMemoryLocation);
+        }
+
+        uint256 signatureOffsetValue;
+        assembly ("memory-safe") {
+            signatureOffsetValue := add(0x220, mul(totalTokensLessInitialNative, 0x80))
+        }
+
+        _writeSignatureAndPerformPermit2Call(m, 0xc0, signatureOffsetValue, signature);
+
+        _verifyBalancesAndPerformDeposits(ids, permitted, initialTokenBalances, recipient, firstUnderlyingTokenIsNative);
+
+        _clearTstorish(_REENTRANCY_GUARD_SLOT);
     }
 
     function _insertCompactDepositTypestringAt(uint256 memoryLocation) internal pure {
@@ -716,16 +791,12 @@ contract TheCompact is ITheCompact, ITheCompactClaims, ERC6909, Tstorish {
             totalTokensLessInitialNative = totalTokens - firstUnderlyingTokenIsNative.asUint256();
         }
 
-        (, ISignatureTransfer.TokenPermissions[] memory permittedTokens, uint256[] memory initialTokenBalances) =
-            _preparePermit2ArraysAndGetBalances(ids, totalTokensLessInitialNative, firstUnderlyingTokenIsNative, permitted, initialId);
+        uint256[] memory initialTokenBalances = _prepareIdsAndGetBalances(ids, totalTokensLessInitialNative, firstUnderlyingTokenIsNative, permitted, initialId);
 
         uint256 idsHash;
         assembly ("memory-safe") {
             idsHash := keccak256(add(ids, 0x20), shl(5, totalTokens))
         }
-
-        address permit2 = address(_PERMIT2);
-        bool isPermit2Deployed = _isPermit2Deployed();
 
         bytes32 compactTypehash;
 
@@ -781,49 +852,18 @@ contract TheCompact is ITheCompact, ITheCompactClaims, ERC6909, Tstorish {
             (activationTypehash, compactTypehash) = _writeWitnessAndGetTypehashes(typestringMemoryLocation, compactCategory, witness, true);
         }
 
-        bytes32 witnessHash = _getWitnessHash(activationTypehash, idsHash, claimHash);
+        _deriveAndWriteWitnessHash(activationTypehash, idsHash, claimHash, m, 0x80);
 
+        uint256 signatureOffsetValue;
         assembly ("memory-safe") {
-            mstore(add(m, 0x80), witnessHash)
-
-            let twoTokenChunks := mul(totalTokensLessInitialNative, 0x80)
             let witnessLength := witness.length
             let totalWitnessMemoryOffset := and(add(add(0xf3, add(witnessLength, iszero(iszero(witnessLength)))), add(mul(eq(compactCategory, 1), 0x0b), mul(eq(compactCategory, 2), 0x40))), not(0x1f))
-            let signatureOffsetValue := add(add(0x180, twoTokenChunks), totalWitnessMemoryOffset)
-            mstore(add(m, 0xc0), signatureOffsetValue) // signature offset
-
-            let signatureLength := signature.length
-            let signatureMemoryOffset := add(m, add(0x20, signatureOffsetValue))
-
-            mstore(signatureMemoryOffset, signatureLength)
-            calldatacopy(add(signatureMemoryOffset, 0x20), signature.offset, signatureLength)
-
-            payloadSize := add(0x24, add(signatureOffsetValue, signatureLength))
-
-            if iszero(and(isPermit2Deployed, call(gas(), permit2, 0, add(m, 0x1c), payloadSize, 0, 0))) {
-                // bubble up if the call failed and there's data
-                // NOTE: consider evaluating remaining gas to protect against revert bombing
-                if returndatasize() {
-                    returndatacopy(0, 0, returndatasize())
-                    revert(0, returndatasize())
-                }
-
-                // revert Permit2CallFailed();
-                mstore(0, 0x7f28c61e)
-                revert(0x1c, 0x04)
-            }
+            signatureOffsetValue := add(add(0x180, mul(totalTokensLessInitialNative, 0x80)), totalWitnessMemoryOffset)
         }
 
-        // IPermit2(_CALLDATA_DEBUGGER).permitWitnessTransferFrom(
-        //     ISignatureTransfer.PermitBatchTransferFrom({ permitted: permittedTokens, nonce: nonce, deadline: deadline }),
-        //     details,
-        //     depositor,
-        //     witnessHash,
-        //     witnessTypestring,
-        //     signature
-        // );
+        _writeSignatureAndPerformPermit2Call(m, 0xc0, signatureOffsetValue, signature);
 
-        _verifyBalancesAndPerformDeposits(ids, permittedTokens, initialTokenBalances, depositor, firstUnderlyingTokenIsNative);
+        _verifyBalancesAndPerformDeposits(ids, permitted, initialTokenBalances, depositor, firstUnderlyingTokenIsNative);
 
         _register(depositor, claimHash, compactTypehash);
 
@@ -2231,48 +2271,9 @@ contract TheCompact is ITheCompact, ITheCompactClaims, ERC6909, Tstorish {
         return _processBatchClaimWithQualification.usingQualifiedBatchClaimWithWitness()(messageHash, qualificationMessageHash, claimPayload, 0x120, typehash, operation);
     }
 
-    function _processBatchPermit2Deposits(
-        bool firstUnderlyingTokenIsNative,
-        address recipient,
-        uint256 initialId,
-        uint256 totalTokens,
-        ISignatureTransfer.TokenPermissions[] calldata permitted,
-        address depositor,
-        uint256 nonce,
-        uint256 deadline,
-        bytes32 witness,
-        string memory witnessTypestring,
-        bytes calldata signature
-    ) internal returns (uint256[] memory ids) {
-        _setTstorish(_REENTRANCY_GUARD_SLOT, 1);
-
-        ids = new uint256[](totalTokens);
-
-        uint256 totalTokensLessInitialNative;
-        unchecked {
-            totalTokensLessInitialNative = totalTokens - firstUnderlyingTokenIsNative.asUint256();
-        }
-
-        if (firstUnderlyingTokenIsNative) {
-            _deposit(recipient, initialId, msg.value);
-            ids[0] = initialId;
-        }
-
-        (ISignatureTransfer.SignatureTransferDetails[] memory details, ISignatureTransfer.TokenPermissions[] memory permittedTokens, uint256[] memory initialTokenBalances) =
-            _preparePermit2ArraysAndGetBalances(ids, totalTokensLessInitialNative, firstUnderlyingTokenIsNative, permitted, initialId);
-
-        ISignatureTransfer.PermitBatchTransferFrom memory permitTransferFrom = ISignatureTransfer.PermitBatchTransferFrom({ permitted: permittedTokens, nonce: nonce, deadline: deadline });
-
-        _PERMIT2.permitWitnessTransferFrom(permitTransferFrom, details, depositor, witness, witnessTypestring, signature);
-
-        _verifyBalancesAndPerformDeposits(ids, permittedTokens, initialTokenBalances, recipient, firstUnderlyingTokenIsNative);
-
-        _clearTstorish(_REENTRANCY_GUARD_SLOT);
-    }
-
     function _verifyBalancesAndPerformDeposits(
         uint256[] memory ids,
-        ISignatureTransfer.TokenPermissions[] memory permittedTokens,
+        ISignatureTransfer.TokenPermissions[] calldata permittedTokens,
         uint256[] memory initialTokenBalances,
         address recipient,
         bool firstUnderlyingTokenIsNative
@@ -2281,9 +2282,10 @@ contract TheCompact is ITheCompact, ITheCompactClaims, ERC6909, Tstorish {
         uint256 initialBalance;
         uint256 errorBuffer;
         uint256 totalTokensLessInitialNative = initialTokenBalances.length;
+
         unchecked {
             for (uint256 i = 0; i < totalTokensLessInitialNative; ++i) {
-                tokenBalance = permittedTokens[i].token.balanceOf(address(this));
+                tokenBalance = permittedTokens[i + firstUnderlyingTokenIsNative.asUint256()].token.balanceOf(address(this));
                 initialBalance = initialTokenBalances[i];
                 errorBuffer |= (initialBalance >= tokenBalance).asUint256();
 
@@ -2339,18 +2341,14 @@ contract TheCompact is ITheCompact, ITheCompactClaims, ERC6909, Tstorish {
     }
 
     // NOTE: all tokens must be supplied in ascending order and cannot be duplicated.
-    function _preparePermit2ArraysAndGetBalances(
+    function _prepareIdsAndGetBalances(
         uint256[] memory ids,
         uint256 totalTokensLessInitialNative,
         bool firstUnderlyingTokenIsNative,
         ISignatureTransfer.TokenPermissions[] calldata permitted,
         uint256 id
-    ) internal view returns (ISignatureTransfer.SignatureTransferDetails[] memory details, ISignatureTransfer.TokenPermissions[] memory permittedTokens, uint256[] memory tokenBalances) {
+    ) internal view returns (uint256[] memory tokenBalances) {
         unchecked {
-            details = new ISignatureTransfer.SignatureTransferDetails[](totalTokensLessInitialNative);
-
-            permittedTokens = new ISignatureTransfer.TokenPermissions[](totalTokensLessInitialNative);
-
             tokenBalances = new uint256[](totalTokensLessInitialNative);
 
             address token;
@@ -2358,10 +2356,7 @@ contract TheCompact is ITheCompact, ITheCompactClaims, ERC6909, Tstorish {
             uint256 errorBuffer;
 
             for (uint256 i = 0; i < totalTokensLessInitialNative; ++i) {
-                ISignatureTransfer.TokenPermissions calldata permittedToken = permitted[i + firstUnderlyingTokenIsNative.asUint256()];
-                permittedTokens[i] = permittedToken;
-                details[i] = ISignatureTransfer.SignatureTransferDetails({ to: address(this), requestedAmount: permittedToken.amount });
-                token = permittedToken.token;
+                token = permitted[i + firstUnderlyingTokenIsNative.asUint256()].token;
                 candidateId = id.withReplacedToken(token);
                 errorBuffer |= (candidateId <= id).asUint256();
                 id = candidateId;
