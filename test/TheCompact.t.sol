@@ -495,7 +495,7 @@ contract TheCompactTest is Test {
         ISignatureTransfer.TokenPermissions[] memory tokenPermissions = new ISignatureTransfer.TokenPermissions[](1);
         tokenPermissions[0] = ISignatureTransfer.TokenPermissions({ token: address(token), amount: amount });
 
-        uint256[] memory ids = theCompact.deposit(swapper, tokenPermissions, allocator, resetPeriod, scope, recipient, nonce, deadline, signature);
+        uint256[] memory ids = theCompact.deposit(swapper, tokenPermissions, nonce, deadline, allocator, resetPeriod, scope, recipient, signature);
         vm.snapshotGasLastCall("depositBatchViaPermit2SingleERC20");
 
         assertEq(ids.length, 1);
@@ -553,7 +553,7 @@ contract TheCompactTest is Test {
         tokenPermissions[0] = ISignatureTransfer.TokenPermissions({ token: address(0), amount: amount });
         tokenPermissions[1] = ISignatureTransfer.TokenPermissions({ token: address(token), amount: amount });
 
-        uint256[] memory ids = theCompact.deposit{ value: amount }(swapper, tokenPermissions, allocator, resetPeriod, scope, recipient, nonce, deadline, signature);
+        uint256[] memory ids = theCompact.deposit{ value: amount }(swapper, tokenPermissions, nonce, deadline, allocator, resetPeriod, scope, recipient, signature);
         vm.snapshotGasLastCall("depositBatchViaPermit2NativeAndERC20");
 
         assertEq(ids.length, 2);
@@ -1820,7 +1820,7 @@ contract TheCompactTest is Test {
         bytes memory signature = abi.encodePacked(r, vs);
 
         uint256[] memory returnedIds =
-            theCompact.depositAndRegister{ value: amount }(swapper, tokenPermissions, allocator, resetPeriod, scope, nonce, deadline, claimHash, CompactCategory.BatchCompact, "", signature);
+            theCompact.depositAndRegister{ value: amount }(swapper, tokenPermissions, nonce, deadline, allocator, resetPeriod, scope, claimHash, CompactCategory.BatchCompact, "", signature);
         vm.snapshotGasLastCall("batchDepositAndRegisterViaPermit2");
         assertEq(returnedIds.length, 3);
         assertEq(returnedIds[0], id);
@@ -1953,7 +1953,7 @@ contract TheCompactTest is Test {
         bytes memory signature = abi.encodePacked(r, vs);
 
         uint256[] memory returnedIds = theCompact.depositAndRegister{ value: amount }(
-            swapper, tokenPermissions, allocator, resetPeriod, scope, nonce, deadline, claimHash, CompactCategory.BatchCompact, witnessTypestring, signature
+            swapper, tokenPermissions, nonce, deadline, allocator, resetPeriod, scope, claimHash, CompactCategory.BatchCompact, witnessTypestring, signature
         );
         vm.snapshotGasLastCall("batchDepositAndRegisterWithWitnessViaPermit2");
         assertEq(returnedIds.length, 3);
