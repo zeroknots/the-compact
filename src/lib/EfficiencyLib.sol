@@ -88,4 +88,10 @@ library EfficiencyLib {
             b := or(iszero(calldatasize()), a)
         }
     }
+
+    function asStubborn(bool a) internal pure returns (bool b) {
+        assembly ("memory-safe") {
+            b := or(iszero(calldatasize()), a)
+        }
+    }
 }
