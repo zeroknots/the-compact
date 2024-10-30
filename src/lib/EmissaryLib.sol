@@ -70,7 +70,7 @@ abstract contract EmissaryLib {
     }
 
     function hasConsumedEmissaryAssignmentNonce(uint256 nonce, address sponsor) external view returns (bool consumed) {
-        consumed = sponsor.hasConsumedEmissaryAssignmentNonce(nonce);
+        consumed = nonce.isConsumedBySponsor(sponsor);
     }
 
     function _assignEmissary(address sponsor, address emissary, bool assigned) internal returns (bool) {
