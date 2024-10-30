@@ -208,13 +208,12 @@ contract TheCompact is ITheCompact, ITheCompactClaims, ERC6909, Tstorish {
     using FunctionCastLib for function(bytes32, bytes32, QualifiedClaim calldata, address) internal view;
     using FunctionCastLib for function(QualifiedClaim calldata) internal returns (bytes32, address);
     using FunctionCastLib for function(QualifiedClaimWithWitness calldata) internal returns (bytes32, address);
-
     using FunctionCastLib for function(bytes32, uint256, uint256, bytes32, function(address, address, uint256, uint256) internal returns (bool)) internal returns (bool);
     using FunctionCastLib for function(bytes32, uint256, uint256, bytes32, bytes32, function(address, address, uint256, uint256) internal returns (bool)) internal returns (bool);
     using FunctionCastLib for function(bytes32, bytes32, uint256, uint256, bytes32, function(address, address, uint256, uint256) internal returns (bool)) internal returns (bool);
     using FunctionCastLib for function(bytes32, bytes32, uint256, uint256, bytes32, bytes32, function(address, address, uint256, uint256) internal returns (bool)) internal returns (bool);
 
-    IPermit2 private constant _PERMIT2 = IPermit2(0x000000000022D473030F116dDEE9F6B43aC78BA3);
+    address private constant _PERMIT2 = 0x000000000022D473030F116dDEE9F6B43aC78BA3;
 
     uint256 private constant _ERC6909_MASTER_SLOT_SEED = 0xedcaa89a82293940;
 
@@ -262,21 +261,21 @@ contract TheCompact is ITheCompact, ITheCompactClaims, ERC6909, Tstorish {
         _register(msg.sender, claimHash, typehash);
     }
 
-    function deposit(address token, address allocator, uint256 amount) external returns (uint256 id) {
-        _setTstorish(_REENTRANCY_GUARD_SLOT, 1);
-        id = token.excludingNative().toIdIfRegistered(Scope.Multichain, ResetPeriod.TenMinutes, allocator);
-
-        _transferAndDeposit(token, msg.sender, id, amount);
-        _clearTstorish(_REENTRANCY_GUARD_SLOT);
+    function deposit(address token, address allocator, uint256 amount) external returns (uint256) {
+        return _performBasicERC20Deposit(token, allocator, amount, msg.sender);
     }
 
     function depositAndRegister(address token, address allocator, uint256 amount, bytes32 claimHash, bytes32 typehash) external returns (uint256 id) {
+        id = _performBasicERC20Deposit(token, allocator, amount, msg.sender);
+
+        _register(msg.sender, claimHash, typehash);
+    }
+
+    function _performBasicERC20Deposit(address token, address allocator, uint256 amount, address recipient) internal returns (uint256 id) {
         _setTstorish(_REENTRANCY_GUARD_SLOT, 1);
         id = token.excludingNative().toIdIfRegistered(Scope.Multichain, ResetPeriod.TenMinutes, allocator);
 
         _transferAndDeposit(token, msg.sender, id, amount);
-
-        _register(msg.sender, claimHash, typehash);
         _clearTstorish(_REENTRANCY_GUARD_SLOT);
     }
 
@@ -315,170 +314,36 @@ contract TheCompact is ITheCompact, ITheCompactClaims, ERC6909, Tstorish {
         Scope scope,
         address recipient,
         bytes calldata signature
-    ) external returns (uint256 id) {
-        id = token.excludingNative().toIdIfRegistered(scope, resetPeriod, allocator);
+    ) external returns (uint256) {
+        bytes32 witness = _deriveCompactDepositWitnessHash(0xa4);
 
-        _setTstorish(_REENTRANCY_GUARD_SLOT, 1);
+        (uint256 id, uint256 initialBalance, uint256 m, uint256 typestringMemoryLocation) = _setReentrancyLockAndStartPreparingPermit2Call(token, allocator, resetPeriod, scope);
 
-        uint256 initialBalance = token.balanceOf(address(this));
+        _insertCompactDepositTypestringAt(typestringMemoryLocation);
 
-        uint256 m;
         assembly ("memory-safe") {
-            m := mload(0x40) // Grab the free memory pointer; memory will be left dirtied.
+            mstore(add(m, 0x100), witness)
+        }
+
+        _writeSignatureAndPerformPermit2Call(m, uint256(0x140).asStubborn(), uint256(0x200).asStubborn(), signature);
+
+        _checkBalanceAndDeposit(token, recipient, id, initialBalance);
+
+        _clearTstorish(_REENTRANCY_GUARD_SLOT);
+
+        return id;
+    }
+
+    function _deriveCompactDepositWitnessHash(uint256 calldataOffset) internal pure returns (bytes32 witnessHash) {
+        assembly ("memory-safe") {
+            let m := mload(0x40) // Grab the free memory pointer; memory will be left dirtied.
 
             // NOTE: none of these arguments are sanitized; the assumption is that they have to
             // match the signed values anyway, so *should* be fine not to sanitize them but could
             // optionally check that there are no dirty upper bits on any of them.
             mstore(m, PERMIT2_DEPOSIT_WITNESS_FRAGMENT_HASH)
-            calldatacopy(add(m, 0x20), 0xa4, 0x80) // allocator, resetPeriod, scope, recipient
-            let witness := keccak256(m, 0xa0)
-
-            mstore(m, _PERMIT_WITNESS_TRANSFER_FROM_SELECTOR)
-            calldatacopy(add(m, 0x20), 0x04, 0x80) // token, amount, nonce, deadline
-            mstore(add(m, 0xa0), address())
-            mstore(add(m, 0xc0), calldataload(0x24)) // amount
-            mstore(add(m, 0xe0), calldataload(0x84)) // depositor
-            mstore(add(m, 0x100), witness)
-            mstore(add(m, 0x120), 0x140)
-
-            // TODO: strongly consider allocating memory here as the inline assembly scope
-            // is being left (it *should* be fine for now as the function between assembly
-            // blocks does not allocate any new memory).
-        }
-
-        unchecked {
-            _insertCompactDepositTypestringAt(m + 0x160);
-        }
-
-        _writeSignatureAndPerformPermit2Call(m, uint256(0x140).asStubborn(), uint256(0x200).asStubborn(), signature);
-
-        uint256 tokenBalance = token.balanceOf(address(this));
-
-        assembly ("memory-safe") {
-            if iszero(lt(initialBalance, tokenBalance)) {
-                // revert InvalidDepositBalanceChange()
-                mstore(0, 0x426d8dcf)
-                revert(0x1c, 0x04)
-            }
-        }
-
-        unchecked {
-            _deposit(recipient, id, tokenBalance - initialBalance);
-        }
-
-        _clearTstorish(_REENTRANCY_GUARD_SLOT);
-    }
-
-    function _writeWitnessAndGetTypehashes(uint256 memoryLocation, CompactCategory category, string calldata witness, bool usingBatch)
-        internal
-        pure
-        returns (bytes32 activationTypehash, bytes32 compactTypehash)
-    {
-        assembly ("memory-safe") {
-            function writeWitnessAndGetTypehashes(memLocation, c, witnessOffset, witnessLength, usesBatch) -> derivedActivationTypehash, derivedCompactTypehash {
-                let memoryOffset := add(memLocation, 0x20)
-
-                let activationStart
-                let categorySpecificStart
-                if iszero(usesBatch) {
-                    // 1a. prepare initial Activation witness string at offset
-                    mstore(add(memoryOffset, 0x09), PERMIT2_DEPOSIT_WITH_ACTIVATION_TYPESTRING_FRAGMENT_TWO)
-                    mstore(memoryOffset, PERMIT2_DEPOSIT_WITH_ACTIVATION_TYPESTRING_FRAGMENT_ONE)
-
-                    activationStart := add(memoryOffset, 0x13)
-                    categorySpecificStart := add(memoryOffset, 0x29)
-                }
-
-                if iszero(activationStart) {
-                    // 1b. prepare initial BatchActivation witness string at offset
-                    mstore(add(memoryOffset, 0x16), PERMIT2_BATCH_DEPOSIT_WITH_ACTIVATION_TYPESTRING_FRAGMENT_TWO)
-                    mstore(memoryOffset, PERMIT2_BATCH_DEPOSIT_WITH_ACTIVATION_TYPESTRING_FRAGMENT_ONE)
-
-                    activationStart := add(memoryOffset, 0x18)
-                    categorySpecificStart := add(memoryOffset, 0x36)
-                }
-
-                // 2. prepare activation witness string at offset
-                let categorySpecificEnd
-                if iszero(c) {
-                    mstore(categorySpecificStart, PERMIT2_ACTIVATION_COMPACT_TYPESTRING_FRAGMENT_ONE)
-                    mstore(add(categorySpecificStart, 0x20), PERMIT2_ACTIVATION_COMPACT_TYPESTRING_FRAGMENT_TWO)
-                    mstore(add(categorySpecificStart, 0x50), PERMIT2_ACTIVATION_COMPACT_TYPESTRING_FRAGMENT_FOUR)
-                    mstore(add(categorySpecificStart, 0x40), PERMIT2_ACTIVATION_COMPACT_TYPESTRING_FRAGMENT_THREE)
-                    categorySpecificEnd := add(categorySpecificStart, 0x70)
-                    categorySpecificStart := add(categorySpecificStart, 0x10)
-                }
-
-                if iszero(sub(c, 1)) {
-                    mstore(categorySpecificStart, PERMIT2_ACTIVATION_BATCH_COMPACT_TYPESTRING_FRAGMENT_ONE)
-                    mstore(add(categorySpecificStart, 0x20), PERMIT2_ACTIVATION_BATCH_COMPACT_TYPESTRING_FRAGMENT_TWO)
-                    mstore(add(categorySpecificStart, 0x5b), PERMIT2_ACTIVATION_BATCH_COMPACT_TYPESTRING_FRAGMENT_FOUR)
-                    mstore(add(categorySpecificStart, 0x40), PERMIT2_ACTIVATION_BATCH_COMPACT_TYPESTRING_FRAGMENT_THREE)
-                    categorySpecificEnd := add(categorySpecificStart, 0x7b)
-                    categorySpecificStart := add(categorySpecificStart, 0x15)
-                }
-
-                if iszero(categorySpecificEnd) {
-                    mstore(categorySpecificStart, PERMIT2_ACTIVATION_MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_ONE)
-                    mstore(add(categorySpecificStart, 0x20), PERMIT2_ACTIVATION_MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_TWO)
-                    mstore(add(categorySpecificStart, 0x40), PERMIT2_ACTIVATION_MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_THREE)
-                    mstore(add(categorySpecificStart, 0x60), PERMIT2_ACTIVATION_MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_FOUR)
-                    mstore(add(categorySpecificStart, 0x70), PERMIT2_ACTIVATION_MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_SIX)
-                    mstore(add(categorySpecificStart, 0x60), PERMIT2_ACTIVATION_MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_FIVE)
-                    categorySpecificEnd := add(categorySpecificStart, 0x90)
-                    categorySpecificStart := add(categorySpecificStart, 0x1a)
-                }
-
-                // 3. handle no-witness cases
-                if iszero(witnessLength) {
-                    let indexWords := shl(5, c)
-
-                    mstore(add(categorySpecificEnd, 0x0e), TOKEN_PERMISSIONS_TYPESTRING_FRAGMENT_TWO)
-                    mstore(sub(categorySpecificEnd, 1), TOKEN_PERMISSIONS_TYPESTRING_FRAGMENT_ONE)
-                    mstore(memLocation, sub(add(categorySpecificEnd, 0x2e), memoryOffset))
-
-                    let m := mload(0x40)
-
-                    if iszero(usesBatch) {
-                        mstore(0, COMPACT_ACTIVATION_TYPEHASH)
-                        mstore(0x20, BATCH_COMPACT_ACTIVATION_TYPEHASH)
-                        mstore(0x40, MULTICHAIN_COMPACT_ACTIVATION_TYPEHASH)
-                        derivedActivationTypehash := mload(indexWords)
-                    }
-
-                    if iszero(derivedActivationTypehash) {
-                        mstore(0, COMPACT_BATCH_ACTIVATION_TYPEHASH)
-                        mstore(0x20, BATCH_COMPACT_BATCH_ACTIVATION_TYPEHASH)
-                        mstore(0x40, MULTICHAIN_COMPACT_BATCH_ACTIVATION_TYPEHASH)
-                        derivedActivationTypehash := mload(indexWords)
-                    }
-
-                    mstore(0, COMPACT_TYPEHASH)
-                    mstore(0x20, BATCH_COMPACT_TYPEHASH)
-                    mstore(0x40, MULTICHAIN_COMPACT_TYPEHASH)
-                    derivedCompactTypehash := mload(indexWords)
-
-                    mstore(0x40, m)
-                    leave
-                }
-
-                // 4. insert the supplied compact witness
-                calldatacopy(categorySpecificEnd, witnessOffset, witnessLength)
-
-                // 5. insert tokenPermissions
-                let tokenPermissionsFragmentStart := add(categorySpecificEnd, witnessLength)
-                mstore(add(tokenPermissionsFragmentStart, 0x0e), TOKEN_PERMISSIONS_TYPESTRING_FRAGMENT_TWO)
-                mstore(sub(tokenPermissionsFragmentStart, 1), TOKEN_PERMISSIONS_TYPESTRING_FRAGMENT_ONE)
-                mstore(memLocation, sub(add(tokenPermissionsFragmentStart, 0x2e), memoryOffset))
-
-                // 6. derive the activation typehash
-                derivedActivationTypehash := keccak256(activationStart, sub(tokenPermissionsFragmentStart, activationStart))
-
-                // 7. derive the compact typehash
-                derivedCompactTypehash := keccak256(categorySpecificStart, sub(tokenPermissionsFragmentStart, categorySpecificStart))
-            }
-
-            activationTypehash, compactTypehash := writeWitnessAndGetTypehashes(memoryLocation, category, witness.offset, witness.length, usingBatch)
+            calldatacopy(add(m, 0x20), calldataOffset, 0x80) // allocator, resetPeriod, scope, recipient
+            witnessHash := keccak256(m, 0xa0)
         }
     }
 
@@ -495,35 +360,10 @@ contract TheCompact is ITheCompact, ITheCompactClaims, ERC6909, Tstorish {
         CompactCategory compactCategory,
         string calldata witness,
         bytes calldata signature
-    ) external returns (uint256 id) {
-        _setTstorish(_REENTRANCY_GUARD_SLOT, 1);
-        id = token.excludingNative().toIdIfRegistered(scope, resetPeriod, allocator);
+    ) external returns (uint256) {
+        (uint256 id, uint256 initialBalance, uint256 m, uint256 typestringMemoryLocation) = _setReentrancyLockAndStartPreparingPermit2Call(token, allocator, resetPeriod, scope);
 
-        uint256 initialBalance = token.balanceOf(address(this));
-
-        bytes32 compactTypehash;
-
-        uint256 m;
-
-        assembly ("memory-safe") {
-            m := mload(0x40) // Grab the free memory pointer; memory will be left dirtied.
-
-            mstore(m, _PERMIT_WITNESS_TRANSFER_FROM_SELECTOR)
-            calldatacopy(add(m, 0x20), 0x04, 0x80) // token, amount, nonce, deadline
-            mstore(add(m, 0xa0), address())
-            mstore(add(m, 0xc0), calldataload(0x24)) // amount
-            mstore(add(m, 0xe0), calldataload(0x84)) // depositor
-            mstore(add(m, 0x120), 0x140)
-
-            // TODO: strongly consider allocating memory here as the inline assembly scope
-            // is being left (it *should* be fine for now as the function between assembly
-            // blocks does not allocate any new memory).
-        }
-
-        bytes32 activationTypehash;
-        unchecked {
-            (activationTypehash, compactTypehash) = _writeWitnessAndGetTypehashes(m + 0x160, compactCategory, witness, false);
-        }
+        (bytes32 activationTypehash, bytes32 compactTypehash) = _writeWitnessAndGetTypehashes(typestringMemoryLocation, compactCategory, witness, bool(false).asStubborn());
 
         _deriveAndWriteWitnessHash(activationTypehash, id, claimHash, m, 0x100);
 
@@ -534,30 +374,17 @@ contract TheCompact is ITheCompact, ITheCompactClaims, ERC6909, Tstorish {
 
         _writeSignatureAndPerformPermit2Call(m, uint256(0x140).asStubborn(), signatureOffsetValue, signature);
 
-        uint256 tokenBalance = token.balanceOf(address(this));
-
-        assembly ("memory-safe") {
-            if iszero(lt(initialBalance, tokenBalance)) {
-                // revert InvalidDepositBalanceChange()
-                mstore(0, 0x426d8dcf)
-                revert(0x1c, 0x04)
-            }
-        }
-
-        unchecked {
-            _deposit(depositor, id, tokenBalance - initialBalance);
-        }
+        _checkBalanceAndDeposit(token, depositor, id, initialBalance);
 
         _register(depositor, claimHash, compactTypehash);
 
         _clearTstorish(_REENTRANCY_GUARD_SLOT);
+
+        return id;
     }
 
     function _writeSignatureAndPerformPermit2Call(uint256 m, uint256 signatureOffsetLocation, uint256 signatureOffsetValue, bytes calldata signature) internal {
-        address permit2 = address(_PERMIT2);
         bool isPermit2Deployed = _isPermit2Deployed();
-
-        // XYZ
         assembly ("memory-safe") {
             mstore(add(m, signatureOffsetLocation), signatureOffsetValue) // signature offset
 
@@ -567,7 +394,7 @@ contract TheCompact is ITheCompact, ITheCompactClaims, ERC6909, Tstorish {
             mstore(signatureMemoryOffset, signatureLength)
             calldatacopy(add(signatureMemoryOffset, 0x20), signature.offset, signatureLength)
 
-            if iszero(and(isPermit2Deployed, call(gas(), permit2, 0, add(m, 0x1c), add(0x24, add(signatureOffsetValue, signatureLength)), 0, 0))) {
+            if iszero(and(isPermit2Deployed, call(gas(), _PERMIT2, 0, add(m, 0x1c), add(0x24, add(signatureOffsetValue, signatureLength)), 0, 0))) {
                 // bubble up if the call failed and there's data
                 // NOTE: consider evaluating remaining gas to protect against revert bombing
                 if returndatasize() {
@@ -609,17 +436,7 @@ contract TheCompact is ITheCompact, ITheCompactClaims, ERC6909, Tstorish {
         uint256[] memory initialTokenBalances;
         (totalTokensLessInitialNative, firstUnderlyingTokenIsNative, ids, initialTokenBalances) = _preprocessAndPerformInitialNativeDeposit(permitted, allocator, resetPeriod, scope, recipient);
 
-        bytes32 witness;
-        assembly ("memory-safe") {
-            let m := mload(0x40) // Grab the free memory pointer; memory will be left dirtied.
-
-            // NOTE: none of these arguments are sanitized; the assumption is that they have to
-            // match the signed values anyway, so *should* be fine not to sanitize them but could
-            // optionally check that there are no dirty upper bits on any of them.
-            mstore(m, PERMIT2_DEPOSIT_WITNESS_FRAGMENT_HASH)
-            calldatacopy(add(m, 0x20), 0x84, 0x80) // allocator, resetPeriod, scope, recipient
-            witness := keccak256(m, 0xa0)
-        }
+        bytes32 witness = _deriveCompactDepositWitnessHash(0x84);
 
         (uint256 m, uint256 typestringMemoryLocation) = _beginPreparingBatchDepositPermit2Calldata(totalTokensLessInitialNative, firstUnderlyingTokenIsNative);
 
@@ -755,7 +572,7 @@ contract TheCompact is ITheCompact, ITheCompactClaims, ERC6909, Tstorish {
 
         (uint256 m, uint256 typestringMemoryLocation) = _beginPreparingBatchDepositPermit2Calldata(totalTokensLessInitialNative, firstUnderlyingTokenIsNative);
 
-        (bytes32 activationTypehash, bytes32 compactTypehash) = _writeWitnessAndGetTypehashes(typestringMemoryLocation, compactCategory, witness, true);
+        (bytes32 activationTypehash, bytes32 compactTypehash) = _writeWitnessAndGetTypehashes(typestringMemoryLocation, compactCategory, witness, bool(true).asStubborn());
 
         _deriveAndWriteWitnessHash(activationTypehash, idsHash, claimHash, m, 0x80);
 
@@ -2313,6 +2130,32 @@ contract TheCompact is ITheCompact, ITheCompactClaims, ERC6909, Tstorish {
         }
     }
 
+    function _setReentrancyLockAndStartPreparingPermit2Call(address token, address allocator, ResetPeriod resetPeriod, Scope scope)
+        internal
+        returns (uint256 id, uint256 initialBalance, uint256 m, uint256 typestringMemoryLocation)
+    {
+        _setTstorish(_REENTRANCY_GUARD_SLOT, 1);
+        id = token.excludingNative().toIdIfRegistered(scope, resetPeriod, allocator);
+
+        initialBalance = token.balanceOf(address(this));
+
+        assembly ("memory-safe") {
+            m := mload(0x40) // Grab the free memory pointer; memory will be left dirtied.
+
+            mstore(m, _PERMIT_WITNESS_TRANSFER_FROM_SELECTOR)
+            calldatacopy(add(m, 0x20), 0x04, 0x80) // token, amount, nonce, deadline
+            mstore(add(m, 0xa0), address())
+            mstore(add(m, 0xc0), calldataload(0x24)) // amount
+            mstore(add(m, 0xe0), calldataload(0x84)) // depositor
+            mstore(add(m, 0x120), 0x140)
+            typestringMemoryLocation := add(m, 0x160)
+
+            // TODO: strongly consider allocating memory here as the inline assembly scope
+            // is being left (it *should* be fine for now as the function between assembly
+            // blocks does not allocate any new memory).
+        }
+    }
+
     /// @dev Moves token `id` from `from` to `to` without checking
     //  allowances or _beforeTokenTransfer / _afterTokenTransfer hooks.
     function _release(address from, address to, uint256 id, uint256 amount) internal returns (bool) {
@@ -2362,6 +2205,12 @@ contract TheCompact is ITheCompact, ITheCompactClaims, ERC6909, Tstorish {
 
         token.safeTransferFrom(msg.sender, address(this), amount);
 
+        _checkBalanceAndDeposit(token, to, id, initialBalance);
+    }
+
+    /// @dev Retrieves a token balance, compares against `initialBalance`, and mints the resulting balance
+    /// change of `id` to `to`. Emits a {Transfer} event.
+    function _checkBalanceAndDeposit(address token, address to, uint256 id, uint256 initialBalance) internal {
         uint256 tokenBalance = token.balanceOf(address(this));
 
         assembly ("memory-safe") {
@@ -2493,9 +2342,121 @@ contract TheCompact is ITheCompact, ITheCompactClaims, ERC6909, Tstorish {
     }
 
     function _checkPermit2Deployment() internal view returns (bool permit2Deployed) {
-        address permit2 = address(_PERMIT2);
         assembly ("memory-safe") {
-            permit2Deployed := iszero(iszero(extcodesize(permit2)))
+            permit2Deployed := iszero(iszero(extcodesize(_PERMIT2)))
+        }
+    }
+
+    function _writeWitnessAndGetTypehashes(uint256 memoryLocation, CompactCategory category, string calldata witness, bool usingBatch)
+        internal
+        pure
+        returns (bytes32 activationTypehash, bytes32 compactTypehash)
+    {
+        assembly ("memory-safe") {
+            function writeWitnessAndGetTypehashes(memLocation, c, witnessOffset, witnessLength, usesBatch) -> derivedActivationTypehash, derivedCompactTypehash {
+                let memoryOffset := add(memLocation, 0x20)
+
+                let activationStart
+                let categorySpecificStart
+                if iszero(usesBatch) {
+                    // 1a. prepare initial Activation witness string at offset
+                    mstore(add(memoryOffset, 0x09), PERMIT2_DEPOSIT_WITH_ACTIVATION_TYPESTRING_FRAGMENT_TWO)
+                    mstore(memoryOffset, PERMIT2_DEPOSIT_WITH_ACTIVATION_TYPESTRING_FRAGMENT_ONE)
+
+                    activationStart := add(memoryOffset, 0x13)
+                    categorySpecificStart := add(memoryOffset, 0x29)
+                }
+
+                if iszero(activationStart) {
+                    // 1b. prepare initial BatchActivation witness string at offset
+                    mstore(add(memoryOffset, 0x16), PERMIT2_BATCH_DEPOSIT_WITH_ACTIVATION_TYPESTRING_FRAGMENT_TWO)
+                    mstore(memoryOffset, PERMIT2_BATCH_DEPOSIT_WITH_ACTIVATION_TYPESTRING_FRAGMENT_ONE)
+
+                    activationStart := add(memoryOffset, 0x18)
+                    categorySpecificStart := add(memoryOffset, 0x36)
+                }
+
+                // 2. prepare activation witness string at offset
+                let categorySpecificEnd
+                if iszero(c) {
+                    mstore(categorySpecificStart, PERMIT2_ACTIVATION_COMPACT_TYPESTRING_FRAGMENT_ONE)
+                    mstore(add(categorySpecificStart, 0x20), PERMIT2_ACTIVATION_COMPACT_TYPESTRING_FRAGMENT_TWO)
+                    mstore(add(categorySpecificStart, 0x50), PERMIT2_ACTIVATION_COMPACT_TYPESTRING_FRAGMENT_FOUR)
+                    mstore(add(categorySpecificStart, 0x40), PERMIT2_ACTIVATION_COMPACT_TYPESTRING_FRAGMENT_THREE)
+                    categorySpecificEnd := add(categorySpecificStart, 0x70)
+                    categorySpecificStart := add(categorySpecificStart, 0x10)
+                }
+
+                if iszero(sub(c, 1)) {
+                    mstore(categorySpecificStart, PERMIT2_ACTIVATION_BATCH_COMPACT_TYPESTRING_FRAGMENT_ONE)
+                    mstore(add(categorySpecificStart, 0x20), PERMIT2_ACTIVATION_BATCH_COMPACT_TYPESTRING_FRAGMENT_TWO)
+                    mstore(add(categorySpecificStart, 0x5b), PERMIT2_ACTIVATION_BATCH_COMPACT_TYPESTRING_FRAGMENT_FOUR)
+                    mstore(add(categorySpecificStart, 0x40), PERMIT2_ACTIVATION_BATCH_COMPACT_TYPESTRING_FRAGMENT_THREE)
+                    categorySpecificEnd := add(categorySpecificStart, 0x7b)
+                    categorySpecificStart := add(categorySpecificStart, 0x15)
+                }
+
+                if iszero(categorySpecificEnd) {
+                    mstore(categorySpecificStart, PERMIT2_ACTIVATION_MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_ONE)
+                    mstore(add(categorySpecificStart, 0x20), PERMIT2_ACTIVATION_MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_TWO)
+                    mstore(add(categorySpecificStart, 0x40), PERMIT2_ACTIVATION_MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_THREE)
+                    mstore(add(categorySpecificStart, 0x60), PERMIT2_ACTIVATION_MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_FOUR)
+                    mstore(add(categorySpecificStart, 0x70), PERMIT2_ACTIVATION_MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_SIX)
+                    mstore(add(categorySpecificStart, 0x60), PERMIT2_ACTIVATION_MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_FIVE)
+                    categorySpecificEnd := add(categorySpecificStart, 0x90)
+                    categorySpecificStart := add(categorySpecificStart, 0x1a)
+                }
+
+                // 3. handle no-witness cases
+                if iszero(witnessLength) {
+                    let indexWords := shl(5, c)
+
+                    mstore(add(categorySpecificEnd, 0x0e), TOKEN_PERMISSIONS_TYPESTRING_FRAGMENT_TWO)
+                    mstore(sub(categorySpecificEnd, 1), TOKEN_PERMISSIONS_TYPESTRING_FRAGMENT_ONE)
+                    mstore(memLocation, sub(add(categorySpecificEnd, 0x2e), memoryOffset))
+
+                    let m := mload(0x40)
+
+                    if iszero(usesBatch) {
+                        mstore(0, COMPACT_ACTIVATION_TYPEHASH)
+                        mstore(0x20, BATCH_COMPACT_ACTIVATION_TYPEHASH)
+                        mstore(0x40, MULTICHAIN_COMPACT_ACTIVATION_TYPEHASH)
+                        derivedActivationTypehash := mload(indexWords)
+                    }
+
+                    if iszero(derivedActivationTypehash) {
+                        mstore(0, COMPACT_BATCH_ACTIVATION_TYPEHASH)
+                        mstore(0x20, BATCH_COMPACT_BATCH_ACTIVATION_TYPEHASH)
+                        mstore(0x40, MULTICHAIN_COMPACT_BATCH_ACTIVATION_TYPEHASH)
+                        derivedActivationTypehash := mload(indexWords)
+                    }
+
+                    mstore(0, COMPACT_TYPEHASH)
+                    mstore(0x20, BATCH_COMPACT_TYPEHASH)
+                    mstore(0x40, MULTICHAIN_COMPACT_TYPEHASH)
+                    derivedCompactTypehash := mload(indexWords)
+
+                    mstore(0x40, m)
+                    leave
+                }
+
+                // 4. insert the supplied compact witness
+                calldatacopy(categorySpecificEnd, witnessOffset, witnessLength)
+
+                // 5. insert tokenPermissions
+                let tokenPermissionsFragmentStart := add(categorySpecificEnd, witnessLength)
+                mstore(add(tokenPermissionsFragmentStart, 0x0e), TOKEN_PERMISSIONS_TYPESTRING_FRAGMENT_TWO)
+                mstore(sub(tokenPermissionsFragmentStart, 1), TOKEN_PERMISSIONS_TYPESTRING_FRAGMENT_ONE)
+                mstore(memLocation, sub(add(tokenPermissionsFragmentStart, 0x2e), memoryOffset))
+
+                // 6. derive the activation typehash
+                derivedActivationTypehash := keccak256(activationStart, sub(tokenPermissionsFragmentStart, activationStart))
+
+                // 7. derive the compact typehash
+                derivedCompactTypehash := keccak256(categorySpecificStart, sub(tokenPermissionsFragmentStart, categorySpecificStart))
+            }
+
+            activationTypehash, compactTypehash := writeWitnessAndGetTypehashes(memoryLocation, category, witness.offset, witness.length, usingBatch)
         }
     }
 }
