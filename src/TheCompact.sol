@@ -3,35 +3,25 @@ pragma solidity ^0.8.27;
 
 import { ITheCompact } from "./interfaces/ITheCompact.sol";
 import { ITheCompactClaims } from "./interfaces/ITheCompactClaims.sol";
+
+import { BatchTransfer, SplitBatchTransfer } from "./types/BatchClaims.sol";
+import { BasicTransfer, SplitTransfer } from "./types/Claims.sol";
 import { CompactCategory } from "./types/CompactCategory.sol";
 import { Lock } from "./types/Lock.sol";
 import { Scope } from "./types/Scope.sol";
 import { ResetPeriod } from "./types/ResetPeriod.sol";
 import { ForcedWithdrawalStatus } from "./types/ForcedWithdrawalStatus.sol";
-import { ConsumerLib } from "./lib/ConsumerLib.sol";
-import { IdLib } from "./lib/IdLib.sol";
-import { EfficiencyLib } from "./lib/EfficiencyLib.sol";
-import { HashLib } from "./lib/HashLib.sol";
-import { ValidityLib } from "./lib/ValidityLib.sol";
-import { Extsload } from "./lib/Extsload.sol";
-import { ERC6909 } from "solady/tokens/ERC6909.sol";
-import { FixedPointMathLib } from "solady/utils/FixedPointMathLib.sol";
-import { SafeTransferLib } from "solady/utils/SafeTransferLib.sol";
-import { IPermit2 } from "permit2/src/interfaces/IPermit2.sol";
-import { Tstorish } from "tstorish/Tstorish.sol";
-import { ISignatureTransfer } from "permit2/src/interfaces/ISignatureTransfer.sol";
-import { BasicTransfer, SplitTransfer } from "./types/Claims.sol";
-
-import { BatchTransfer, SplitBatchTransfer } from "./types/BatchClaims.sol";
-
-import { COMPACT_TYPEHASH } from "./types/EIP712Types.sol";
-
-import { SplitComponent, TransferComponent, SplitByIdComponent, BatchClaimComponent, SplitBatchClaimComponent } from "./types/Components.sol";
-
-import { IAllocator } from "./interfaces/IAllocator.sol";
-import { MetadataRenderer } from "./lib/MetadataRenderer.sol";
 
 import { ClaimProcessor } from "./lib/ClaimProcessor.sol";
+import { ConsumerLib } from "./lib/ConsumerLib.sol";
+import { EfficiencyLib } from "./lib/EfficiencyLib.sol";
+import { Extsload } from "./lib/Extsload.sol";
+import { HashLib } from "./lib/HashLib.sol";
+import { IdLib } from "./lib/IdLib.sol";
+import { ValidityLib } from "./lib/ValidityLib.sol";
+
+import { ERC6909 } from "solady/tokens/ERC6909.sol";
+import { ISignatureTransfer } from "permit2/src/interfaces/ISignatureTransfer.sol";
 
 /**
  * @title The Compact
@@ -41,7 +31,7 @@ import { ClaimProcessor } from "./lib/ClaimProcessor.sol";
  *         formation (and, if necessary, involuntary dissolution) of "resource locks."
  *         This contract has not yet been properly tested, audited, or reviewed.
  */
-contract TheCompact is ITheCompact, ClaimProcessor, ERC6909 {
+contract TheCompact is ITheCompact, ClaimProcessor, ERC6909, Extsload {
     using HashLib for address;
     using HashLib for bytes32;
     using HashLib for uint256;
@@ -55,8 +45,6 @@ contract TheCompact is ITheCompact, ClaimProcessor, ERC6909 {
     using IdLib for Lock;
     using IdLib for ResetPeriod;
     using IdLib for CompactCategory;
-    using SafeTransferLib for address;
-    using FixedPointMathLib for uint256;
     using ConsumerLib for uint256;
     using EfficiencyLib for bool;
     using EfficiencyLib for uint256;
@@ -190,11 +178,9 @@ contract TheCompact is ITheCompact, ClaimProcessor, ERC6909 {
         Scope, //scope
         address recipient,
         bytes calldata signature
-    ) external payable returns (uint256[] memory ids) {
-        uint256 totalTokensLessInitialNative;
-        bool firstUnderlyingTokenIsNative;
-        uint256[] memory initialTokenBalances;
-        (totalTokensLessInitialNative, firstUnderlyingTokenIsNative, ids, initialTokenBalances) = _preprocessAndPerformInitialNativeDeposit(permitted, recipient);
+    ) external payable returns (uint256[] memory) {
+        (uint256 totalTokensLessInitialNative, bool firstUnderlyingTokenIsNative, uint256[] memory ids, uint256[] memory initialTokenBalances) =
+            _preprocessAndPerformInitialNativeDeposit(permitted, recipient);
 
         bytes32 witness = _deriveCompactDepositWitnessHash(uint256(0x84).asStubborn());
 
@@ -213,6 +199,8 @@ contract TheCompact is ITheCompact, ClaimProcessor, ERC6909 {
         _writeSignatureAndPerformPermit2Call(m, uint256(0xc0).asStubborn(), signatureOffsetValue, signature);
 
         _verifyBalancesAndPerformDeposits(ids, permitted, initialTokenBalances, recipient, firstUnderlyingTokenIsNative);
+
+        return ids;
     }
 
     function depositAndRegister(
