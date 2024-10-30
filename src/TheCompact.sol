@@ -341,19 +341,6 @@ contract TheCompact is ITheCompact, ITheCompactClaims, ERC6909, Tstorish {
         return id;
     }
 
-    function _deriveCompactDepositWitnessHash(uint256 calldataOffset) internal pure returns (bytes32 witnessHash) {
-        assembly ("memory-safe") {
-            let m := mload(0x40) // Grab the free memory pointer; memory will be left dirtied.
-
-            // NOTE: none of these arguments are sanitized; the assumption is that they have to
-            // match the signed values anyway, so *should* be fine not to sanitize them but could
-            // optionally check that there are no dirty upper bits on any of them.
-            mstore(m, PERMIT2_DEPOSIT_WITNESS_FRAGMENT_HASH)
-            calldatacopy(add(m, 0x20), calldataOffset, 0x80) // allocator, resetPeriod, scope, recipient
-            witnessHash := keccak256(m, 0xa0)
-        }
-    }
-
     function depositAndRegister(
         address token,
         uint256, // amount
@@ -390,43 +377,6 @@ contract TheCompact is ITheCompact, ITheCompactClaims, ERC6909, Tstorish {
         return id;
     }
 
-    function _writeSignatureAndPerformPermit2Call(uint256 m, uint256 signatureOffsetLocation, uint256 signatureOffsetValue, bytes calldata signature) internal {
-        bool isPermit2Deployed = _isPermit2Deployed();
-        assembly ("memory-safe") {
-            mstore(add(m, signatureOffsetLocation), signatureOffsetValue) // signature offset
-
-            let signatureLength := signature.length
-            let signatureMemoryOffset := add(m, add(0x20, signatureOffsetValue))
-
-            mstore(signatureMemoryOffset, signatureLength)
-            calldatacopy(add(signatureMemoryOffset, 0x20), signature.offset, signatureLength)
-
-            if iszero(and(isPermit2Deployed, call(gas(), _PERMIT2, 0, add(m, 0x1c), add(0x24, add(signatureOffsetValue, signatureLength)), 0, 0))) {
-                // bubble up if the call failed and there's data
-                // NOTE: consider evaluating remaining gas to protect against revert bombing
-                if returndatasize() {
-                    returndatacopy(0, 0, returndatasize())
-                    revert(0, returndatasize())
-                }
-
-                // revert Permit2CallFailed();
-                mstore(0, 0x7f28c61e)
-                revert(0x1c, 0x04)
-            }
-        }
-    }
-
-    function _deriveAndWriteWitnessHash(bytes32 activationTypehash, uint256 idOrIdsHash, bytes32 claimHash, uint256 memoryPointer, uint256 offset) internal pure {
-        assembly ("memory-safe") {
-            let m := mload(0x40)
-            mstore(0, activationTypehash)
-            mstore(0x20, idOrIdsHash)
-            mstore(0x40, claimHash)
-            mstore(add(memoryPointer, offset), keccak256(0, 0x60))
-            mstore(0x40, m)
-        }
-    }
-
     function deposit(
         address, // depositor
         ISignatureTransfer.TokenPermissions[] calldata permitted,
@@ -460,98 +410,6 @@ contract TheCompact is ITheCompact, ITheCompactClaims, ERC6909, Tstorish {
         _writeSignatureAndPerformPermit2Call(m, uint256(0xc0).asStubborn(), signatureOffsetValue, signature);
 
         _verifyBalancesAndPerformDeposits(ids, permitted, initialTokenBalances, recipient, firstUnderlyingTokenIsNative);
-    }
-
-    function _insertCompactDepositTypestringAt(uint256 memoryLocation) internal pure {
-        assembly ("memory-safe") {
-            mstore(memoryLocation, 0x96)
-            mstore(add(memoryLocation, 0x20), 0x436f6d706163744465706f736974207769746e65737329436f6d706163744465)
-            mstore(add(memoryLocation, 0x40), 0x706f736974286164647265737320616c6c6f6361746f722c75696e7438207265)
-            mstore(add(memoryLocation, 0x60), 0x736574506572696f642c75696e74382073636f70652c61646472657373207265)
-            mstore(add(memoryLocation, 0x96), 0x20746f6b656e2c75696e7432353620616d6f756e7429)
-            mstore(add(memoryLocation, 0x80), 0x63697069656e7429546f6b656e5065726d697373696f6e732861646472657373)
-        }
-    }
-
-    function _beginPreparingBatchDepositPermit2Calldata(uint256 totalTokensLessInitialNative, bool firstUnderlyingTokenIsNative) internal view returns (uint256 m, uint256 typestringMemoryLocation) {
-        assembly ("memory-safe") {
-            m := mload(0x40) // Grab the free memory pointer; memory will be left dirtied.
-
-            let tokenChunk := mul(totalTokensLessInitialNative, 0x40)
-            let twoTokenChunks := shl(1, tokenChunk)
-
-            let permittedCalldataLocation := add(add(0x24, calldataload(0x24)), mul(firstUnderlyingTokenIsNative, 0x40))
-
-            mstore(m, _BATCH_PERMIT_WITNESS_TRANSFER_FROM_SELECTOR)
-            mstore(add(m, 0x20), 0xc0) // permitted offset
-            mstore(add(m, 0x40), add(0x140, tokenChunk)) // details offset
-            mstore(add(m, 0x60), calldataload(0x04)) // depositor
-            // 0x80 => witnessHash
-            mstore(add(m, 0xa0), add(0x160, twoTokenChunks)) // witness offset
-            // 0xc0 => signatureOffset
-            mstore(add(m, 0xe0), 0x60) // permitted tokens relative offset
-            mstore(add(m, 0x100), calldataload(0x44)) // nonce
-            mstore(add(m, 0x120), calldataload(0x64)) // deadline
-            mstore(add(m, 0x140), totalTokensLessInitialNative) // permitted.length
-
-            calldatacopy(add(m, 0x160), permittedCalldataLocation, tokenChunk) // permitted data
-
-            let detailsOffset := add(add(m, 0x160), tokenChunk)
-            mstore(detailsOffset, totalTokensLessInitialNative) // details.length
-
-            // details data
-            let starting := add(detailsOffset, 0x20)
-            let next := add(detailsOffset, 0x40)
-            let end := mul(totalTokensLessInitialNative, 0x40)
-            for { let i := 0 } lt(i, end) { i := add(i, 0x40) } {
-                mstore(add(starting, i), address())
-                mstore(add(next, i), calldataload(add(permittedCalldataLocation, add(0x20, i))))
-            }
-
-            typestringMemoryLocation := add(m, add(0x180, twoTokenChunks))
-
-            // TODO: strongly consider allocating memory here as the inline assembly scope
-            // is being left (it *should* be fine for now as the function between assembly
-            // blocks does not allocate any new memory).
-        }
-    }
-
-    function _preprocessAndPerformInitialNativeDeposit(ISignatureTransfer.TokenPermissions[] calldata permitted, address allocator, ResetPeriod resetPeriod, Scope scope, address recipient)
-        internal
-        returns (uint256 totalTokensLessInitialNative, bool firstUnderlyingTokenIsNative, uint256[] memory ids, uint256[] memory initialTokenBalances)
-    {
-        _setTstorish(_REENTRANCY_GUARD_SLOT, 1);
-
-        uint256 totalTokens = permitted.length;
-        assembly ("memory-safe") {
-            let permittedOffset := permitted.offset
-            firstUnderlyingTokenIsNative := iszero(shr(96, shl(96, calldataload(permittedOffset))))
-
-            // Revert if:
-            //  * the array is empty
-            //  * the callvalue is zero but the first token is native
-            //  * the callvalue is nonzero but the first token is non-native
-            //  * the first token is non-native and the callvalue doesn't equal the first amount
-            if or(iszero(totalTokens), or(eq(firstUnderlyingTokenIsNative, iszero(callvalue())), and(firstUnderlyingTokenIsNative, iszero(eq(callvalue(), calldataload(add(permittedOffset, 0x20)))))))
-            {
-                // revert InvalidBatchDepositStructure()
-                mstore(0, 0xca0fc08e)
-                revert(0x1c, 0x04)
-            }
-        }
-
-        uint256 initialId = address(0).toIdIfRegistered(scope, resetPeriod, allocator);
-        ids = new uint256[](totalTokens);
-        if (firstUnderlyingTokenIsNative) {
-            _deposit(recipient, initialId, msg.value);
-            ids[0] = initialId;
-        }
-
-        unchecked {
-            totalTokensLessInitialNative = totalTokens - firstUnderlyingTokenIsNative.asUint256();
-        }
-
-        initialTokenBalances = _prepareIdsAndGetBalances(ids, totalTokensLessInitialNative, firstUnderlyingTokenIsNative, permitted, initialId);
     }
 
     function depositAndRegister(
@@ -1027,17 +885,6 @@ contract TheCompact is ITheCompact, ITheCompactClaims, ERC6909, Tstorish {
         emit ForcedWithdrawalEnabled(msg.sender, id, withdrawableAt);
     }
 
-    function _getCutoffTimeSlot(address account, uint256 id) internal pure returns (uint256 cutoffTimeSlotLocation) {
-        assembly ("memory-safe") {
-            let m := mload(0x40)
-            mstore(0x14, account)
-            mstore(0, _FORCED_WITHDRAWAL_ACTIVATIONS_SCOPE)
-            mstore(0x34, id)
-            cutoffTimeSlotLocation := keccak256(0x1c, 0x38)
-            mstore(0x40, m)
-        }
-    }
-
     function disableForcedWithdrawal(uint256 id) external returns (bool) {
         uint256 cutoffTimeSlotLocation = _getCutoffTimeSlot(msg.sender, id);
 
@@ -1083,17 +930,6 @@ contract TheCompact is ITheCompact, ITheCompactClaims, ERC6909, Tstorish {
         return true;
     }
 
-    function _getRegistrationStatus(address sponsor, bytes32 claimHash, bytes32 typehash) internal view returns (uint256 expires) {
-        assembly ("memory-safe") {
-            let m := mload(0x40)
-            mstore(add(m, 0x14), sponsor)
-            mstore(m, _ACTIVE_REGISTRATIONS_SCOPE)
-            mstore(add(m, 0x34), claimHash)
-            mstore(add(m, 0x54), typehash)
-            expires := sload(keccak256(add(m, 0x1c), 0x58))
-        }
-    }
-
     function _hasNoActiveRegistration(address sponsor, bytes32 claimHash, bytes32 typehash) internal view returns (bool) {
         return _getRegistrationStatus(sponsor, claimHash, typehash) <= block.timestamp;
     }
@@ -1103,43 +939,8 @@ contract TheCompact is ITheCompact, ITheCompactClaims, ERC6909, Tstorish {
         isActive = expires > block.timestamp;
     }
 
-    function _register(address sponsor, bytes32 claimHash, bytes32 typehash, uint256 duration) internal {
-        assembly ("memory-safe") {
-            let m := mload(0x40)
-            mstore(add(m, 0x14), sponsor)
-            mstore(m, _ACTIVE_REGISTRATIONS_SCOPE)
-            mstore(add(m, 0x34), claimHash)
-            mstore(add(m, 0x54), typehash)
-            let cutoffSlot := keccak256(add(m, 0x1c), 0x58)
-
-            let expires := add(timestamp(), duration)
-            if or(lt(expires, sload(cutoffSlot)), gt(duration, 0x278d00)) {
-                // revert InvalidRegistrationDuration(uint256 duration)
-                mstore(0, 0x1f9a96f4)
-                mstore(0x20, duration)
-                revert(0x1c, 0x24)
-            }
-
-            sstore(cutoffSlot, expires)
-            mstore(add(m, 0x74), expires)
-            log2(add(m, 0x34), 0x60, _COMPACT_REGISTERED_SIGNATURE, shr(0x60, shl(0x60, sponsor)))
-        }
-    }
-
     function register(bytes32[2][] calldata claimHashesAndTypehashes, uint256 duration) external returns (bool) {
         return _registerBatch(claimHashesAndTypehashes, duration);
-    }
-
-    function _registerBatch(bytes32[2][] calldata claimHashesAndTypehashes, uint256 duration) internal returns (bool) {
-        unchecked {
-            uint256 totalClaimHashes = claimHashesAndTypehashes.length;
-            for (uint256 i = 0; i < totalClaimHashes; ++i) {
-                bytes32[2] calldata claimHashAndTypehash = claimHashesAndTypehashes[i];
-                _register(msg.sender, claimHashAndTypehash[0], claimHashAndTypehash[1], duration);
-            }
-        }
-
-        return true;
     }
 
     function consume(uint256[] calldata nonces) external returns (bool) {
@@ -2191,6 +1992,205 @@ contract TheCompact is ITheCompact, ITheCompactClaims, ERC6909, Tstorish {
         assembly ("memory-safe") {
             mstore(0, messageHash)
             log4(0, 0x20, _CLAIM_EVENT_SIGNATURE, shr(0x60, shl(0x60, sponsor)), shr(0x60, shl(0x60, allocator)), caller())
+        }
+    }
+
+    function _register(address sponsor, bytes32 claimHash, bytes32 typehash, uint256 duration) internal {
+        assembly ("memory-safe") {
+            let m := mload(0x40)
+            mstore(add(m, 0x14), sponsor)
+            mstore(m, _ACTIVE_REGISTRATIONS_SCOPE)
+            mstore(add(m, 0x34), claimHash)
+            mstore(add(m, 0x54), typehash)
+            let cutoffSlot := keccak256(add(m, 0x1c), 0x58)
+
+            let expires := add(timestamp(), duration)
+            if or(lt(expires, sload(cutoffSlot)), gt(duration, 0x278d00)) {
+                // revert InvalidRegistrationDuration(uint256 duration)
+                mstore(0, 0x1f9a96f4)
+                mstore(0x20, duration)
+                revert(0x1c, 0x24)
+            }
+
+            sstore(cutoffSlot, expires)
+            mstore(add(m, 0x74), expires)
+            log2(add(m, 0x34), 0x60, _COMPACT_REGISTERED_SIGNATURE, shr(0x60, shl(0x60, sponsor)))
+        }
+    }
+
+    function _registerBatch(bytes32[2][] calldata claimHashesAndTypehashes, uint256 duration) internal returns (bool) {
+        unchecked {
+            uint256 totalClaimHashes = claimHashesAndTypehashes.length;
+            for (uint256 i = 0; i < totalClaimHashes; ++i) {
+                bytes32[2] calldata claimHashAndTypehash = claimHashesAndTypehashes[i];
+                _register(msg.sender, claimHashAndTypehash[0], claimHashAndTypehash[1], duration);
+            }
+        }
+
+        return true;
+    }
+
+    function _deriveCompactDepositWitnessHash(uint256 calldataOffset) internal pure returns (bytes32 witnessHash) {
+        assembly ("memory-safe") {
+            let m := mload(0x40) // Grab the free memory pointer; memory will be left dirtied.
+
+            // NOTE: none of these arguments are sanitized; the assumption is that they have to
+            // match the signed values anyway, so *should* be fine not to sanitize them but could
+            // optionally check that there are no dirty upper bits on any of them.
+            mstore(m, PERMIT2_DEPOSIT_WITNESS_FRAGMENT_HASH)
+            calldatacopy(add(m, 0x20), calldataOffset, 0x80) // allocator, resetPeriod, scope, recipient
+            witnessHash := keccak256(m, 0xa0)
+        }
+    }
+
+    function _writeSignatureAndPerformPermit2Call(uint256 m, uint256 signatureOffsetLocation, uint256 signatureOffsetValue, bytes calldata signature) internal {
+        bool isPermit2Deployed = _isPermit2Deployed();
+        assembly ("memory-safe") {
+            mstore(add(m, signatureOffsetLocation), signatureOffsetValue) // signature offset
+
+            let signatureLength := signature.length
+            let signatureMemoryOffset := add(m, add(0x20, signatureOffsetValue))
+
+            mstore(signatureMemoryOffset, signatureLength)
+            calldatacopy(add(signatureMemoryOffset, 0x20), signature.offset, signatureLength)
+
+            if iszero(and(isPermit2Deployed, call(gas(), _PERMIT2, 0, add(m, 0x1c), add(0x24, add(signatureOffsetValue, signatureLength)), 0, 0))) {
+                // bubble up if the call failed and there's data
+                // NOTE: consider evaluating remaining gas to protect against revert bombing
+                if returndatasize() {
+                    returndatacopy(0, 0, returndatasize())
+                    revert(0, returndatasize())
+                }
+
+                // revert Permit2CallFailed();
+                mstore(0, 0x7f28c61e)
+                revert(0x1c, 0x04)
+            }
+        }
+    }
+
+    function _deriveAndWriteWitnessHash(bytes32 activationTypehash, uint256 idOrIdsHash, bytes32 claimHash, uint256 memoryPointer, uint256 offset) internal pure {
+        assembly ("memory-safe") {
+            let m := mload(0x40)
+            mstore(0, activationTypehash)
+            mstore(0x20, idOrIdsHash)
+            mstore(0x40, claimHash)
+            mstore(add(memoryPointer, offset), keccak256(0, 0x60))
+            mstore(0x40, m)
+        }
+    }
+
+    function _insertCompactDepositTypestringAt(uint256 memoryLocation) internal pure {
+        assembly ("memory-safe") {
+            mstore(memoryLocation, 0x96)
+            mstore(add(memoryLocation, 0x20), 0x436f6d706163744465706f736974207769746e65737329436f6d706163744465)
+            mstore(add(memoryLocation, 0x40), 0x706f736974286164647265737320616c6c6f6361746f722c75696e7438207265)
+            mstore(add(memoryLocation, 0x60), 0x736574506572696f642c75696e74382073636f70652c61646472657373207265)
+            mstore(add(memoryLocation, 0x96), 0x20746f6b656e2c75696e7432353620616d6f756e7429)
+            mstore(add(memoryLocation, 0x80), 0x63697069656e7429546f6b656e5065726d697373696f6e732861646472657373)
+        }
+    }
+
+    function _beginPreparingBatchDepositPermit2Calldata(uint256 totalTokensLessInitialNative, bool firstUnderlyingTokenIsNative) internal view returns (uint256 m, uint256 typestringMemoryLocation) {
+        assembly ("memory-safe") {
+            m := mload(0x40) // Grab the free memory pointer; memory will be left dirtied.
+
+            let tokenChunk := mul(totalTokensLessInitialNative, 0x40)
+            let twoTokenChunks := shl(1, tokenChunk)
+
+            let permittedCalldataLocation := add(add(0x24, calldataload(0x24)), mul(firstUnderlyingTokenIsNative, 0x40))
+
+            mstore(m, _BATCH_PERMIT_WITNESS_TRANSFER_FROM_SELECTOR)
+            mstore(add(m, 0x20), 0xc0) // permitted offset
+            mstore(add(m, 0x40), add(0x140, tokenChunk)) // details offset
+            mstore(add(m, 0x60), calldataload(0x04)) // depositor
+            // 0x80 => witnessHash
+            mstore(add(m, 0xa0), add(0x160, twoTokenChunks)) // witness offset
+            // 0xc0 => signatureOffset
+            mstore(add(m, 0xe0), 0x60) // permitted tokens relative offset
+            mstore(add(m, 0x100), calldataload(0x44)) // nonce
+            mstore(add(m, 0x120), calldataload(0x64)) // deadline
+            mstore(add(m, 0x140), totalTokensLessInitialNative) // permitted.length
+
+            calldatacopy(add(m, 0x160), permittedCalldataLocation, tokenChunk) // permitted data
+
+            let detailsOffset := add(add(m, 0x160), tokenChunk)
+            mstore(detailsOffset, totalTokensLessInitialNative) // details.length
+
+            // details data
+            let starting := add(detailsOffset, 0x20)
+            let next := add(detailsOffset, 0x40)
+            let end := mul(totalTokensLessInitialNative, 0x40)
+            for { let i := 0 } lt(i, end) { i := add(i, 0x40) } {
+                mstore(add(starting, i), address())
+                mstore(add(next, i), calldataload(add(permittedCalldataLocation, add(0x20, i))))
+            }
+
+            typestringMemoryLocation := add(m, add(0x180, twoTokenChunks))
+
+            // TODO: strongly consider allocating memory here as the inline assembly scope
+            // is being left (it *should* be fine for now as the function between assembly
+            // blocks does not allocate any new memory).
+        }
+    }
+
+    function _preprocessAndPerformInitialNativeDeposit(ISignatureTransfer.TokenPermissions[] calldata permitted, address allocator, ResetPeriod resetPeriod, Scope scope, address recipient)
+        internal
+        returns (uint256 totalTokensLessInitialNative, bool firstUnderlyingTokenIsNative, uint256[] memory ids, uint256[] memory initialTokenBalances)
+    {
+        _setTstorish(_REENTRANCY_GUARD_SLOT, 1);
+
+        uint256 totalTokens = permitted.length;
+        assembly ("memory-safe") {
+            let permittedOffset := permitted.offset
+            firstUnderlyingTokenIsNative := iszero(shr(96, shl(96, calldataload(permittedOffset))))
+
+            // Revert if:
+            //  * the array is empty
+            //  * the callvalue is zero but the first token is native
+            //  * the callvalue is nonzero but the first token is non-native
+            //  * the first token is non-native and the callvalue doesn't equal the first amount
+            if or(iszero(totalTokens), or(eq(firstUnderlyingTokenIsNative, iszero(callvalue())), and(firstUnderlyingTokenIsNative, iszero(eq(callvalue(), calldataload(add(permittedOffset, 0x20)))))))
+            {
+                // revert InvalidBatchDepositStructure()
+                mstore(0, 0xca0fc08e)
+                revert(0x1c, 0x04)
+            }
+        }
+
+        uint256 initialId = address(0).toIdIfRegistered(scope, resetPeriod, allocator);
+        ids = new uint256[](totalTokens);
+        if (firstUnderlyingTokenIsNative) {
+            _deposit(recipient, initialId, msg.value);
+            ids[0] = initialId;
+        }
+
+        unchecked {
+            totalTokensLessInitialNative = totalTokens - firstUnderlyingTokenIsNative.asUint256();
+        }
+
+        initialTokenBalances = _prepareIdsAndGetBalances(ids, totalTokensLessInitialNative, firstUnderlyingTokenIsNative, permitted, initialId);
+    }
+
+    function _getCutoffTimeSlot(address account, uint256 id) internal pure returns (uint256 cutoffTimeSlotLocation) {
+        assembly ("memory-safe") {
+            let m := mload(0x40)
+            mstore(0x14, account)
+            mstore(0, _FORCED_WITHDRAWAL_ACTIVATIONS_SCOPE)
+            mstore(0x34, id)
+            cutoffTimeSlotLocation := keccak256(0x1c, 0x38)
+            mstore(0x40, m)
+        }
+    }
+
+    function _getRegistrationStatus(address sponsor, bytes32 claimHash, bytes32 typehash) internal view returns (uint256 expires) {
+        assembly ("memory-safe") {
+            let m := mload(0x40)
+            mstore(add(m, 0x14), sponsor)
+            mstore(m, _ACTIVE_REGISTRATIONS_SCOPE)
+            mstore(add(m, 0x34), claimHash)
+            mstore(add(m, 0x54), typehash)
+            expires := sload(keccak256(add(m, 0x1c), 0x58))
         }
     }
 
