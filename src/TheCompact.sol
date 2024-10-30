@@ -66,17 +66,13 @@ contract TheCompact is ITheCompact, ClaimProcessor, ERC6909 {
     using ValidityLib for bytes32;
 
     function deposit(address allocator) external payable returns (uint256 id) {
-        id = address(0).toIdIfRegistered(Scope.Multichain, ResetPeriod.TenMinutes, allocator);
-
-        _deposit(msg.sender, id, msg.value);
+        id = _performBasicNativeTokenDeposit(allocator);
     }
 
     function depositAndRegister(address allocator, bytes32 claimHash, bytes32 typehash) external payable returns (uint256 id) {
-        id = address(0).toIdIfRegistered(Scope.Multichain, ResetPeriod.TenMinutes, allocator);
+        id = _performBasicNativeTokenDeposit(allocator);
 
-        _deposit(msg.sender, id, msg.value);
-
-        _register(msg.sender, claimHash, typehash, 0x258);
+        _registerWithDefaults(claimHash, typehash);
     }
 
     function deposit(address token, address allocator, uint256 amount) external returns (uint256) {
@@ -86,7 +82,7 @@ contract TheCompact is ITheCompact, ClaimProcessor, ERC6909 {
     function depositAndRegister(address token, address allocator, uint256 amount, bytes32 claimHash, bytes32 typehash) external returns (uint256 id) {
         id = _performBasicERC20Deposit(token, allocator, amount);
 
-        _register(msg.sender, claimHash, typehash, 0x258);
+        _registerWithDefaults(claimHash, typehash);
     }
 
     function deposit(address allocator, ResetPeriod resetPeriod, Scope scope, address recipient) external payable returns (uint256 id) {
@@ -123,15 +119,15 @@ contract TheCompact is ITheCompact, ClaimProcessor, ERC6909 {
         uint256, // nonce
         uint256, // deadline
         address, // depositor
-        address allocator,
-        ResetPeriod resetPeriod,
-        Scope scope,
+        address, // allocator
+        ResetPeriod, // resetPeriod
+        Scope, //scope
         address recipient,
         bytes calldata signature
     ) external returns (uint256) {
-        bytes32 witness = _deriveCompactDepositWitnessHash(0xa4);
+        bytes32 witness = _deriveCompactDepositWitnessHash(uint256(0xa4).asStubborn());
 
-        (uint256 id, uint256 initialBalance, uint256 m, uint256 typestringMemoryLocation) = _setReentrancyLockAndStartPreparingPermit2Call(token, allocator, resetPeriod, scope);
+        (uint256 id, uint256 initialBalance, uint256 m, uint256 typestringMemoryLocation) = _setReentrancyLockAndStartPreparingPermit2Call(token);
 
         _insertCompactDepositTypestringAt(typestringMemoryLocation);
 
@@ -154,15 +150,15 @@ contract TheCompact is ITheCompact, ClaimProcessor, ERC6909 {
         uint256, // nonce
         uint256, // deadline
         address depositor, // also recipient
-        address allocator,
+        address, // allocator
         ResetPeriod resetPeriod,
-        Scope scope,
+        Scope, //scope
         bytes32 claimHash,
         CompactCategory compactCategory,
         string calldata witness,
         bytes calldata signature
     ) external returns (uint256) {
-        (uint256 id, uint256 initialBalance, uint256 m, uint256 typestringMemoryLocation) = _setReentrancyLockAndStartPreparingPermit2Call(token, allocator, resetPeriod, scope);
+        (uint256 id, uint256 initialBalance, uint256 m, uint256 typestringMemoryLocation) = _setReentrancyLockAndStartPreparingPermit2Call(token);
 
         (bytes32 activationTypehash, bytes32 compactTypehash) = _writeWitnessAndGetTypehashes(typestringMemoryLocation, compactCategory, witness, bool(false).asStubborn());
 
@@ -189,18 +185,18 @@ contract TheCompact is ITheCompact, ClaimProcessor, ERC6909 {
         ISignatureTransfer.TokenPermissions[] calldata permitted,
         uint256, // nonce
         uint256, // deadline
-        address allocator,
-        ResetPeriod resetPeriod,
-        Scope scope,
+        address, // allocator
+        ResetPeriod, // resetPeriod
+        Scope, //scope
         address recipient,
         bytes calldata signature
     ) external payable returns (uint256[] memory ids) {
         uint256 totalTokensLessInitialNative;
         bool firstUnderlyingTokenIsNative;
         uint256[] memory initialTokenBalances;
-        (totalTokensLessInitialNative, firstUnderlyingTokenIsNative, ids, initialTokenBalances) = _preprocessAndPerformInitialNativeDeposit(permitted, allocator, resetPeriod, scope, recipient);
+        (totalTokensLessInitialNative, firstUnderlyingTokenIsNative, ids, initialTokenBalances) = _preprocessAndPerformInitialNativeDeposit(permitted, recipient);
 
-        bytes32 witness = _deriveCompactDepositWitnessHash(0x84);
+        bytes32 witness = _deriveCompactDepositWitnessHash(uint256(0x84).asStubborn());
 
         (uint256 m, uint256 typestringMemoryLocation) = _beginPreparingBatchDepositPermit2Calldata(totalTokensLessInitialNative, firstUnderlyingTokenIsNative);
 
@@ -211,7 +207,7 @@ contract TheCompact is ITheCompact, ClaimProcessor, ERC6909 {
         uint256 signatureOffsetValue;
         assembly ("memory-safe") {
             mstore(add(m, 0x80), witness)
-            signatureOffsetValue := add(0x220, mul(totalTokensLessInitialNative, 0x80))
+            signatureOffsetValue := add(0x220, shl(7, totalTokensLessInitialNative))
         }
 
         _writeSignatureAndPerformPermit2Call(m, uint256(0xc0).asStubborn(), signatureOffsetValue, signature);
@@ -224,16 +220,16 @@ contract TheCompact is ITheCompact, ClaimProcessor, ERC6909 {
         ISignatureTransfer.TokenPermissions[] calldata permitted,
         uint256, // nonce
         uint256, // deadline
-        address allocator,
+        address, // allocator
         ResetPeriod resetPeriod,
-        Scope scope,
+        Scope, //scope
         bytes32 claimHash,
         CompactCategory compactCategory,
         string calldata witness,
         bytes calldata signature
     ) external payable returns (uint256[] memory) {
         (uint256 totalTokensLessInitialNative, bool firstUnderlyingTokenIsNative, uint256[] memory ids, uint256[] memory initialTokenBalances) =
-            _preprocessAndPerformInitialNativeDeposit(permitted, allocator, resetPeriod, scope, depositor);
+            _preprocessAndPerformInitialNativeDeposit(permitted, depositor);
 
         uint256 idsHash;
         assembly ("memory-safe") {
@@ -249,8 +245,8 @@ contract TheCompact is ITheCompact, ClaimProcessor, ERC6909 {
         uint256 signatureOffsetValue;
         assembly ("memory-safe") {
             let witnessLength := witness.length
-            let totalWitnessMemoryOffset := and(add(add(0xf3, add(witnessLength, iszero(iszero(witnessLength)))), add(mul(eq(compactCategory, 1), 0x0b), mul(eq(compactCategory, 2), 0x40))), not(0x1f))
-            signatureOffsetValue := add(add(0x180, mul(totalTokensLessInitialNative, 0x80)), totalWitnessMemoryOffset)
+            let totalWitnessMemoryOffset := and(add(add(0xf3, add(witnessLength, iszero(iszero(witnessLength)))), add(mul(eq(compactCategory, 1), 0x0b), shl(6, eq(compactCategory, 2)))), not(0x1f))
+            signatureOffsetValue := add(add(0x180, shl(7, totalTokensLessInitialNative)), totalWitnessMemoryOffset)
         }
 
         _writeSignatureAndPerformPermit2Call(m, uint256(0xc0).asStubborn(), signatureOffsetValue, signature);
@@ -270,7 +266,6 @@ contract TheCompact is ITheCompact, ClaimProcessor, ERC6909 {
         return _processBasicTransfer(withdrawal, _withdraw);
     }
 
-    /*
     function allocatedTransfer(SplitTransfer calldata transfer) external returns (bool) {
         return _processSplitTransfer(transfer, _release);
     }
@@ -286,7 +281,6 @@ contract TheCompact is ITheCompact, ClaimProcessor, ERC6909 {
     function allocatedWithdrawal(BatchTransfer calldata withdrawal) external returns (bool) {
         return _processBatchTransfer(withdrawal, _withdraw);
     }
-    */
 
     function allocatedTransfer(SplitBatchTransfer calldata transfer) external returns (bool) {
         return _processSplitBatchTransfer(transfer, _release);
@@ -307,7 +301,7 @@ contract TheCompact is ITheCompact, ClaimProcessor, ERC6909 {
             sstore(cutoffTimeSlotLocation, withdrawableAt)
         }
 
-        emit ForcedWithdrawalEnabled(msg.sender, id, withdrawableAt);
+        _emitForcedWithdrawalStatusUpdatedEvent(id, withdrawableAt);
     }
 
     function disableForcedWithdrawal(uint256 id) external returns (bool) {
@@ -325,7 +319,7 @@ contract TheCompact is ITheCompact, ClaimProcessor, ERC6909 {
             sstore(cutoffTimeSlotLocation, 0)
         }
 
-        emit ForcedWithdrawalDisabled(msg.sender, id);
+        _emitForcedWithdrawalStatusUpdatedEvent(id, uint256(0).asStubborn());
 
         return true;
     }
@@ -333,13 +327,9 @@ contract TheCompact is ITheCompact, ClaimProcessor, ERC6909 {
     function forcedWithdrawal(uint256 id, address recipient, uint256 amount) external returns (bool) {
         uint256 cutoffTimeSlotLocation = _getCutoffTimeSlot(msg.sender, id);
 
-        uint256 withdrawableAt;
         assembly ("memory-safe") {
-            withdrawableAt := sload(cutoffTimeSlotLocation)
-        }
-
-        if ((withdrawableAt == 0).or(withdrawableAt > block.timestamp)) {
-            assembly ("memory-safe") {
+            let withdrawableAt := sload(cutoffTimeSlotLocation)
+            if or(iszero(withdrawableAt), gt(withdrawableAt, timestamp())) {
                 // revert PrematureWithdrawal(id)
                 mstore(0, 0x9287bcb0)
                 mstore(0x20, id)
@@ -369,9 +359,19 @@ contract TheCompact is ITheCompact, ClaimProcessor, ERC6909 {
         msg.sender.usingAllocatorId().mustHaveARegisteredAllocator();
 
         unchecked {
-            uint256 noncesLength = nonces.length;
-            for (uint256 i = 0; i < noncesLength; ++i) {
-                nonces[i].consumeNonceAsAllocator(msg.sender);
+            uint256 i;
+
+            assembly ("memory-safe") {
+                i := nonces.offset
+            }
+
+            uint256 end = i + (nonces.length << 5);
+            uint256 nonce;
+            for (; i < end; i += 0x20) {
+                assembly ("memory-safe") {
+                    nonce := calldataload(i)
+                }
+                nonce.consumeNonceAsAllocator(msg.sender);
             }
         }
 

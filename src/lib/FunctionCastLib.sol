@@ -2003,17 +2003,6 @@ library FunctionCastLib {
         }
     }
 
-    // NOTE: the id field needs to be at the exact same struct offset for this to work!
-    function usingSplitByIdComponent(function (TransferComponent[] memory, uint256) internal returns (address) fnIn)
-        internal
-        pure
-        returns (function (SplitByIdComponent[] memory, uint256) internal returns (address) fnOut)
-    {
-        assembly ("memory-safe") {
-            fnOut := fnIn
-        }
-    }
-
     function usingClaimWithWitness(function (bytes32, BasicClaim calldata, address) internal view fnIn)
         internal
         pure
