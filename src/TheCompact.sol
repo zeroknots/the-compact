@@ -178,11 +178,9 @@ contract TheCompact is ITheCompact, ClaimProcessor, ERC6909, Extsload {
         Scope, //scope
         address recipient,
         bytes calldata signature
-    ) external payable returns (uint256[] memory ids) {
-        uint256 totalTokensLessInitialNative;
-        bool firstUnderlyingTokenIsNative;
-        uint256[] memory initialTokenBalances;
-        (totalTokensLessInitialNative, firstUnderlyingTokenIsNative, ids, initialTokenBalances) = _preprocessAndPerformInitialNativeDeposit(permitted, recipient);
+    ) external payable returns (uint256[] memory) {
+        (uint256 totalTokensLessInitialNative, bool firstUnderlyingTokenIsNative, uint256[] memory ids, uint256[] memory initialTokenBalances) =
+            _preprocessAndPerformInitialNativeDeposit(permitted, recipient);
 
         bytes32 witness = _deriveCompactDepositWitnessHash(uint256(0x84).asStubborn());
 
@@ -201,6 +199,8 @@ contract TheCompact is ITheCompact, ClaimProcessor, ERC6909, Extsload {
         _writeSignatureAndPerformPermit2Call(m, uint256(0xc0).asStubborn(), signatureOffsetValue, signature);
 
         _verifyBalancesAndPerformDeposits(ids, permitted, initialTokenBalances, recipient, firstUnderlyingTokenIsNative);
+
+        return ids;
     }
 
     function depositAndRegister(
