@@ -32,6 +32,80 @@ library IdLib {
     uint256 private constant _NO_ALLOCATOR_REGISTERED_ERROR_SIGNATURE = 0xcf90c3a8;
     uint256 private constant _ALLOCATOR_ALREADY_REGISTERED_ERROR_SIGNATURE = 0xc18b0e97;
 
+    function register(address allocator) internal returns (uint96 allocatorId) {
+        allocatorId = allocator.usingAllocatorId();
+
+        assembly ("memory-safe") {
+            let allocatorSlot := or(_ALLOCATOR_BY_ALLOCATOR_ID_SLOT_SEED, allocatorId)
+
+            let registeredAllocator := sload(allocatorSlot)
+
+            if registeredAllocator {
+                mstore(0, _ALLOCATOR_ALREADY_REGISTERED_ERROR_SIGNATURE)
+                mstore(0x20, allocatorId)
+                mstore(0x40, registeredAllocator)
+                revert(0x1c, 0x44)
+            }
+
+            sstore(allocatorSlot, allocator)
+
+            mstore(0x00, allocatorId)
+            mstore(0x20, allocator)
+            log1(0x00, 0x40, _ALLOCATOR_REGISTERED_EVENT_SIGNATURE)
+        }
+    }
+
+    function toIdIfRegistered(address token, Scope scope, ResetPeriod resetPeriod, address allocator) internal view returns (uint256 id) {
+        uint96 allocatorId = allocator.usingAllocatorId();
+        allocatorId.mustHaveARegisteredAllocator();
+        id = ((scope.asUint256() << 255) | (resetPeriod.asUint256() << 252) | (allocatorId.asUint256() << 160) | token.asUint256());
+    }
+
+    function toRegisteredAllocator(uint96 allocatorId) internal view returns (address allocator) {
+        assembly ("memory-safe") {
+            // NOTE: consider an SLOAD bypass for a fully compact allocator
+
+            allocator := sload(or(_ALLOCATOR_BY_ALLOCATOR_ID_SLOT_SEED, allocatorId))
+
+            if iszero(allocator) {
+                mstore(0, _NO_ALLOCATOR_REGISTERED_ERROR_SIGNATURE)
+                mstore(0x20, allocatorId)
+                revert(0x1c, 0x24)
+            }
+        }
+    }
+
+    function toRegisteredAllocatorId(uint256 id) internal view returns (uint96 allocatorId) {
+        allocatorId = id.toAllocatorId();
+        allocatorId.mustHaveARegisteredAllocator();
+    }
+
+    function mustHaveARegisteredAllocator(uint96 allocatorId) internal view {
+        assembly ("memory-safe") {
+            // NOTE: consider an SLOAD bypass for a fully compact allocator
+            if iszero(sload(or(_ALLOCATOR_BY_ALLOCATOR_ID_SLOT_SEED, allocatorId))) {
+                mstore(0, _NO_ALLOCATOR_REGISTERED_ERROR_SIGNATURE)
+                mstore(0x20, allocatorId)
+                revert(0x1c, 0x24)
+            }
+        }
+    }
+
+    function canBeRegistered(address allocator, bytes calldata proof) internal view returns (bool) {
+        return (msg.sender == allocator).or(allocator.code.length > 0).or(proof.length == 86 && (proof[0] == 0xff).and(allocator == address(uint160(uint256(keccak256(proof))))));
+    }
+
+    function toAllocator(uint256 id) internal view returns (address allocator) {
+        allocator = id.toAllocatorId().toRegisteredAllocator();
+    }
+
+    function toLock(uint256 id) internal view returns (Lock memory lock) {
+        lock.token = id.toToken();
+        lock.allocator = id.toAllocator();
+        lock.resetPeriod = id.toResetPeriod();
+        lock.scope = id.toScope();
+    }
+
     function toToken(uint256 id) internal pure returns (address) {
         return id.asSanitizedAddress();
     }
@@ -83,10 +157,6 @@ library IdLib {
         }
     }
 
-    function toAllocator(uint256 id) internal view returns (address allocator) {
-        allocator = id.toAllocatorId().toRegisteredAllocator();
-    }
-
     // The "compact flag" is a 4-bit value that represents how "compact" the address of
     // an allocator is. A fully "compact" allocator address will have nine leading zero
     // bytes, or 18 leading zero nibbles. To be considered even partially compact, the
@@ -134,17 +204,6 @@ library IdLib {
         }
     }
 
-    function toLock(address token, address allocator, ResetPeriod resetPeriod, Scope scope) internal pure returns (Lock memory) {
-        return Lock({ token: token, allocator: allocator, resetPeriod: resetPeriod, scope: scope });
-    }
-
-    function toLock(uint256 id) internal view returns (Lock memory lock) {
-        lock.token = id.toToken();
-        lock.allocator = id.toAllocator();
-        lock.resetPeriod = id.toResetPeriod();
-        lock.scope = id.toScope();
-    }
-
     // first bit: scope
     // bits 2-4: reset period
     // bits 5-96: allocator ID (first 4 bits are compact flag, next 88 from allocator address)
@@ -152,68 +211,5 @@ library IdLib {
     // note that this will return an ID even if the allocator is unregistered
     function toId(Lock memory lock) internal pure returns (uint256 id) {
         id = ((lock.scope.asUint256() << 255) | (lock.resetPeriod.asUint256() << 252) | (lock.allocator.usingAllocatorId().asUint256() << 160) | lock.token.asUint256());
-    }
-
-    function toIdIfRegistered(address token, Scope scope, ResetPeriod resetPeriod, address allocator) internal view returns (uint256 id) {
-        uint96 allocatorId = allocator.usingAllocatorId();
-        allocatorId.mustHaveARegisteredAllocator();
-        id = ((scope.asUint256() << 255) | (resetPeriod.asUint256() << 252) | (allocatorId.asUint256() << 160) | token.asUint256());
-    }
-
-    function toRegisteredAllocator(uint96 allocatorId) internal view returns (address allocator) {
-        assembly ("memory-safe") {
-            // NOTE: consider an SLOAD bypass for a fully compact allocator
-
-            allocator := sload(or(_ALLOCATOR_BY_ALLOCATOR_ID_SLOT_SEED, allocatorId))
-
-            if iszero(allocator) {
-                mstore(0, _NO_ALLOCATOR_REGISTERED_ERROR_SIGNATURE)
-                mstore(0x20, allocatorId)
-                revert(0x1c, 0x24)
-            }
-        }
-    }
-
-    function toRegisteredAllocatorId(uint256 id) internal view returns (uint96 allocatorId) {
-        allocatorId = id.toAllocatorId();
-        allocatorId.mustHaveARegisteredAllocator();
-    }
-
-    function mustHaveARegisteredAllocator(uint96 allocatorId) internal view {
-        assembly ("memory-safe") {
-            // NOTE: consider an SLOAD bypass for a fully compact allocator
-            if iszero(sload(or(_ALLOCATOR_BY_ALLOCATOR_ID_SLOT_SEED, allocatorId))) {
-                mstore(0, _NO_ALLOCATOR_REGISTERED_ERROR_SIGNATURE)
-                mstore(0x20, allocatorId)
-                revert(0x1c, 0x24)
-            }
-        }
-    }
-
-    function canBeRegistered(address allocator, bytes calldata proof) internal view returns (bool) {
-        return (msg.sender == allocator).or(allocator.code.length > 0).or(proof.length == 86 && (proof[0] == 0xff).and(allocator == address(uint160(uint256(keccak256(proof))))));
-    }
-
-    function register(address allocator) internal returns (uint96 allocatorId) {
-        allocatorId = allocator.usingAllocatorId();
-
-        assembly ("memory-safe") {
-            let allocatorSlot := or(_ALLOCATOR_BY_ALLOCATOR_ID_SLOT_SEED, allocatorId)
-
-            let registeredAllocator := sload(allocatorSlot)
-
-            if registeredAllocator {
-                mstore(0, _ALLOCATOR_ALREADY_REGISTERED_ERROR_SIGNATURE)
-                mstore(0x20, allocatorId)
-                mstore(0x40, registeredAllocator)
-                revert(0x1c, 0x44)
-            }
-
-            sstore(allocatorSlot, allocator)
-
-            mstore(0x00, allocatorId)
-            mstore(0x20, allocator)
-            log1(0x00, 0x40, _ALLOCATOR_REGISTERED_EVENT_SIGNATURE)
-        }
     }
 }

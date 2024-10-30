@@ -6,13 +6,13 @@
 > :warning: This is an early-stage contract under active development; it has not yet been properly tested, reviewed, or audited.
 
 ## Summary
-The Compact is an ownerless ERC6909 contract that facilitates the voluntary formation (and, if necessary, eventual dissolution) of resource locks.
+The Compact is an ownerless ERC6909 contract that facilitates the voluntary formation (and, if necessary, eventual dissolution) of reusable resource locks.
 
-Resource locks are entered into by ERC20 or native token holders, called the **sponsor**. Once a resource lock has been established, sponsors can create a compact, or a commitment allowing interested parties to claim their tokens through an **arbiter** indicated by the sponsor that attests to the specified conditions of the compact having been met.
+Resource locks are entered into by ERC20 or native token holders, called the _**sponsor**_. Once a resource lock has been established, sponsors can create a compact, or a commitment allowing interested parties to claim their tokens through an _**arbiter**_ indicated by the sponsor that attests to the specified conditions of the compact having been met.
 
-Each resource lock is mediated by an **allocator**, tasked with attesting to the availability of the underlying token balances and preserving the balances required for the commitments they have attested to; in other words, an allocator ensures that sponsors do not "double-spend," transfer, or withdraw any token balances that are already committed to a specific compact.
+Each resource lock is mediated by an _**allocator**_, tasked with attesting to the availability of the underlying token balances and preserving the balances required for the commitments they have attested to; in other words, an allocator ensures that sponsors do not "double-spend," transfer, or withdraw any token balances that are already committed to a specific compact.
 
-Once a sponsor and their designated allocator have both committed to a compact, a **claimant** may then immediately perform the attached condition (such as delivering another token on some destination chain) and then claim the allocated tokens by initiating a call to the associated arbiter, which will verify and mediate the terms and conditions of the associated compact and relay the confirmation to process the claim.
+Once a sponsor and their designated allocator have both committed to a compact, a _**claimant**_ may then immediately perform the attached condition (such as delivering another token on some destination chain) and then claim the allocated tokens by initiating a call to the associated arbiter, which will verify and mediate the terms and conditions of the associated compact and relay the confirmation to process the claim.
 
 The Compact effectively "activates" any deposited tokens to be instantly spent or swapped across arbitrary, asynchronous environments as long as:
  - the claimant is confident that the allocator is sound and will not leave the resource lock underallocated,
@@ -52,14 +52,14 @@ Once an allocator has been registered on a given chain for the first time, it wi
 
 A given allocator only needs to be registered once per chain and can then be utilized by many different resource locks.
 
-The allocator's primary function is to ensure that any resource locks it is assigned to are not "double-spent" — this entails ensuring that sufficient unallocated balance is available before cosigning on any requests to withdraw or transfer the balance or to sponsor a claim on that balance, and also ensuring that nonces are not reused.
+The allocator's primary function is to ensure that any resource locks it is assigned to are not "double-spent" — this entails ensuring that sufficient unallocated balance is available before cosigning on any requests to withdraw or transfer the balance or to sponsor a claim on that balance, and also ensuring that nonces are not reused. Allocators can also call a `consume` method at any point to consume nonces so that they cannot be used again.
 
 ### 2) Deposit tokens
 To enter into The Compact and create resource locks, a depositor begins by selecting for their four preferred properties for the lock:
- - the underlying token held in the resource lock
- - the allocator tasked with cosigning on claims against the resource locks and ensuring that the resource lock is not "double-spent" in any capacity, indicated by its registered allocator ID
- - the "scope" of the resource lock (either spendable on any chain or limited to a single chain, with a default option of being spendable on any chain)
- - the "reset period" for forceably exiting the lock and withdrawing the funds without the allocator's approval (one of eight preset values ranging from one second to thirty days, with a default option of ten minutes)
+ - the _**underlying token**_ held in the resource lock
+ - the _**allocator**_ tasked with cosigning on claims against the resource locks and ensuring that the resource lock is not "double-spent" in any capacity, indicated by its registered allocator ID
+ - the _**scope**_ of the resource lock (either spendable on any chain or limited to a single chain, with a default option of being spendable on any chain)
+ - the _**reset period**_ for forceably exiting the lock and withdrawing the funds without the allocator's approval (one of eight preset values ranging from one second to thirty days, with a default option of ten minutes)
 
 Each unique combination of these four properties is represented by a fungible ERC6909 tokenID.
 
@@ -71,6 +71,8 @@ Depending on the selected properties of the resource lock, the number of tokens 
  - a payable deposit function that specifies an array of 6909 IDs representing resource locks and deposit amounts for each id (with sufficient allowance set directly on The Compact for each ERC20 token) and the recipient of the 6909 tokens representing ownership of each lock
  - a non-payable deposit function that supplies an ERC20 token, amount, and associated Permit2 signature data (with sufficient allowance set on Permit2), and that specifies the allocator, the scope, the reset period, and the recipient of the 6909 tokens representing ownership of the lock (all of which are included as part of the Permit2 witness)
  - a payable deposit function that supplies an array of tokens and amounts (including an optional native token followed by any number of ERC20 tokens), and associated Permit2 batch signature data (with sufficient allowance set on Permit2 for each ERC20 token), and that specifies the allocator, the scope, the reset period, and the recipient of the 6909 tokens representing ownership of each lock (all of which are included as part of the Permit2 witness).
+
+There are also five `depositAndRegister` functions that simultaneously perform a deposit into a resource lock and register a compact (see section 3b).
 
  > For ERC20 deposits, the amount of 6909 tokens minted is based on the change in the actual token balance held by The Compact after making the deposit, not the supplied amount; this enables support for making deposits of fee-on-transfer tokens where the fee is deducted from the recipient.
 
@@ -178,9 +180,9 @@ To be considered valid, each compact must meet the following requirements:
 Once this payload has been signed by both the sponsor and the allocator (or at least by one party if the other is the intended caller), a claim can be submitted against it by the designated arbiter using a wide variety of functions (104 to be exact) depending on the type of compact and the intended result.
 
 ### 3b) Submit a Compact Directly
-Alternatively, the sponsor can register a compact (or group of compacts) by submitting a "claim hash" along with the typehash of the underlying compact (which maps to the EIP-712 message hash that would otherwise have been signed). Then, instead of supplying the signature of the sponsor as part of a claim, The Compact derives the claim hash based on the claim being submitted and attempts to locate a matching registered claim hash with the correct typehash. This flow supports more advanced functionality, such as sponsors without the ability to sign (like protocols or DAOs), smart wallet / EIP7702-enabled sponsors that have their own authorization or batching logic, and chained deposit & register operations.
+Alternatively, the sponsor can register a compact (or group of compacts) by submitting a "claim hash" along with the typehash of the underlying compact (which maps to the EIP-712 message hash that would otherwise have been signed). Then, instead of supplying the signature of the sponsor as part of a claim, The Compact derives the claim hash based on the claim being submitted and attempts to locate a matching registered claim hash with the correct typehash. This flow supports more advanced functionality, such as sponsors without the ability to sign (like protocols or DAOs), smart wallet / EIP7702-enabled sponsors that have their own authorization or batching logic, and chained deposit & register operations. When registering a compact directly, a duration is either explicitly provided or inferred from the reset period on the corresponding deposit where available; the registered compact becomes inactive once that duration elapses.
 
-> Note: once registered, a compact cannot be unregistered. The only way to definitively cancel a registered compact is by either having the allocator consume the attached nonce. Alternatively, the sponsor may perform a forced withdrawal to render the compact unclaimable until tokens are placed back into the resource lock.
+> Note: once registered, a compact cannot be unregistered. The only way to definitively cancel a registered compact is by either having the allocator consume the attached nonce or waiting for the registered compact to expire. Alternatively, the sponsor may perform a forced withdrawal to render the compact unclaimable until tokens are placed back into the resource lock.
 
 ### 4) Submit a Claim
 An arbiter takes a signed compact designated to them and uses it to submit a claim to The Compact.
@@ -242,10 +244,12 @@ struct SplitByIdComponent {
  interface ICompactAllocatedTransferAndWithdrawal {
     function allocatedTransfer(BasicTransfer calldata transfer) external returns (bool);
     function allocatedWithdrawal(BasicTransfer calldata withdrawal) external returns (bool);
+    /* NOTE: these functions are currently unavailable; use SplitBatchTransfer for this functionality
     function allocatedTransfer(SplitTransfer calldata transfer) external returns (bool);
     function allocatedWithdrawal(SplitTransfer calldata withdrawal) external returns (bool);
     function allocatedTransfer(BatchTransfer calldata transfer) external returns (bool);
     function allocatedWithdrawal(BatchTransfer calldata withdrawal) external returns (bool);
+    */
     function allocatedTransfer(SplitBatchTransfer calldata transfer) external returns (bool);
     function allocatedWithdrawal(SplitBatchTransfer calldata withdrawal) external returns (bool);
  }
@@ -705,8 +709,9 @@ interface ICompactBatchMultichainClaims{
 
 ### 5. View Functions
 In addition to standard ERC6909 view functions, The Compact includes the following view functions:
- - `getForcedWithdrawalStatus` gives the current forced withdrawal status of a given account (either deactivated, pending, or activated) for a given resource lock, and the time at which it becomes active if it is currently pending
- - `getLockDetails` gives the address of the underlying token, the address of the allocator, the reset period, and the scope (Multichain vs. Chain-specific) for a given resource lock
- - `check` determines if a given nonce has been consumed for a given allocator (note that nonces are scoped to allocators, not sponsors)
- - `DOMAIN_SEPARATOR` returns the hash of the EIP-712 domain data for the chain in question
+ - `getForcedWithdrawalStatus` gives the current forced withdrawal status of a given account (either deactivated, pending, or activated) for a given resource lock, and the time at which it becomes active if it is currently pending.
+ - `getLockDetails` gives the address of the underlying token, the address of the allocator, the reset period, and the scope (Multichain vs. Chain-specific) for a given resource lock.
+ - `getRegistrationStatus` gives the current compact registration status for a given sponsor, claim hash, and type hash and the time at which the registered compact is considered inactive.
+ - `check` determines if a given nonce has been consumed for a given allocator (note that nonces are scoped to allocators, not sponsors).
+ - `DOMAIN_SEPARATOR` returns the hash of the EIP-712 domain data for the chain in question.
  - `name` returns the name of the contract.

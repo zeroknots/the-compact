@@ -119,6 +119,8 @@ interface ITheCompact {
 
     function getForcedWithdrawalStatus(address account, uint256 id) external view returns (ForcedWithdrawalStatus status, uint256 forcedWithdrawalAvailableAt);
 
+    function getRegistrationStatus(address sponsor, bytes32 claimHash, bytes32 typehash) external view returns (bool isActive, uint256 expires);
+
     function getLockDetails(uint256 id) external view returns (address token, address allocator, ResetPeriod resetPeriod, Scope scope);
 
     function hasConsumedAllocatorNonce(uint256 nonce, address allocator) external view returns (bool consumed);

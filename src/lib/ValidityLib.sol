@@ -13,6 +13,16 @@ library ValidityLib {
     using HashLib for bytes32;
     using SignatureCheckerLib for address;
 
+    function fromRegisteredAllocatorIdWithConsumed(uint96 allocatorId, uint256 nonce) internal returns (address allocator) {
+        allocator = allocatorId.toRegisteredAllocator();
+        nonce.consumeNonceAsAllocator(allocator);
+    }
+
+    function toRegisteredAllocatorWithConsumed(uint256 id, uint256 nonce) internal returns (address allocator) {
+        allocator = id.toAllocator();
+        nonce.consumeNonceAsAllocator(allocator);
+    }
+
     function later(uint256 expires) internal view {
         assembly ("memory-safe") {
             if iszero(gt(expires, timestamp())) {
@@ -38,22 +48,8 @@ library ValidityLib {
         }
     }
 
-    function fromRegisteredAllocatorIdWithConsumed(uint96 allocatorId, uint256 nonce) internal returns (address allocator) {
-        allocator = allocatorId.toRegisteredAllocator();
-        nonce.consumeNonceAsAllocator(allocator);
-    }
-
-    function toRegisteredAllocatorWithConsumed(uint256 id, uint256 nonce) internal returns (address allocator) {
-        allocator = id.toAllocator();
-        nonce.consumeNonceAsAllocator(allocator);
-    }
-
     function hasConsumedAllocatorNonce(address allocator, uint256 nonce) internal view returns (bool) {
         return nonce.isConsumedByAllocator(allocator);
-    }
-
-    function hasConsumedEmissaryAssignmentNonce(address sponsor, uint256 nonce) internal view returns (bool) {
-        return nonce.isConsumedBySponsor(sponsor);
     }
 
     function excludingNative(address token) internal pure returns (address) {
