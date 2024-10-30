@@ -232,7 +232,8 @@ contract TheCompact is ITheCompact, ITheCompactClaims, ERC6909, Tstorish {
     uint32 private constant _PERMIT_WITNESS_TRANSFER_FROM_SELECTOR = 0x137c29fe;
     uint32 private constant _BATCH_PERMIT_WITNESS_TRANSFER_FROM_SELECTOR = 0xfe8ec1a7;
 
-    mapping(address => mapping(uint256 => uint256)) private _cutoffTime;
+    // slot: keccak256(_FORCED_WITHDRAWAL_ACTIVATIONS_SCOPE ++ account ++ id) => activates
+    uint256 private constant _FORCED_WITHDRAWAL_ACTIVATIONS_SCOPE = 0x41d0e04b;
 
     // slot: keccak256(_ACTIVE_REGISTRATIONS_SCOPE ++ sponsor ++ claimHash ++ typehash) => expires
     uint256 private constant _ACTIVE_REGISTRATIONS_SCOPE = 0x68a30dd0;
@@ -565,11 +566,9 @@ contract TheCompact is ITheCompact, ITheCompactClaims, ERC6909, Tstorish {
         CompactCategory compactCategory,
         string calldata witness,
         bytes calldata signature
-    ) external payable returns (uint256[] memory ids) {
-        uint256 totalTokensLessInitialNative;
-        bool firstUnderlyingTokenIsNative;
-        uint256[] memory initialTokenBalances;
-        (totalTokensLessInitialNative, firstUnderlyingTokenIsNative, ids, initialTokenBalances) = _preprocessAndPerformInitialNativeDeposit(permitted, allocator, resetPeriod, scope, depositor);
+    ) external payable returns (uint256[] memory) {
+        (uint256 totalTokensLessInitialNative, bool firstUnderlyingTokenIsNative, uint256[] memory ids, uint256[] memory initialTokenBalances) =
+            _preprocessAndPerformInitialNativeDeposit(permitted, allocator, resetPeriod, scope, depositor);
 
         uint256 idsHash;
         assembly ("memory-safe") {
@@ -594,6 +593,8 @@ contract TheCompact is ITheCompact, ITheCompactClaims, ERC6909, Tstorish {
         _verifyBalancesAndPerformDeposits(ids, permitted, initialTokenBalances, depositor, firstUnderlyingTokenIsNative);
 
         _register(depositor, claimHash, compactTypehash, resetPeriod.toSeconds());
+
+        return ids;
     }
 
     function allocatedTransfer(BasicTransfer calldata transfer) external returns (bool) {
@@ -1018,23 +1019,39 @@ contract TheCompact is ITheCompact, ITheCompactClaims, ERC6909, Tstorish {
             withdrawableAt = block.timestamp + id.toResetPeriod().toSeconds();
         }
 
-        _cutoffTime[msg.sender][id] = withdrawableAt;
+        uint256 cutoffTimeSlotLocation = _getCutoffTimeSlot(msg.sender, id);
+        assembly ("memory-safe") {
+            sstore(cutoffTimeSlotLocation, withdrawableAt)
+        }
 
         emit ForcedWithdrawalEnabled(msg.sender, id, withdrawableAt);
     }
 
+    function _getCutoffTimeSlot(address account, uint256 id) internal pure returns (uint256 cutoffTimeSlotLocation) {
+        assembly ("memory-safe") {
+            let m := mload(0x40)
+            mstore(0x14, account)
+            mstore(0, _FORCED_WITHDRAWAL_ACTIVATIONS_SCOPE)
+            mstore(0x34, id)
+            cutoffTimeSlotLocation := keccak256(0x1c, 0x38)
+            mstore(0x40, m)
+        }
+    }
+
     function disableForcedWithdrawal(uint256 id) external returns (bool) {
-        if (_cutoffTime[msg.sender][id] == 0) {
-            assembly ("memory-safe") {
+        uint256 cutoffTimeSlotLocation = _getCutoffTimeSlot(msg.sender, id);
+
+        assembly ("memory-safe") {
+            if iszero(sload(cutoffTimeSlotLocation)) {
                 // revert ForcedWithdrawalAlreadyDisabled(msg.sender, id)
                 mstore(0, 0xe632dbad)
                 mstore(0x20, caller())
                 mstore(0x40, id)
                 revert(0x1c, 0x44)
             }
-        }
 
-        delete _cutoffTime[msg.sender][id];
+            sstore(cutoffTimeSlotLocation, 0)
+        }
 
         emit ForcedWithdrawalDisabled(msg.sender, id);
 
@@ -1042,7 +1059,12 @@ contract TheCompact is ITheCompact, ITheCompactClaims, ERC6909, Tstorish {
     }
 
     function forcedWithdrawal(uint256 id, address recipient, uint256 amount) external returns (bool) {
-        uint256 withdrawableAt = _cutoffTime[msg.sender][id];
+        uint256 cutoffTimeSlotLocation = _getCutoffTimeSlot(msg.sender, id);
+
+        uint256 withdrawableAt;
+        assembly ("memory-safe") {
+            withdrawableAt := sload(cutoffTimeSlotLocation)
+        }
 
         if ((withdrawableAt == 0).or(withdrawableAt > block.timestamp)) {
             assembly ("memory-safe") {
@@ -1149,9 +1171,9 @@ contract TheCompact is ITheCompact, ITheCompactClaims, ERC6909, Tstorish {
     }
 
     function getForcedWithdrawalStatus(address account, uint256 id) external view returns (ForcedWithdrawalStatus status, uint256 forcedWithdrawalAvailableAt) {
-        forcedWithdrawalAvailableAt = _cutoffTime[account][id];
-
+        uint256 cutoffTimeSlotLocation = _getCutoffTimeSlot(account, id);
         assembly ("memory-safe") {
+            forcedWithdrawalAvailableAt := sload(cutoffTimeSlotLocation)
             status := mul(iszero(iszero(forcedWithdrawalAvailableAt)), sub(2, gt(forcedWithdrawalAvailableAt, timestamp())))
         }
     }
