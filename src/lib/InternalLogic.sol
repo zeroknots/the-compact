@@ -588,17 +588,6 @@ contract InternalLogic is Tstorish {
         return _verifyAndProcessSplitComponents(sponsor, id, allocatedAmount, claimants, operation);
     }
 
-    function _ensureValidScope(bytes32 sponsorDomainSeparator, uint256 id) internal pure {
-        assembly ("memory-safe") {
-            if iszero(or(iszero(sponsorDomainSeparator), iszero(shr(255, id)))) {
-                // revert InvalidScope(id)
-                mstore(0, 0xa06356f5)
-                mstore(0x20, id)
-                revert(0x1c, 0x24)
-            }
-        }
-    }
-
     function _processBatchClaimWithQualificationAndSponsorDomain(
         bytes32 messageHash,
         bytes32 qualificationMessageHash,
@@ -1156,59 +1145,12 @@ contract InternalLogic is Tstorish {
         return true;
     }
 
-    // NOTE: all tokens must be supplied in ascending order and cannot be duplicated.
-    function _prepareIdsAndGetBalances(
-        uint256[] memory ids,
-        uint256 totalTokensLessInitialNative,
-        bool firstUnderlyingTokenIsNative,
-        ISignatureTransfer.TokenPermissions[] calldata permitted,
-        uint256 id
-    ) internal view returns (uint256[] memory tokenBalances) {
-        unchecked {
-            tokenBalances = new uint256[](totalTokensLessInitialNative);
-
-            address token;
-            uint256 candidateId;
-            uint256 errorBuffer;
-
-            for (uint256 i = 0; i < totalTokensLessInitialNative; ++i) {
-                token = permitted[i + firstUnderlyingTokenIsNative.asUint256()].token;
-                candidateId = id.withReplacedToken(token);
-                errorBuffer |= (candidateId <= id).asUint256();
-                id = candidateId;
-
-                ids[i + firstUnderlyingTokenIsNative.asUint256()] = id;
-
-                tokenBalances[i] = token.balanceOf(address(this));
-            }
-
-            assembly ("memory-safe") {
-                if errorBuffer {
-                    // revert InvalidDepositTokenOrdering()
-                    mstore(0, 0x0f2f1e51)
-                    revert(0x1c, 0x04)
-                }
-            }
-        }
-    }
-
     function _performBasicERC20Deposit(address token, address allocator, uint256 amount) internal returns (uint256 id) {
         _setTstorish(_REENTRANCY_GUARD_SLOT, 1);
         id = token.excludingNative().toIdIfRegistered(Scope.Multichain, ResetPeriod.TenMinutes, allocator);
 
         _transferAndDeposit(token, msg.sender, id, amount);
         _clearTstorish(_REENTRANCY_GUARD_SLOT);
-    }
-
-    function _typehashes(uint256 i) internal pure returns (bytes32 typehash) {
-        assembly ("memory-safe") {
-            let m := mload(0x40)
-            mstore(0, COMPACT_TYPEHASH)
-            mstore(0x20, BATCH_COMPACT_TYPEHASH)
-            mstore(0x40, MULTICHAIN_COMPACT_TYPEHASH)
-            typehash := mload(shl(5, i))
-            mstore(0x40, m)
-        }
     }
 
     function _deriveConsistentAllocatorAndConsumeNonce(TransferComponent[] memory components, uint256 nonce) internal returns (address allocator) {
@@ -1278,19 +1220,6 @@ contract InternalLogic is Tstorish {
         return true;
     }
 
-    function _deriveCompactDepositWitnessHash(uint256 calldataOffset) internal pure returns (bytes32 witnessHash) {
-        assembly ("memory-safe") {
-            let m := mload(0x40) // Grab the free memory pointer; memory will be left dirtied.
-
-            // NOTE: none of these arguments are sanitized; the assumption is that they have to
-            // match the signed values anyway, so *should* be fine not to sanitize them but could
-            // optionally check that there are no dirty upper bits on any of them.
-            mstore(m, PERMIT2_DEPOSIT_WITNESS_FRAGMENT_HASH)
-            calldatacopy(add(m, 0x20), calldataOffset, 0x80) // allocator, resetPeriod, scope, recipient
-            witnessHash := keccak256(m, 0xa0)
-        }
-    }
-
     function _writeSignatureAndPerformPermit2Call(uint256 m, uint256 signatureOffsetLocation, uint256 signatureOffsetValue, bytes calldata signature) internal {
         bool isPermit2Deployed = _isPermit2Deployed();
         assembly ("memory-safe") {
@@ -1314,71 +1243,6 @@ contract InternalLogic is Tstorish {
                 mstore(0, 0x7f28c61e)
                 revert(0x1c, 0x04)
             }
-        }
-    }
-
-    function _deriveAndWriteWitnessHash(bytes32 activationTypehash, uint256 idOrIdsHash, bytes32 claimHash, uint256 memoryPointer, uint256 offset) internal pure {
-        assembly ("memory-safe") {
-            let m := mload(0x40)
-            mstore(0, activationTypehash)
-            mstore(0x20, idOrIdsHash)
-            mstore(0x40, claimHash)
-            mstore(add(memoryPointer, offset), keccak256(0, 0x60))
-            mstore(0x40, m)
-        }
-    }
-
-    function _insertCompactDepositTypestringAt(uint256 memoryLocation) internal pure {
-        assembly ("memory-safe") {
-            mstore(memoryLocation, 0x96)
-            mstore(add(memoryLocation, 0x20), 0x436f6d706163744465706f736974207769746e65737329436f6d706163744465)
-            mstore(add(memoryLocation, 0x40), 0x706f736974286164647265737320616c6c6f6361746f722c75696e7438207265)
-            mstore(add(memoryLocation, 0x60), 0x736574506572696f642c75696e74382073636f70652c61646472657373207265)
-            mstore(add(memoryLocation, 0x96), 0x20746f6b656e2c75696e7432353620616d6f756e7429)
-            mstore(add(memoryLocation, 0x80), 0x63697069656e7429546f6b656e5065726d697373696f6e732861646472657373)
-        }
-    }
-
-    function _beginPreparingBatchDepositPermit2Calldata(uint256 totalTokensLessInitialNative, bool firstUnderlyingTokenIsNative) internal view returns (uint256 m, uint256 typestringMemoryLocation) {
-        assembly ("memory-safe") {
-            m := mload(0x40) // Grab the free memory pointer; memory will be left dirtied.
-
-            let tokenChunk := mul(totalTokensLessInitialNative, 0x40)
-            let twoTokenChunks := shl(1, tokenChunk)
-
-            let permittedCalldataLocation := add(add(0x24, calldataload(0x24)), mul(firstUnderlyingTokenIsNative, 0x40))
-
-            mstore(m, _BATCH_PERMIT_WITNESS_TRANSFER_FROM_SELECTOR)
-            mstore(add(m, 0x20), 0xc0) // permitted offset
-            mstore(add(m, 0x40), add(0x140, tokenChunk)) // details offset
-            mstore(add(m, 0x60), calldataload(0x04)) // depositor
-            // 0x80 => witnessHash
-            mstore(add(m, 0xa0), add(0x160, twoTokenChunks)) // witness offset
-            // 0xc0 => signatureOffset
-            mstore(add(m, 0xe0), 0x60) // permitted tokens relative offset
-            mstore(add(m, 0x100), calldataload(0x44)) // nonce
-            mstore(add(m, 0x120), calldataload(0x64)) // deadline
-            mstore(add(m, 0x140), totalTokensLessInitialNative) // permitted.length
-
-            calldatacopy(add(m, 0x160), permittedCalldataLocation, tokenChunk) // permitted data
-
-            let detailsOffset := add(add(m, 0x160), tokenChunk)
-            mstore(detailsOffset, totalTokensLessInitialNative) // details.length
-
-            // details data
-            let starting := add(detailsOffset, 0x20)
-            let next := add(detailsOffset, 0x40)
-            let end := mul(totalTokensLessInitialNative, 0x40)
-            for { let i := 0 } lt(i, end) { i := add(i, 0x40) } {
-                mstore(add(starting, i), address())
-                mstore(add(next, i), calldataload(add(permittedCalldataLocation, add(0x20, i))))
-            }
-
-            typestringMemoryLocation := add(m, add(0x180, twoTokenChunks))
-
-            // TODO: strongly consider allocating memory here as the inline assembly scope
-            // is being left (it *should* be fine for now as the function between assembly
-            // blocks does not allocate any new memory).
         }
     }
 
@@ -1418,28 +1282,6 @@ contract InternalLogic is Tstorish {
         }
 
         initialTokenBalances = _prepareIdsAndGetBalances(ids, totalTokensLessInitialNative, firstUnderlyingTokenIsNative, permitted, initialId);
-    }
-
-    function _getCutoffTimeSlot(address account, uint256 id) internal pure returns (uint256 cutoffTimeSlotLocation) {
-        assembly ("memory-safe") {
-            let m := mload(0x40)
-            mstore(0x14, account)
-            mstore(0, _FORCED_WITHDRAWAL_ACTIVATIONS_SCOPE)
-            mstore(0x34, id)
-            cutoffTimeSlotLocation := keccak256(0x1c, 0x38)
-            mstore(0x40, m)
-        }
-    }
-
-    function _getRegistrationStatus(address sponsor, bytes32 claimHash, bytes32 typehash) internal view returns (uint256 expires) {
-        assembly ("memory-safe") {
-            let m := mload(0x40)
-            mstore(add(m, 0x14), sponsor)
-            mstore(m, _ACTIVE_REGISTRATIONS_SCOPE)
-            mstore(add(m, 0x34), claimHash)
-            mstore(add(m, 0x54), typehash)
-            expires := sload(keccak256(add(m, 0x1c), 0x58))
-        }
     }
 
     function _setReentrancyLockAndStartPreparingPermit2Call(address token, address allocator, ResetPeriod resetPeriod, Scope scope)
@@ -1645,6 +1487,96 @@ contract InternalLogic is Tstorish {
         }
     }
 
+    // NOTE: all tokens must be supplied in ascending order and cannot be duplicated.
+    function _prepareIdsAndGetBalances(
+        uint256[] memory ids,
+        uint256 totalTokensLessInitialNative,
+        bool firstUnderlyingTokenIsNative,
+        ISignatureTransfer.TokenPermissions[] calldata permitted,
+        uint256 id
+    ) internal view returns (uint256[] memory tokenBalances) {
+        unchecked {
+            tokenBalances = new uint256[](totalTokensLessInitialNative);
+
+            address token;
+            uint256 candidateId;
+            uint256 errorBuffer;
+
+            for (uint256 i = 0; i < totalTokensLessInitialNative; ++i) {
+                token = permitted[i + firstUnderlyingTokenIsNative.asUint256()].token;
+                candidateId = id.withReplacedToken(token);
+                errorBuffer |= (candidateId <= id).asUint256();
+                id = candidateId;
+
+                ids[i + firstUnderlyingTokenIsNative.asUint256()] = id;
+
+                tokenBalances[i] = token.balanceOf(address(this));
+            }
+
+            assembly ("memory-safe") {
+                if errorBuffer {
+                    // revert InvalidDepositTokenOrdering()
+                    mstore(0, 0x0f2f1e51)
+                    revert(0x1c, 0x04)
+                }
+            }
+        }
+    }
+
+    function _beginPreparingBatchDepositPermit2Calldata(uint256 totalTokensLessInitialNative, bool firstUnderlyingTokenIsNative) internal view returns (uint256 m, uint256 typestringMemoryLocation) {
+        assembly ("memory-safe") {
+            m := mload(0x40) // Grab the free memory pointer; memory will be left dirtied.
+
+            let tokenChunk := mul(totalTokensLessInitialNative, 0x40)
+            let twoTokenChunks := shl(1, tokenChunk)
+
+            let permittedCalldataLocation := add(add(0x24, calldataload(0x24)), mul(firstUnderlyingTokenIsNative, 0x40))
+
+            mstore(m, _BATCH_PERMIT_WITNESS_TRANSFER_FROM_SELECTOR)
+            mstore(add(m, 0x20), 0xc0) // permitted offset
+            mstore(add(m, 0x40), add(0x140, tokenChunk)) // details offset
+            mstore(add(m, 0x60), calldataload(0x04)) // depositor
+            // 0x80 => witnessHash
+            mstore(add(m, 0xa0), add(0x160, twoTokenChunks)) // witness offset
+            // 0xc0 => signatureOffset
+            mstore(add(m, 0xe0), 0x60) // permitted tokens relative offset
+            mstore(add(m, 0x100), calldataload(0x44)) // nonce
+            mstore(add(m, 0x120), calldataload(0x64)) // deadline
+            mstore(add(m, 0x140), totalTokensLessInitialNative) // permitted.length
+
+            calldatacopy(add(m, 0x160), permittedCalldataLocation, tokenChunk) // permitted data
+
+            let detailsOffset := add(add(m, 0x160), tokenChunk)
+            mstore(detailsOffset, totalTokensLessInitialNative) // details.length
+
+            // details data
+            let starting := add(detailsOffset, 0x20)
+            let next := add(detailsOffset, 0x40)
+            let end := mul(totalTokensLessInitialNative, 0x40)
+            for { let i := 0 } lt(i, end) { i := add(i, 0x40) } {
+                mstore(add(starting, i), address())
+                mstore(add(next, i), calldataload(add(permittedCalldataLocation, add(0x20, i))))
+            }
+
+            typestringMemoryLocation := add(m, add(0x180, twoTokenChunks))
+
+            // TODO: strongly consider allocating memory here as the inline assembly scope
+            // is being left (it *should* be fine for now as the function between assembly
+            // blocks does not allocate any new memory).
+        }
+    }
+
+    function _getRegistrationStatus(address sponsor, bytes32 claimHash, bytes32 typehash) internal view returns (uint256 expires) {
+        assembly ("memory-safe") {
+            let m := mload(0x40)
+            mstore(add(m, 0x14), sponsor)
+            mstore(m, _ACTIVE_REGISTRATIONS_SCOPE)
+            mstore(add(m, 0x34), claimHash)
+            mstore(add(m, 0x54), typehash)
+            expires := sload(keccak256(add(m, 0x1c), 0x58))
+        }
+    }
+
     function _hasNoActiveRegistration(address sponsor, bytes32 claimHash, bytes32 typehash) internal view returns (bool) {
         return _getRegistrationStatus(sponsor, claimHash, typehash) <= block.timestamp;
     }
@@ -1661,6 +1593,25 @@ contract InternalLogic is Tstorish {
         assembly ("memory-safe") {
             permit2Deployed := iszero(iszero(extcodesize(_PERMIT2)))
         }
+    }
+
+    function _domainSeparator() internal view returns (bytes32) {
+        return _INITIAL_DOMAIN_SEPARATOR.toLatest(_INITIAL_CHAIN_ID);
+    }
+
+    /// @dev Returns the symbol for token `id`.
+    function _name(uint256 id) internal view returns (string memory) {
+        return _METADATA_RENDERER.name(id);
+    }
+
+    /// @dev Returns the symbol for token `id`.
+    function _symbol(uint256 id) internal view returns (string memory) {
+        return _METADATA_RENDERER.symbol(id);
+    }
+
+    /// @dev Returns the Uniform Resource Identifier (URI) for token `id`.
+    function _tokenURI(uint256 id) internal view returns (string memory) {
+        return _METADATA_RENDERER.uri(id.toLock(), id);
     }
 
     function _writeWitnessAndGetTypehashes(uint256 memoryLocation, CompactCategory category, string calldata witness, bool usingBatch)
@@ -1776,22 +1727,71 @@ contract InternalLogic is Tstorish {
         }
     }
 
-    function _domainSeparator() internal view returns (bytes32) {
-        return _INITIAL_DOMAIN_SEPARATOR.toLatest(_INITIAL_CHAIN_ID);
+    function _deriveCompactDepositWitnessHash(uint256 calldataOffset) internal pure returns (bytes32 witnessHash) {
+        assembly ("memory-safe") {
+            let m := mload(0x40) // Grab the free memory pointer; memory will be left dirtied.
+
+            // NOTE: none of these arguments are sanitized; the assumption is that they have to
+            // match the signed values anyway, so *should* be fine not to sanitize them but could
+            // optionally check that there are no dirty upper bits on any of them.
+            mstore(m, PERMIT2_DEPOSIT_WITNESS_FRAGMENT_HASH)
+            calldatacopy(add(m, 0x20), calldataOffset, 0x80) // allocator, resetPeriod, scope, recipient
+            witnessHash := keccak256(m, 0xa0)
+        }
     }
 
-    /// @dev Returns the symbol for token `id`.
-    function _name(uint256 id) internal view returns (string memory) {
-        return _METADATA_RENDERER.name(id);
+    function _deriveAndWriteWitnessHash(bytes32 activationTypehash, uint256 idOrIdsHash, bytes32 claimHash, uint256 memoryPointer, uint256 offset) internal pure {
+        assembly ("memory-safe") {
+            let m := mload(0x40)
+            mstore(0, activationTypehash)
+            mstore(0x20, idOrIdsHash)
+            mstore(0x40, claimHash)
+            mstore(add(memoryPointer, offset), keccak256(0, 0x60))
+            mstore(0x40, m)
+        }
     }
 
-    /// @dev Returns the symbol for token `id`.
-    function _symbol(uint256 id) internal view returns (string memory) {
-        return _METADATA_RENDERER.symbol(id);
+    function _insertCompactDepositTypestringAt(uint256 memoryLocation) internal pure {
+        assembly ("memory-safe") {
+            mstore(memoryLocation, 0x96)
+            mstore(add(memoryLocation, 0x20), 0x436f6d706163744465706f736974207769746e65737329436f6d706163744465)
+            mstore(add(memoryLocation, 0x40), 0x706f736974286164647265737320616c6c6f6361746f722c75696e7438207265)
+            mstore(add(memoryLocation, 0x60), 0x736574506572696f642c75696e74382073636f70652c61646472657373207265)
+            mstore(add(memoryLocation, 0x96), 0x20746f6b656e2c75696e7432353620616d6f756e7429)
+            mstore(add(memoryLocation, 0x80), 0x63697069656e7429546f6b656e5065726d697373696f6e732861646472657373)
+        }
     }
 
-    /// @dev Returns the Uniform Resource Identifier (URI) for token `id`.
-    function _tokenURI(uint256 id) internal view returns (string memory) {
-        return _METADATA_RENDERER.uri(id.toLock(), id);
+    function _ensureValidScope(bytes32 sponsorDomainSeparator, uint256 id) internal pure {
+        assembly ("memory-safe") {
+            if iszero(or(iszero(sponsorDomainSeparator), iszero(shr(255, id)))) {
+                // revert InvalidScope(id)
+                mstore(0, 0xa06356f5)
+                mstore(0x20, id)
+                revert(0x1c, 0x24)
+            }
+        }
+    }
+
+    function _typehashes(uint256 i) internal pure returns (bytes32 typehash) {
+        assembly ("memory-safe") {
+            let m := mload(0x40)
+            mstore(0, COMPACT_TYPEHASH)
+            mstore(0x20, BATCH_COMPACT_TYPEHASH)
+            mstore(0x40, MULTICHAIN_COMPACT_TYPEHASH)
+            typehash := mload(shl(5, i))
+            mstore(0x40, m)
+        }
+    }
+
+    function _getCutoffTimeSlot(address account, uint256 id) internal pure returns (uint256 cutoffTimeSlotLocation) {
+        assembly ("memory-safe") {
+            let m := mload(0x40)
+            mstore(0x14, account)
+            mstore(0, _FORCED_WITHDRAWAL_ACTIVATIONS_SCOPE)
+            mstore(0x34, id)
+            cutoffTimeSlotLocation := keccak256(0x1c, 0x38)
+            mstore(0x40, m)
+        }
     }
 }
