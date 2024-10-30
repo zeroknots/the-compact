@@ -4,22 +4,9 @@ pragma solidity ^0.8.27;
 import { ITheCompactClaims } from "../interfaces/ITheCompactClaims.sol";
 import { InternalLogic } from "./InternalLogic.sol";
 
-import {
-    BasicTransfer,
-    SplitTransfer,
-    BasicClaim,
-    QualifiedClaim,
-    ClaimWithWitness,
-    QualifiedClaimWithWitness,
-    SplitClaim,
-    SplitClaimWithWitness,
-    QualifiedSplitClaim,
-    QualifiedSplitClaimWithWitness
-} from "../types/Claims.sol";
+import { BasicClaim, QualifiedClaim, ClaimWithWitness, QualifiedClaimWithWitness, SplitClaim, SplitClaimWithWitness, QualifiedSplitClaim, QualifiedSplitClaimWithWitness } from "../types/Claims.sol";
 
 import {
-    BatchTransfer,
-    SplitBatchTransfer,
     BatchClaim,
     QualifiedBatchClaim,
     BatchClaimWithWitness,

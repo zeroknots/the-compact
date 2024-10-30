@@ -11,7 +11,6 @@ import { ForcedWithdrawalStatus } from "./types/ForcedWithdrawalStatus.sol";
 import { ConsumerLib } from "./lib/ConsumerLib.sol";
 import { IdLib } from "./lib/IdLib.sol";
 import { EfficiencyLib } from "./lib/EfficiencyLib.sol";
-import { FunctionCastLib } from "./lib/FunctionCastLib.sol";
 import { HashLib } from "./lib/HashLib.sol";
 import { ValidityLib } from "./lib/ValidityLib.sol";
 import { Extsload } from "./lib/Extsload.sol";
@@ -21,102 +20,11 @@ import { SafeTransferLib } from "solady/utils/SafeTransferLib.sol";
 import { IPermit2 } from "permit2/src/interfaces/IPermit2.sol";
 import { Tstorish } from "tstorish/Tstorish.sol";
 import { ISignatureTransfer } from "permit2/src/interfaces/ISignatureTransfer.sol";
-import {
-    BasicTransfer,
-    SplitTransfer,
-    BasicClaim,
-    QualifiedClaim,
-    ClaimWithWitness,
-    QualifiedClaimWithWitness,
-    SplitClaim,
-    SplitClaimWithWitness,
-    QualifiedSplitClaim,
-    QualifiedSplitClaimWithWitness
-} from "./types/Claims.sol";
+import { BasicTransfer, SplitTransfer } from "./types/Claims.sol";
 
-import {
-    BatchTransfer,
-    SplitBatchTransfer,
-    BatchClaim,
-    QualifiedBatchClaim,
-    BatchClaimWithWitness,
-    QualifiedBatchClaimWithWitness,
-    SplitBatchClaim,
-    SplitBatchClaimWithWitness,
-    QualifiedSplitBatchClaim,
-    QualifiedSplitBatchClaimWithWitness
-} from "./types/BatchClaims.sol";
+import { BatchTransfer, SplitBatchTransfer } from "./types/BatchClaims.sol";
 
-import {
-    MultichainClaim,
-    QualifiedMultichainClaim,
-    MultichainClaimWithWitness,
-    QualifiedMultichainClaimWithWitness,
-    SplitMultichainClaim,
-    SplitMultichainClaimWithWitness,
-    QualifiedSplitMultichainClaim,
-    QualifiedSplitMultichainClaimWithWitness,
-    ExogenousMultichainClaim,
-    ExogenousQualifiedMultichainClaim,
-    ExogenousMultichainClaimWithWitness,
-    ExogenousQualifiedMultichainClaimWithWitness,
-    ExogenousSplitMultichainClaim,
-    ExogenousSplitMultichainClaimWithWitness,
-    ExogenousQualifiedSplitMultichainClaim,
-    ExogenousQualifiedSplitMultichainClaimWithWitness
-} from "./types/MultichainClaims.sol";
-
-import {
-    BatchMultichainClaim,
-    QualifiedBatchMultichainClaim,
-    BatchMultichainClaimWithWitness,
-    QualifiedBatchMultichainClaimWithWitness,
-    SplitBatchMultichainClaim,
-    SplitBatchMultichainClaimWithWitness,
-    QualifiedSplitBatchMultichainClaim,
-    QualifiedSplitBatchMultichainClaimWithWitness,
-    ExogenousBatchMultichainClaim,
-    ExogenousQualifiedBatchMultichainClaim,
-    ExogenousBatchMultichainClaimWithWitness,
-    ExogenousQualifiedBatchMultichainClaimWithWitness,
-    ExogenousSplitBatchMultichainClaim,
-    ExogenousSplitBatchMultichainClaimWithWitness,
-    ExogenousQualifiedSplitBatchMultichainClaim,
-    ExogenousQualifiedSplitBatchMultichainClaimWithWitness
-} from "./types/BatchMultichainClaims.sol";
-
-import {
-    COMPACT_TYPEHASH,
-    BATCH_COMPACT_TYPEHASH,
-    MULTICHAIN_COMPACT_TYPEHASH,
-    PERMIT2_DEPOSIT_WITNESS_FRAGMENT_HASH,
-    PERMIT2_DEPOSIT_WITH_ACTIVATION_TYPESTRING_FRAGMENT_ONE,
-    PERMIT2_DEPOSIT_WITH_ACTIVATION_TYPESTRING_FRAGMENT_TWO,
-    PERMIT2_BATCH_DEPOSIT_WITH_ACTIVATION_TYPESTRING_FRAGMENT_ONE,
-    PERMIT2_BATCH_DEPOSIT_WITH_ACTIVATION_TYPESTRING_FRAGMENT_TWO,
-    TOKEN_PERMISSIONS_TYPESTRING_FRAGMENT_ONE,
-    TOKEN_PERMISSIONS_TYPESTRING_FRAGMENT_TWO,
-    COMPACT_ACTIVATION_TYPEHASH,
-    BATCH_COMPACT_ACTIVATION_TYPEHASH,
-    MULTICHAIN_COMPACT_ACTIVATION_TYPEHASH,
-    COMPACT_BATCH_ACTIVATION_TYPEHASH,
-    BATCH_COMPACT_BATCH_ACTIVATION_TYPEHASH,
-    MULTICHAIN_COMPACT_BATCH_ACTIVATION_TYPEHASH,
-    PERMIT2_ACTIVATION_COMPACT_TYPESTRING_FRAGMENT_ONE,
-    PERMIT2_ACTIVATION_COMPACT_TYPESTRING_FRAGMENT_TWO,
-    PERMIT2_ACTIVATION_COMPACT_TYPESTRING_FRAGMENT_THREE,
-    PERMIT2_ACTIVATION_COMPACT_TYPESTRING_FRAGMENT_FOUR,
-    PERMIT2_ACTIVATION_BATCH_COMPACT_TYPESTRING_FRAGMENT_ONE,
-    PERMIT2_ACTIVATION_BATCH_COMPACT_TYPESTRING_FRAGMENT_TWO,
-    PERMIT2_ACTIVATION_BATCH_COMPACT_TYPESTRING_FRAGMENT_THREE,
-    PERMIT2_ACTIVATION_BATCH_COMPACT_TYPESTRING_FRAGMENT_FOUR,
-    PERMIT2_ACTIVATION_MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_ONE,
-    PERMIT2_ACTIVATION_MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_TWO,
-    PERMIT2_ACTIVATION_MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_THREE,
-    PERMIT2_ACTIVATION_MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_FOUR,
-    PERMIT2_ACTIVATION_MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_FIVE,
-    PERMIT2_ACTIVATION_MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_SIX
-} from "./types/EIP712Types.sol";
+import { COMPACT_TYPEHASH } from "./types/EIP712Types.sol";
 
 import { SplitComponent, TransferComponent, SplitByIdComponent, BatchClaimComponent, SplitBatchClaimComponent } from "./types/Components.sol";
 
@@ -139,56 +47,8 @@ contract TheCompact is ITheCompact, ClaimProcessor, ERC6909 {
     using HashLib for uint256;
     using HashLib for BasicTransfer;
     using HashLib for SplitTransfer;
-    using HashLib for BasicClaim;
-    using HashLib for QualifiedClaim;
-    using HashLib for ClaimWithWitness;
-    using HashLib for QualifiedClaimWithWitness;
-    using HashLib for SplitClaim;
-    using HashLib for SplitClaimWithWitness;
-    using HashLib for QualifiedSplitClaim;
-    using HashLib for QualifiedSplitClaimWithWitness;
     using HashLib for BatchTransfer;
     using HashLib for SplitBatchTransfer;
-    using HashLib for BatchClaim;
-    using HashLib for QualifiedBatchClaim;
-    using HashLib for BatchClaimWithWitness;
-    using HashLib for QualifiedBatchClaimWithWitness;
-    using HashLib for SplitBatchClaim;
-    using HashLib for SplitBatchClaimWithWitness;
-    using HashLib for QualifiedSplitBatchClaim;
-    using HashLib for QualifiedSplitBatchClaimWithWitness;
-    using HashLib for MultichainClaim;
-    using HashLib for QualifiedMultichainClaim;
-    using HashLib for MultichainClaimWithWitness;
-    using HashLib for QualifiedMultichainClaimWithWitness;
-    using HashLib for SplitMultichainClaim;
-    using HashLib for SplitMultichainClaimWithWitness;
-    using HashLib for QualifiedSplitMultichainClaim;
-    using HashLib for QualifiedSplitMultichainClaimWithWitness;
-    using HashLib for ExogenousMultichainClaim;
-    using HashLib for ExogenousQualifiedMultichainClaim;
-    using HashLib for ExogenousMultichainClaimWithWitness;
-    using HashLib for ExogenousQualifiedMultichainClaimWithWitness;
-    using HashLib for ExogenousSplitMultichainClaim;
-    using HashLib for ExogenousSplitMultichainClaimWithWitness;
-    using HashLib for ExogenousQualifiedSplitMultichainClaim;
-    using HashLib for ExogenousQualifiedSplitMultichainClaimWithWitness;
-    using HashLib for BatchMultichainClaim;
-    using HashLib for QualifiedBatchMultichainClaim;
-    using HashLib for BatchMultichainClaimWithWitness;
-    using HashLib for QualifiedBatchMultichainClaimWithWitness;
-    using HashLib for SplitBatchMultichainClaim;
-    using HashLib for SplitBatchMultichainClaimWithWitness;
-    using HashLib for QualifiedSplitBatchMultichainClaim;
-    using HashLib for QualifiedSplitBatchMultichainClaimWithWitness;
-    using HashLib for ExogenousBatchMultichainClaim;
-    using HashLib for ExogenousQualifiedBatchMultichainClaim;
-    using HashLib for ExogenousBatchMultichainClaimWithWitness;
-    using HashLib for ExogenousQualifiedBatchMultichainClaimWithWitness;
-    using HashLib for ExogenousSplitBatchMultichainClaim;
-    using HashLib for ExogenousSplitBatchMultichainClaimWithWitness;
-    using HashLib for ExogenousQualifiedSplitBatchMultichainClaim;
-    using HashLib for ExogenousQualifiedSplitBatchMultichainClaimWithWitness;
     using IdLib for uint96;
     using IdLib for uint256;
     using IdLib for address;
@@ -199,22 +59,11 @@ contract TheCompact is ITheCompact, ClaimProcessor, ERC6909 {
     using FixedPointMathLib for uint256;
     using ConsumerLib for uint256;
     using EfficiencyLib for bool;
-    using EfficiencyLib for bytes32;
     using EfficiencyLib for uint256;
     using ValidityLib for address;
     using ValidityLib for uint96;
     using ValidityLib for uint256;
     using ValidityLib for bytes32;
-    using FunctionCastLib for function(bytes32, address, BasicTransfer calldata) internal;
-    using FunctionCastLib for function(TransferComponent[] memory, uint256) internal returns (address);
-    using FunctionCastLib for function(bytes32, BasicClaim calldata, address) internal view;
-    using FunctionCastLib for function(bytes32, bytes32, QualifiedClaim calldata, address) internal view;
-    using FunctionCastLib for function(QualifiedClaim calldata) internal returns (bytes32, address);
-    using FunctionCastLib for function(QualifiedClaimWithWitness calldata) internal returns (bytes32, address);
-    using FunctionCastLib for function(bytes32, uint256, uint256, bytes32, function(address, address, uint256, uint256) internal returns (bool)) internal returns (bool);
-    using FunctionCastLib for function(bytes32, uint256, uint256, bytes32, bytes32, function(address, address, uint256, uint256) internal returns (bool)) internal returns (bool);
-    using FunctionCastLib for function(bytes32, bytes32, uint256, uint256, bytes32, function(address, address, uint256, uint256) internal returns (bool)) internal returns (bool);
-    using FunctionCastLib for function(bytes32, bytes32, uint256, uint256, bytes32, bytes32, function(address, address, uint256, uint256) internal returns (bool)) internal returns (bool);
 
     function deposit(address allocator) external payable returns (uint256 id) {
         id = address(0).toIdIfRegistered(Scope.Multichain, ResetPeriod.TenMinutes, allocator);
