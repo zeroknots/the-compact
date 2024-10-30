@@ -274,14 +274,6 @@ contract TheCompact is ITheCompact, ITheCompactClaims, ERC6909, Tstorish {
         _register(msg.sender, claimHash, typehash, 0x258);
     }
 
-    function _performBasicERC20Deposit(address token, address allocator, uint256 amount) internal returns (uint256 id) {
-        _setTstorish(_REENTRANCY_GUARD_SLOT, 1);
-        id = token.excludingNative().toIdIfRegistered(Scope.Multichain, ResetPeriod.TenMinutes, allocator);
-
-        _transferAndDeposit(token, msg.sender, id, amount);
-        _clearTstorish(_REENTRANCY_GUARD_SLOT);
-    }
-
     function deposit(address allocator, ResetPeriod resetPeriod, Scope scope, address recipient) external payable returns (uint256 id) {
         id = address(0).toIdIfRegistered(scope, resetPeriod, allocator);
 
@@ -1649,17 +1641,6 @@ contract TheCompact is ITheCompact, ITheCompactClaims, ERC6909, Tstorish {
         );
     }
 
-    function _typehashes(uint256 i) internal pure returns (bytes32 typehash) {
-        assembly ("memory-safe") {
-            let m := mload(0x40)
-            mstore(0, COMPACT_TYPEHASH)
-            mstore(0x20, BATCH_COMPACT_TYPEHASH)
-            mstore(0x40, MULTICHAIN_COMPACT_TYPEHASH)
-            typehash := mload(shl(5, i))
-            mstore(0x40, m)
-        }
-    }
-
     function _processExogenousMultichainClaim(ExogenousMultichainClaim calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation) internal returns (bool) {
         return _processClaimWithSponsorDomain.usingExogenousMultichainClaim()(
             claimPayload.toMessageHash(), claimPayload, 0x100, claimPayload.notarizedChainId.toNotarizedDomainSeparator(), _typehashes(uint256(2).asStubborn()), operation
@@ -1962,6 +1943,25 @@ contract TheCompact is ITheCompact, ITheCompactClaims, ERC6909, Tstorish {
                     revert(0x1c, 0x04)
                 }
             }
+        }
+    }
+
+    function _performBasicERC20Deposit(address token, address allocator, uint256 amount) internal returns (uint256 id) {
+        _setTstorish(_REENTRANCY_GUARD_SLOT, 1);
+        id = token.excludingNative().toIdIfRegistered(Scope.Multichain, ResetPeriod.TenMinutes, allocator);
+
+        _transferAndDeposit(token, msg.sender, id, amount);
+        _clearTstorish(_REENTRANCY_GUARD_SLOT);
+    }
+
+    function _typehashes(uint256 i) internal pure returns (bytes32 typehash) {
+        assembly ("memory-safe") {
+            let m := mload(0x40)
+            mstore(0, COMPACT_TYPEHASH)
+            mstore(0x20, BATCH_COMPACT_TYPEHASH)
+            mstore(0x40, MULTICHAIN_COMPACT_TYPEHASH)
+            typehash := mload(shl(5, i))
+            mstore(0x40, m)
         }
     }
 
