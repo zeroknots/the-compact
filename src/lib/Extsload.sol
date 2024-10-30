@@ -1,35 +1,18 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.27;
 
-// TODO: add this back in once we have more headroom?
 contract Extsload {
-    function extsload(bytes32 slot) external view returns (bytes32) {
+    function exttload(bytes32 slot) external view returns (bytes32) {
         assembly ("memory-safe") {
-            mstore(0, sload(slot))
+            mstore(0, tload(slot))
             return(0, 0x20)
         }
     }
 
-    function extsload(bytes32 startSlot, uint256 nSlots) external view returns (bytes32[] memory) {
+    function extsload(bytes32 slot) external view returns (bytes32) {
         assembly ("memory-safe") {
-            let memptr := mload(0x40)
-            let start := memptr
-            // A left bit-shift of 5 is equivalent to multiplying by 32 but costs less gas.
-            let length := shl(5, nSlots)
-            // The abi offset of dynamic array in the returndata is 32.
-            mstore(memptr, 0x20)
-            // Store the length of the array returned
-            mstore(add(memptr, 0x20), nSlots)
-            // update memptr to the first location to hold a result
-            memptr := add(memptr, 0x40)
-            let end := add(memptr, length)
-            for { } 1 { } {
-                mstore(memptr, sload(startSlot))
-                memptr := add(memptr, 0x20)
-                startSlot := add(startSlot, 1)
-                if iszero(lt(memptr, end)) { break }
-            }
-            return(start, sub(end, start))
+            mstore(0, sload(slot))
+            return(0, 0x20)
         }
     }
 

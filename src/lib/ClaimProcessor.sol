@@ -2,7 +2,7 @@
 pragma solidity ^0.8.27;
 
 import { ITheCompactClaims } from "../interfaces/ITheCompactClaims.sol";
-import { InternalLogic } from "./InternalLogic.sol";
+import { ClaimProcessorLogic } from "./ClaimProcessorLogic.sol";
 
 import { BasicClaim, QualifiedClaim, ClaimWithWitness, QualifiedClaimWithWitness, SplitClaim, SplitClaimWithWitness, QualifiedSplitClaim, QualifiedSplitClaimWithWitness } from "../types/Claims.sol";
 
@@ -55,7 +55,7 @@ import {
     ExogenousQualifiedSplitBatchMultichainClaimWithWitness
 } from "../types/BatchMultichainClaims.sol";
 
-contract ClaimProcessor is ITheCompactClaims, InternalLogic {
+contract ClaimProcessor is ITheCompactClaims, ClaimProcessorLogic {
     function claim(BasicClaim calldata claimPayload) external returns (bool) {
         return _processBasicClaim(claimPayload, _release);
     }
