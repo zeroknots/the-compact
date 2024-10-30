@@ -616,7 +616,6 @@ contract TheCompactTest is Test {
         assertEq(theCompact.balanceOf(recipient, id), amount);
     }
 
-    /* TODO: try to add these back in when there's room
     function test_splitTransfer() public {
         ResetPeriod resetPeriod = ResetPeriod.TenMinutes;
         Scope scope = Scope.Multichain;
@@ -846,7 +845,6 @@ contract TheCompactTest is Test {
         assertEq(theCompact.balanceOf(recipient, idOne), 0);
         assertEq(theCompact.balanceOf(recipient, idTwo), 0);
     }
-    */
 
     function test_splitBatchTransfer() public {
         ResetPeriod resetPeriod = ResetPeriod.TenMinutes;

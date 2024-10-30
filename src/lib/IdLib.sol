@@ -9,6 +9,8 @@ import { EfficiencyLib } from "./EfficiencyLib.sol";
 import { SignatureCheckerLib } from "solady/utils/SignatureCheckerLib.sol";
 import { CompactCategory } from "../types/CompactCategory.sol";
 
+import { EfficientHashLib } from "solady/utils/EfficientHashLib.sol";
+
 library IdLib {
     using IdLib for uint96;
     using IdLib for uint256;
@@ -23,6 +25,7 @@ library IdLib {
     using EfficiencyLib for ResetPeriod;
     using EfficiencyLib for Scope;
     using SignatureCheckerLib for address;
+    using EfficientHashLib for bytes;
 
     error NoAllocatorRegistered(uint96 allocatorId);
     error AllocatorAlreadyRegistered(uint96 allocatorId, address allocator);
@@ -58,6 +61,7 @@ library IdLib {
     function toIdIfRegistered(address token, Scope scope, ResetPeriod resetPeriod, address allocator) internal view returns (uint256 id) {
         uint96 allocatorId = allocator.usingAllocatorId();
         allocatorId.mustHaveARegisteredAllocator();
+
         id = ((scope.asUint256() << 255) | (resetPeriod.asUint256() << 252) | (allocatorId.asUint256() << 160) | token.asUint256());
     }
 
@@ -92,7 +96,7 @@ library IdLib {
     }
 
     function canBeRegistered(address allocator, bytes calldata proof) internal view returns (bool) {
-        return (msg.sender == allocator).or(allocator.code.length > 0).or(proof.length == 86 && (proof[0] == 0xff).and(allocator == address(uint160(uint256(keccak256(proof))))));
+        return (msg.sender == allocator).or(allocator.code.length > 0).or(proof.length == 86 && (proof[0] == 0xff).and(allocator == address(uint160(uint256(proof.hashCalldata())))));
     }
 
     function toAllocator(uint256 id) internal view returns (address allocator) {

@@ -20,8 +20,7 @@ import { BatchTransfer, SplitBatchTransfer } from "../types/BatchClaims.sol";
  */
 interface ITheCompact {
     event Claim(address indexed sponsor, address indexed allocator, address indexed arbiter, bytes32 claimHash);
-    event ForcedWithdrawalEnabled(address indexed account, uint256 indexed id, uint256 withdrawableAt);
-    event ForcedWithdrawalDisabled(address indexed account, uint256 indexed id);
+    event ForcedWithdrawalStatusUpdated(address indexed account, uint256 indexed id, bool activating, uint256 withdrawableAt);
     event CompactRegistered(address indexed sponsor, bytes32 claimHash, bytes32 typehash, uint256 expires);
     event AllocatorRegistered(uint96 allocatorId, address allocator);
 
@@ -89,7 +88,6 @@ interface ITheCompact {
 
     function allocatedWithdrawal(BasicTransfer calldata withdrawal) external returns (bool);
 
-    /*
     function allocatedTransfer(SplitTransfer calldata transfer) external returns (bool);
 
     function allocatedWithdrawal(SplitTransfer calldata withdrawal) external returns (bool);
@@ -97,7 +95,6 @@ interface ITheCompact {
     function allocatedTransfer(BatchTransfer calldata transfer) external returns (bool);
 
     function allocatedWithdrawal(BatchTransfer calldata withdrawal) external returns (bool);
-    */
 
     function allocatedTransfer(SplitBatchTransfer calldata transfer) external returns (bool);
 

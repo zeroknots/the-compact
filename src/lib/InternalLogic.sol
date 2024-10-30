@@ -204,7 +204,7 @@ contract InternalLogic is Tstorish {
     using ValidityLib for uint256;
     using ValidityLib for bytes32;
     using FunctionCastLib for function(bytes32, address, BasicTransfer calldata) internal;
-    using FunctionCastLib for function(TransferComponent[] memory, uint256) internal returns (address);
+    using FunctionCastLib for function(TransferComponent[] calldata, uint256) internal returns (address);
     using FunctionCastLib for function(bytes32, BasicClaim calldata, address) internal view;
     using FunctionCastLib for function(bytes32, bytes32, QualifiedClaim calldata, address) internal view;
     using FunctionCastLib for function(QualifiedClaim calldata) internal returns (bytes32, address);
@@ -229,6 +229,9 @@ contract InternalLogic is Tstorish {
     /// @dev `keccak256(bytes("CompactRegistered(address,bytes32,bytes32,uint256)"))`.
     uint256 private constant _COMPACT_REGISTERED_SIGNATURE = 0xf78a2f33ff80ef4391f7449c748dc2d577a62cd645108f4f4069f4a7e0635b6a;
 
+    /// @dev `keccak256(bytes("ForcedWithdrawalStatusUpdated(address,uint256,bool,uint256)"))`.
+    uint256 private constant _FORCED_WITHDRAWAL_STATUS_UPDATED_SIGNATURE = 0xe27f5e0382cf5347965fc81d5c81cd141897fe9ce402d22c496b7c2ddc84e5fd;
+
     uint32 private constant _ATTEST_SELECTOR = 0x1a808f91;
     uint32 private constant _PERMIT_WITNESS_TRANSFER_FROM_SELECTOR = 0x137c29fe;
     uint32 private constant _BATCH_PERMIT_WITNESS_TRANSFER_FROM_SELECTOR = 0xfe8ec1a7;
@@ -249,6 +252,12 @@ contract InternalLogic is Tstorish {
         _INITIAL_DOMAIN_SEPARATOR = block.chainid.toNotarizedDomainSeparator();
         _METADATA_RENDERER = new MetadataRenderer();
         _PERMIT2_INITIALLY_DEPLOYED = _checkPermit2Deployment();
+    }
+
+    function _performBasicNativeTokenDeposit(address allocator) internal returns (uint256 id) {
+        id = address(0).toIdIfRegistered(Scope.Multichain, ResetPeriod.TenMinutes, allocator);
+
+        _deposit(msg.sender, id, msg.value);
     }
 
     function _processBatchDeposit(uint256[2][] calldata idsAndAmounts, address recipient) internal {
@@ -342,9 +351,7 @@ contract InternalLogic is Tstorish {
     }
 
     function _processSplitBatchTransfer(SplitBatchTransfer calldata transfer, function(address, address, uint256, uint256) internal returns (bool) operation) internal returns (bool) {
-        _notExpiredAndSignedByAllocator.usingSplitBatchTransfer()(
-            transfer.toMessageHash(), _deriveConsistentAllocatorAndConsumeNonce.usingSplitByIdComponent()(transfer.transfers, transfer.nonce), transfer
-        );
+        _notExpiredAndSignedByAllocator.usingSplitBatchTransfer()(transfer.toMessageHash(), _deriveConsistentAllocatorAndConsumeNonce(transfer.transfers, transfer.nonce), transfer);
 
         unchecked {
             uint256 totalIds = transfer.transfers.length;
@@ -1153,10 +1160,35 @@ contract InternalLogic is Tstorish {
         _clearTstorish(_REENTRANCY_GUARD_SLOT);
     }
 
-    function _deriveConsistentAllocatorAndConsumeNonce(TransferComponent[] memory components, uint256 nonce) internal returns (address allocator) {
+    function _deriveConsistentAllocatorAndConsumeNonce(TransferComponent[] calldata components, uint256 nonce) internal returns (address allocator) {
         uint256 totalComponents = components.length;
 
-        uint256 errorBuffer = (components.length == 0).asUint256();
+        uint256 errorBuffer = (totalComponents == 0).asUint256();
+
+        // TODO: bounds checks on these array accesses can be skipped as an optimization
+        uint96 allocatorId = components[0].id.toAllocatorId();
+
+        allocator = allocatorId.fromRegisteredAllocatorIdWithConsumed(nonce);
+
+        unchecked {
+            for (uint256 i = 1; i < totalComponents; ++i) {
+                errorBuffer |= (components[i].id.toAllocatorId() != allocatorId).asUint256();
+            }
+        }
+
+        assembly ("memory-safe") {
+            if errorBuffer {
+                // revert InvalidBatchAllocation()
+                mstore(0, 0x3a03d3bb)
+                revert(0x1c, 0x04)
+            }
+        }
+    }
+
+    function _deriveConsistentAllocatorAndConsumeNonce(SplitByIdComponent[] calldata components, uint256 nonce) internal returns (address allocator) {
+        uint256 totalComponents = components.length;
+
+        uint256 errorBuffer = (totalComponents == 0).asUint256();
 
         // TODO: bounds checks on these array accesses can be skipped as an optimization
         uint96 allocatorId = components[0].id.toAllocatorId();
@@ -1185,6 +1217,14 @@ contract InternalLogic is Tstorish {
         }
     }
 
+    function _emitForcedWithdrawalStatusUpdatedEvent(uint256 id, uint256 withdrawableAt) internal {
+        assembly ("memory-safe") {
+            mstore(0, iszero(iszero(withdrawableAt)))
+            mstore(0x20, withdrawableAt)
+            log3(0, 0x40, _FORCED_WITHDRAWAL_STATUS_UPDATED_SIGNATURE, caller(), id)
+        }
+    }
+
     function _register(address sponsor, bytes32 claimHash, bytes32 typehash, uint256 duration) internal {
         assembly ("memory-safe") {
             let m := mload(0x40)
@@ -1206,6 +1246,10 @@ contract InternalLogic is Tstorish {
             mstore(add(m, 0x74), expires)
             log2(add(m, 0x34), 0x60, _COMPACT_REGISTERED_SIGNATURE, shr(0x60, shl(0x60, sponsor)))
         }
+    }
+
+    function _registerWithDefaults(bytes32 claimHash, bytes32 typehash) internal {
+        _register(msg.sender, claimHash, typehash, uint256(0x258).asStubborn());
     }
 
     function _registerBatch(bytes32[2][] calldata claimHashesAndTypehashes, uint256 duration) internal returns (bool) {
@@ -1246,13 +1290,16 @@ contract InternalLogic is Tstorish {
         }
     }
 
-    function _preprocessAndPerformInitialNativeDeposit(ISignatureTransfer.TokenPermissions[] calldata permitted, address allocator, ResetPeriod resetPeriod, Scope scope, address recipient)
+    function _preprocessAndPerformInitialNativeDeposit(ISignatureTransfer.TokenPermissions[] calldata permitted, address recipient)
         internal
         returns (uint256 totalTokensLessInitialNative, bool firstUnderlyingTokenIsNative, uint256[] memory ids, uint256[] memory initialTokenBalances)
     {
         _setTstorish(_REENTRANCY_GUARD_SLOT, 1);
 
         uint256 totalTokens = permitted.length;
+        address allocator;
+        ResetPeriod resetPeriod;
+        Scope scope;
         assembly ("memory-safe") {
             let permittedOffset := permitted.offset
             firstUnderlyingTokenIsNative := iszero(shr(96, shl(96, calldataload(permittedOffset))))
@@ -1268,6 +1315,11 @@ contract InternalLogic is Tstorish {
                 mstore(0, 0xca0fc08e)
                 revert(0x1c, 0x04)
             }
+
+            // NOTE: these may need to be sanitized if toIdIfRegistered doesn't already handle for it
+            allocator := calldataload(0x84)
+            resetPeriod := calldataload(0xa4)
+            scope := calldataload(0xc4)
         }
 
         uint256 initialId = address(0).toIdIfRegistered(scope, resetPeriod, allocator);
@@ -1284,11 +1336,18 @@ contract InternalLogic is Tstorish {
         initialTokenBalances = _prepareIdsAndGetBalances(ids, totalTokensLessInitialNative, firstUnderlyingTokenIsNative, permitted, initialId);
     }
 
-    function _setReentrancyLockAndStartPreparingPermit2Call(address token, address allocator, ResetPeriod resetPeriod, Scope scope)
-        internal
-        returns (uint256 id, uint256 initialBalance, uint256 m, uint256 typestringMemoryLocation)
-    {
+    function _setReentrancyLockAndStartPreparingPermit2Call(address token) internal returns (uint256 id, uint256 initialBalance, uint256 m, uint256 typestringMemoryLocation) {
         _setTstorish(_REENTRANCY_GUARD_SLOT, 1);
+
+        address allocator;
+        ResetPeriod resetPeriod;
+        Scope scope;
+        assembly ("memory-safe") {
+            allocator := calldataload(0xa4)
+            resetPeriod := calldataload(0xc4)
+            scope := calldataload(0xe4)
+        }
+
         id = token.excludingNative().toIdIfRegistered(scope, resetPeriod, allocator);
 
         initialBalance = token.balanceOf(address(this));
@@ -1527,10 +1586,10 @@ contract InternalLogic is Tstorish {
         assembly ("memory-safe") {
             m := mload(0x40) // Grab the free memory pointer; memory will be left dirtied.
 
-            let tokenChunk := mul(totalTokensLessInitialNative, 0x40)
+            let tokenChunk := shl(6, totalTokensLessInitialNative)
             let twoTokenChunks := shl(1, tokenChunk)
 
-            let permittedCalldataLocation := add(add(0x24, calldataload(0x24)), mul(firstUnderlyingTokenIsNative, 0x40))
+            let permittedCalldataLocation := add(add(0x24, calldataload(0x24)), shl(6, firstUnderlyingTokenIsNative))
 
             mstore(m, _BATCH_PERMIT_WITNESS_TRANSFER_FROM_SELECTOR)
             mstore(add(m, 0x20), 0xc0) // permitted offset
@@ -1552,7 +1611,7 @@ contract InternalLogic is Tstorish {
             // details data
             let starting := add(detailsOffset, 0x20)
             let next := add(detailsOffset, 0x40)
-            let end := mul(totalTokensLessInitialNative, 0x40)
+            let end := shl(6, totalTokensLessInitialNative)
             for { let i := 0 } lt(i, end) { i := add(i, 0x40) } {
                 mstore(add(starting, i), address())
                 mstore(add(next, i), calldataload(add(permittedCalldataLocation, add(0x20, i))))
