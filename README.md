@@ -244,12 +244,10 @@ struct SplitByIdComponent {
  interface ICompactAllocatedTransferAndWithdrawal {
     function allocatedTransfer(BasicTransfer calldata transfer) external returns (bool);
     function allocatedWithdrawal(BasicTransfer calldata withdrawal) external returns (bool);
-    /* NOTE: these functions are currently unavailable; use SplitBatchTransfer for this functionality
     function allocatedTransfer(SplitTransfer calldata transfer) external returns (bool);
     function allocatedWithdrawal(SplitTransfer calldata withdrawal) external returns (bool);
     function allocatedTransfer(BatchTransfer calldata transfer) external returns (bool);
     function allocatedWithdrawal(BatchTransfer calldata withdrawal) external returns (bool);
-    */
     function allocatedTransfer(SplitBatchTransfer calldata transfer) external returns (bool);
     function allocatedWithdrawal(SplitBatchTransfer calldata withdrawal) external returns (bool);
  }
