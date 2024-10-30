@@ -580,20 +580,6 @@ library HashLib {
     }
 
     ///// CATEGORY 6: miscellaneous utilities /////
-
-    function toPermit2DepositWitnessHash(address allocator, ResetPeriod resetPeriod, Scope scope, address recipient) internal pure returns (bytes32 witnessHash) {
-        assembly ("memory-safe") {
-            let m := mload(0x40) // Grab the free memory pointer; memory will be left dirtied.
-
-            mstore(m, PERMIT2_DEPOSIT_WITNESS_FRAGMENT_HASH)
-            mstore(add(m, 0x20), allocator)
-            mstore(add(m, 0x40), resetPeriod)
-            mstore(add(m, 0x60), scope)
-            mstore(add(m, 0x80), recipient)
-            witnessHash := keccak256(m, 0xa0)
-        }
-    }
-
     function toLatest(bytes32 initialDomainSeparator, uint256 initialChainId) external view returns (bytes32 domainSeparator) {
         domainSeparator = initialDomainSeparator;
 

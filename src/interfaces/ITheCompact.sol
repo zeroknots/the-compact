@@ -89,6 +89,7 @@ interface ITheCompact {
 
     function allocatedWithdrawal(BasicTransfer calldata withdrawal) external returns (bool);
 
+    /*
     function allocatedTransfer(SplitTransfer calldata transfer) external returns (bool);
 
     function allocatedWithdrawal(SplitTransfer calldata withdrawal) external returns (bool);
@@ -96,6 +97,7 @@ interface ITheCompact {
     function allocatedTransfer(BatchTransfer calldata transfer) external returns (bool);
 
     function allocatedWithdrawal(BatchTransfer calldata withdrawal) external returns (bool);
+    */
 
     function allocatedTransfer(SplitBatchTransfer calldata transfer) external returns (bool);
 

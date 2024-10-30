@@ -265,16 +265,16 @@ contract TheCompact is ITheCompact, ITheCompactClaims, ERC6909, Tstorish {
     }
 
     function deposit(address token, address allocator, uint256 amount) external returns (uint256) {
-        return _performBasicERC20Deposit(token, allocator, amount, msg.sender);
+        return _performBasicERC20Deposit(token, allocator, amount);
     }
 
     function depositAndRegister(address token, address allocator, uint256 amount, bytes32 claimHash, bytes32 typehash) external returns (uint256 id) {
-        id = _performBasicERC20Deposit(token, allocator, amount, msg.sender);
+        id = _performBasicERC20Deposit(token, allocator, amount);
 
         _register(msg.sender, claimHash, typehash, 0x258);
     }
 
-    function _performBasicERC20Deposit(address token, address allocator, uint256 amount, address recipient) internal returns (uint256 id) {
+    function _performBasicERC20Deposit(address token, address allocator, uint256 amount) internal returns (uint256 id) {
         _setTstorish(_REENTRANCY_GUARD_SLOT, 1);
         id = token.excludingNative().toIdIfRegistered(Scope.Multichain, ResetPeriod.TenMinutes, allocator);
 
@@ -463,6 +463,7 @@ contract TheCompact is ITheCompact, ITheCompactClaims, ERC6909, Tstorish {
         return _processBasicTransfer(withdrawal, _withdraw);
     }
 
+    /*
     function allocatedTransfer(SplitTransfer calldata transfer) external returns (bool) {
         return _processSplitTransfer(transfer, _release);
     }
@@ -478,6 +479,7 @@ contract TheCompact is ITheCompact, ITheCompactClaims, ERC6909, Tstorish {
     function allocatedWithdrawal(BatchTransfer calldata withdrawal) external returns (bool) {
         return _processBatchTransfer(withdrawal, _withdraw);
     }
+    */
 
     function allocatedTransfer(SplitBatchTransfer calldata transfer) external returns (bool) {
         return _processSplitBatchTransfer(transfer, _release);
