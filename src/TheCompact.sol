@@ -225,15 +225,17 @@ contract TheCompact is ITheCompact, ITheCompactClaims, ERC6909, Tstorish {
     /// @dev `keccak256(bytes("Claim(address,address,address,bytes32)"))`.
     uint256 private constant _CLAIM_EVENT_SIGNATURE = 0x770c32a2314b700d6239ee35ba23a9690f2fceb93a55d8c753e953059b3b18d4;
 
+    /// @dev `keccak256(bytes("CompactRegistered(address,bytes32,bytes32,uint256)"))`.
+    uint256 private constant _COMPACT_REGISTERED_SIGNATURE = 0xf78a2f33ff80ef4391f7449c748dc2d577a62cd645108f4f4069f4a7e0635b6a;
+
     uint32 private constant _ATTEST_SELECTOR = 0x1a808f91;
     uint32 private constant _PERMIT_WITNESS_TRANSFER_FROM_SELECTOR = 0x137c29fe;
     uint32 private constant _BATCH_PERMIT_WITNESS_TRANSFER_FROM_SELECTOR = 0xfe8ec1a7;
 
-    // Rage-quit functionality (TODO: optimize storage layout)
     mapping(address => mapping(uint256 => uint256)) private _cutoffTime;
 
-    // TODO: optimize
-    mapping(address => mapping(bytes32 => bytes32)) private _registeredClaimHashes;
+    // slot: keccak256(_ACTIVE_REGISTRATIONS_SCOPE ++ sponsor ++ claimHash ++ typehash) => expires
+    uint256 private constant _ACTIVE_REGISTRATIONS_SCOPE = 0x68a30dd0;
 
     uint256 private immutable _INITIAL_CHAIN_ID;
     bytes32 private immutable _INITIAL_DOMAIN_SEPARATOR;
@@ -258,7 +260,7 @@ contract TheCompact is ITheCompact, ITheCompactClaims, ERC6909, Tstorish {
 
         _deposit(msg.sender, id, msg.value);
 
-        _register(msg.sender, claimHash, typehash);
+        _register(msg.sender, claimHash, typehash, 0x258);
     }
 
     function deposit(address token, address allocator, uint256 amount) external returns (uint256) {
@@ -268,7 +270,7 @@ contract TheCompact is ITheCompact, ITheCompactClaims, ERC6909, Tstorish {
     function depositAndRegister(address token, address allocator, uint256 amount, bytes32 claimHash, bytes32 typehash) external returns (uint256 id) {
         id = _performBasicERC20Deposit(token, allocator, amount, msg.sender);
 
-        _register(msg.sender, claimHash, typehash);
+        _register(msg.sender, claimHash, typehash, 0x258);
     }
 
     function _performBasicERC20Deposit(address token, address allocator, uint256 amount, address recipient) internal returns (uint256 id) {
@@ -294,13 +296,17 @@ contract TheCompact is ITheCompact, ITheCompactClaims, ERC6909, Tstorish {
     }
 
     function deposit(uint256[2][] calldata idsAndAmounts, address recipient) external payable returns (bool) {
-        return _processBatchDeposit(idsAndAmounts, recipient);
+        _processBatchDeposit(idsAndAmounts, recipient);
+
+        return true;
     }
 
-    function depositAndRegister(uint256[2][] calldata idsAndAmounts, bytes32[2][] calldata claimHashesAndTypehashes) external payable returns (bool) {
-        _registerFor(msg.sender, claimHashesAndTypehashes);
+    function depositAndRegister(uint256[2][] calldata idsAndAmounts, bytes32[2][] calldata claimHashesAndTypehashes, uint256 duration) external payable returns (bool) {
+        _processBatchDeposit(idsAndAmounts, msg.sender);
 
-        return _processBatchDeposit(idsAndAmounts, msg.sender);
+        _registerBatch(claimHashesAndTypehashes, duration);
+
+        return true;
     }
 
     function deposit(
@@ -376,7 +382,7 @@ contract TheCompact is ITheCompact, ITheCompactClaims, ERC6909, Tstorish {
 
         _checkBalanceAndDeposit(token, depositor, id, initialBalance);
 
-        _register(depositor, claimHash, compactTypehash);
+        _register(depositor, claimHash, compactTypehash, resetPeriod.toSeconds());
 
         _clearTstorish(_REENTRANCY_GUARD_SLOT);
 
@@ -587,7 +593,7 @@ contract TheCompact is ITheCompact, ITheCompactClaims, ERC6909, Tstorish {
 
         _verifyBalancesAndPerformDeposits(ids, permitted, initialTokenBalances, depositor, firstUnderlyingTokenIsNative);
 
-        _register(depositor, claimHash, compactTypehash);
+        _register(depositor, claimHash, compactTypehash, resetPeriod.toSeconds());
     }
 
     function allocatedTransfer(BasicTransfer calldata transfer) external returns (bool) {
@@ -1050,26 +1056,64 @@ contract TheCompact is ITheCompact, ITheCompactClaims, ERC6909, Tstorish {
         return _withdraw(msg.sender, recipient, id, amount);
     }
 
-    function register(bytes32 claimHash, bytes32 typehash) external returns (bool) {
-        _register(msg.sender, claimHash, typehash);
+    function register(bytes32 claimHash, bytes32 typehash, uint256 duration) external returns (bool) {
+        _register(msg.sender, claimHash, typehash, duration);
         return true;
     }
 
-    function _register(address sponsor, bytes32 claimHash, bytes32 typehash) internal {
-        _registeredClaimHashes[sponsor][claimHash] = typehash;
-        emit CompactRegistered(sponsor, claimHash, typehash);
+    function _getRegistrationStatus(address sponsor, bytes32 claimHash, bytes32 typehash) internal view returns (uint256 expires) {
+        assembly ("memory-safe") {
+            let m := mload(0x40)
+            mstore(add(m, 0x14), sponsor)
+            mstore(m, _ACTIVE_REGISTRATIONS_SCOPE)
+            mstore(add(m, 0x34), claimHash)
+            mstore(add(m, 0x54), typehash)
+            expires := sload(keccak256(add(m, 0x1c), 0x58))
+        }
     }
 
-    function register(bytes32[2][] calldata claimHashesAndTypehashes) external returns (bool) {
-        return _registerFor(msg.sender, claimHashesAndTypehashes);
+    function _hasNoActiveRegistration(address sponsor, bytes32 claimHash, bytes32 typehash) internal view returns (bool) {
+        return _getRegistrationStatus(sponsor, claimHash, typehash) <= block.timestamp;
     }
 
-    function _registerFor(address sponsor, bytes32[2][] calldata claimHashesAndTypehashes) internal returns (bool) {
+    function getRegistrationStatus(address sponsor, bytes32 claimHash, bytes32 typehash) external view returns (bool isActive, uint256 expires) {
+        expires = _getRegistrationStatus(sponsor, claimHash, typehash);
+        isActive = expires > block.timestamp;
+    }
+
+    function _register(address sponsor, bytes32 claimHash, bytes32 typehash, uint256 duration) internal {
+        assembly ("memory-safe") {
+            let m := mload(0x40)
+            mstore(add(m, 0x14), sponsor)
+            mstore(m, _ACTIVE_REGISTRATIONS_SCOPE)
+            mstore(add(m, 0x34), claimHash)
+            mstore(add(m, 0x54), typehash)
+            let cutoffSlot := keccak256(add(m, 0x1c), 0x58)
+
+            let expires := add(timestamp(), duration)
+            if or(lt(expires, sload(cutoffSlot)), gt(duration, 0x278d00)) {
+                // revert InvalidRegistrationDuration(uint256 duration)
+                mstore(0, 0x1f9a96f4)
+                mstore(0x20, duration)
+                revert(0x1c, 0x24)
+            }
+
+            sstore(cutoffSlot, expires)
+            mstore(add(m, 0x74), expires)
+            log2(add(m, 0x34), 0x60, _COMPACT_REGISTERED_SIGNATURE, shr(0x60, shl(0x60, sponsor)))
+        }
+    }
+
+    function register(bytes32[2][] calldata claimHashesAndTypehashes, uint256 duration) external returns (bool) {
+        return _registerBatch(claimHashesAndTypehashes, duration);
+    }
+
+    function _registerBatch(bytes32[2][] calldata claimHashesAndTypehashes, uint256 duration) internal returns (bool) {
         unchecked {
             uint256 totalClaimHashes = claimHashesAndTypehashes.length;
             for (uint256 i = 0; i < totalClaimHashes; ++i) {
                 bytes32[2] calldata claimHashAndTypehash = claimHashesAndTypehashes[i];
-                _register(sponsor, claimHashAndTypehash[0], claimHashAndTypehash[1]);
+                _register(msg.sender, claimHashAndTypehash[0], claimHashAndTypehash[1], duration);
             }
         }
 
@@ -1152,7 +1196,7 @@ contract TheCompact is ITheCompact, ITheCompactClaims, ERC6909, Tstorish {
         }
     }
 
-    function _processBatchDeposit(uint256[2][] calldata idsAndAmounts, address recipient) internal returns (bool) {
+    function _processBatchDeposit(uint256[2][] calldata idsAndAmounts, address recipient) internal {
         _setTstorish(_REENTRANCY_GUARD_SLOT, 1);
         uint256 totalIds = idsAndAmounts.length;
         bool firstUnderlyingTokenIsNative;
@@ -1198,8 +1242,6 @@ contract TheCompact is ITheCompact, ITheCompactClaims, ERC6909, Tstorish {
         }
 
         _clearTstorish(_REENTRANCY_GUARD_SLOT);
-
-        return true;
     }
 
     function _notExpiredAndSignedByAllocator(bytes32 messageHash, address allocator, BasicTransfer calldata transferPayload) internal {
@@ -1391,7 +1433,7 @@ contract TheCompact is ITheCompact, ITheCompactClaims, ERC6909, Tstorish {
             sponsorDomainSeparator := add(sponsorDomainSeparator, mul(iszero(sponsorDomainSeparator), domainSeparator))
         }
 
-        if ((sponsorDomainSeparator != domainSeparator).or(sponsorSignature.length != 0) || _registeredClaimHashes[sponsor][messageHash] != typehash) {
+        if ((sponsorDomainSeparator != domainSeparator).or(sponsorSignature.length != 0) || _hasNoActiveRegistration(sponsor, messageHash, typehash)) {
             messageHash.signedBy(sponsor, sponsorSignature, sponsorDomainSeparator);
         }
         qualificationMessageHash.signedBy(allocator, allocatorSignature, domainSeparator);

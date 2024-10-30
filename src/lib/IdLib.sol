@@ -13,6 +13,7 @@ library IdLib {
     using IdLib for uint96;
     using IdLib for uint256;
     using IdLib for address;
+    using IdLib for ResetPeriod;
     using MetadataLib for Lock;
     using EfficiencyLib for bool;
     using EfficiencyLib for uint8;

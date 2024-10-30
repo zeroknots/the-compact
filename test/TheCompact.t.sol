@@ -427,6 +427,10 @@ contract TheCompactTest is Test {
         vm.snapshotGasLastCall("depositAndRegisterViaPermit2");
         assertEq(returnedId, id);
 
+        (bool isActive, uint256 expiresAt) = theCompact.getRegistrationStatus(swapper, claimHash, typehash);
+        assert(isActive);
+        assertEq(expiresAt, 0x258 + block.timestamp);
+
         (address derivedToken, address derivedAllocator, ResetPeriod derivedResetPeriod, Scope derivedScope) = theCompact.getLockDetails(id);
         assertEq(derivedToken, address(token));
         assertEq(derivedAllocator, allocator);
@@ -1094,9 +1098,13 @@ contract TheCompactTest is Test {
         bytes32 digest = keccak256(abi.encodePacked(bytes2(0x1901), theCompact.DOMAIN_SEPARATOR(), claimHash));
 
         vm.prank(swapper);
-        (bool status) = theCompact.register(claimHash, typehash);
+        (bool status) = theCompact.register(claimHash, typehash, 1000);
         vm.snapshotGasLastCall("register");
         assert(status);
+
+        (bool isActive, uint256 expiresAt) = theCompact.getRegistrationStatus(swapper, claimHash, typehash);
+        assert(isActive);
+        assertEq(expiresAt, block.timestamp + 1000);
 
         bytes memory sponsorSignature = "";
 
@@ -1317,6 +1325,10 @@ contract TheCompactTest is Test {
             theCompact.depositAndRegister(address(token), amount, nonce, deadline, swapper, allocator, resetPeriod, scope, claimHash, CompactCategory.Compact, witnessTypestring, signature);
         vm.snapshotGasLastCall("depositAndRegisterViaPermit2");
         assertEq(returnedId, id);
+
+        (bool isActive, uint256 expiresAt) = theCompact.getRegistrationStatus(swapper, claimHash, typehash);
+        assert(isActive);
+        assertEq(expiresAt, 0x258 + block.timestamp);
 
         (address derivedToken, address derivedAllocator, ResetPeriod derivedResetPeriod, Scope derivedScope) = theCompact.getLockDetails(id);
         assertEq(derivedToken, address(token));
@@ -1831,6 +1843,10 @@ contract TheCompactTest is Test {
         assertEq(theCompact.balanceOf(swapper, anotherId), anotherAmount);
         assertEq(theCompact.balanceOf(swapper, aThirdId), aThirdAmount);
 
+        (bool isActive, uint256 expiresAt) = theCompact.getRegistrationStatus(swapper, claimHash, typehash);
+        assert(isActive);
+        assertEq(expiresAt, 0x258 + block.timestamp);
+
         claimHash = keccak256(
             abi.encode(
                 keccak256("BatchCompact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256[2][] idsAndAmounts)"),
@@ -1964,6 +1980,10 @@ contract TheCompactTest is Test {
         assertEq(theCompact.balanceOf(swapper, id), amount);
         assertEq(theCompact.balanceOf(swapper, anotherId), anotherAmount);
         assertEq(theCompact.balanceOf(swapper, aThirdId), aThirdAmount);
+
+        (bool isActive, uint256 expiresAt) = theCompact.getRegistrationStatus(swapper, claimHash, typehash);
+        assert(isActive);
+        assertEq(expiresAt, 0x258 + block.timestamp);
 
         claimHash = keccak256(
             abi.encode(

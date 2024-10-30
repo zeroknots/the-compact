@@ -22,7 +22,7 @@ interface ITheCompact {
     event Claim(address indexed sponsor, address indexed allocator, address indexed arbiter, bytes32 claimHash);
     event ForcedWithdrawalEnabled(address indexed account, uint256 indexed id, uint256 withdrawableAt);
     event ForcedWithdrawalDisabled(address indexed account, uint256 indexed id);
-    event CompactRegistered(address indexed sponsor, bytes32 claimHash, bytes32 typehash);
+    event CompactRegistered(address indexed sponsor, bytes32 claimHash, bytes32 typehash, uint256 expires);
     event AllocatorRegistered(uint96 allocatorId, address allocator);
 
     error InvalidToken(address token);
@@ -38,6 +38,8 @@ interface ITheCompact {
     error InvalidScope(uint256 id);
     error InvalidDepositTokenOrdering();
     error InvalidDepositBalanceChange();
+    error Permit2CallFailed();
+    error InvalidRegistrationDuration(uint256 duration);
 
     function deposit(address allocator) external payable returns (uint256 id);
 
@@ -53,7 +55,7 @@ interface ITheCompact {
 
     function deposit(uint256[2][] calldata idsAndAmounts, address recipient) external payable returns (bool);
 
-    function depositAndRegister(uint256[2][] calldata idsAndAmounts, bytes32[2][] calldata claimHashesAndTypehashes) external payable returns (bool);
+    function depositAndRegister(uint256[2][] calldata idsAndAmounts, bytes32[2][] calldata claimHashesAndTypehashes, uint256 duration) external payable returns (bool);
 
     function deposit(
         address token,
@@ -105,9 +107,9 @@ interface ITheCompact {
 
     function forcedWithdrawal(uint256 id, address recipient, uint256 amount) external returns (bool);
 
-    function register(bytes32 claimHash, bytes32 typehash) external returns (bool);
+    function register(bytes32 claimHash, bytes32 typehash, uint256 duration) external returns (bool);
 
-    function register(bytes32[2][] calldata claimHashesAndTypehashes) external returns (bool);
+    function register(bytes32[2][] calldata claimHashesAndTypehashes, uint256 duration) external returns (bool);
 
     function consume(uint256[] calldata nonces) external returns (bool);
 
