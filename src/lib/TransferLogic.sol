@@ -9,10 +9,10 @@ import { EfficiencyLib } from "./EfficiencyLib.sol";
 import { FunctionCastLib } from "./FunctionCastLib.sol";
 import { HashLib } from "./HashLib.sol";
 import { IdLib } from "./IdLib.sol";
-import { ConstructorLogic } from "./ConstructorLogic.sol";
+import { SharedLogic } from "./SharedLogic.sol";
 import { ValidityLib } from "./ValidityLib.sol";
 
-contract TransferLogic is ConstructorLogic {
+contract TransferLogic is SharedLogic {
     using HashLib for BasicTransfer;
     using HashLib for SplitTransfer;
     using HashLib for BatchTransfer;
@@ -24,22 +24,7 @@ contract TransferLogic is ConstructorLogic {
     using ValidityLib for bytes32;
     using FunctionCastLib for function(bytes32, address, BasicTransfer calldata) internal;
 
-    uint256 private constant _ERC6909_MASTER_SLOT_SEED = 0xedcaa89a82293940;
-
-    /// @dev `keccak256(bytes("Transfer(address,address,address,uint256,uint256)"))`.
-    uint256 private constant _TRANSFER_EVENT_SIGNATURE = 0x1b3d7edb2e9c0b0e7c525b20aaaef0f5940d2ed71663c7d39266ecafac728859;
-
-    /// @dev `keccak256(bytes("Claim(address,address,address,bytes32)"))`.
-    uint256 private constant _CLAIM_EVENT_SIGNATURE = 0x770c32a2314b700d6239ee35ba23a9690f2fceb93a55d8c753e953059b3b18d4;
-
     uint32 private constant _ATTEST_SELECTOR = 0x1a808f91;
-
-    function _emitClaim(address sponsor, bytes32 messageHash, address allocator) internal {
-        assembly ("memory-safe") {
-            mstore(0, messageHash)
-            log4(0, 0x20, _CLAIM_EVENT_SIGNATURE, shr(0x60, shl(0x60, sponsor)), shr(0x60, shl(0x60, allocator)), caller())
-        }
-    }
 
     function _processBasicTransfer(BasicTransfer calldata transfer, function(address, address, uint256, uint256) internal returns (bool) operation) internal returns (bool) {
         _notExpiredAndSignedByAllocator(transfer.toMessageHash(), transfer.id.toRegisteredAllocatorWithConsumed(transfer.nonce), transfer);
@@ -91,48 +76,6 @@ contract TransferLogic is ConstructorLogic {
                     operation(msg.sender, portion.claimant, id, portion.amount);
                 }
             }
-        }
-
-        return true;
-    }
-
-    /// @dev Moves token `id` from `from` to `to` without checking
-    //  allowances or _beforeTokenTransfer / _afterTokenTransfer hooks.
-    function _release(address from, address to, uint256 id, uint256 amount) internal returns (bool) {
-        assembly ("memory-safe") {
-            /// Compute the balance slot and load its value.
-            mstore(0x20, _ERC6909_MASTER_SLOT_SEED)
-            mstore(0x14, from)
-            mstore(0x00, id)
-            let fromBalanceSlot := keccak256(0x00, 0x40)
-            let fromBalance := sload(fromBalanceSlot)
-            // Revert if insufficient or zero balance.
-            if or(iszero(amount), gt(amount, fromBalance)) {
-                mstore(0x00, 0xf4d678b8) // `InsufficientBalance()`.
-                revert(0x1c, 0x04)
-            }
-            // Subtract and store the updated balance.
-            sstore(fromBalanceSlot, sub(fromBalance, amount))
-            // Compute the balance slot of `to`.
-            mstore(0x14, to)
-            mstore(0x00, id)
-            let toBalanceSlot := keccak256(0x00, 0x40)
-            let toBalanceBefore := sload(toBalanceSlot)
-            let toBalanceAfter := add(toBalanceBefore, amount)
-            // Revert if the balance overflows.
-            if lt(toBalanceAfter, toBalanceBefore) {
-                mstore(0x00, 0x89560ca1) // `BalanceOverflow()`.
-                revert(0x1c, 0x04)
-            }
-            // Store the updated balance of `to`.
-            sstore(toBalanceSlot, toBalanceAfter)
-            // Emit the {Transfer} event.
-            mstore(0x00, caller())
-            mstore(0x20, amount)
-            // forgefmt: disable-next-line
-            log4(0x00, 0x40, _TRANSFER_EVENT_SIGNATURE, shr(0x60, shl(0x60, from)), shr(0x60, shl(0x60, to)), id)
-            // Restore the part of the free memory pointer that has been overwritten.
-            mstore(0x34, 0x00)
         }
 
         return true;

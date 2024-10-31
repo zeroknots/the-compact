@@ -43,6 +43,7 @@ import { ResetPeriod } from "../types/ResetPeriod.sol";
 import { Scope } from "../types/Scope.sol";
 
 import { DepositLogic } from "./DepositLogic.sol";
+import { RegistrationLogic } from "./RegistrationLogic.sol";
 import { EfficiencyLib } from "./EfficiencyLib.sol";
 import { IdLib } from "./IdLib.sol";
 import { ValidityLib } from "./ValidityLib.sol";
@@ -50,7 +51,7 @@ import { ValidityLib } from "./ValidityLib.sol";
 import { SafeTransferLib } from "solady/utils/SafeTransferLib.sol";
 import { ISignatureTransfer } from "permit2/src/interfaces/ISignatureTransfer.sol";
 
-contract DepositViaPermit2Logic is DepositLogic {
+contract DepositViaPermit2Logic is DepositLogic, RegistrationLogic {
     using IdLib for uint256;
     using IdLib for address;
     using IdLib for ResetPeriod;

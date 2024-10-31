@@ -56,10 +56,11 @@ import { EfficiencyLib } from "./EfficiencyLib.sol";
 import { FunctionCastLib } from "./FunctionCastLib.sol";
 import { HashLib } from "./HashLib.sol";
 import { IdLib } from "./IdLib.sol";
+import { RegistrationLogic } from "./RegistrationLogic.sol";
 import { ValidityLib } from "./ValidityLib.sol";
-import { WithdrawalLogic } from "./WithdrawalLogic.sol";
+import { SharedLogic } from "./SharedLogic.sol";
 
-contract ClaimProcessorLogic is WithdrawalLogic {
+contract ClaimProcessorLogic is SharedLogic, RegistrationLogic {
     using HashLib for address;
     using HashLib for bytes32;
     using HashLib for uint256;
