@@ -3,46 +3,22 @@ pragma solidity ^0.8.27;
 
 import { BatchTransfer, SplitBatchTransfer } from "../types/BatchClaims.sol";
 import { BasicTransfer, SplitTransfer } from "../types/Claims.sol";
-import { CompactCategory } from "../types/CompactCategory.sol";
 import { SplitComponent, TransferComponent, SplitByIdComponent } from "../types/Components.sol";
-import { ForcedWithdrawalStatus } from "../types/ForcedWithdrawalStatus.sol";
-import { Lock } from "../types/Lock.sol";
-import { ResetPeriod } from "../types/ResetPeriod.sol";
-import { Scope } from "../types/Scope.sol";
 
-import { ConsumerLib } from "./ConsumerLib.sol";
 import { EfficiencyLib } from "./EfficiencyLib.sol";
 import { FunctionCastLib } from "./FunctionCastLib.sol";
 import { HashLib } from "./HashLib.sol";
 import { IdLib } from "./IdLib.sol";
-import { MetadataRenderer } from "./MetadataRenderer.sol";
+import { ConstructorLogic } from "./ConstructorLogic.sol";
 import { ValidityLib } from "./ValidityLib.sol";
 
-import { SafeTransferLib } from "solady/utils/SafeTransferLib.sol";
-import { Tstorish } from "tstorish/Tstorish.sol";
-import { ISignatureTransfer } from "permit2/src/interfaces/ISignatureTransfer.sol";
-
-import { RegistrationLogic } from "./RegistrationLogic.sol";
-
-contract TransferLogic is RegistrationLogic {
-    using HashLib for address;
-    using HashLib for bytes32;
-    using HashLib for uint256;
+contract TransferLogic is ConstructorLogic {
     using HashLib for BasicTransfer;
     using HashLib for SplitTransfer;
     using HashLib for BatchTransfer;
     using HashLib for SplitBatchTransfer;
-    using IdLib for uint96;
     using IdLib for uint256;
-    using IdLib for address;
-    using IdLib for Lock;
-    using IdLib for ResetPeriod;
-    using SafeTransferLib for address;
-    using ConsumerLib for uint256;
     using EfficiencyLib for bool;
-    using EfficiencyLib for bytes32;
-    using EfficiencyLib for uint256;
-    using ValidityLib for address;
     using ValidityLib for uint96;
     using ValidityLib for uint256;
     using ValidityLib for bytes32;
@@ -63,14 +39,6 @@ contract TransferLogic is RegistrationLogic {
             mstore(0, messageHash)
             log4(0, 0x20, _CLAIM_EVENT_SIGNATURE, shr(0x60, shl(0x60, sponsor)), shr(0x60, shl(0x60, allocator)), caller())
         }
-    }
-
-    function _notExpiredAndSignedByAllocator(bytes32 messageHash, address allocator, BasicTransfer calldata transferPayload) internal {
-        transferPayload.expires.later();
-
-        messageHash.signedBy(allocator, transferPayload.allocatorSignature, _domainSeparator());
-
-        _emitClaim(msg.sender, messageHash, allocator);
     }
 
     function _processBasicTransfer(BasicTransfer calldata transfer, function(address, address, uint256, uint256) internal returns (bool) operation) internal returns (bool) {
@@ -108,7 +76,7 @@ contract TransferLogic is RegistrationLogic {
     }
 
     function _processSplitBatchTransfer(SplitBatchTransfer calldata transfer, function(address, address, uint256, uint256) internal returns (bool) operation) internal returns (bool) {
-        _notExpiredAndSignedByAllocator.usingSplitBatchTransfer()(transfer.toMessageHash(), _deriveConsistentAllocatorAndConsumeNonce(transfer.transfers, transfer.nonce), transfer);
+        _notExpiredAndSignedByAllocator.usingSplitBatchTransfer()(transfer.toMessageHash(), _deriveConsistentAllocatorAndConsumeNonceWithSplit(transfer.transfers, transfer.nonce), transfer);
 
         unchecked {
             uint256 totalIds = transfer.transfers.length;
@@ -203,12 +171,20 @@ contract TransferLogic is RegistrationLogic {
         }
     }
 
-    function _deriveConsistentAllocatorAndConsumeNonce(TransferComponent[] calldata components, uint256 nonce) internal returns (address allocator) {
+    function _notExpiredAndSignedByAllocator(bytes32 messageHash, address allocator, BasicTransfer calldata transferPayload) private {
+        transferPayload.expires.later();
+
+        messageHash.signedBy(allocator, transferPayload.allocatorSignature, _domainSeparator());
+
+        _emitClaim(msg.sender, messageHash, allocator);
+    }
+
+    function _deriveConsistentAllocatorAndConsumeNonce(TransferComponent[] calldata components, uint256 nonce) private returns (address allocator) {
         uint256 totalComponents = components.length;
 
         uint256 errorBuffer = (totalComponents == 0).asUint256();
 
-        // TODO: bounds checks on these array accesses can be skipped as an optimization
+        // NOTE: bounds checks on these array accesses can be skipped as an optimization
         uint96 allocatorId = components[0].id.toAllocatorId();
 
         allocator = allocatorId.fromRegisteredAllocatorIdWithConsumed(nonce);
@@ -228,12 +204,12 @@ contract TransferLogic is RegistrationLogic {
         }
     }
 
-    function _deriveConsistentAllocatorAndConsumeNonce(SplitByIdComponent[] calldata components, uint256 nonce) internal returns (address allocator) {
+    function _deriveConsistentAllocatorAndConsumeNonceWithSplit(SplitByIdComponent[] calldata components, uint256 nonce) private returns (address allocator) {
         uint256 totalComponents = components.length;
 
         uint256 errorBuffer = (totalComponents == 0).asUint256();
 
-        // TODO: bounds checks on these array accesses can be skipped as an optimization
+        // NOTE: bounds checks on these array accesses can be skipped as an optimization
         uint96 allocatorId = components[0].id.toAllocatorId();
 
         allocator = allocatorId.fromRegisteredAllocatorIdWithConsumed(nonce);

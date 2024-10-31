@@ -1,12 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.27;
 
-import { TransferLogic } from "./TransferLogic.sol";
-
-import { BatchTransfer, SplitBatchTransfer } from "../types/BatchClaims.sol";
-import { BasicTransfer, SplitTransfer } from "../types/Claims.sol";
 import { CompactCategory } from "../types/CompactCategory.sol";
-import { SplitComponent, TransferComponent, SplitByIdComponent } from "../types/Components.sol";
 import {
     COMPACT_TYPEHASH,
     BATCH_COMPACT_TYPEHASH,
@@ -44,46 +39,27 @@ import {
     COMPACT_DEPOSIT_TYPESTRING_FRAGMENT_FOUR,
     COMPACT_DEPOSIT_TYPESTRING_FRAGMENT_FIVE
 } from "../types/EIP712Types.sol";
-import { ForcedWithdrawalStatus } from "../types/ForcedWithdrawalStatus.sol";
-import { Lock } from "../types/Lock.sol";
 import { ResetPeriod } from "../types/ResetPeriod.sol";
 import { Scope } from "../types/Scope.sol";
 
-import { ConsumerLib } from "./ConsumerLib.sol";
 import { EfficiencyLib } from "./EfficiencyLib.sol";
-import { FunctionCastLib } from "./FunctionCastLib.sol";
-import { HashLib } from "./HashLib.sol";
 import { IdLib } from "./IdLib.sol";
-import { MetadataRenderer } from "./MetadataRenderer.sol";
+import { RegistrationLogic } from "./RegistrationLogic.sol";
+import { TransferLogic } from "./TransferLogic.sol";
 import { ValidityLib } from "./ValidityLib.sol";
 
 import { SafeTransferLib } from "solady/utils/SafeTransferLib.sol";
-import { Tstorish } from "tstorish/Tstorish.sol";
 import { ISignatureTransfer } from "permit2/src/interfaces/ISignatureTransfer.sol";
 
-contract DepositLogic is TransferLogic {
-    using HashLib for address;
-    using HashLib for bytes32;
-    using HashLib for uint256;
-    using HashLib for BasicTransfer;
-    using HashLib for SplitTransfer;
-    using HashLib for BatchTransfer;
-    using HashLib for SplitBatchTransfer;
+contract DepositLogic is TransferLogic, RegistrationLogic {
     using IdLib for uint96;
     using IdLib for uint256;
     using IdLib for address;
-    using IdLib for Lock;
     using IdLib for ResetPeriod;
-    using SafeTransferLib for address;
-    using ConsumerLib for uint256;
     using EfficiencyLib for bool;
-    using EfficiencyLib for bytes32;
     using EfficiencyLib for uint256;
     using ValidityLib for address;
-    using ValidityLib for uint96;
-    using ValidityLib for uint256;
-    using ValidityLib for bytes32;
-    using FunctionCastLib for function(bytes32, address, BasicTransfer calldata) internal;
+    using SafeTransferLib for address;
 
     uint32 private constant _PERMIT_WITNESS_TRANSFER_FROM_SELECTOR = 0x137c29fe;
     uint32 private constant _BATCH_PERMIT_WITNESS_TRANSFER_FROM_SELECTOR = 0xfe8ec1a7;

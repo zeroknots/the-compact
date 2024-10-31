@@ -56,8 +56,8 @@ import { EfficiencyLib } from "./EfficiencyLib.sol";
 import { FunctionCastLib } from "./FunctionCastLib.sol";
 import { HashLib } from "./HashLib.sol";
 import { IdLib } from "./IdLib.sol";
-import { WithdrawalLogic } from "./WithdrawalLogic.sol";
 import { ValidityLib } from "./ValidityLib.sol";
+import { WithdrawalLogic } from "./WithdrawalLogic.sol";
 
 contract ClaimProcessorLogic is WithdrawalLogic {
     using HashLib for address;
@@ -111,13 +111,10 @@ contract ClaimProcessorLogic is WithdrawalLogic {
     using HashLib for ExogenousSplitBatchMultichainClaimWithWitness;
     using HashLib for ExogenousQualifiedSplitBatchMultichainClaim;
     using HashLib for ExogenousQualifiedSplitBatchMultichainClaimWithWitness;
-    using IdLib for uint96;
     using IdLib for uint256;
-    using IdLib for address;
     using EfficiencyLib for bool;
     using EfficiencyLib for bytes32;
     using EfficiencyLib for uint256;
-    using ValidityLib for address;
     using ValidityLib for uint96;
     using ValidityLib for uint256;
     using ValidityLib for bytes32;
