@@ -4,12 +4,12 @@ pragma solidity ^0.8.27;
 import { ForcedWithdrawalStatus } from "../types/ForcedWithdrawalStatus.sol";
 import { ResetPeriod } from "../types/ResetPeriod.sol";
 
-import { DepositLogic } from "./DepositLogic.sol";
+import { DepositViaPermit2Logic } from "./DepositViaPermit2Logic.sol";
 import { EfficiencyLib } from "./EfficiencyLib.sol";
 import { IdLib } from "./IdLib.sol";
 import { SafeTransferLib } from "solady/utils/SafeTransferLib.sol";
 
-contract WithdrawalLogic is DepositLogic {
+contract WithdrawalLogic is DepositViaPermit2Logic {
     using IdLib for uint256;
     using IdLib for ResetPeriod;
     using SafeTransferLib for address;
