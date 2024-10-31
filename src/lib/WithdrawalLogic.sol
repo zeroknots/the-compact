@@ -4,21 +4,14 @@ pragma solidity ^0.8.27;
 import { ForcedWithdrawalStatus } from "../types/ForcedWithdrawalStatus.sol";
 import { ResetPeriod } from "../types/ResetPeriod.sol";
 
-import { DepositViaPermit2Logic } from "./DepositViaPermit2Logic.sol";
+import { SharedLogic } from "./SharedLogic.sol";
 import { EfficiencyLib } from "./EfficiencyLib.sol";
 import { IdLib } from "./IdLib.sol";
-import { SafeTransferLib } from "solady/utils/SafeTransferLib.sol";
 
-contract WithdrawalLogic is DepositViaPermit2Logic {
+contract WithdrawalLogic is SharedLogic {
     using IdLib for uint256;
     using IdLib for ResetPeriod;
-    using SafeTransferLib for address;
     using EfficiencyLib for uint256;
-
-    uint256 private constant _ERC6909_MASTER_SLOT_SEED = 0xedcaa89a82293940;
-
-    /// @dev `keccak256(bytes("Transfer(address,address,address,uint256,uint256)"))`.
-    uint256 private constant _TRANSFER_EVENT_SIGNATURE = 0x1b3d7edb2e9c0b0e7c525b20aaaef0f5940d2ed71663c7d39266ecafac728859;
 
     /// @dev `keccak256(bytes("ForcedWithdrawalStatusUpdated(address,uint256,bool,uint256)"))`.
     uint256 private constant _FORCED_WITHDRAWAL_STATUS_UPDATED_SIGNATURE = 0xe27f5e0382cf5347965fc81d5c81cd141897fe9ce402d22c496b7c2ddc84e5fd;
@@ -74,52 +67,6 @@ contract WithdrawalLogic is DepositViaPermit2Logic {
         }
 
         return _withdraw(msg.sender, recipient, id, amount);
-    }
-
-    /// @dev Burns `amount` token `id` from `from` without checking transfer hooks and sends
-    /// the corresponding underlying tokens to `to`. Emits a {Transfer} event.
-    function _withdraw(address from, address to, uint256 id, uint256 amount) internal returns (bool) {
-        _setReentrancyGuard();
-        address token = id.toToken();
-
-        if (token == address(0)) {
-            to.safeTransferETH(amount);
-        } else {
-            uint256 initialBalance = token.balanceOf(address(this));
-            token.safeTransfer(to, amount);
-            // NOTE: if the balance increased, this will underflow to a massive number causing
-            // the burn to fail; furthermore, this scenario would indicate a very broken token
-            unchecked {
-                amount = initialBalance - token.balanceOf(address(this));
-            }
-        }
-
-        assembly ("memory-safe") {
-            // Compute the balance slot.
-            mstore(0x20, _ERC6909_MASTER_SLOT_SEED)
-            mstore(0x14, from)
-            mstore(0x00, id)
-            let fromBalanceSlot := keccak256(0x00, 0x40)
-            let fromBalance := sload(fromBalanceSlot)
-            // Revert if insufficient balance.
-            if gt(amount, fromBalance) {
-                mstore(0x00, 0xf4d678b8) // `InsufficientBalance()`.
-                revert(0x1c, 0x04)
-            }
-            // Subtract and store the updated balance.
-            sstore(fromBalanceSlot, sub(fromBalance, amount))
-
-            let account := shr(0x60, shl(0x60, from))
-
-            // Emit the {Transfer} and {Withdrawal} events.
-            mstore(0x00, caller())
-            mstore(0x20, amount)
-            log4(0x00, 0x40, _TRANSFER_EVENT_SIGNATURE, account, 0, id)
-        }
-
-        _clearReentrancyGuard();
-
-        return true;
     }
 
     function _getForcedWithdrawalStatus(address account, uint256 id) internal view returns (ForcedWithdrawalStatus status, uint256 forcedWithdrawalAvailableAt) {
