@@ -22,9 +22,9 @@ import { SafeTransferLib } from "solady/utils/SafeTransferLib.sol";
 import { Tstorish } from "tstorish/Tstorish.sol";
 import { ISignatureTransfer } from "permit2/src/interfaces/ISignatureTransfer.sol";
 
-import { InternalLogic } from "./InternalLogic.sol";
+import { RegistrationLogic } from "./RegistrationLogic.sol";
 
-contract TransferLogic is InternalLogic {
+contract TransferLogic is RegistrationLogic {
     using HashLib for address;
     using HashLib for bytes32;
     using HashLib for uint256;
@@ -53,7 +53,25 @@ contract TransferLogic is InternalLogic {
     /// @dev `keccak256(bytes("Transfer(address,address,address,uint256,uint256)"))`.
     uint256 private constant _TRANSFER_EVENT_SIGNATURE = 0x1b3d7edb2e9c0b0e7c525b20aaaef0f5940d2ed71663c7d39266ecafac728859;
 
+    /// @dev `keccak256(bytes("Claim(address,address,address,bytes32)"))`.
+    uint256 private constant _CLAIM_EVENT_SIGNATURE = 0x770c32a2314b700d6239ee35ba23a9690f2fceb93a55d8c753e953059b3b18d4;
+
     uint32 private constant _ATTEST_SELECTOR = 0x1a808f91;
+
+    function _emitClaim(address sponsor, bytes32 messageHash, address allocator) internal {
+        assembly ("memory-safe") {
+            mstore(0, messageHash)
+            log4(0, 0x20, _CLAIM_EVENT_SIGNATURE, shr(0x60, shl(0x60, sponsor)), shr(0x60, shl(0x60, allocator)), caller())
+        }
+    }
+
+    function _notExpiredAndSignedByAllocator(bytes32 messageHash, address allocator, BasicTransfer calldata transferPayload) internal {
+        transferPayload.expires.later();
+
+        messageHash.signedBy(allocator, transferPayload.allocatorSignature, _domainSeparator());
+
+        _emitClaim(msg.sender, messageHash, allocator);
+    }
 
     function _processBasicTransfer(BasicTransfer calldata transfer, function(address, address, uint256, uint256) internal returns (bool) operation) internal returns (bool) {
         _notExpiredAndSignedByAllocator(transfer.toMessageHash(), transfer.id.toRegisteredAllocatorWithConsumed(transfer.nonce), transfer);
