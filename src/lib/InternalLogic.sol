@@ -42,6 +42,7 @@ import {
     COMPACT_DEPOSIT_TYPESTRING_FRAGMENT_FOUR,
     COMPACT_DEPOSIT_TYPESTRING_FRAGMENT_FIVE
 } from "../types/EIP712Types.sol";
+import { ForcedWithdrawalStatus } from "../types/ForcedWithdrawalStatus.sol";
 import { Lock } from "../types/Lock.sol";
 import { ResetPeriod } from "../types/ResetPeriod.sol";
 import { Scope } from "../types/Scope.sol";
@@ -129,7 +130,7 @@ contract InternalLogic is Tstorish {
     }
 
     function _processBatchDeposit(uint256[2][] calldata idsAndAmounts, address recipient) internal {
-        _setTstorish(_REENTRANCY_GUARD_SLOT, 1);
+        _setReentrancyGuard();
         uint256 totalIds = idsAndAmounts.length;
         bool firstUnderlyingTokenIsNative;
         uint256 id;
@@ -173,7 +174,7 @@ contract InternalLogic is Tstorish {
             }
         }
 
-        _clearTstorish(_REENTRANCY_GUARD_SLOT);
+        _clearReentrancyGuard();
     }
 
     function _notExpiredAndSignedByAllocator(bytes32 messageHash, address allocator, BasicTransfer calldata transferPayload) internal {
@@ -247,6 +248,121 @@ contract InternalLogic is Tstorish {
         _clearTstorish(_REENTRANCY_GUARD_SLOT);
     }
 
+    function _depositViaPermit2(address token, address recipient, bytes calldata signature) internal returns (uint256) {
+        bytes32 witness = _deriveCompactDepositWitnessHash(uint256(0xa4).asStubborn());
+
+        (uint256 id, uint256 initialBalance, uint256 m, uint256 typestringMemoryLocation) = _setReentrancyLockAndStartPreparingPermit2Call(token);
+
+        _insertCompactDepositTypestringAt(typestringMemoryLocation);
+
+        assembly ("memory-safe") {
+            mstore(add(m, 0x100), witness)
+        }
+
+        _writeSignatureAndPerformPermit2Call(m, uint256(0x140).asStubborn(), uint256(0x200).asStubborn(), signature);
+
+        _checkBalanceAndDeposit(token, recipient, id, initialBalance);
+
+        _clearReentrancyGuard();
+
+        return id;
+    }
+
+    function _depositAndRegisterViaPermit2(
+        address token,
+        address depositor, // also recipient
+        ResetPeriod resetPeriod,
+        bytes32 claimHash,
+        CompactCategory compactCategory,
+        string calldata witness,
+        bytes calldata signature
+    ) internal returns (uint256) {
+        (uint256 id, uint256 initialBalance, uint256 m, uint256 typestringMemoryLocation) = _setReentrancyLockAndStartPreparingPermit2Call(token);
+
+        (bytes32 activationTypehash, bytes32 compactTypehash) = _writeWitnessAndGetTypehashes(typestringMemoryLocation, compactCategory, witness, bool(false).asStubborn());
+
+        _deriveAndWriteWitnessHash(activationTypehash, id, claimHash, m, 0x100);
+
+        uint256 signatureOffsetValue;
+        assembly ("memory-safe") {
+            signatureOffsetValue := and(add(mload(add(m, 0x160)), 0x17f), not(0x1f))
+        }
+
+        _writeSignatureAndPerformPermit2Call(m, uint256(0x140).asStubborn(), signatureOffsetValue, signature);
+
+        _checkBalanceAndDeposit(token, depositor, id, initialBalance);
+
+        _register(depositor, claimHash, compactTypehash, resetPeriod.toSeconds());
+
+        _clearReentrancyGuard();
+
+        return id;
+    }
+
+    function _depositBatchViaPermit2(ISignatureTransfer.TokenPermissions[] calldata permitted, address recipient, bytes calldata signature) internal returns (uint256[] memory) {
+        (uint256 totalTokensLessInitialNative, bool firstUnderlyingTokenIsNative, uint256[] memory ids, uint256[] memory initialTokenBalances) =
+            _preprocessAndPerformInitialNativeDeposit(permitted, recipient);
+
+        bytes32 witness = _deriveCompactDepositWitnessHash(uint256(0x84).asStubborn());
+
+        (uint256 m, uint256 typestringMemoryLocation) = _beginPreparingBatchDepositPermit2Calldata(totalTokensLessInitialNative, firstUnderlyingTokenIsNative);
+
+        unchecked {
+            _insertCompactDepositTypestringAt(typestringMemoryLocation);
+        }
+
+        uint256 signatureOffsetValue;
+        assembly ("memory-safe") {
+            mstore(add(m, 0x80), witness)
+            signatureOffsetValue := add(0x220, shl(7, totalTokensLessInitialNative))
+        }
+
+        _writeSignatureAndPerformPermit2Call(m, uint256(0xc0).asStubborn(), signatureOffsetValue, signature);
+
+        _verifyBalancesAndPerformDeposits(ids, permitted, initialTokenBalances, recipient, firstUnderlyingTokenIsNative);
+
+        return ids;
+    }
+
+    function _depositBatchAndRegisterViaPermit2(
+        address depositor,
+        ISignatureTransfer.TokenPermissions[] calldata permitted,
+        ResetPeriod resetPeriod,
+        bytes32 claimHash,
+        CompactCategory compactCategory,
+        string calldata witness,
+        bytes calldata signature
+    ) internal returns (uint256[] memory) {
+        (uint256 totalTokensLessInitialNative, bool firstUnderlyingTokenIsNative, uint256[] memory ids, uint256[] memory initialTokenBalances) =
+            _preprocessAndPerformInitialNativeDeposit(permitted, depositor);
+
+        uint256 idsHash;
+        assembly ("memory-safe") {
+            idsHash := keccak256(add(ids, 0x20), shl(5, add(totalTokensLessInitialNative, firstUnderlyingTokenIsNative)))
+        }
+
+        (uint256 m, uint256 typestringMemoryLocation) = _beginPreparingBatchDepositPermit2Calldata(totalTokensLessInitialNative, firstUnderlyingTokenIsNative);
+
+        (bytes32 activationTypehash, bytes32 compactTypehash) = _writeWitnessAndGetTypehashes(typestringMemoryLocation, compactCategory, witness, bool(true).asStubborn());
+
+        _deriveAndWriteWitnessHash(activationTypehash, idsHash, claimHash, m, 0x80);
+
+        uint256 signatureOffsetValue;
+        assembly ("memory-safe") {
+            let witnessLength := witness.length
+            let totalWitnessMemoryOffset := and(add(add(0xf3, add(witnessLength, iszero(iszero(witnessLength)))), add(mul(eq(compactCategory, 1), 0x0b), shl(6, eq(compactCategory, 2)))), not(0x1f))
+            signatureOffsetValue := add(add(0x180, shl(7, totalTokensLessInitialNative)), totalWitnessMemoryOffset)
+        }
+
+        _writeSignatureAndPerformPermit2Call(m, uint256(0xc0).asStubborn(), signatureOffsetValue, signature);
+
+        _verifyBalancesAndPerformDeposits(ids, permitted, initialTokenBalances, depositor, firstUnderlyingTokenIsNative);
+
+        _register(depositor, claimHash, compactTypehash, resetPeriod.toSeconds());
+
+        return ids;
+    }
+
     function _verifyBalancesAndPerformDeposits(
         uint256[] memory ids,
         ISignatureTransfer.TokenPermissions[] calldata permittedTokens,
@@ -277,15 +393,13 @@ contract InternalLogic is Tstorish {
             }
         }
 
-        _clearTstorish(_REENTRANCY_GUARD_SLOT);
+        _clearReentrancyGuard();
     }
 
     function _performBasicERC20Deposit(address token, address allocator, uint256 amount) internal returns (uint256 id) {
-        _setTstorish(_REENTRANCY_GUARD_SLOT, 1);
         id = token.excludingNative().toIdIfRegistered(Scope.Multichain, ResetPeriod.TenMinutes, allocator);
 
-        _transferAndDeposit(token, msg.sender, id, amount);
-        _clearTstorish(_REENTRANCY_GUARD_SLOT);
+        _transferAndDepositWithReentrancyGuard(token, msg.sender, id, amount);
     }
 
     function _deriveConsistentAllocatorAndConsumeNonce(TransferComponent[] calldata components, uint256 nonce) internal returns (address allocator) {
@@ -418,11 +532,23 @@ contract InternalLogic is Tstorish {
         }
     }
 
+    function _performCustomNativeTokenDeposit(address allocator, ResetPeriod resetPeriod, Scope scope, address recipient) internal returns (uint256 id) {
+        id = address(0).toIdIfRegistered(scope, resetPeriod, allocator);
+
+        _deposit(recipient, id, msg.value);
+    }
+
+    function _performCustomERC20Deposit(address token, address allocator, ResetPeriod resetPeriod, Scope scope, uint256 amount, address recipient) internal returns (uint256 id) {
+        id = token.excludingNative().toIdIfRegistered(scope, resetPeriod, allocator);
+
+        _transferAndDepositWithReentrancyGuard(token, recipient, id, amount);
+    }
+
     function _preprocessAndPerformInitialNativeDeposit(ISignatureTransfer.TokenPermissions[] calldata permitted, address recipient)
         internal
         returns (uint256 totalTokensLessInitialNative, bool firstUnderlyingTokenIsNative, uint256[] memory ids, uint256[] memory initialTokenBalances)
     {
-        _setTstorish(_REENTRANCY_GUARD_SLOT, 1);
+        _setReentrancyGuard();
 
         uint256 totalTokens = permitted.length;
         address allocator;
@@ -465,7 +591,7 @@ contract InternalLogic is Tstorish {
     }
 
     function _setReentrancyLockAndStartPreparingPermit2Call(address token) internal returns (uint256 id, uint256 initialBalance, uint256 m, uint256 typestringMemoryLocation) {
-        _setTstorish(_REENTRANCY_GUARD_SLOT, 1);
+        _setReentrancyGuard();
 
         address allocator;
         ResetPeriod resetPeriod;
@@ -549,6 +675,16 @@ contract InternalLogic is Tstorish {
         _checkBalanceAndDeposit(token, to, id, initialBalance);
     }
 
+    /// @dev Transfers `amount` of `token` and mints the resulting balance change of `id` to `to`.
+    /// Emits a {Transfer} event.
+    function _transferAndDepositWithReentrancyGuard(address token, address to, uint256 id, uint256 amount) internal {
+        _setReentrancyGuard();
+
+        _transferAndDeposit(token, to, id, amount);
+
+        _clearReentrancyGuard();
+    }
+
     /// @dev Retrieves a token balance, compares against `initialBalance`, and mints the resulting balance
     /// change of `id` to `to`. Emits a {Transfer} event.
     function _checkBalanceAndDeposit(address token, address to, uint256 id, uint256 initialBalance) internal {
@@ -564,6 +700,102 @@ contract InternalLogic is Tstorish {
 
         unchecked {
             _deposit(to, id, tokenBalance - initialBalance);
+        }
+    }
+
+    function _enableForcedWithdrawal(uint256 id) internal returns (uint256 withdrawableAt) {
+        // overflow check not necessary as reset period is capped
+        unchecked {
+            withdrawableAt = block.timestamp + id.toResetPeriod().toSeconds();
+        }
+
+        uint256 cutoffTimeSlotLocation = _getCutoffTimeSlot(msg.sender, id);
+        assembly ("memory-safe") {
+            sstore(cutoffTimeSlotLocation, withdrawableAt)
+        }
+
+        _emitForcedWithdrawalStatusUpdatedEvent(id, withdrawableAt);
+    }
+
+    function _disableForcedWithdrawal(uint256 id) internal returns (bool) {
+        uint256 cutoffTimeSlotLocation = _getCutoffTimeSlot(msg.sender, id);
+
+        assembly ("memory-safe") {
+            if iszero(sload(cutoffTimeSlotLocation)) {
+                // revert ForcedWithdrawalAlreadyDisabled(msg.sender, id)
+                mstore(0, 0xe632dbad)
+                mstore(0x20, caller())
+                mstore(0x40, id)
+                revert(0x1c, 0x44)
+            }
+
+            sstore(cutoffTimeSlotLocation, 0)
+        }
+
+        _emitForcedWithdrawalStatusUpdatedEvent(id, uint256(0).asStubborn());
+
+        return true;
+    }
+
+    function _processForcedWithdrawal(uint256 id, address recipient, uint256 amount) internal returns (bool) {
+        uint256 cutoffTimeSlotLocation = _getCutoffTimeSlot(msg.sender, id);
+
+        assembly ("memory-safe") {
+            let withdrawableAt := sload(cutoffTimeSlotLocation)
+            if or(iszero(withdrawableAt), gt(withdrawableAt, timestamp())) {
+                // revert PrematureWithdrawal(id)
+                mstore(0, 0x9287bcb0)
+                mstore(0x20, id)
+                revert(0x1c, 0x24)
+            }
+        }
+
+        return _withdraw(msg.sender, recipient, id, amount);
+    }
+
+    function _consume(uint256[] calldata nonces) internal returns (bool) {
+        // NOTE: this may not be necessary, consider removing
+        msg.sender.usingAllocatorId().mustHaveARegisteredAllocator();
+
+        unchecked {
+            uint256 i;
+
+            assembly ("memory-safe") {
+                i := nonces.offset
+            }
+
+            uint256 end = i + (nonces.length << 5);
+            uint256 nonce;
+            for (; i < end; i += 0x20) {
+                assembly ("memory-safe") {
+                    nonce := calldataload(i)
+                }
+                nonce.consumeNonceAsAllocator(msg.sender);
+            }
+        }
+
+        return true;
+    }
+
+    function _registerAllocator(address allocator, bytes calldata proof) internal returns (uint96 allocatorId) {
+        allocator = uint256(uint160(allocator)).asSanitizedAddress();
+        if (!allocator.canBeRegistered(proof)) {
+            assembly ("memory-safe") {
+                // revert InvalidRegistrationProof(allocator)
+                mstore(0, 0x4e7f492b)
+                mstore(0x20, allocator)
+                revert(0x1c, 0x24)
+            }
+        }
+
+        allocatorId = allocator.register();
+    }
+
+    function _getForcedWithdrawalStatus(address account, uint256 id) internal view returns (ForcedWithdrawalStatus status, uint256 forcedWithdrawalAvailableAt) {
+        uint256 cutoffTimeSlotLocation = _getCutoffTimeSlot(account, id);
+        assembly ("memory-safe") {
+            forcedWithdrawalAvailableAt := sload(cutoffTimeSlotLocation)
+            status := mul(iszero(iszero(forcedWithdrawalAvailableAt)), sub(2, gt(forcedWithdrawalAvailableAt, timestamp())))
         }
     }
 
@@ -598,7 +830,7 @@ contract InternalLogic is Tstorish {
     /// @dev Burns `amount` token `id` from `from` without checking transfer hooks and sends
     /// the corresponding underlying tokens to `to`. Emits a {Transfer} event.
     function _withdraw(address from, address to, uint256 id, uint256 amount) internal returns (bool) {
-        _setTstorish(_REENTRANCY_GUARD_SLOT, 1);
+        _setReentrancyGuard();
         address token = id.toToken();
 
         if (token == address(0)) {
@@ -636,7 +868,7 @@ contract InternalLogic is Tstorish {
             log4(0x00, 0x40, _TRANSFER_EVENT_SIGNATURE, account, 0, id)
         }
 
-        _clearTstorish(_REENTRANCY_GUARD_SLOT);
+        _clearReentrancyGuard();
 
         return true;
     }
@@ -708,6 +940,17 @@ contract InternalLogic is Tstorish {
                 }
             }
         }
+    }
+
+    function _getLockDetails(uint256 id) internal view returns (address token, address allocator, ResetPeriod resetPeriod, Scope scope) {
+        token = id.toToken();
+        allocator = id.toAllocatorId().toRegisteredAllocator();
+        resetPeriod = id.toResetPeriod();
+        scope = id.toScope();
+    }
+
+    function _hasConsumedAllocatorNonce(uint256 nonce, address allocator) internal view returns (bool) {
+        return allocator.hasConsumedAllocatorNonce(nonce);
     }
 
     function _beginPreparingBatchDepositPermit2Calldata(uint256 totalTokensLessInitialNative, bool firstUnderlyingTokenIsNative) internal view returns (uint256 m, uint256 typestringMemoryLocation) {

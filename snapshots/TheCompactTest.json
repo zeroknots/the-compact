@@ -18,7 +18,7 @@
   "depositBatchViaPermit2NativeAndERC20": "129592",
   "depositBatchViaPermit2SingleERC20": "104746",
   "depositERC20AndURI": "67117",
-  "depositERC20Basic": "67146",
+  "depositERC20Basic": "67119",
   "depositERC20ViaPermit2AndURI": "98312",
   "depositETHAndURI": "26777",
   "depositETHBasic": "28384",
