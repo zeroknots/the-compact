@@ -5,43 +5,6 @@ import { BatchTransfer, SplitBatchTransfer } from "../types/BatchClaims.sol";
 import { BasicTransfer, SplitTransfer } from "../types/Claims.sol";
 import { CompactCategory } from "../types/CompactCategory.sol";
 import { SplitComponent, TransferComponent, SplitByIdComponent } from "../types/Components.sol";
-import {
-    COMPACT_TYPEHASH,
-    BATCH_COMPACT_TYPEHASH,
-    MULTICHAIN_COMPACT_TYPEHASH,
-    PERMIT2_DEPOSIT_WITNESS_FRAGMENT_HASH,
-    PERMIT2_DEPOSIT_WITH_ACTIVATION_TYPESTRING_FRAGMENT_ONE,
-    PERMIT2_DEPOSIT_WITH_ACTIVATION_TYPESTRING_FRAGMENT_TWO,
-    PERMIT2_BATCH_DEPOSIT_WITH_ACTIVATION_TYPESTRING_FRAGMENT_ONE,
-    PERMIT2_BATCH_DEPOSIT_WITH_ACTIVATION_TYPESTRING_FRAGMENT_TWO,
-    TOKEN_PERMISSIONS_TYPESTRING_FRAGMENT_ONE,
-    TOKEN_PERMISSIONS_TYPESTRING_FRAGMENT_TWO,
-    COMPACT_ACTIVATION_TYPEHASH,
-    BATCH_COMPACT_ACTIVATION_TYPEHASH,
-    MULTICHAIN_COMPACT_ACTIVATION_TYPEHASH,
-    COMPACT_BATCH_ACTIVATION_TYPEHASH,
-    BATCH_COMPACT_BATCH_ACTIVATION_TYPEHASH,
-    MULTICHAIN_COMPACT_BATCH_ACTIVATION_TYPEHASH,
-    PERMIT2_ACTIVATION_COMPACT_TYPESTRING_FRAGMENT_ONE,
-    PERMIT2_ACTIVATION_COMPACT_TYPESTRING_FRAGMENT_TWO,
-    PERMIT2_ACTIVATION_COMPACT_TYPESTRING_FRAGMENT_THREE,
-    PERMIT2_ACTIVATION_COMPACT_TYPESTRING_FRAGMENT_FOUR,
-    PERMIT2_ACTIVATION_BATCH_COMPACT_TYPESTRING_FRAGMENT_ONE,
-    PERMIT2_ACTIVATION_BATCH_COMPACT_TYPESTRING_FRAGMENT_TWO,
-    PERMIT2_ACTIVATION_BATCH_COMPACT_TYPESTRING_FRAGMENT_THREE,
-    PERMIT2_ACTIVATION_BATCH_COMPACT_TYPESTRING_FRAGMENT_FOUR,
-    PERMIT2_ACTIVATION_MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_ONE,
-    PERMIT2_ACTIVATION_MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_TWO,
-    PERMIT2_ACTIVATION_MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_THREE,
-    PERMIT2_ACTIVATION_MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_FOUR,
-    PERMIT2_ACTIVATION_MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_FIVE,
-    PERMIT2_ACTIVATION_MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_SIX,
-    COMPACT_DEPOSIT_TYPESTRING_FRAGMENT_ONE,
-    COMPACT_DEPOSIT_TYPESTRING_FRAGMENT_TWO,
-    COMPACT_DEPOSIT_TYPESTRING_FRAGMENT_THREE,
-    COMPACT_DEPOSIT_TYPESTRING_FRAGMENT_FOUR,
-    COMPACT_DEPOSIT_TYPESTRING_FRAGMENT_FIVE
-} from "../types/EIP712Types.sol";
 import { ForcedWithdrawalStatus } from "../types/ForcedWithdrawalStatus.sol";
 import { Lock } from "../types/Lock.sol";
 import { ResetPeriod } from "../types/ResetPeriod.sol";
@@ -127,61 +90,6 @@ contract InternalLogic is Tstorish {
         messageHash.signedBy(allocator, transferPayload.allocatorSignature, _INITIAL_DOMAIN_SEPARATOR.toLatest(_INITIAL_CHAIN_ID));
 
         _emitClaim(msg.sender, messageHash, allocator);
-    }
-
-    function _processBasicTransfer(BasicTransfer calldata transfer, function(address, address, uint256, uint256) internal returns (bool) operation) internal returns (bool) {
-        _notExpiredAndSignedByAllocator(transfer.toMessageHash(), transfer.id.toRegisteredAllocatorWithConsumed(transfer.nonce), transfer);
-
-        return operation(msg.sender, transfer.recipient, transfer.id, transfer.amount);
-    }
-
-    function _processSplitTransfer(SplitTransfer calldata transfer, function(address, address, uint256, uint256) internal returns (bool) operation) internal returns (bool) {
-        _notExpiredAndSignedByAllocator.usingSplitTransfer()(transfer.toMessageHash(), transfer.id.toRegisteredAllocatorWithConsumed(transfer.nonce), transfer);
-
-        uint256 totalSplits = transfer.recipients.length;
-        unchecked {
-            for (uint256 i = 0; i < totalSplits; ++i) {
-                SplitComponent calldata component = transfer.recipients[i];
-                operation(msg.sender, component.claimant, transfer.id, component.amount);
-            }
-        }
-
-        return true;
-    }
-
-    function _processBatchTransfer(BatchTransfer calldata transfer, function(address, address, uint256, uint256) internal returns (bool) operation) internal returns (bool) {
-        _notExpiredAndSignedByAllocator.usingBatchTransfer()(transfer.toMessageHash(), _deriveConsistentAllocatorAndConsumeNonce(transfer.transfers, transfer.nonce), transfer);
-
-        unchecked {
-            uint256 totalTransfers = transfer.transfers.length;
-            for (uint256 i = 0; i < totalTransfers; ++i) {
-                TransferComponent calldata component = transfer.transfers[i];
-                operation(msg.sender, transfer.recipient, component.id, component.amount);
-            }
-        }
-
-        return true;
-    }
-
-    function _processSplitBatchTransfer(SplitBatchTransfer calldata transfer, function(address, address, uint256, uint256) internal returns (bool) operation) internal returns (bool) {
-        _notExpiredAndSignedByAllocator.usingSplitBatchTransfer()(transfer.toMessageHash(), _deriveConsistentAllocatorAndConsumeNonce(transfer.transfers, transfer.nonce), transfer);
-
-        unchecked {
-            uint256 totalIds = transfer.transfers.length;
-            uint256 id;
-            for (uint256 i = 0; i < totalIds; ++i) {
-                SplitByIdComponent calldata component = transfer.transfers[i];
-                id = component.id;
-                SplitComponent[] calldata portions = component.portions;
-                uint256 totalPortions = portions.length;
-                for (uint256 j = 0; j < totalPortions; ++j) {
-                    SplitComponent calldata portion = portions[j];
-                    operation(msg.sender, portion.claimant, id, portion.amount);
-                }
-            }
-        }
-
-        return true;
     }
 
     function _setReentrancyGuard() internal {
@@ -291,48 +199,6 @@ contract InternalLogic is Tstorish {
                 bytes32[2] calldata claimHashAndTypehash = claimHashesAndTypehashes[i];
                 _register(msg.sender, claimHashAndTypehash[0], claimHashAndTypehash[1], duration);
             }
-        }
-
-        return true;
-    }
-
-    /// @dev Moves token `id` from `from` to `to` without checking
-    //  allowances or _beforeTokenTransfer / _afterTokenTransfer hooks.
-    function _release(address from, address to, uint256 id, uint256 amount) internal returns (bool) {
-        assembly ("memory-safe") {
-            /// Compute the balance slot and load its value.
-            mstore(0x20, _ERC6909_MASTER_SLOT_SEED)
-            mstore(0x14, from)
-            mstore(0x00, id)
-            let fromBalanceSlot := keccak256(0x00, 0x40)
-            let fromBalance := sload(fromBalanceSlot)
-            // Revert if insufficient or zero balance.
-            if or(iszero(amount), gt(amount, fromBalance)) {
-                mstore(0x00, 0xf4d678b8) // `InsufficientBalance()`.
-                revert(0x1c, 0x04)
-            }
-            // Subtract and store the updated balance.
-            sstore(fromBalanceSlot, sub(fromBalance, amount))
-            // Compute the balance slot of `to`.
-            mstore(0x14, to)
-            mstore(0x00, id)
-            let toBalanceSlot := keccak256(0x00, 0x40)
-            let toBalanceBefore := sload(toBalanceSlot)
-            let toBalanceAfter := add(toBalanceBefore, amount)
-            // Revert if the balance overflows.
-            if lt(toBalanceAfter, toBalanceBefore) {
-                mstore(0x00, 0x89560ca1) // `BalanceOverflow()`.
-                revert(0x1c, 0x04)
-            }
-            // Store the updated balance of `to`.
-            sstore(toBalanceSlot, toBalanceAfter)
-            // Emit the {Transfer} event.
-            mstore(0x00, caller())
-            mstore(0x20, amount)
-            // forgefmt: disable-next-line
-            log4(0x00, 0x40, _TRANSFER_EVENT_SIGNATURE, shr(0x60, shl(0x60, from)), shr(0x60, shl(0x60, to)), id)
-            // Restore the part of the free memory pointer that has been overwritten.
-            mstore(0x34, 0x00)
         }
 
         return true;
@@ -480,39 +346,6 @@ contract InternalLogic is Tstorish {
         return true;
     }
 
-    function _ensureAttested(address from, address to, uint256 id, uint256 amount) internal {
-        address allocator = id.toAllocator();
-
-        assembly ("memory-safe") {
-            from := shr(0x60, shl(0x60, from))
-            to := shr(0x60, shl(0x60, to))
-
-            let m := mload(0x40) // Grab the free memory pointer; memory will be left dirtied.
-            mstore(0, 0) // make sure scratch space is cleared just to be safe.
-            let dataStart := add(m, 0x1c)
-
-            mstore(m, _ATTEST_SELECTOR)
-            mstore(add(m, 0x20), caller())
-            mstore(add(m, 0x40), from)
-            mstore(add(m, 0x60), to)
-            mstore(add(m, 0x80), id)
-            mstore(add(m, 0xa0), amount)
-            let success := call(gas(), allocator, 0, dataStart, 0xa4, 0, 0x20)
-            if iszero(eq(mload(0), shl(224, _ATTEST_SELECTOR))) {
-                // bubble up if the call failed and there's data
-                // NOTE: consider evaluating remaining gas to protect against revert bombing
-                if iszero(or(success, iszero(returndatasize()))) {
-                    returndatacopy(0, 0, returndatasize())
-                    revert(0, returndatasize())
-                }
-
-                // revert UnallocatedTransfer(msg.sender, from, to, id, amount)
-                mstore(m, 0x014c9310)
-                revert(dataStart, 0xa4)
-            }
-        }
-    }
-
     function _getLockDetails(uint256 id) internal view returns (address token, address allocator, ResetPeriod resetPeriod, Scope scope) {
         token = id.toToken();
         allocator = id.toAllocatorId().toRegisteredAllocator();
@@ -566,17 +399,6 @@ contract InternalLogic is Tstorish {
     /// @dev Returns the Uniform Resource Identifier (URI) for token `id`.
     function _tokenURI(uint256 id) internal view returns (string memory) {
         return _METADATA_RENDERER.uri(id.toLock(), id);
-    }
-
-    function _deriveAndWriteWitnessHash(bytes32 activationTypehash, uint256 idOrIdsHash, bytes32 claimHash, uint256 memoryPointer, uint256 offset) internal pure {
-        assembly ("memory-safe") {
-            let m := mload(0x40)
-            mstore(0, activationTypehash)
-            mstore(0x20, idOrIdsHash)
-            mstore(0x40, claimHash)
-            mstore(add(memoryPointer, offset), keccak256(0, 0x60))
-            mstore(0x40, m)
-        }
     }
 
     function _getCutoffTimeSlot(address account, uint256 id) internal pure returns (uint256 cutoffTimeSlotLocation) {

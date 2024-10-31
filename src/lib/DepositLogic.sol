@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.27;
 
-import { InternalLogic } from "./InternalLogic.sol";
+import { TransferLogic } from "./TransferLogic.sol";
 
 import { BatchTransfer, SplitBatchTransfer } from "../types/BatchClaims.sol";
 import { BasicTransfer, SplitTransfer } from "../types/Claims.sol";
@@ -61,7 +61,7 @@ import { SafeTransferLib } from "solady/utils/SafeTransferLib.sol";
 import { Tstorish } from "tstorish/Tstorish.sol";
 import { ISignatureTransfer } from "permit2/src/interfaces/ISignatureTransfer.sol";
 
-contract DepositLogic is InternalLogic {
+contract DepositLogic is TransferLogic {
     using HashLib for address;
     using HashLib for bytes32;
     using HashLib for uint256;
@@ -699,6 +699,17 @@ contract DepositLogic is InternalLogic {
             }
 
             activationTypehash, compactTypehash := writeWitnessAndGetTypehashes(memoryLocation, category, witness.offset, witness.length, usingBatch)
+        }
+    }
+
+    function _deriveAndWriteWitnessHash(bytes32 activationTypehash, uint256 idOrIdsHash, bytes32 claimHash, uint256 memoryPointer, uint256 offset) internal pure {
+        assembly ("memory-safe") {
+            let m := mload(0x40)
+            mstore(0, activationTypehash)
+            mstore(0x20, idOrIdsHash)
+            mstore(0x40, claimHash)
+            mstore(add(memoryPointer, offset), keccak256(0, 0x60))
+            mstore(0x40, m)
         }
     }
 }
