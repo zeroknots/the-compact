@@ -713,3 +713,9 @@ In addition to standard ERC6909 view functions, The Compact includes the followi
  - `check` determines if a given nonce has been consumed for a given allocator (note that nonces are scoped to allocators, not sponsors).
  - `DOMAIN_SEPARATOR` returns the hash of the EIP-712 domain data for the chain in question.
  - `name` returns the name of the contract.
+
+
+## Contract Layout
+The Compact is primarily represented by a single deployed contract, with the exception of a metadata renderer that it calls to retrieve information on ERC6909 tokenURI metadata for resource locks. That said, the underlying code is spread across multiple inherited logic contracts.
+
+![TheCompact Inheritance Graph](images/TheCompact-Inheritance-Graph.png)
