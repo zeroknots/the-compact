@@ -56,10 +56,10 @@ import { EfficiencyLib } from "./EfficiencyLib.sol";
 import { FunctionCastLib } from "./FunctionCastLib.sol";
 import { HashLib } from "./HashLib.sol";
 import { IdLib } from "./IdLib.sol";
-import { InternalLogic } from "./InternalLogic.sol";
+import { DepositLogic } from "./DepositLogic.sol";
 import { ValidityLib } from "./ValidityLib.sol";
 
-contract ClaimProcessorLogic is InternalLogic {
+contract ClaimProcessorLogic is DepositLogic {
     using HashLib for address;
     using HashLib for bytes32;
     using HashLib for uint256;
