@@ -655,7 +655,7 @@ interface ICompactMultichainClaims {
 ### 4d) Multiple Resource Lock Claim on Multiple Chains
 Finally, there are thirty-two claim endpoints to cover cases where the sponsor is utilizing multiple resource locks against multiple chains where one or more chains contain more than one resource lock; these also utilize a `MultichainCompact` EIP-712 payload, but the `Allocation` structs can contain `idsAndAmounts` arrays of arbitrary length.
 
-```
+```solidity
 struct BatchMultichainClaim {
     bytes allocatorSignature; // Authorization from the allocator.
     bytes sponsorSignature; // Authorization from the sponsor.
