@@ -184,4 +184,54 @@ contract TransferLogic is InternalLogic {
             }
         }
     }
+
+    function _deriveConsistentAllocatorAndConsumeNonce(TransferComponent[] calldata components, uint256 nonce) internal returns (address allocator) {
+        uint256 totalComponents = components.length;
+
+        uint256 errorBuffer = (totalComponents == 0).asUint256();
+
+        // TODO: bounds checks on these array accesses can be skipped as an optimization
+        uint96 allocatorId = components[0].id.toAllocatorId();
+
+        allocator = allocatorId.fromRegisteredAllocatorIdWithConsumed(nonce);
+
+        unchecked {
+            for (uint256 i = 1; i < totalComponents; ++i) {
+                errorBuffer |= (components[i].id.toAllocatorId() != allocatorId).asUint256();
+            }
+        }
+
+        assembly ("memory-safe") {
+            if errorBuffer {
+                // revert InvalidBatchAllocation()
+                mstore(0, 0x3a03d3bb)
+                revert(0x1c, 0x04)
+            }
+        }
+    }
+
+    function _deriveConsistentAllocatorAndConsumeNonce(SplitByIdComponent[] calldata components, uint256 nonce) internal returns (address allocator) {
+        uint256 totalComponents = components.length;
+
+        uint256 errorBuffer = (totalComponents == 0).asUint256();
+
+        // TODO: bounds checks on these array accesses can be skipped as an optimization
+        uint96 allocatorId = components[0].id.toAllocatorId();
+
+        allocator = allocatorId.fromRegisteredAllocatorIdWithConsumed(nonce);
+
+        unchecked {
+            for (uint256 i = 1; i < totalComponents; ++i) {
+                errorBuffer |= (components[i].id.toAllocatorId() != allocatorId).asUint256();
+            }
+        }
+
+        assembly ("memory-safe") {
+            if errorBuffer {
+                // revert InvalidBatchAllocation()
+                mstore(0, 0x3a03d3bb)
+                revert(0x1c, 0x04)
+            }
+        }
+    }
 }

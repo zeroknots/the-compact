@@ -56,10 +56,10 @@ import { EfficiencyLib } from "./EfficiencyLib.sol";
 import { FunctionCastLib } from "./FunctionCastLib.sol";
 import { HashLib } from "./HashLib.sol";
 import { IdLib } from "./IdLib.sol";
-import { DepositLogic } from "./DepositLogic.sol";
+import { WithdrawalLogic } from "./WithdrawalLogic.sol";
 import { ValidityLib } from "./ValidityLib.sol";
 
-contract ClaimProcessorLogic is DepositLogic {
+contract ClaimProcessorLogic is WithdrawalLogic {
     using HashLib for address;
     using HashLib for bytes32;
     using HashLib for uint256;
@@ -129,6 +129,9 @@ contract ClaimProcessorLogic is DepositLogic {
     using FunctionCastLib for function(bytes32, uint256, uint256, bytes32, bytes32, function(address, address, uint256, uint256) internal returns (bool)) internal returns (bool);
     using FunctionCastLib for function(bytes32, bytes32, uint256, uint256, bytes32, function(address, address, uint256, uint256) internal returns (bool)) internal returns (bool);
     using FunctionCastLib for function(bytes32, bytes32, uint256, uint256, bytes32, bytes32, function(address, address, uint256, uint256) internal returns (bool)) internal returns (bool);
+
+    /// @dev `keccak256(bytes("Claim(address,address,address,bytes32)"))`.
+    uint256 private constant _CLAIM_EVENT_SIGNATURE = 0x770c32a2314b700d6239ee35ba23a9690f2fceb93a55d8c753e953059b3b18d4;
 
     function _processSimpleClaim(bytes32 messageHash, uint256 calldataPointer, uint256 offsetToId, bytes32 typehash, function(address, address, uint256, uint256) internal returns (bool) operation)
         internal
