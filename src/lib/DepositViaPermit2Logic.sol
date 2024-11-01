@@ -43,7 +43,7 @@ import { ResetPeriod } from "../types/ResetPeriod.sol";
 import { Scope } from "../types/Scope.sol";
 
 import { DepositLogic } from "./DepositLogic.sol";
-import { RegistrationLogic } from "./RegistrationLogic.sol";
+import { RegistrationLib } from "./RegistrationLib.sol";
 import { EfficiencyLib } from "./EfficiencyLib.sol";
 import { IdLib } from "./IdLib.sol";
 import { ValidityLib } from "./ValidityLib.sol";
@@ -51,12 +51,13 @@ import { ValidityLib } from "./ValidityLib.sol";
 import { SafeTransferLib } from "solady/utils/SafeTransferLib.sol";
 import { ISignatureTransfer } from "permit2/src/interfaces/ISignatureTransfer.sol";
 
-contract DepositViaPermit2Logic is DepositLogic, RegistrationLogic {
+contract DepositViaPermit2Logic is DepositLogic {
     using IdLib for uint256;
     using IdLib for address;
     using IdLib for ResetPeriod;
     using EfficiencyLib for bool;
     using EfficiencyLib for uint256;
+    using RegistrationLib for address;
     using ValidityLib for address;
     using SafeTransferLib for address;
 
@@ -109,7 +110,7 @@ contract DepositViaPermit2Logic is DepositLogic, RegistrationLogic {
 
         _checkBalanceAndDeposit(token, depositor, id, initialBalance);
 
-        _register(depositor, claimHash, compactTypehash, resetPeriod.toSeconds());
+        depositor.registerCompact(claimHash, compactTypehash, resetPeriod);
 
         _clearReentrancyGuard();
 
@@ -175,7 +176,7 @@ contract DepositViaPermit2Logic is DepositLogic, RegistrationLogic {
 
         _verifyBalancesAndPerformDeposits(ids, permitted, initialTokenBalances, depositor, firstUnderlyingTokenIsNative);
 
-        _register(depositor, claimHash, compactTypehash, resetPeriod.toSeconds());
+        depositor.registerCompact(claimHash, compactTypehash, resetPeriod);
 
         return ids;
     }
