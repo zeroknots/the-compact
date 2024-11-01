@@ -11,6 +11,13 @@ import { CompactCategory } from "../types/CompactCategory.sol";
 
 import { EfficientHashLib } from "solady/utils/EfficientHashLib.sol";
 
+/**
+ * @title IdLib
+ * @notice Libray contract implementing logic for deriving IDs for allocators and
+ * for resource locks, converting between various IDs, and for extracting details
+ * related to those IDs. This includes logic for registering allocators and for
+ * assigning them an allocator ID.
+ */
 library IdLib {
     using IdLib for uint96;
     using IdLib for uint256;
@@ -96,7 +103,7 @@ library IdLib {
     }
 
     function canBeRegistered(address allocator, bytes calldata proof) internal view returns (bool) {
-        return (msg.sender == allocator).or(allocator.code.length > 0).or(proof.length == 86 && (proof[0] == 0xff).and(allocator == address(uint160(uint256(proof.hashCalldata())))));
+        return (msg.sender == allocator).or(allocator.code.length > 0).or(proof.length == 85 && (proof[0] == 0xff).and(allocator == address(uint160(uint256(proof.hashCalldata())))));
     }
 
     function toAllocator(uint256 id) internal view returns (address allocator) {

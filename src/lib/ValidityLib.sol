@@ -6,6 +6,11 @@ import { ConsumerLib } from "./ConsumerLib.sol";
 import { HashLib } from "./HashLib.sol";
 import { SignatureCheckerLib } from "solady/utils/SignatureCheckerLib.sol";
 
+/**
+ * @title ValidityLib
+ * @notice Libray contract implementing logic for validating expirations,
+ * signatures, nonces (including consuming unused nonces), and token addresses.
+ */
 library ValidityLib {
     using IdLib for uint96;
     using IdLib for uint256;

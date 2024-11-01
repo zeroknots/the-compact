@@ -9,6 +9,12 @@ import { EfficiencyLib } from "./EfficiencyLib.sol";
 import { IdLib } from "./IdLib.sol";
 import { ValidityLib } from "./ValidityLib.sol";
 
+/**
+ * @title AllocatorLogic
+ * @notice Inherited contract implementing internal functions with logic for registering
+ * new allocators, allowing registered allocators to directly consume nonces within their
+ * scope, and querying for information on nonce consumption and lock details.
+ */
 contract AllocatorLogic {
     using IdLib for uint96;
     using IdLib for uint256;

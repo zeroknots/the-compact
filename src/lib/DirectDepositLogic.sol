@@ -12,6 +12,12 @@ import { ValidityLib } from "./ValidityLib.sol";
 import { SafeTransferLib } from "solady/utils/SafeTransferLib.sol";
 import { ISignatureTransfer } from "permit2/src/interfaces/ISignatureTransfer.sol";
 
+/**
+ * @title DirectDepositLogic
+ * @notice Inherited contract implementing internal functions with logic for processing
+ * direct token deposits (or deposits that do not involve Permit2). This includes both
+ * single-token deposits and batch token deposits.
+ */
 contract DirectDepositLogic is DepositLogic {
     using IdLib for uint96;
     using IdLib for uint256;

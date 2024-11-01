@@ -6,6 +6,12 @@ import { ResetPeriod } from "../types/ResetPeriod.sol";
 import { EfficiencyLib } from "./EfficiencyLib.sol";
 import { IdLib } from "./IdLib.sol";
 
+/**
+ * @title RegistrationLib
+ * @notice Libray contract implementing logic for registering compact claim hashes
+ * and typehashes and querying for whether given claim hashes and typehashes have
+ * been registered.
+ */
 library RegistrationLib {
     using RegistrationLib for address;
     using EfficiencyLib for uint256;

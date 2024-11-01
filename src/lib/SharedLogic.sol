@@ -6,6 +6,11 @@ import { IdLib } from "./IdLib.sol";
 
 import { SafeTransferLib } from "solady/utils/SafeTransferLib.sol";
 
+/**
+ * @title SharedLogic
+ * @notice Inherited contract implementing logic for internal functions with
+ * low-level shared logic for processing transfers and withdrawals.
+ */
 contract SharedLogic is ConstructorLogic {
     using IdLib for uint256;
     using SafeTransferLib for address;

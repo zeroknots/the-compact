@@ -5,6 +5,11 @@ import { ConstructorLogic } from "./ConstructorLogic.sol";
 
 import { SafeTransferLib } from "solady/utils/SafeTransferLib.sol";
 
+/**
+ * @title DepositLogic
+ * @notice Inherited contract implementing internal functions with low-level shared logic for
+ * processing token deposits.
+ */
 contract DepositLogic is ConstructorLogic {
     using SafeTransferLib for address;
 

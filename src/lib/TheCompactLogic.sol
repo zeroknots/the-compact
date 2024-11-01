@@ -10,4 +10,8 @@ import { RegistrationLogic } from "./RegistrationLogic.sol";
 import { TransferLogic } from "./TransferLogic.sol";
 import { WithdrawalLogic } from "./WithdrawalLogic.sol";
 
+/**
+ * @title TheCompactLogic
+ * @notice Inherited contract that aggregates a number of other inherited contracts.
+ */
 contract TheCompactLogic is AllocatorLogic, ClaimProcessor, DepositViaPermit2Logic, DirectDepositLogic, Extsload, RegistrationLogic, TransferLogic, WithdrawalLogic { }

@@ -11,6 +11,15 @@ import { MetadataRenderer } from "./MetadataRenderer.sol";
 
 import { Tstorish } from "tstorish/Tstorish.sol";
 
+/**
+ * @title ConstructorLogic
+ * @notice Inherited contract implementing internal functions with logic for initializing
+ * immutable variables and deploying the metadata renderer contract, as well as for setting
+ * and clearing resource locks, retrieving metadata from the metadata renderer, and safely
+ * interacting with Permit2. Note that TSTORE will be used for the reentrancy lock on chains
+ * that support it, with a fallback to SSTORE where it is not supported along with a utility
+ * for activating TSTORE support if the chain eventually adds support for it.
+ */
 contract ConstructorLogic is Tstorish {
     using HashLib for bytes32;
     using HashLib for uint256;
