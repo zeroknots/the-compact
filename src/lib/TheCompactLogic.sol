@@ -6,7 +6,8 @@ import { ClaimProcessor } from "./ClaimProcessor.sol";
 import { DepositViaPermit2Logic } from "./DepositViaPermit2Logic.sol";
 import { DirectDepositLogic } from "./DirectDepositLogic.sol";
 import { Extsload } from "./Extsload.sol";
+import { RegistrationLogic } from "./RegistrationLogic.sol";
 import { TransferLogic } from "./TransferLogic.sol";
 import { WithdrawalLogic } from "./WithdrawalLogic.sol";
 
-contract TheCompactLogic is AllocatorLogic, ClaimProcessor, DepositViaPermit2Logic, DirectDepositLogic, Extsload, TransferLogic, WithdrawalLogic { }
+contract TheCompactLogic is AllocatorLogic, ClaimProcessor, DepositViaPermit2Logic, DirectDepositLogic, Extsload, RegistrationLogic, TransferLogic, WithdrawalLogic { }

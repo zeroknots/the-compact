@@ -56,11 +56,11 @@ import { EfficiencyLib } from "./EfficiencyLib.sol";
 import { FunctionCastLib } from "./FunctionCastLib.sol";
 import { HashLib } from "./HashLib.sol";
 import { IdLib } from "./IdLib.sol";
-import { RegistrationLogic } from "./RegistrationLogic.sol";
+import { RegistrationLib } from "./RegistrationLib.sol";
 import { ValidityLib } from "./ValidityLib.sol";
 import { SharedLogic } from "./SharedLogic.sol";
 
-contract ClaimProcessorLogic is SharedLogic, RegistrationLogic {
+contract ClaimProcessorLogic is SharedLogic {
     using HashLib for address;
     using HashLib for bytes32;
     using HashLib for uint256;
@@ -116,6 +116,7 @@ contract ClaimProcessorLogic is SharedLogic, RegistrationLogic {
     using EfficiencyLib for bool;
     using EfficiencyLib for bytes32;
     using EfficiencyLib for uint256;
+    using RegistrationLib for address;
     using ValidityLib for uint96;
     using ValidityLib for uint256;
     using ValidityLib for bytes32;
@@ -527,7 +528,7 @@ contract ClaimProcessorLogic is SharedLogic, RegistrationLogic {
             sponsorDomainSeparator := add(sponsorDomainSeparator, mul(iszero(sponsorDomainSeparator), domainSeparator))
         }
 
-        if ((sponsorDomainSeparator != domainSeparator).or(sponsorSignature.length != 0) || _hasNoActiveRegistration(sponsor, messageHash, typehash)) {
+        if ((sponsorDomainSeparator != domainSeparator).or(sponsorSignature.length != 0) || sponsor.hasNoActiveRegistration(messageHash, typehash)) {
             messageHash.signedBy(sponsor, sponsorSignature, sponsorDomainSeparator);
         }
         qualificationMessageHash.signedBy(allocator, allocatorSignature, domainSeparator);
@@ -876,10 +877,6 @@ contract ClaimProcessorLogic is SharedLogic, RegistrationLogic {
         }
 
         return true;
-    }
-
-    function _hasNoActiveRegistration(address sponsor, bytes32 claimHash, bytes32 typehash) private view returns (bool) {
-        return _getRegistrationStatus(sponsor, claimHash, typehash) <= block.timestamp;
     }
 
     function _ensureValidScope(bytes32 sponsorDomainSeparator, uint256 id) private pure {
