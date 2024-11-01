@@ -11,6 +11,13 @@ import { CompactCategory } from "../types/CompactCategory.sol";
 
 import { EfficientHashLib } from "solady/utils/EfficientHashLib.sol";
 
+/**
+ * @title IdLib
+ * @notice Libray contract implementing logic for deriving IDs for allocators and
+ * for resource locks, converting between various IDs, and for extracting details
+ * related to those IDs. This includes logic for registering allocators and for
+ * assigning them an allocator ID.
+ */
 library IdLib {
     using IdLib for uint96;
     using IdLib for uint256;

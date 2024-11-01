@@ -12,6 +12,11 @@ import { IdLib } from "./IdLib.sol";
 import { SharedLogic } from "./SharedLogic.sol";
 import { ValidityLib } from "./ValidityLib.sol";
 
+/**
+ * @title TransferLogic
+ * @notice Inherited contract implementing internal functions with logic for processing
+ * allocated token transfers and withdrawals.
+ */
 contract TransferLogic is SharedLogic {
     using HashLib for BasicTransfer;
     using HashLib for SplitTransfer;

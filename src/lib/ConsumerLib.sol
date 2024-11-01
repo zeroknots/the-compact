@@ -1,6 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.27;
 
+/**
+ * @title ConsumerLib
+ * @notice Libray contract implementing logic for consuming bitpacked nonces scoped to
+ * specific accounts and for querying for the state of those nonces. Note that only the
+ * allocator nonce scope is currently in use in The Compact.
+ */
 library ConsumerLib {
     uint256 private constant _ALLOCATOR_NONCE_SCOPE = 0x03f37b1a;
     uint256 private constant _SPONSOR_NONCE_SCOPE = 0x8ccd9613;

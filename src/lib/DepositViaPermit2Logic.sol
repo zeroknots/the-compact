@@ -51,6 +51,18 @@ import { ValidityLib } from "./ValidityLib.sol";
 import { SafeTransferLib } from "solady/utils/SafeTransferLib.sol";
 import { ISignatureTransfer } from "permit2/src/interfaces/ISignatureTransfer.sol";
 
+/**
+ * @title DepositViaPermit2Logic
+ * @notice Inherited contract implementing internal functions with logic for processing
+ * token deposits via permit2. These deposits leverage Permit2 witness data to either
+ * indicate the parameters of the lock to deposit into and the recipient of the deposit,
+ * or the parameters of the compact to register alongside the deposit. Deposits can also
+ * involve a single ERC20 token or a batch of tokens in a single Permit2 authorization.
+ * @dev IMPORTANT NOTE: this logic operates directly on unallocated memory, and reads
+ * directly from fixed calldata offsets; proceed with EXTREME caution when making any
+ * modifications to either this logic contract (including the insertion of new logic) or
+ * to the associated permit2 deposit function interfaces!
+ */
 contract DepositViaPermit2Logic is DepositLogic {
     using IdLib for uint256;
     using IdLib for address;

@@ -119,6 +119,12 @@ import { Scope } from "../types/Scope.sol";
 import { FunctionCastLib } from "./FunctionCastLib.sol";
 import { EfficiencyLib } from "./EfficiencyLib.sol";
 
+/**
+ * @title HashLib
+ * @notice Libray contract implementing logic for deriving hashes as part of processing
+ * claims, allocated transfers, and withdrawals, as well as for deriving typehashes and
+ * validating signatures more generally.
+ */
 library HashLib {
     using EfficiencyLib for bool;
     using EfficiencyLib for uint256;

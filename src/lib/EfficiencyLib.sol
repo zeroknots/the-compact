@@ -4,6 +4,12 @@ pragma solidity ^0.8.27;
 import { Scope } from "../types/Scope.sol";
 import { ResetPeriod } from "../types/ResetPeriod.sol";
 
+/**
+ * @title EfficiencyLib
+ * @notice Libray contract implementing logic for efficiently comparing, converting,
+ * typecasting, and sanitizing values, as well as for preventing the function
+ * specializer from being triggered when providing static function arguments.
+ */
 library EfficiencyLib {
     // NOTE: this function is only safe if the supplied booleans are known to not
     // have any dirty bits set (i.e. they are either 0 or 1). It is meant to get

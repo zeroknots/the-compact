@@ -3,6 +3,12 @@ pragma solidity ^0.8.27;
 
 import { RegistrationLib } from "./RegistrationLib.sol";
 
+/**
+ * @title RegistrationLogic
+ * @notice Inherited contract implementing logic for registering compact claim hashes
+ * and typehashes and querying for whether given claim hashes and typehashes have
+ * been registered.
+ */
 contract RegistrationLogic {
     using RegistrationLib for address;
     using RegistrationLib for bytes32;

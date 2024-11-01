@@ -8,6 +8,12 @@ import { SharedLogic } from "./SharedLogic.sol";
 import { EfficiencyLib } from "./EfficiencyLib.sol";
 import { IdLib } from "./IdLib.sol";
 
+/**
+ * @title WithdrawalLogic
+ * @notice Inherited contract implementing internal functions with logic for processing
+ * forced withdrawals, including initiation and the actual withdrawal, and for querying
+ * for the forced withdrawal status for given resource locks.
+ */
 contract WithdrawalLogic is SharedLogic {
     using IdLib for uint256;
     using IdLib for ResetPeriod;

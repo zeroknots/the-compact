@@ -60,6 +60,14 @@ import { RegistrationLib } from "./RegistrationLib.sol";
 import { ValidityLib } from "./ValidityLib.sol";
 import { SharedLogic } from "./SharedLogic.sol";
 
+/**
+ * @title ClaimProcessorLogic
+ * @notice Inherited contract implementing internal functions with logic for processing
+ * claims against a signed or registered compact.
+ * @dev IMPORTANT NOTE: this logic assumes that the utilized structs are formatted in a
+ * very specific manner — if parameters are rearranged or new parameters are inserted,
+ * much of this functionality will break. Proceed with caution when making any changes.
+ */
 contract ClaimProcessorLogic is SharedLogic {
     using HashLib for address;
     using HashLib for bytes32;

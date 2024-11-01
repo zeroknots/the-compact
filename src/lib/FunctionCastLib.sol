@@ -67,6 +67,13 @@ import {
 
 import { TransferComponent, SplitByIdComponent, BatchClaimComponent, SplitBatchClaimComponent } from "../types/Components.sol";
 
+/**
+ * @title FunctionCastLib
+ * @notice Libray contract implementing function casts used throughout the codebase,
+ * particularly as part of processing claims.
+ * @dev Note that many of these function casts are no longer being used and should be
+ * removed when time permits.
+ */
 library FunctionCastLib {
     function usingBasicClaim(function (uint256, uint256, function(uint256, uint256) internal view returns (bytes32)) internal view returns (bytes32) fnIn)
         internal

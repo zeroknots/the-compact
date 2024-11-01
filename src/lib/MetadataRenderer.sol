@@ -5,6 +5,11 @@ import { EfficiencyLib } from "./EfficiencyLib.sol";
 import { MetadataLib } from "./MetadataLib.sol";
 import { Lock } from "../types/Lock.sol";
 
+/**
+ * @title MetadataRenderer
+ * @notice Deployed contract implementing functionality for deriving and displaying
+ * ERC6909 metadata as well as metadata specific to various underlying tokens.
+ */
 contract MetadataRenderer {
     using EfficiencyLib for uint256;
     using MetadataLib for Lock;
