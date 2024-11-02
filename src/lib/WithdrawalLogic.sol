@@ -161,7 +161,7 @@ contract WithdrawalLogic is SharedLogic {
      */
     function _getCutoffTimeSlot(address account, uint256 id) private pure returns (uint256 cutoffTimeSlotLocation) {
         assembly ("memory-safe") {
-            // Store the current free memory pointer.
+            // Retrieve the current free memory pointer.
             let m := mload(0x40)
 
             // Pack data for computing storage slot.
