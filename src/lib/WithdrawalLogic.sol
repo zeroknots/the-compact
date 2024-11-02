@@ -19,30 +19,51 @@ contract WithdrawalLogic is SharedLogic {
     using IdLib for ResetPeriod;
     using EfficiencyLib for uint256;
 
-    /// @dev `keccak256(bytes("ForcedWithdrawalStatusUpdated(address,uint256,bool,uint256)"))`.
+    // keccak256(bytes("ForcedWithdrawalStatusUpdated(address,uint256,bool,uint256)")).
     uint256 private constant _FORCED_WITHDRAWAL_STATUS_UPDATED_SIGNATURE = 0xe27f5e0382cf5347965fc81d5c81cd141897fe9ce402d22c496b7c2ddc84e5fd;
 
-    // slot: keccak256(_FORCED_WITHDRAWAL_ACTIVATIONS_SCOPE ++ account ++ id) => activates
+    // Storage scope for forced withdrawal activation times:
+    // slot: keccak256(_FORCED_WITHDRAWAL_ACTIVATIONS_SCOPE ++ account ++ id) => activates.
     uint256 private constant _FORCED_WITHDRAWAL_ACTIVATIONS_SCOPE = 0x41d0e04b;
 
+    /**
+     * @notice Internal function for initiating a forced withdrawal. Computes the withdrawable
+     * timestamp by adding the current block timestamp to the reset period associated with the
+     * resource lock, stores the sum, and emits a ForcedWithdrawalStatusUpdated event.
+     * @param id                The ERC6909 token identifier of the resource lock.
+     * @return withdrawableAt   The timestamp at which tokens become withdrawable.
+     */
     function _enableForcedWithdrawal(uint256 id) internal returns (uint256 withdrawableAt) {
-        // overflow check not necessary as reset period is capped
+        // Skip overflow check as reset period is bounded.
         unchecked {
+            // Derive the time at which the forced withdrawal is enabled.
             withdrawableAt = block.timestamp + id.toResetPeriod().toSeconds();
         }
 
+        // Derive storage slot containing time withdrawal is enabled.
         uint256 cutoffTimeSlotLocation = _getCutoffTimeSlot(msg.sender, id);
         assembly ("memory-safe") {
+            // Store the time at which the forced withdrawal is enabled.
             sstore(cutoffTimeSlotLocation, withdrawableAt)
         }
 
+        // emit the ForcedWithdrawalStatusUpdated event.
         _emitForcedWithdrawalStatusUpdatedEvent(id, withdrawableAt);
     }
 
+    /**
+     * @notice Internal function for disabling a forced withdrawal. Reverts if the withdrawal
+     * is already disabled, clears the withdrawable timestamp, and emits a
+     * ForcedWithdrawalStatusUpdated event.
+     * @param id The ERC6909 token identifier of the resource lock.
+     * @return   Whether the forced withdrawal was successfully disabled.
+     */
     function _disableForcedWithdrawal(uint256 id) internal returns (bool) {
+        // Derive storage slot containing time withdrawal is enabled.
         uint256 cutoffTimeSlotLocation = _getCutoffTimeSlot(msg.sender, id);
 
         assembly ("memory-safe") {
+            // Revert if withdrawal is already disabled.
             if iszero(sload(cutoffTimeSlotLocation)) {
                 // revert ForcedWithdrawalAlreadyDisabled(msg.sender, id)
                 mstore(0, 0xe632dbad)
@@ -51,19 +72,34 @@ contract WithdrawalLogic is SharedLogic {
                 revert(0x1c, 0x44)
             }
 
+            // Clear the value for the stored time the withdrawal is enabled.
             sstore(cutoffTimeSlotLocation, 0)
         }
 
+        // emit the ForcedWithdrawalStatusUpdated event.
         _emitForcedWithdrawalStatusUpdatedEvent(id, uint256(0).asStubborn());
 
         return true;
     }
 
+    /**
+     * @notice Internal function for executing a forced withdrawal. Checks that the withdrawal
+     * is enabled and the reset period has elapsed, then processes the withdrawal by burning
+     * ERC6909 tokens and transferring the underlying tokens to the specified recipient.
+     * @param id        The ERC6909 token identifier of the resource lock.
+     * @param recipient The account that will receive the withdrawn tokens.
+     * @param amount    The amount of tokens to withdraw.
+     * @return          Whether the forced withdrawal was successfully executed.
+     */
     function _processForcedWithdrawal(uint256 id, address recipient, uint256 amount) internal returns (bool) {
+        // Derive the storage slot containing the time the withdrawal is enabled.
         uint256 cutoffTimeSlotLocation = _getCutoffTimeSlot(msg.sender, id);
 
         assembly ("memory-safe") {
+            // Retrieve the value for the time the withdrawal is enabled.
             let withdrawableAt := sload(cutoffTimeSlotLocation)
+
+            // Check that withdrawal is not disabled and that reset period has elapsed.
             if or(iszero(withdrawableAt), gt(withdrawableAt, timestamp())) {
                 // revert PrematureWithdrawal(id)
                 mstore(0, 0x9287bcb0)
@@ -72,32 +108,71 @@ contract WithdrawalLogic is SharedLogic {
             }
         }
 
+        // Process the withdrawal.
         return _withdraw(msg.sender, recipient, id, amount);
     }
 
-    function _getForcedWithdrawalStatus(address account, uint256 id) internal view returns (ForcedWithdrawalStatus status, uint256 forcedWithdrawalAvailableAt) {
+    /**
+     * @notice Internal view function for checking the forced withdrawal status. Returns the
+     * status (disabled, pending, or enabled) based on whether a withdrawable timestamp exists
+     * and whether it has elapsed.
+     * @param account    The account to check the status for.
+     * @param id         The ERC6909 token identifier of the resource lock.
+     * @return status    The current ForcedWithdrawalStatus (disabled, pending, or enabled).
+     * @return enabledAt The timestamp when forced withdrawal becomes possible.
+     */
+    function _getForcedWithdrawalStatus(address account, uint256 id) internal view returns (ForcedWithdrawalStatus status, uint256 enabledAt) {
+        // Derive the storage slot containing the time the withdrawal is enabled.
         uint256 cutoffTimeSlotLocation = _getCutoffTimeSlot(account, id);
+
         assembly ("memory-safe") {
-            forcedWithdrawalAvailableAt := sload(cutoffTimeSlotLocation)
-            status := mul(iszero(iszero(forcedWithdrawalAvailableAt)), sub(2, gt(forcedWithdrawalAvailableAt, timestamp())))
+            // Retrieve the value for the time the withdrawal is enabled.
+            enabledAt := sload(cutoffTimeSlotLocation)
+
+            // Compute status: 0 if disabled, 1 if pending, 2 if enabled.
+            status := mul(iszero(iszero(enabledAt)), sub(2, gt(enabledAt, timestamp())))
         }
     }
 
+    /**
+     * @notice Private function for emitting forced withdrawal status update events.
+     * @param id             The ERC6909 token identifier of the resource lock.
+     * @param withdrawableAt The timestamp when withdrawal becomes possible.
+     */
     function _emitForcedWithdrawalStatusUpdatedEvent(uint256 id, uint256 withdrawableAt) private {
         assembly ("memory-safe") {
+            // Emit ForcedWithdrawalStatusUpdated event:
+            //  - topic1: Event signature
+            //  - topic2: Caller address
+            //  - topic3: Token id
+            //  - data: [activating flag, withdrawableAt timestamp]
             mstore(0, iszero(iszero(withdrawableAt)))
             mstore(0x20, withdrawableAt)
             log3(0, 0x40, _FORCED_WITHDRAWAL_STATUS_UPDATED_SIGNATURE, caller(), id)
         }
     }
 
+    /**
+     * @notice Private pure function for computing the storage slot for a forced
+     * withdrawal activation timestamp.
+     * @param account                 The account that initiated the forced withdrawal.
+     * @param id                      The ERC6909 token identifier of the resource lock.
+     * @return cutoffTimeSlotLocation The storage slot for the activation timestamp.
+     */
     function _getCutoffTimeSlot(address account, uint256 id) private pure returns (uint256 cutoffTimeSlotLocation) {
         assembly ("memory-safe") {
+            // Store the current free memory pointer.
             let m := mload(0x40)
+
+            // Pack data for computing storage slot.
             mstore(0x14, account)
             mstore(0, _FORCED_WITHDRAWAL_ACTIVATIONS_SCOPE)
             mstore(0x34, id)
+
+            // Compute storage slot from packed data.
             cutoffTimeSlotLocation := keccak256(0x1c, 0x38)
+
+            // Restore the free memory pointer.
             mstore(0x40, m)
         }
     }
