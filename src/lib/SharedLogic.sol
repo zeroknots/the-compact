@@ -15,104 +15,163 @@ contract SharedLogic is ConstructorLogic {
     using IdLib for uint256;
     using SafeTransferLib for address;
 
-    /// @dev `keccak256(bytes("Claim(address,address,address,bytes32)"))`.
+    // keccak256(bytes("Claim(address,address,address,bytes32)")).
     uint256 private constant _CLAIM_EVENT_SIGNATURE = 0x770c32a2314b700d6239ee35ba23a9690f2fceb93a55d8c753e953059b3b18d4;
 
+    // Storage slot seed for ERC6909 state, used in computing balance slots.
     uint256 private constant _ERC6909_MASTER_SLOT_SEED = 0xedcaa89a82293940;
 
-    /// @dev `keccak256(bytes("Transfer(address,address,address,uint256,uint256)"))`.
+    // keccak256(bytes("Transfer(address,address,address,uint256,uint256)")).
     uint256 private constant _TRANSFER_EVENT_SIGNATURE = 0x1b3d7edb2e9c0b0e7c525b20aaaef0f5940d2ed71663c7d39266ecafac728859;
 
+    /**
+     * @notice Internal function for emitting claim events. The sponsor and allocator
+     * addresses are sanitized before emission.
+     * @param sponsor     The account sponsoring the compact that the claim is for.
+     * @param messageHash The EIP-712 hash of the claim message.
+     * @param allocator   The account mediating the claim.
+     */
     function _emitClaim(address sponsor, bytes32 messageHash, address allocator) internal {
         assembly ("memory-safe") {
+            // Emit the Claim event:
+            //  - topic1: Claim event signature
+            //  - topic2: sponsor address (sanitized)
+            //  - topic3: allocator address (sanitized)
+            //  - topic4: caller address
+            //  - data: messageHash
             mstore(0, messageHash)
             log4(0, 0x20, _CLAIM_EVENT_SIGNATURE, shr(0x60, shl(0x60, sponsor)), shr(0x60, shl(0x60, allocator)), caller())
         }
     }
 
-    /// @dev Moves token `id` from `from` to `to` without checking
-    //  allowances or _beforeTokenTransfer / _afterTokenTransfer hooks.
+    /**
+     * @notice Internal function for transferring ERC6909 tokens between accounts. Updates
+     * both balances, checking for overflow and insufficient balance. This function bypasses
+     * transfer hooks and allowance checks as it is only called in trusted contexts. Emits
+     * a Transfer event.
+     * @param from   The account to transfer tokens from.
+     * @param to     The account to transfer tokens to.
+     * @param id     The ERC6909 token identifier to transfer.
+     * @param amount The amount of tokens to transfer.
+     * @return       Whether the transfer was successful.
+     */
     function _release(address from, address to, uint256 id, uint256 amount) internal returns (bool) {
         assembly ("memory-safe") {
-            /// Compute the balance slot and load its value.
+            // Compute the sender's balance slot using the master slot seed.
             mstore(0x20, _ERC6909_MASTER_SLOT_SEED)
             mstore(0x14, from)
             mstore(0x00, id)
             let fromBalanceSlot := keccak256(0x00, 0x40)
+
+            // Load from sender's current balance.
             let fromBalance := sload(fromBalanceSlot)
-            // Revert if insufficient or zero balance.
+
+            // Revert if amount is zero or exceeds balance.
             if or(iszero(amount), gt(amount, fromBalance)) {
                 mstore(0x00, 0xf4d678b8) // `InsufficientBalance()`.
                 revert(0x1c, 0x04)
             }
-            // Subtract and store the updated balance.
+
+            // Subtract from current balance and store the updated balance.
             sstore(fromBalanceSlot, sub(fromBalance, amount))
-            // Compute the balance slot of `to`.
+
+            // Compute the recipient's balance slot and update balance.
             mstore(0x14, to)
             mstore(0x00, id)
             let toBalanceSlot := keccak256(0x00, 0x40)
             let toBalanceBefore := sload(toBalanceSlot)
             let toBalanceAfter := add(toBalanceBefore, amount)
+
             // Revert if the balance overflows.
             if lt(toBalanceAfter, toBalanceBefore) {
                 mstore(0x00, 0x89560ca1) // `BalanceOverflow()`.
                 revert(0x1c, 0x04)
             }
-            // Store the updated balance of `to`.
+
+            // Store the recipient's updated balance.
             sstore(toBalanceSlot, toBalanceAfter)
-            // Emit the {Transfer} event.
+
+            // Emit the Transfer event:
+            //  - topic1: Transfer event signature
+            //  - topic2: sender address (sanitized)
+            //  - topic3: recipient address (sanitized)
+            //  - topic4: token id
+            //  - data: [caller, amount]
             mstore(0x00, caller())
             mstore(0x20, amount)
-            // forgefmt: disable-next-line
             log4(0x00, 0x40, _TRANSFER_EVENT_SIGNATURE, shr(0x60, shl(0x60, from)), shr(0x60, shl(0x60, to)), id)
-            // Restore the part of the free memory pointer that has been overwritten.
-            mstore(0x34, 0x00)
         }
 
         return true;
     }
 
-    /// @dev Burns `amount` token `id` from `from` without checking transfer hooks and sends
-    /// the corresponding underlying tokens to `to`. Emits a {Transfer} event.
+    /**
+     * @notice Internal function for burning ERC6909 tokens and withdrawing the underlying
+     * tokens. Updates the sender's balance and transfers either native tokens or ERC20
+     * tokens to the recipient. For ERC20 withdrawals, the actual amount burned is derived
+     * from the balance change. Uses a reentrancy guard due to external calls. Emits a
+     * Transfer event.
+     * @param from   The account to burn tokens from.
+     * @param to     The account to send underlying tokens to.
+     * @param id     The ERC6909 token identifier to burn.
+     * @param amount The amount of tokens to burn and withdraw.
+     * @return       Whether the withdrawal was successful.
+     */
     function _withdraw(address from, address to, uint256 id, uint256 amount) internal returns (bool) {
+        // Set reentrancy guard due to external token transfers.
         _setReentrancyGuard();
+
+        // Derive the underlying token from the id of the resource lock.
         address token = id.toToken();
 
+        // Handle native token withdrawals directly.
         if (token == address(0)) {
             to.safeTransferETH(amount);
         } else {
+            // For ERC20s, track balance change to determine actual withdrawal amount.
             uint256 initialBalance = token.balanceOf(address(this));
+
+            // Perform the token withdrawal.
             token.safeTransfer(to, amount);
-            // NOTE: if the balance increased, this will underflow to a massive number causing
-            // the burn to fail; furthermore, this scenario would indicate a very broken token
+
+            // Derive actual amount from balance change. A balance increase would cause
+            // a massive underflow, resulting in a failure during the subsequent burn.
             unchecked {
                 amount = initialBalance - token.balanceOf(address(this));
             }
         }
 
         assembly ("memory-safe") {
-            // Compute the balance slot.
+            // Compute the sender's balance slot using the master slot seed.
             mstore(0x20, _ERC6909_MASTER_SLOT_SEED)
             mstore(0x14, from)
             mstore(0x00, id)
             let fromBalanceSlot := keccak256(0x00, 0x40)
+
+            // Load from sender's current balance.
             let fromBalance := sload(fromBalanceSlot)
+
             // Revert if insufficient balance.
             if gt(amount, fromBalance) {
                 mstore(0x00, 0xf4d678b8) // `InsufficientBalance()`.
                 revert(0x1c, 0x04)
             }
-            // Subtract and store the updated balance.
+
+            // Subtract from current balance and store the updated balance.
             sstore(fromBalanceSlot, sub(fromBalance, amount))
 
-            let account := shr(0x60, shl(0x60, from))
-
-            // Emit the {Transfer} and {Withdrawal} events.
+            // Emit the Transfer event:
+            //  - topic1: Transfer event signature
+            //  - topic2: sender address (sanitized)
+            //  - topic3: address(0) signifying a burn
+            //  - topic4: token id
+            //  - data: [caller, amount]
             mstore(0x00, caller())
             mstore(0x20, amount)
-            log4(0x00, 0x40, _TRANSFER_EVENT_SIGNATURE, account, 0, id)
+            log4(0x00, 0x40, _TRANSFER_EVENT_SIGNATURE, shr(0x60, shl(0x60, from)), 0, id)
         }
 
+        // Clear the reentrancy guard.
         _clearReentrancyGuard();
 
         return true;
