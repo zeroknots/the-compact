@@ -48,10 +48,9 @@ import {
     ExogenousQualifiedSplitBatchMultichainClaim,
     ExogenousQualifiedSplitBatchMultichainClaimWithWitness
 } from "../types/BatchMultichainClaims.sol";
-import { COMPACT_TYPEHASH, BATCH_COMPACT_TYPEHASH, MULTICHAIN_COMPACT_TYPEHASH } from "../types/EIP712Types.sol";
 import { SplitComponent, BatchClaimComponent, SplitBatchClaimComponent } from "../types/Components.sol";
-import { Scope } from "../types/Scope.sol";
 
+import { ClaimProcessorLib } from "./ClaimProcessorLib.sol";
 import { EfficiencyLib } from "./EfficiencyLib.sol";
 import { FunctionCastLib } from "./FunctionCastLib.sol";
 import { HashLib } from "./HashLib.sol";
@@ -69,6 +68,16 @@ import { SharedLogic } from "./SharedLogic.sol";
  * much of this functionality will break. Proceed with caution when making any changes.
  */
 contract ClaimProcessorLogic is SharedLogic {
+    using ClaimProcessorLib for uint256;
+    using ClaimProcessorLib for bytes32;
+    using ClaimProcessorLib for SplitComponent[];
+    using EfficiencyLib for bool;
+    using EfficiencyLib for bytes32;
+    using EfficiencyLib for uint256;
+    using FunctionCastLib for function(bytes32, uint256, uint256, bytes32, function(address, address, uint256, uint256) internal returns (bool)) internal returns (bool);
+    using FunctionCastLib for function(bytes32, uint256, uint256, bytes32, bytes32, function(address, address, uint256, uint256) internal returns (bool)) internal returns (bool);
+    using FunctionCastLib for function(bytes32, bytes32, uint256, uint256, bytes32, function(address, address, uint256, uint256) internal returns (bool)) internal returns (bool);
+    using FunctionCastLib for function(bytes32, bytes32, uint256, uint256, bytes32, bytes32, function(address, address, uint256, uint256) internal returns (bool)) internal returns (bool);
     using HashLib for address;
     using HashLib for bytes32;
     using HashLib for uint256;
@@ -121,33 +130,19 @@ contract ClaimProcessorLogic is SharedLogic {
     using HashLib for ExogenousQualifiedSplitBatchMultichainClaim;
     using HashLib for ExogenousQualifiedSplitBatchMultichainClaimWithWitness;
     using IdLib for uint256;
-    using EfficiencyLib for bool;
-    using EfficiencyLib for bytes32;
-    using EfficiencyLib for uint256;
     using RegistrationLib for address;
     using ValidityLib for uint96;
     using ValidityLib for uint256;
     using ValidityLib for bytes32;
-    using FunctionCastLib for function(bytes32, BasicClaim calldata, address) internal view;
-    using FunctionCastLib for function(bytes32, bytes32, QualifiedClaim calldata, address) internal view;
-    using FunctionCastLib for function(QualifiedClaim calldata) internal returns (bytes32, address);
-    using FunctionCastLib for function(QualifiedClaimWithWitness calldata) internal returns (bytes32, address);
-    using FunctionCastLib for function(bytes32, uint256, uint256, bytes32, function(address, address, uint256, uint256) internal returns (bool)) internal returns (bool);
-    using FunctionCastLib for function(bytes32, uint256, uint256, bytes32, bytes32, function(address, address, uint256, uint256) internal returns (bool)) internal returns (bool);
-    using FunctionCastLib for function(bytes32, bytes32, uint256, uint256, bytes32, function(address, address, uint256, uint256) internal returns (bool)) internal returns (bool);
-    using FunctionCastLib for function(bytes32, bytes32, uint256, uint256, bytes32, bytes32, function(address, address, uint256, uint256) internal returns (bool)) internal returns (bool);
-
-    /// @dev `keccak256(bytes("Claim(address,address,address,bytes32)"))`.
-    uint256 private constant _CLAIM_EVENT_SIGNATURE = 0x770c32a2314b700d6239ee35ba23a9690f2fceb93a55d8c753e953059b3b18d4;
 
     ///// 1. Claims /////
     function _processBasicClaim(BasicClaim calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation) internal returns (bool) {
-        return _processSimpleClaim.usingBasicClaim()(claimPayload.toMessageHash(), claimPayload, uint256(0xa0).asStubborn(), _typehashes(uint256(0).asStubborn()), operation);
+        return _processSimpleClaim.usingBasicClaim()(claimPayload.toMessageHash(), claimPayload, uint256(0xa0).asStubborn(), uint256(0).asStubborn().typehashes(), operation);
     }
 
     function _processQualifiedClaim(QualifiedClaim calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation) internal returns (bool) {
         (bytes32 messageHash, bytes32 qualificationMessageHash) = claimPayload.toMessageHash();
-        return _processClaimWithQualification.usingQualifiedClaim()(messageHash, qualificationMessageHash, claimPayload, 0xe0, _typehashes(uint256(0).asStubborn()), operation);
+        return _processClaimWithQualification.usingQualifiedClaim()(messageHash, qualificationMessageHash, claimPayload, 0xe0, uint256(0).asStubborn().typehashes(), operation);
     }
 
     function _processClaimWithWitness(ClaimWithWitness calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation) internal returns (bool) {
@@ -164,12 +159,12 @@ contract ClaimProcessorLogic is SharedLogic {
     }
 
     function _processSplitClaim(SplitClaim calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation) internal returns (bool) {
-        return _processSimpleSplitClaim.usingSplitClaim()(claimPayload.toMessageHash(), claimPayload, 0xa0, _typehashes(uint256(0).asStubborn()), operation);
+        return _processSimpleSplitClaim.usingSplitClaim()(claimPayload.toMessageHash(), claimPayload, 0xa0, uint256(0).asStubborn().typehashes(), operation);
     }
 
     function _processQualifiedSplitClaim(QualifiedSplitClaim calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation) internal returns (bool) {
         (bytes32 messageHash, bytes32 qualificationMessageHash) = claimPayload.toMessageHash();
-        return _processSplitClaimWithQualification.usingQualifiedSplitClaim()(messageHash, qualificationMessageHash, claimPayload, 0xe0, _typehashes(uint256(0).asStubborn()), operation);
+        return _processSplitClaimWithQualification.usingQualifiedSplitClaim()(messageHash, qualificationMessageHash, claimPayload, 0xe0, uint256(0).asStubborn().typehashes(), operation);
     }
 
     function _processSplitClaimWithWitness(SplitClaimWithWitness calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation) internal returns (bool) {
@@ -187,12 +182,12 @@ contract ClaimProcessorLogic is SharedLogic {
 
     ///// 2. Batch Claims /////
     function _processBatchClaim(BatchClaim calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation) internal returns (bool) {
-        return _processSimpleBatchClaim.usingBatchClaim()(claimPayload.toMessageHash(), claimPayload, 0xa0, _typehashes(uint256(1).asStubborn()), operation);
+        return _processSimpleBatchClaim.usingBatchClaim()(claimPayload.toMessageHash(), claimPayload, 0xa0, uint256(1).asStubborn().typehashes(), operation);
     }
 
     function _processQualifiedBatchClaim(QualifiedBatchClaim calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation) internal returns (bool) {
         (bytes32 messageHash, bytes32 qualificationMessageHash) = claimPayload.toMessageHash();
-        return _processBatchClaimWithQualification.usingQualifiedBatchClaim()(messageHash, qualificationMessageHash, claimPayload, 0xe0, _typehashes(uint256(1).asStubborn()), operation);
+        return _processBatchClaimWithQualification.usingQualifiedBatchClaim()(messageHash, qualificationMessageHash, claimPayload, 0xe0, uint256(1).asStubborn().typehashes(), operation);
     }
 
     function _processBatchClaimWithWitness(BatchClaimWithWitness calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation) internal returns (bool) {
@@ -209,12 +204,12 @@ contract ClaimProcessorLogic is SharedLogic {
     }
 
     function _processSplitBatchClaim(SplitBatchClaim calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation) internal returns (bool) {
-        return _processSimpleSplitBatchClaim.usingSplitBatchClaim()(claimPayload.toMessageHash(), claimPayload, 0xa0, _typehashes(uint256(1).asStubborn()), operation);
+        return _processSimpleSplitBatchClaim.usingSplitBatchClaim()(claimPayload.toMessageHash(), claimPayload, 0xa0, uint256(1).asStubborn().typehashes(), operation);
     }
 
     function _processQualifiedSplitBatchClaim(QualifiedSplitBatchClaim calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation) internal returns (bool) {
         (bytes32 messageHash, bytes32 qualificationMessageHash) = claimPayload.toMessageHash();
-        return _processSplitBatchClaimWithQualification.usingQualifiedSplitBatchClaim()(messageHash, qualificationMessageHash, claimPayload, 0xe0, _typehashes(uint256(1).asStubborn()), operation);
+        return _processSplitBatchClaimWithQualification.usingQualifiedSplitBatchClaim()(messageHash, qualificationMessageHash, claimPayload, 0xe0, uint256(1).asStubborn().typehashes(), operation);
     }
 
     function _processSplitBatchClaimWithWitness(SplitBatchClaimWithWitness calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation)
@@ -235,12 +230,12 @@ contract ClaimProcessorLogic is SharedLogic {
 
     ///// 3. Multichain Claims /////
     function _processMultichainClaim(MultichainClaim calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation) internal returns (bool) {
-        return _processSimpleClaim.usingMultichainClaim()(claimPayload.toMessageHash(), claimPayload, 0xc0, _typehashes(uint256(2).asStubborn()), operation);
+        return _processSimpleClaim.usingMultichainClaim()(claimPayload.toMessageHash(), claimPayload, 0xc0, uint256(2).asStubborn().typehashes(), operation);
     }
 
     function _processQualifiedMultichainClaim(QualifiedMultichainClaim calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation) internal returns (bool) {
         (bytes32 messageHash, bytes32 qualificationMessageHash) = claimPayload.toMessageHash();
-        return _processClaimWithQualification.usingQualifiedMultichainClaim()(messageHash, qualificationMessageHash, claimPayload, 0x100, _typehashes(uint256(2).asStubborn()), operation);
+        return _processClaimWithQualification.usingQualifiedMultichainClaim()(messageHash, qualificationMessageHash, claimPayload, 0x100, uint256(2).asStubborn().typehashes(), operation);
     }
 
     function _processMultichainClaimWithWitness(MultichainClaimWithWitness calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation)
@@ -260,7 +255,7 @@ contract ClaimProcessorLogic is SharedLogic {
     }
 
     function _processSplitMultichainClaim(SplitMultichainClaim calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation) internal returns (bool) {
-        return _processSimpleSplitClaim.usingSplitMultichainClaim()(claimPayload.toMessageHash(), claimPayload, 0xc0, _typehashes(uint256(2).asStubborn()), operation);
+        return _processSimpleSplitClaim.usingSplitMultichainClaim()(claimPayload.toMessageHash(), claimPayload, 0xc0, uint256(2).asStubborn().typehashes(), operation);
     }
 
     function _processQualifiedSplitMultichainClaim(QualifiedSplitMultichainClaim calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation)
@@ -268,7 +263,7 @@ contract ClaimProcessorLogic is SharedLogic {
         returns (bool)
     {
         (bytes32 messageHash, bytes32 qualificationMessageHash) = claimPayload.toMessageHash();
-        return _processSplitClaimWithQualification.usingQualifiedSplitMultichainClaim()(messageHash, qualificationMessageHash, claimPayload, 0x100, _typehashes(uint256(2).asStubborn()), operation);
+        return _processSplitClaimWithQualification.usingQualifiedSplitMultichainClaim()(messageHash, qualificationMessageHash, claimPayload, 0x100, uint256(2).asStubborn().typehashes(), operation);
     }
 
     function _processSplitMultichainClaimWithWitness(SplitMultichainClaimWithWitness calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation)
@@ -289,7 +284,7 @@ contract ClaimProcessorLogic is SharedLogic {
 
     ///// 4. Batch Multichain Claims /////
     function _processBatchMultichainClaim(BatchMultichainClaim calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation) internal returns (bool) {
-        return _processSimpleBatchClaim.usingBatchMultichainClaim()(claimPayload.toMessageHash(), claimPayload, 0xc0, _typehashes(uint256(2).asStubborn()), operation);
+        return _processSimpleBatchClaim.usingBatchMultichainClaim()(claimPayload.toMessageHash(), claimPayload, 0xc0, uint256(2).asStubborn().typehashes(), operation);
     }
 
     function _processQualifiedBatchMultichainClaim(QualifiedBatchMultichainClaim calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation)
@@ -297,7 +292,7 @@ contract ClaimProcessorLogic is SharedLogic {
         returns (bool)
     {
         (bytes32 messageHash, bytes32 qualificationMessageHash) = claimPayload.toMessageHash();
-        return _processBatchClaimWithQualification.usingQualifiedBatchMultichainClaim()(messageHash, qualificationMessageHash, claimPayload, 0x100, _typehashes(uint256(2).asStubborn()), operation);
+        return _processBatchClaimWithQualification.usingQualifiedBatchMultichainClaim()(messageHash, qualificationMessageHash, claimPayload, 0x100, uint256(2).asStubborn().typehashes(), operation);
     }
 
     function _processBatchMultichainClaimWithWitness(BatchMultichainClaimWithWitness calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation)
@@ -320,7 +315,7 @@ contract ClaimProcessorLogic is SharedLogic {
         internal
         returns (bool)
     {
-        return _processSimpleSplitBatchClaim.usingSplitBatchMultichainClaim()(claimPayload.toMessageHash(), claimPayload, 0xc0, _typehashes(uint256(2).asStubborn()), operation);
+        return _processSimpleSplitBatchClaim.usingSplitBatchMultichainClaim()(claimPayload.toMessageHash(), claimPayload, 0xc0, uint256(2).asStubborn().typehashes(), operation);
     }
 
     function _processQualifiedSplitBatchMultichainClaim(QualifiedSplitBatchMultichainClaim calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation)
@@ -329,7 +324,7 @@ contract ClaimProcessorLogic is SharedLogic {
     {
         (bytes32 messageHash, bytes32 qualificationMessageHash) = claimPayload.toMessageHash();
         return _processSplitBatchClaimWithQualification.usingQualifiedSplitBatchMultichainClaim()(
-            messageHash, qualificationMessageHash, claimPayload, 0x100, _typehashes(uint256(1).asStubborn()), operation
+            messageHash, qualificationMessageHash, claimPayload, 0x100, uint256(1).asStubborn().typehashes(), operation
         );
     }
 
@@ -352,7 +347,7 @@ contract ClaimProcessorLogic is SharedLogic {
     ///// 5. Exogenous Multichain Claims /////
     function _processExogenousMultichainClaim(ExogenousMultichainClaim calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation) internal returns (bool) {
         return _processClaimWithSponsorDomain.usingExogenousMultichainClaim()(
-            claimPayload.toMessageHash(), claimPayload, 0x100, claimPayload.notarizedChainId.toNotarizedDomainSeparator(), _typehashes(uint256(2).asStubborn()), operation
+            claimPayload.toMessageHash(), claimPayload, 0x100, claimPayload.notarizedChainId.toNotarizedDomainSeparator(), uint256(2).asStubborn().typehashes(), operation
         );
     }
 
@@ -362,7 +357,7 @@ contract ClaimProcessorLogic is SharedLogic {
     {
         (bytes32 messageHash, bytes32 qualificationMessageHash) = claimPayload.toMessageHash();
         return _processClaimWithQualificationAndSponsorDomain.usingExogenousQualifiedMultichainClaim()(
-            messageHash, qualificationMessageHash, claimPayload, 0x140, claimPayload.notarizedChainId.toNotarizedDomainSeparator(), _typehashes(uint256(2).asStubborn()), operation
+            messageHash, qualificationMessageHash, claimPayload, 0x140, claimPayload.notarizedChainId.toNotarizedDomainSeparator(), uint256(2).asStubborn().typehashes(), operation
         );
     }
 
@@ -390,7 +385,7 @@ contract ClaimProcessorLogic is SharedLogic {
         returns (bool)
     {
         return _processSplitClaimWithSponsorDomain.usingExogenousSplitMultichainClaim()(
-            claimPayload.toMessageHash(), claimPayload, 0x100, claimPayload.notarizedChainId.toNotarizedDomainSeparator(), _typehashes(uint256(2).asStubborn()), operation
+            claimPayload.toMessageHash(), claimPayload, 0x100, claimPayload.notarizedChainId.toNotarizedDomainSeparator(), uint256(2).asStubborn().typehashes(), operation
         );
     }
 
@@ -400,7 +395,7 @@ contract ClaimProcessorLogic is SharedLogic {
     ) internal returns (bool) {
         (bytes32 messageHash, bytes32 qualificationMessageHash) = claimPayload.toMessageHash();
         return _processSplitClaimWithQualificationAndSponsorDomain.usingExogenousQualifiedSplitMultichainClaim()(
-            messageHash, qualificationMessageHash, claimPayload, 0x140, claimPayload.notarizedChainId.toNotarizedDomainSeparator(), _typehashes(uint256(2).asStubborn()), operation
+            messageHash, qualificationMessageHash, claimPayload, 0x140, claimPayload.notarizedChainId.toNotarizedDomainSeparator(), uint256(2).asStubborn().typehashes(), operation
         );
     }
 
@@ -430,7 +425,7 @@ contract ClaimProcessorLogic is SharedLogic {
         returns (bool)
     {
         return _processBatchClaimWithSponsorDomain.usingExogenousBatchMultichainClaim()(
-            claimPayload.toMessageHash(), claimPayload, 0x100, claimPayload.notarizedChainId.toNotarizedDomainSeparator(), _typehashes(uint256(2).asStubborn()), operation
+            claimPayload.toMessageHash(), claimPayload, 0x100, claimPayload.notarizedChainId.toNotarizedDomainSeparator(), uint256(2).asStubborn().typehashes(), operation
         );
     }
 
@@ -440,7 +435,7 @@ contract ClaimProcessorLogic is SharedLogic {
     ) internal returns (bool) {
         (bytes32 messageHash, bytes32 qualificationMessageHash) = claimPayload.toMessageHash();
         return _processBatchClaimWithQualificationAndSponsorDomain.usingExogenousQualifiedBatchMultichainClaim()(
-            messageHash, qualificationMessageHash, claimPayload, 0x140, claimPayload.notarizedChainId.toNotarizedDomainSeparator(), _typehashes(uint256(2).asStubborn()), operation
+            messageHash, qualificationMessageHash, claimPayload, 0x140, claimPayload.notarizedChainId.toNotarizedDomainSeparator(), uint256(2).asStubborn().typehashes(), operation
         );
     }
 
@@ -469,7 +464,7 @@ contract ClaimProcessorLogic is SharedLogic {
         returns (bool)
     {
         return _processSplitBatchClaimWithSponsorDomain.usingExogenousSplitBatchMultichainClaim()(
-            claimPayload.toMessageHash(), claimPayload, 0x100, claimPayload.notarizedChainId.toNotarizedDomainSeparator(), _typehashes(uint256(2).asStubborn()), operation
+            claimPayload.toMessageHash(), claimPayload, 0x100, claimPayload.notarizedChainId.toNotarizedDomainSeparator(), uint256(2).asStubborn().typehashes(), operation
         );
     }
 
@@ -479,7 +474,7 @@ contract ClaimProcessorLogic is SharedLogic {
     ) internal returns (bool) {
         (bytes32 messageHash, bytes32 qualificationMessageHash) = claimPayload.toMessageHash();
         return _processSplitBatchClaimWithQualificationAndSponsorDomain.usingExogenousQualifiedSplitBatchMultichainClaim()(
-            messageHash, qualificationMessageHash, claimPayload, 0x140, claimPayload.notarizedChainId.toNotarizedDomainSeparator(), _typehashes(uint256(2).asStubborn()), operation
+            messageHash, qualificationMessageHash, claimPayload, 0x140, claimPayload.notarizedChainId.toNotarizedDomainSeparator(), uint256(2).asStubborn().typehashes(), operation
         );
     }
 
@@ -503,45 +498,345 @@ contract ClaimProcessorLogic is SharedLogic {
         );
     }
 
-    ///// 7. Private Helpers /////
+    ///// 7. Private helper functions /////
+
+    /**
+     * @notice Internal function for validating claim execution parameters. Extracts and validates
+     * signatures from calldata, checks expiration, verifies allocator registration, consumes the
+     * nonce, derives the domain separator, and validates both the sponsor authorization (either
+     * through direct registration or a provided signature or EIP-1271 call) and the (potentially
+     * qualified) allocator authorization. Finally, emits a Claim event.
+     * @param allocatorId              The unique identifier for the allocator mediating the claim.
+     * @param messageHash              The EIP-712 hash of the claim message.
+     * @param qualificationMessageHash The EIP-712 hash of the allocator's qualification message.
+     * @param calldataPointer          Pointer to the location of the associated struct in calldata.
+     * @param sponsorDomainSeparator   The domain separator for the sponsor's signature, or zero for non-exogenous claims.
+     * @param typehash                 The EIP-712 typehash used for the claim message.
+     * @return sponsor                 The extracted address of the claim sponsor.
+     */
     function _validate(uint96 allocatorId, bytes32 messageHash, bytes32 qualificationMessageHash, uint256 calldataPointer, bytes32 sponsorDomainSeparator, bytes32 typehash)
         private
         returns (address sponsor)
     {
+        // Declare variables for signatures and parameters that will be extracted from calldata.
         bytes calldata allocatorSignature;
         bytes calldata sponsorSignature;
         uint256 nonce;
         uint256 expires;
 
         assembly ("memory-safe") {
+            // Extract allocator signature from calldata using offset stored at calldataPointer.
             let allocatorSignaturePtr := add(calldataPointer, calldataload(calldataPointer))
             allocatorSignature.offset := add(0x20, allocatorSignaturePtr)
             allocatorSignature.length := calldataload(allocatorSignaturePtr)
 
+            // Extract sponsor signature from calldata using offset stored at calldataPointer + 0x20.
             let sponsorSignaturePtr := add(calldataPointer, calldataload(add(calldataPointer, 0x20)))
             sponsorSignature.offset := add(0x20, sponsorSignaturePtr)
             sponsorSignature.length := calldataload(sponsorSignaturePtr)
 
+            // Extract sponsor address, sanitizing upper 96 bits.
             sponsor := shr(96, shl(96, calldataload(add(calldataPointer, 0x40))))
+
+            // Extract nonce and expiration timestamp.
             nonce := calldataload(add(calldataPointer, 0x60))
             expires := calldataload(add(calldataPointer, 0x80))
         }
 
+        // Ensure that the claim hasn't expired.
         expires.later();
 
+        // Retrieve allocator address and consume nonce, ensuring it has not already been consumed.
         address allocator = allocatorId.fromRegisteredAllocatorIdWithConsumed(nonce);
 
+        // Derive the default domain separator.
         bytes32 domainSeparator = _domainSeparator();
         assembly ("memory-safe") {
+            // Substitue for provided sponsorDomainSeparator if a nonzero value was supplied.
             sponsorDomainSeparator := add(sponsorDomainSeparator, mul(iszero(sponsorDomainSeparator), domainSeparator))
         }
 
+        // Validate sponsor authorization through either ECDSA, EIP-1271, or direct registration.
         if ((sponsorDomainSeparator != domainSeparator).or(sponsorSignature.length != 0) || sponsor.hasNoActiveRegistration(messageHash, typehash)) {
             messageHash.signedBy(sponsor, sponsorSignature, sponsorDomainSeparator);
         }
+
+        // Validate allocator authorization against qualification message.
         qualificationMessageHash.signedBy(allocator, allocatorSignature, domainSeparator);
 
+        // Emit claim event.
         _emitClaim(sponsor, messageHash, allocator);
+    }
+
+    /**
+     * @notice Private function for processing qualified claims with potentially exogenous
+     * sponsor signatures. Extracts claim parameters from calldata, validates the scope,
+     * ensures the claimed amount is within the allocated amount, validates the claim,
+     * and executes either a release of ERC6909 tokens or a withdrawal of underlying tokens.
+     * @param messageHash              The EIP-712 hash of the claim message.
+     * @param qualificationMessageHash The EIP-712 hash of the allocator's qualification message.
+     * @param calldataPointer          Pointer to the location of the associated struct in calldata.
+     * @param offsetToId               Offset to segment of calldata where relevant claim parameters begin.
+     * @param sponsorDomainSeparator   The domain separator for the sponsor's signature, or zero for non-exogenous claims.
+     * @param typehash                 The EIP-712 typehash used for the claim message.
+     * @param operation                Function pointer to either _release or _withdraw for executing the claim.
+     * @return                         Whether the claim was successfully processed.
+     */
+    function _processClaimWithQualificationAndSponsorDomain(
+        bytes32 messageHash,
+        bytes32 qualificationMessageHash,
+        uint256 calldataPointer,
+        uint256 offsetToId,
+        bytes32 sponsorDomainSeparator,
+        bytes32 typehash,
+        function(address, address, uint256, uint256) internal returns (bool) operation
+    ) private returns (bool) {
+        // Declare variables for parameters that will be extracted from calldata.
+        uint256 id;
+        uint256 allocatedAmount;
+        address claimant;
+        uint256 amount;
+
+        assembly ("memory-safe") {
+            // Calculate pointer to claim parameters using provided offset.
+            let calldataPointerWithOffset := add(calldataPointer, offsetToId)
+
+            // Extract resource lock id, allocated amount, claimant address, and claim amount.
+            id := calldataload(calldataPointerWithOffset)
+            allocatedAmount := calldataload(add(calldataPointerWithOffset, 0x20))
+            claimant := shr(96, shl(96, calldataload(add(calldataPointerWithOffset, 0x40))))
+            amount := calldataload(add(calldataPointerWithOffset, 0x60))
+        }
+
+        // Verify the resource lock scope is compatible with the provided domain separator.
+        sponsorDomainSeparator.ensureValidScope(id);
+
+        // Ensure the claimed amount does not exceed the allocated amount.
+        amount.withinAllocated(allocatedAmount);
+
+        // Validate the claim and execute the specified operation (either release or withdraw).
+        return operation(_validate(id.toAllocatorId(), messageHash, qualificationMessageHash, calldataPointer, sponsorDomainSeparator, typehash), claimant, id, amount);
+    }
+
+    /**
+     * @notice Private function for processing qualified split claims with potentially exogenous
+     * sponsor signatures. Extracts claim parameters from calldata, validates the claim,
+     * validates the scope, and executes either releases of ERC6909 tokens or withdrawals of
+     * underlying tokens to multiple recipients.
+     * @param messageHash              The EIP-712 hash of the claim message.
+     * @param qualificationMessageHash The EIP-712 hash of the allocator's qualification message.
+     * @param calldataPointer          Pointer to the location of the associated struct in calldata.
+     * @param offsetToId               Offset to segment of calldata where relevant claim parameters begin.
+     * @param sponsorDomainSeparator   The domain separator for the sponsor's signature, or zero for non-exogenous claims.
+     * @param typehash                 The EIP-712 typehash used for the claim message.
+     * @param operation                Function pointer to either _release or _withdraw for executing the claim.
+     * @return                         Whether the split claim was successfully processed.
+     */
+    function _processSplitClaimWithQualificationAndSponsorDomain(
+        bytes32 messageHash,
+        bytes32 qualificationMessageHash,
+        uint256 calldataPointer,
+        uint256 offsetToId,
+        bytes32 sponsorDomainSeparator,
+        bytes32 typehash,
+        function(address, address, uint256, uint256) internal returns (bool) operation
+    ) private returns (bool) {
+        // Declare variables for parameters that will be extracted from calldata.
+        uint256 id;
+        uint256 allocatedAmount;
+        SplitComponent[] calldata components;
+
+        assembly ("memory-safe") {
+            // Calculate pointer to claim parameters using provided offset.
+            let calldataPointerWithOffset := add(calldataPointer, offsetToId)
+
+            // Extract resource lock id and allocated amount.
+            id := calldataload(calldataPointerWithOffset)
+            allocatedAmount := calldataload(add(calldataPointerWithOffset, 0x20))
+
+            // Extract array of split components containing claimant addresses and amounts.
+            let componentsPtr := add(calldataPointer, calldataload(add(calldataPointerWithOffset, 0x40)))
+            components.offset := add(0x20, componentsPtr)
+            components.length := calldataload(componentsPtr)
+        }
+
+        // Validate the claim and extract the sponsor address.
+        address sponsor = _validate(id.toAllocatorId(), messageHash, qualificationMessageHash, calldataPointer, sponsorDomainSeparator, typehash);
+
+        // Verify the resource lock scope is compatible with the provided domain separator.
+        sponsorDomainSeparator.ensureValidScope(id);
+
+        // Process each split component, verifying total amount and executing operations.
+        return components.verifyAndProcessSplitComponents(sponsor, id, allocatedAmount, operation);
+    }
+
+    /**
+     * @notice Private function for processing qualified batch claims with potentially exogenous
+     * sponsor signatures. Extracts batch claim parameters from calldata, validates the claim,
+     * executes operations, and performs optimized validation of allocator consistency, amounts,
+     * and scopes. If any validation fails, all operations are reverted after explicitly
+     * identifying the specific validation failures.
+     * @param messageHash              The EIP-712 hash of the claim message.
+     * @param qualificationMessageHash The EIP-712 hash of the allocator's qualification message.
+     * @param calldataPointer          Pointer to the location of the associated struct in calldata.
+     * @param offsetToId               Offset to segment of calldata where relevant claim parameters begin.
+     * @param sponsorDomainSeparator   The domain separator for the sponsor's signature, or zero for non-exogenous claims.
+     * @param typehash                 The EIP-712 typehash used for the claim message.
+     * @param operation                Function pointer to either _release or _withdraw for executing the claim.
+     * @return                         Whether the batch claim was successfully processed.
+     */
+    function _processBatchClaimWithQualificationAndSponsorDomain(
+        bytes32 messageHash,
+        bytes32 qualificationMessageHash,
+        uint256 calldataPointer,
+        uint256 offsetToId,
+        bytes32 sponsorDomainSeparator,
+        bytes32 typehash,
+        function(address, address, uint256, uint256) internal returns (bool) operation
+    ) private returns (bool) {
+        // Declare variables for parameters that will be extracted from calldata.
+        BatchClaimComponent[] calldata claims;
+        address claimant;
+
+        assembly ("memory-safe") {
+            // Calculate pointer to claim parameters using provided offset.
+            let calldataPointerWithOffset := add(calldataPointer, offsetToId)
+
+            // Extract array of batch claim components and claimant address.
+            let claimsPtr := add(calldataPointer, calldataload(calldataPointerWithOffset))
+            claims.offset := add(0x20, claimsPtr)
+            claims.length := calldataload(claimsPtr)
+            claimant := calldataload(add(calldataPointerWithOffset, 0x20))
+        }
+
+        // Extract allocator id from first claim for validation.
+        uint96 firstAllocatorId = claims[0].id.toAllocatorId();
+
+        // Validate the claim and extract the sponsor address.
+        address sponsor = _validate(firstAllocatorId, messageHash, qualificationMessageHash, calldataPointer, sponsorDomainSeparator, typehash);
+
+        // Revert if the batch is empty.
+        uint256 totalClaims = claims.length;
+        assembly ("memory-safe") {
+            if iszero(totalClaims) {
+                // revert InvalidBatchAllocation()
+                mstore(0, 0x3a03d3bb)
+                revert(0x1c, 0x04)
+            }
+        }
+
+        // Process first claim and initialize error tracking.
+        // NOTE: many of the bounds checks on these array accesses can be skipped as an optimization
+        BatchClaimComponent calldata component = claims[0];
+        uint256 id = component.id;
+        uint256 amount = component.amount;
+        uint256 errorBuffer = component.allocatedAmount.allocationExceededOrScopeNotMultichain(amount, id, sponsorDomainSeparator).asUint256();
+
+        // Execute transfer or withdrawal for first claim.
+        operation(sponsor, claimant, id, amount);
+
+        unchecked {
+            // Process remaining claims while accumulating potential errors.
+            for (uint256 i = 1; i < totalClaims; ++i) {
+                component = claims[i];
+                id = component.id;
+                amount = component.amount;
+                errorBuffer |= (id.toAllocatorId() != firstAllocatorId).or(component.allocatedAmount.allocationExceededOrScopeNotMultichain(amount, id, sponsorDomainSeparator)).asUint256();
+
+                operation(sponsor, claimant, id, amount);
+            }
+
+            // If any errors occurred, identify specific failures and revert.
+            if (errorBuffer.asBool()) {
+                for (uint256 i = 0; i < totalClaims; ++i) {
+                    component = claims[i];
+                    component.amount.withinAllocated(component.allocatedAmount);
+                    id = component.id;
+                    sponsorDomainSeparator.ensureValidScope(component.id);
+                }
+
+                assembly ("memory-safe") {
+                    // revert InvalidBatchAllocation()
+                    mstore(0, 0x3a03d3bb)
+                    revert(0x1c, 0x04)
+                }
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * @notice Private function for processing qualified split batch claims with potentially
+     * exogenous sponsor signatures. Extracts split batch claim parameters from calldata,
+     * validates the claim, and executes split operations for each resource lock. Uses optimized
+     * validation of allocator consistency and scopes, with explicit validation on failure to
+     * identify specific issues. Each resource lock can be split among multiple recipients.
+     * @param messageHash              The EIP-712 hash of the claim message.
+     * @param qualificationMessageHash The EIP-712 hash of the allocator's qualification message.
+     * @param calldataPointer          Pointer to the location of the associated struct in calldata.
+     * @param offsetToId               Offset to segment of calldata where relevant claim parameters begin.
+     * @param sponsorDomainSeparator   The domain separator for the sponsor's signature, or zero for non-exogenous claims.
+     * @param typehash                 The EIP-712 typehash used for the claim message.
+     * @param operation                Function pointer to either _release or _withdraw for executing the claim.
+     * @return                         Whether the split batch claim was successfully processed.
+     */
+    function _processSplitBatchClaimWithQualificationAndSponsorDomain(
+        bytes32 messageHash,
+        bytes32 qualificationMessageHash,
+        uint256 calldataPointer,
+        uint256 offsetToId,
+        bytes32 sponsorDomainSeparator,
+        bytes32 typehash,
+        function(address, address, uint256, uint256) internal returns (bool) operation
+    ) private returns (bool) {
+        // Declare variable for SplitBatchClaimComponent array that will be extracted from calldata.
+        SplitBatchClaimComponent[] calldata claims;
+
+        assembly ("memory-safe") {
+            // Extract array of split batch claim components.
+            let claimsPtr := add(calldataPointer, calldataload(add(calldataPointer, offsetToId)))
+            claims.offset := add(0x20, claimsPtr)
+            claims.length := calldataload(claimsPtr)
+        }
+
+        // Extract allocator id from first claim for validation.
+        uint96 firstAllocatorId = claims[0].id.toAllocatorId();
+
+        // Validate the claim and extract the sponsor address.
+        address sponsor = _validate(firstAllocatorId, messageHash, qualificationMessageHash, calldataPointer, sponsorDomainSeparator, typehash);
+
+        // Initialize tracking variables.
+        uint256 totalClaims = claims.length;
+        uint256 errorBuffer = (totalClaims == 0).asUint256();
+        uint256 id;
+
+        unchecked {
+            // Process each claim component while accumulating potential errors.
+            for (uint256 i = 0; i < totalClaims; ++i) {
+                SplitBatchClaimComponent calldata claimComponent = claims[i];
+                id = claimComponent.id;
+                errorBuffer |= (id.toAllocatorId() != firstAllocatorId).or(id.scopeNotMultichain(sponsorDomainSeparator)).asUint256();
+
+                // Process each split component, verifying total amount and executing operations.
+                claimComponent.portions.verifyAndProcessSplitComponents(sponsor, id, claimComponent.allocatedAmount, operation);
+            }
+
+            // If any errors occurred, identify specific scope failures and revert.
+            if (errorBuffer.asBool()) {
+                for (uint256 i = 0; i < totalClaims; ++i) {
+                    sponsorDomainSeparator.ensureValidScope(claims[i].id);
+                }
+
+                assembly ("memory-safe") {
+                    // revert InvalidBatchAllocation()
+                    mstore(0, 0x3a03d3bb)
+                    revert(0x1c, 0x04)
+                }
+            }
+        }
+
+        return true;
     }
 
     function _processSimpleClaim(bytes32 messageHash, uint256 calldataPointer, uint256 offsetToId, bytes32 typehash, function(address, address, uint256, uint256) internal returns (bool) operation)
@@ -667,245 +962,5 @@ contract ClaimProcessorLogic is SharedLogic {
         function(address, address, uint256, uint256) internal returns (bool) operation
     ) private returns (bool) {
         return _processSplitBatchClaimWithQualificationAndSponsorDomain(messageHash, messageHash, calldataPointer, offsetToId, sponsorDomain, typehash, operation);
-    }
-
-    function _processClaimWithQualificationAndSponsorDomain(
-        bytes32 messageHash,
-        bytes32 qualificationMessageHash,
-        uint256 calldataPointer,
-        uint256 offsetToId,
-        bytes32 sponsorDomainSeparator,
-        bytes32 typehash,
-        function(address, address, uint256, uint256) internal returns (bool) operation
-    ) private returns (bool) {
-        uint256 id;
-        uint256 allocatedAmount;
-        address claimant;
-        uint256 amount;
-
-        assembly ("memory-safe") {
-            let calldataPointerWithOffset := add(calldataPointer, offsetToId)
-            id := calldataload(calldataPointerWithOffset)
-            allocatedAmount := calldataload(add(calldataPointerWithOffset, 0x20))
-            claimant := shr(96, shl(96, calldataload(add(calldataPointerWithOffset, 0x40))))
-            amount := calldataload(add(calldataPointerWithOffset, 0x60))
-        }
-
-        _ensureValidScope(sponsorDomainSeparator, id);
-
-        amount.withinAllocated(allocatedAmount);
-
-        return operation(_validate(id.toAllocatorId(), messageHash, qualificationMessageHash, calldataPointer, sponsorDomainSeparator, typehash), claimant, id, amount);
-    }
-
-    function _processSplitClaimWithQualificationAndSponsorDomain(
-        bytes32 messageHash,
-        bytes32 qualificationMessageHash,
-        uint256 calldataPointer,
-        uint256 offsetToId,
-        bytes32 sponsorDomainSeparator,
-        bytes32 typehash,
-        function(address, address, uint256, uint256) internal returns (bool) operation
-    ) private returns (bool) {
-        uint256 id;
-        uint256 allocatedAmount;
-        SplitComponent[] calldata claimants;
-
-        assembly ("memory-safe") {
-            let calldataPointerWithOffset := add(calldataPointer, offsetToId)
-            id := calldataload(calldataPointerWithOffset)
-            allocatedAmount := calldataload(add(calldataPointerWithOffset, 0x20))
-
-            let claimantsPtr := add(calldataPointer, calldataload(add(calldataPointerWithOffset, 0x40)))
-            claimants.offset := add(0x20, claimantsPtr)
-            claimants.length := calldataload(claimantsPtr)
-        }
-
-        address sponsor = _validate(id.toAllocatorId(), messageHash, qualificationMessageHash, calldataPointer, sponsorDomainSeparator, typehash);
-
-        _ensureValidScope(sponsorDomainSeparator, id);
-
-        return _verifyAndProcessSplitComponents(sponsor, id, allocatedAmount, claimants, operation);
-    }
-
-    function _processBatchClaimWithQualificationAndSponsorDomain(
-        bytes32 messageHash,
-        bytes32 qualificationMessageHash,
-        uint256 calldataPointer,
-        uint256 offsetToId,
-        bytes32 sponsorDomainSeparator,
-        bytes32 typehash,
-        function(address, address, uint256, uint256) internal returns (bool) operation
-    ) private returns (bool) {
-        BatchClaimComponent[] calldata claims;
-        address claimant;
-        assembly ("memory-safe") {
-            let calldataPointerWithOffset := add(calldataPointer, offsetToId)
-            let claimsPtr := add(calldataPointer, calldataload(calldataPointerWithOffset))
-            claims.offset := add(0x20, claimsPtr)
-            claims.length := calldataload(claimsPtr)
-
-            claimant := calldataload(add(calldataPointerWithOffset, 0x20))
-        }
-
-        uint96 firstAllocatorId = claims[0].id.toAllocatorId();
-
-        address sponsor = _validate(firstAllocatorId, messageHash, qualificationMessageHash, calldataPointer, sponsorDomainSeparator, typehash);
-
-        uint256 totalClaims = claims.length;
-
-        assembly ("memory-safe") {
-            if iszero(totalClaims) {
-                // revert InvalidBatchAllocation()
-                mstore(0, 0x3a03d3bb)
-                revert(0x1c, 0x04)
-            }
-        }
-
-        // NOTE: many of the bounds checks on these array accesses can be skipped as an optimization
-        BatchClaimComponent calldata component = claims[0];
-        uint256 id = component.id;
-        uint256 amount = component.amount;
-        uint256 errorBuffer = (component.allocatedAmount < amount).or((sponsorDomainSeparator != bytes32(0)).and(id.toScope() == Scope.ChainSpecific)).asUint256();
-
-        operation(sponsor, claimant, id, amount);
-
-        unchecked {
-            for (uint256 i = 1; i < totalClaims; ++i) {
-                component = claims[i];
-                id = component.id;
-                amount = component.amount;
-                errorBuffer |=
-                    (id.toAllocatorId() != firstAllocatorId).or(component.allocatedAmount < amount).or((sponsorDomainSeparator != bytes32(0)).and(id.toScope() == Scope.ChainSpecific)).asUint256();
-
-                operation(sponsor, claimant, id, amount);
-            }
-
-            if (errorBuffer.asBool()) {
-                for (uint256 i = 0; i < totalClaims; ++i) {
-                    component = claims[i];
-                    component.amount.withinAllocated(component.allocatedAmount);
-                    id = component.id;
-                    _ensureValidScope(sponsorDomainSeparator, component.id);
-                }
-
-                assembly ("memory-safe") {
-                    // revert InvalidBatchAllocation()
-                    mstore(0, 0x3a03d3bb)
-                    revert(0x1c, 0x04)
-                }
-            }
-        }
-
-        return true;
-    }
-
-    function _processSplitBatchClaimWithQualificationAndSponsorDomain(
-        bytes32 messageHash,
-        bytes32 qualificationMessageHash,
-        uint256 calldataPointer,
-        uint256 offsetToId,
-        bytes32 sponsorDomainSeparator,
-        bytes32 typehash,
-        function(address, address, uint256, uint256) internal returns (bool) operation
-    ) private returns (bool) {
-        SplitBatchClaimComponent[] calldata claims;
-        assembly ("memory-safe") {
-            let claimsPtr := add(calldataPointer, calldataload(add(calldataPointer, offsetToId)))
-            claims.offset := add(0x20, claimsPtr)
-            claims.length := calldataload(claimsPtr)
-        }
-
-        uint96 firstAllocatorId = claims[0].id.toAllocatorId();
-
-        address sponsor = _validate(firstAllocatorId, messageHash, qualificationMessageHash, calldataPointer, sponsorDomainSeparator, typehash);
-
-        uint256 totalClaims = claims.length;
-        uint256 errorBuffer = (totalClaims == 0).asUint256();
-        uint256 id;
-
-        unchecked {
-            for (uint256 i = 0; i < totalClaims; ++i) {
-                SplitBatchClaimComponent calldata claimComponent = claims[i];
-                id = claimComponent.id;
-                errorBuffer |= (id.toAllocatorId() != firstAllocatorId).or((sponsorDomainSeparator != bytes32(0)).and(id.toScope() == Scope.ChainSpecific)).asUint256();
-
-                _verifyAndProcessSplitComponents(sponsor, id, claimComponent.allocatedAmount, claimComponent.portions, operation);
-            }
-
-            if (errorBuffer.asBool()) {
-                for (uint256 i = 0; i < totalClaims; ++i) {
-                    _ensureValidScope(sponsorDomainSeparator, claims[i].id);
-                }
-
-                assembly ("memory-safe") {
-                    // revert InvalidBatchAllocation()
-                    mstore(0, 0x3a03d3bb)
-                    revert(0x1c, 0x04)
-                }
-            }
-        }
-
-        return true;
-    }
-
-    function _verifyAndProcessSplitComponents(
-        address sponsor,
-        uint256 id,
-        uint256 allocatedAmount,
-        SplitComponent[] calldata claimants,
-        function(address, address, uint256, uint256) internal returns (bool) operation
-    ) private returns (bool) {
-        uint256 totalClaims = claimants.length;
-        uint256 spentAmount = 0;
-        uint256 errorBuffer = (totalClaims == 0).asUint256();
-
-        unchecked {
-            for (uint256 i = 0; i < totalClaims; ++i) {
-                SplitComponent calldata component = claimants[i];
-                uint256 amount = component.amount;
-
-                uint256 updatedSpentAmount = amount + spentAmount;
-                errorBuffer |= (updatedSpentAmount < spentAmount).asUint256();
-                spentAmount = updatedSpentAmount;
-
-                operation(sponsor, component.claimant, id, amount);
-            }
-        }
-
-        errorBuffer |= (allocatedAmount < spentAmount).asUint256();
-        assembly ("memory-safe") {
-            if errorBuffer {
-                // revert AllocatedAmountExceeded(allocatedAmount, amount);
-                mstore(0, 0x3078b2f6)
-                mstore(0x20, allocatedAmount)
-                mstore(0x40, spentAmount)
-                revert(0x1c, 0x44)
-            }
-        }
-
-        return true;
-    }
-
-    function _ensureValidScope(bytes32 sponsorDomainSeparator, uint256 id) private pure {
-        assembly ("memory-safe") {
-            if iszero(or(iszero(sponsorDomainSeparator), iszero(shr(255, id)))) {
-                // revert InvalidScope(id)
-                mstore(0, 0xa06356f5)
-                mstore(0x20, id)
-                revert(0x1c, 0x24)
-            }
-        }
-    }
-
-    function _typehashes(uint256 i) private pure returns (bytes32 typehash) {
-        assembly ("memory-safe") {
-            let m := mload(0x40)
-            mstore(0, COMPACT_TYPEHASH)
-            mstore(0x20, BATCH_COMPACT_TYPEHASH)
-            mstore(0x40, MULTICHAIN_COMPACT_TYPEHASH)
-            typehash := mload(shl(5, i))
-            mstore(0x40, m)
-        }
     }
 }
