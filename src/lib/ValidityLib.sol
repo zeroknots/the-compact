@@ -1,8 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.27;
 
+import { Scope } from "../types/Scope.sol";
+
 import { IdLib } from "./IdLib.sol";
 import { ConsumerLib } from "./ConsumerLib.sol";
+import { EfficiencyLib } from "./EfficiencyLib.sol";
 import { HashLib } from "./HashLib.sol";
 import { SignatureCheckerLib } from "solady/utils/SignatureCheckerLib.sol";
 
@@ -15,8 +18,10 @@ library ValidityLib {
     using IdLib for uint96;
     using IdLib for uint256;
     using ConsumerLib for uint256;
+    using EfficiencyLib for bool;
     using HashLib for bytes32;
     using SignatureCheckerLib for address;
+    using ValidityLib for uint256;
 
     /**
      * @notice Internal function that retrieves an allocator's address from their ID and
@@ -127,5 +132,52 @@ library ValidityLib {
                 revert(0x1c, 0x44)
             }
         }
+    }
+
+    /**
+     * @notice Internal pure function for validating that a resource lock's scope is compatible
+     * with the provided sponsor domain separator. Reverts if an exogenous claim (indicated by
+     * a non-zero sponsor domain separator) attempts to claim against a chain-specific resource
+     * lock (indicated by the most significant bit of the id).
+     * @param sponsorDomainSeparator The domain separator for the sponsor's signature, or zero for non-exogenous claims.
+     * @param id                     The ERC6909 token identifier of the resource lock.
+     */
+    function ensureValidScope(bytes32 sponsorDomainSeparator, uint256 id) internal pure {
+        assembly ("memory-safe") {
+            if iszero(or(iszero(sponsorDomainSeparator), iszero(shr(255, id)))) {
+                // revert InvalidScope(id)
+                mstore(0, 0xa06356f5)
+                mstore(0x20, id)
+                revert(0x1c, 0x24)
+            }
+        }
+    }
+
+    /**
+     * @notice Internal pure function for determining if a resource lock has chain-specific
+     * scope in the context of an exogenous claim. Returns true if the claim is exogenous
+     * (indicated by a non-zero sponsor domain separator) and the resource lock is
+     * chain-specific.
+     * @param id                     The ERC6909 token identifier of the resource lock.
+     * @param sponsorDomainSeparator The domain separator for the sponsor's signature, or zero for non-exogenous claims.
+     * @return                       Whether the resource lock's scope is incompatible with the claim context.
+     */
+    function scopeNotMultichain(uint256 id, bytes32 sponsorDomainSeparator) internal pure returns (bool) {
+        return (sponsorDomainSeparator != bytes32(0)).and(id.toScope() == Scope.ChainSpecific);
+    }
+
+    /**
+     * @notice Internal function that combines two claim validations: whether the amount exceeds
+     * allocation and whether the resource lock's scope is compatible with the claim context.
+     * Returns true if either the allocated amount is exceeded or if the claim is exogenous but
+     * the resource lock is chain-specific.
+     * @param allocatedAmount         The total amount allocated for the claim.
+     * @param amount                  The amount being claimed.
+     * @param id                      The ERC6909 token identifier of the resource lock.
+     * @param sponsorDomainSeparator  The domain separator for the sponsor's signature, or zero for non-exogenous claims.
+     * @return                        Whether either validation fails.
+     */
+    function allocationExceededOrScopeNotMultichain(uint256 allocatedAmount, uint256 amount, uint256 id, bytes32 sponsorDomainSeparator) internal pure returns (bool) {
+        return (allocatedAmount < amount).or(id.scopeNotMultichain(sponsorDomainSeparator));
     }
 }

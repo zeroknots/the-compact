@@ -48,42 +48,26 @@ import {
     ExogenousQualifiedSplitBatchMultichainClaim,
     ExogenousQualifiedSplitBatchMultichainClaimWithWitness
 } from "../types/BatchMultichainClaims.sol";
-import { SplitComponent, BatchClaimComponent, SplitBatchClaimComponent } from "../types/Components.sol";
 
 import { ClaimHashLib } from "./ClaimHashLib.sol";
 import { ClaimProcessorLib } from "./ClaimProcessorLib.sol";
 import { EfficiencyLib } from "./EfficiencyLib.sol";
-import { EventLib } from "./EventLib.sol";
 import { FunctionCastLib } from "./FunctionCastLib.sol";
 import { HashLib } from "./HashLib.sol";
-import { IdLib } from "./IdLib.sol";
-import { RegistrationLib } from "./RegistrationLib.sol";
-import { ValidityLib } from "./ValidityLib.sol";
 import { SharedLogic } from "./SharedLogic.sol";
+import { ValidityLib } from "./ValidityLib.sol";
 
 /**
  * @title ClaimProcessorLogic
  * @notice Inherited contract implementing internal functions with logic for processing
- * claims against a signed or registered compact.
+ * claims against a signed or registered compact. Each function derives the respective
+ * claim hash as well as a qualification hash or typehash if applicable, then processes
+ * the claim.
  * @dev IMPORTANT NOTE: this logic assumes that the utilized structs are formatted in a
  * very specific manner — if parameters are rearranged or new parameters are inserted,
  * much of this functionality will break. Proceed with caution when making any changes.
  */
 contract ClaimProcessorLogic is SharedLogic {
-    using ClaimProcessorLib for uint256;
-    using ClaimProcessorLib for bytes32;
-    using ClaimProcessorLib for SplitComponent[];
-    using EfficiencyLib for bool;
-    using EfficiencyLib for bytes32;
-    using EfficiencyLib for uint256;
-    using EventLib for address;
-    using FunctionCastLib for function(bytes32, uint256, uint256, bytes32, bytes32, function(address, address, uint256, uint256) internal returns (bool)) internal returns (bool);
-    using FunctionCastLib for function(bytes32, uint256, uint256, bytes32, bytes32, bytes32, function(address, address, uint256, uint256) internal returns (bool)) internal returns (bool);
-    using FunctionCastLib for function(bytes32, bytes32, uint256, uint256, bytes32, bytes32, function(address, address, uint256, uint256) internal returns (bool)) internal returns (bool);
-    using FunctionCastLib for function(bytes32, bytes32, uint256, uint256, bytes32, bytes32, bytes32, function(address, address, uint256, uint256) internal returns (bool)) internal returns (bool);
-    using HashLib for address;
-    using HashLib for bytes32;
-    using HashLib for uint256;
     using ClaimHashLib for BasicClaim;
     using ClaimHashLib for QualifiedClaim;
     using ClaimHashLib for ClaimWithWitness;
@@ -132,8 +116,13 @@ contract ClaimProcessorLogic is SharedLogic {
     using ClaimHashLib for ExogenousSplitBatchMultichainClaimWithWitness;
     using ClaimHashLib for ExogenousQualifiedSplitBatchMultichainClaim;
     using ClaimHashLib for ExogenousQualifiedSplitBatchMultichainClaimWithWitness;
-    using IdLib for uint256;
-    using RegistrationLib for address;
+    using ClaimProcessorLib for uint256;
+    using EfficiencyLib for uint256;
+    using FunctionCastLib for function(bytes32, uint256, uint256, bytes32, bytes32, function(address, address, uint256, uint256) internal returns (bool)) internal returns (bool);
+    using FunctionCastLib for function(bytes32, uint256, uint256, bytes32, bytes32, bytes32, function(address, address, uint256, uint256) internal returns (bool)) internal returns (bool);
+    using FunctionCastLib for function(bytes32, bytes32, uint256, uint256, bytes32, bytes32, function(address, address, uint256, uint256) internal returns (bool)) internal returns (bool);
+    using FunctionCastLib for function(bytes32, bytes32, uint256, uint256, bytes32, bytes32, bytes32, function(address, address, uint256, uint256) internal returns (bool)) internal returns (bool);
+    using HashLib for uint256;
     using ValidityLib for uint96;
     using ValidityLib for uint256;
     using ValidityLib for bytes32;
