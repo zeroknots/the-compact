@@ -6,6 +6,7 @@ import { ResetPeriod } from "../types/ResetPeriod.sol";
 
 import { SharedLogic } from "./SharedLogic.sol";
 import { EfficiencyLib } from "./EfficiencyLib.sol";
+import { EventLib } from "./EventLib.sol";
 import { IdLib } from "./IdLib.sol";
 
 /**
@@ -18,9 +19,7 @@ contract WithdrawalLogic is SharedLogic {
     using IdLib for uint256;
     using IdLib for ResetPeriod;
     using EfficiencyLib for uint256;
-
-    // keccak256(bytes("ForcedWithdrawalStatusUpdated(address,uint256,bool,uint256)")).
-    uint256 private constant _FORCED_WITHDRAWAL_STATUS_UPDATED_SIGNATURE = 0xe27f5e0382cf5347965fc81d5c81cd141897fe9ce402d22c496b7c2ddc84e5fd;
+    using EventLib for uint256;
 
     // Storage scope for forced withdrawal activation times:
     // slot: keccak256(_FORCED_WITHDRAWAL_ACTIVATIONS_SCOPE ++ account ++ id) => activates.
@@ -48,7 +47,7 @@ contract WithdrawalLogic is SharedLogic {
         }
 
         // emit the ForcedWithdrawalStatusUpdated event.
-        _emitForcedWithdrawalStatusUpdatedEvent(id, withdrawableAt);
+        id.emitForcedWithdrawalStatusUpdatedEvent(withdrawableAt);
     }
 
     /**
@@ -77,7 +76,7 @@ contract WithdrawalLogic is SharedLogic {
         }
 
         // emit the ForcedWithdrawalStatusUpdated event.
-        _emitForcedWithdrawalStatusUpdatedEvent(id, uint256(0).asStubborn());
+        id.emitForcedWithdrawalStatusUpdatedEvent(uint256(0).asStubborn());
 
         return true;
     }
@@ -131,24 +130,6 @@ contract WithdrawalLogic is SharedLogic {
 
             // Compute status: 0 if disabled, 1 if pending, 2 if enabled.
             status := mul(iszero(iszero(enabledAt)), sub(2, gt(enabledAt, timestamp())))
-        }
-    }
-
-    /**
-     * @notice Private function for emitting forced withdrawal status update events.
-     * @param id             The ERC6909 token identifier of the resource lock.
-     * @param withdrawableAt The timestamp when withdrawal becomes possible.
-     */
-    function _emitForcedWithdrawalStatusUpdatedEvent(uint256 id, uint256 withdrawableAt) private {
-        assembly ("memory-safe") {
-            // Emit ForcedWithdrawalStatusUpdated event:
-            //  - topic1: Event signature
-            //  - topic2: Caller address
-            //  - topic3: Token id
-            //  - data: [activating flag, withdrawableAt timestamp]
-            mstore(0, iszero(iszero(withdrawableAt)))
-            mstore(0x20, withdrawableAt)
-            log3(0, 0x40, _FORCED_WITHDRAWAL_STATUS_UPDATED_SIGNATURE, caller(), id)
         }
     }
 

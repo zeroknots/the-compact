@@ -15,34 +15,11 @@ contract SharedLogic is ConstructorLogic {
     using IdLib for uint256;
     using SafeTransferLib for address;
 
-    // keccak256(bytes("Claim(address,address,address,bytes32)")).
-    uint256 private constant _CLAIM_EVENT_SIGNATURE = 0x770c32a2314b700d6239ee35ba23a9690f2fceb93a55d8c753e953059b3b18d4;
-
     // Storage slot seed for ERC6909 state, used in computing balance slots.
     uint256 private constant _ERC6909_MASTER_SLOT_SEED = 0xedcaa89a82293940;
 
     // keccak256(bytes("Transfer(address,address,address,uint256,uint256)")).
     uint256 private constant _TRANSFER_EVENT_SIGNATURE = 0x1b3d7edb2e9c0b0e7c525b20aaaef0f5940d2ed71663c7d39266ecafac728859;
-
-    /**
-     * @notice Internal function for emitting claim events. The sponsor and allocator
-     * addresses are sanitized before emission.
-     * @param sponsor     The account sponsoring the compact that the claim is for.
-     * @param messageHash The EIP-712 hash of the claim message.
-     * @param allocator   The account mediating the claim.
-     */
-    function _emitClaim(address sponsor, bytes32 messageHash, address allocator) internal {
-        assembly ("memory-safe") {
-            // Emit the Claim event:
-            //  - topic1: Claim event signature
-            //  - topic2: sponsor address (sanitized)
-            //  - topic3: allocator address (sanitized)
-            //  - topic4: caller address
-            //  - data: messageHash
-            mstore(0, messageHash)
-            log4(0, 0x20, _CLAIM_EVENT_SIGNATURE, shr(0x60, shl(0x60, sponsor)), shr(0x60, shl(0x60, allocator)), caller())
-        }
-    }
 
     /**
      * @notice Internal function for transferring ERC6909 tokens between accounts. Updates
