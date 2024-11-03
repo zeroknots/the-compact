@@ -43,61 +43,6 @@ library HashLib {
     using EfficiencyLib for uint256;
     using FunctionCastLib for function (BatchTransfer calldata, uint256) internal view returns (bytes32);
 
-    /// @dev `keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)")`.
-    bytes32 internal constant _DOMAIN_TYPEHASH = 0x8b73c3c69bb8fe3d512ecc4cf759cc79239f7b179b0ffacaa9a75d522b39400f;
-
-    /// @dev `keccak256(bytes("The Compact"))`.
-    bytes32 internal constant _NAME_HASH = 0x5e6f7b4e1ac3d625bac418bc955510b3e054cb6cc23cc27885107f080180b292;
-
-    /// @dev `keccak256("0")`.
-    bytes32 internal constant _VERSION_HASH = 0x044852b2a670ade5407e78fb2863c51de9fcb96542a07186fe3aeda6bb8a116d;
-
-    function toLatest(bytes32 initialDomainSeparator, uint256 initialChainId) internal view returns (bytes32 domainSeparator) {
-        domainSeparator = initialDomainSeparator;
-
-        assembly ("memory-safe") {
-            // Prepare the domain separator, rederiving it if necessary.
-            if xor(chainid(), initialChainId) {
-                let m := mload(0x40) // Grab the free memory pointer.
-                mstore(m, _DOMAIN_TYPEHASH)
-                mstore(add(m, 0x20), _NAME_HASH)
-                mstore(add(m, 0x40), _VERSION_HASH)
-                mstore(add(m, 0x60), chainid())
-                mstore(add(m, 0x80), address())
-                domainSeparator := keccak256(m, 0xa0)
-            }
-        }
-    }
-
-    function toNotarizedDomainSeparator(uint256 notarizedChainId) internal view returns (bytes32 notarizedDomainSeparator) {
-        assembly ("memory-safe") {
-            let m := mload(0x40) // Grab the free memory pointer.
-            mstore(m, _DOMAIN_TYPEHASH)
-            mstore(add(m, 0x20), _NAME_HASH)
-            mstore(add(m, 0x40), _VERSION_HASH)
-            mstore(add(m, 0x60), notarizedChainId)
-            mstore(add(m, 0x80), address())
-            notarizedDomainSeparator := keccak256(m, 0xa0)
-        }
-    }
-
-    function withDomain(bytes32 messageHash, bytes32 domainSeparator) internal pure returns (bytes32 domainHash) {
-        assembly ("memory-safe") {
-            let m := mload(0x40) // Grab the free memory pointer.
-
-            // Prepare the 712 prefix.
-            mstore(0, 0x1901)
-
-            mstore(0x20, domainSeparator)
-
-            // Prepare the message hash and compute the domain hash.
-            mstore(0x40, messageHash)
-            domainHash := keccak256(0x1e, 0x42)
-
-            mstore(0x40, m) // Restore the free memory pointer.
-        }
-    }
-
     function toBasicTransferMessageHash(BasicTransfer calldata transfer) internal view returns (bytes32 messageHash) {
         assembly ("memory-safe") {
             let m := mload(0x40) // Grab the free memory pointer; memory will be left dirtied.
@@ -470,6 +415,27 @@ library HashLib {
             calldatacopy(add(m, 0x40), add(0x20, qualificationPayloadPtr), qualificationPayloadLength)
 
             qualificationMessageHash := keccak256(m, add(0x40, qualificationPayloadLength))
+        }
+    }
+
+    /**
+     * @notice Internal pure function for retrieving EIP-712 typehashes where no witness data is
+     * provided, returning the corresponding typehash based on the index provided. The available
+     * typehashes are:
+     *  - 0: COMPACT_TYPEHASH
+     *  - 1: BATCH_COMPACT_TYPEHASH
+     *  - 2: MULTICHAIN_COMPACT_TYPEHASH
+     * @param i         The index of the EIP-712 typehash to retrieve.
+     * @return typehash The corresponding EIP-712 typehash.
+     */
+    function typehashes(uint256 i) internal pure returns (bytes32 typehash) {
+        assembly ("memory-safe") {
+            let m := mload(0x40)
+            mstore(0, COMPACT_TYPEHASH)
+            mstore(0x20, BATCH_COMPACT_TYPEHASH)
+            mstore(0x40, MULTICHAIN_COMPACT_TYPEHASH)
+            typehash := mload(shl(5, i))
+            mstore(0x40, m)
         }
     }
 }

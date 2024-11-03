@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.27;
 
-import { COMPACT_TYPEHASH, BATCH_COMPACT_TYPEHASH, MULTICHAIN_COMPACT_TYPEHASH } from "../types/EIP712Types.sol";
 import { SplitComponent, BatchClaimComponent, SplitBatchClaimComponent } from "../types/Components.sol";
 
 import { EfficiencyLib } from "./EfficiencyLib.sol";
 import { EventLib } from "./EventLib.sol";
+import { HashLib } from "./HashLib.sol";
 import { IdLib } from "./IdLib.sol";
 import { RegistrationLib } from "./RegistrationLib.sol";
 import { ValidityLib } from "./ValidityLib.sol";
@@ -27,6 +27,7 @@ library ClaimProcessorLib {
     using EfficiencyLib for uint256;
     using EfficiencyLib for bytes32;
     using EventLib for address;
+    using HashLib for uint256;
     using IdLib for uint256;
     using ValidityLib for uint256;
     using ValidityLib for uint96;
@@ -738,26 +739,5 @@ library ClaimProcessorLib {
         function(address, address, uint256, uint256) internal returns (bool) operation
     ) internal returns (bool) {
         return messageHash.processSplitBatchClaimWithQualificationAndSponsorDomain(messageHash, calldataPointer, offsetToId, sponsorDomain, typehash, domainSeparator, operation);
-    }
-
-    /**
-     * @notice Internal pure function for retrieving EIP-712 typehashes where no witness data is
-     * provided, returning the corresponding typehash based on the index provided. The available
-     * typehashes are:
-     *  - 0: COMPACT_TYPEHASH
-     *  - 1: BATCH_COMPACT_TYPEHASH
-     *  - 2: MULTICHAIN_COMPACT_TYPEHASH
-     * @param i         The index of the EIP-712 typehash to retrieve.
-     * @return typehash The corresponding EIP-712 typehash.
-     */
-    function typehashes(uint256 i) internal pure returns (bytes32 typehash) {
-        assembly ("memory-safe") {
-            let m := mload(0x40)
-            mstore(0, COMPACT_TYPEHASH)
-            mstore(0x20, BATCH_COMPACT_TYPEHASH)
-            mstore(0x40, MULTICHAIN_COMPACT_TYPEHASH)
-            typehash := mload(shl(5, i))
-            mstore(0x40, m)
-        }
     }
 }
