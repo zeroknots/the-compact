@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.27;
 
-import { SplitComponent, BatchClaimComponent, SplitBatchClaimComponent } from "../types/Components.sol";
-
+import { ComponentLib } from "./ComponentLib.sol";
 import { EfficiencyLib } from "./EfficiencyLib.sol";
 import { EventLib } from "./EventLib.sol";
 import { HashLib } from "./HashLib.sol";
@@ -20,9 +19,9 @@ import { ValidityLib } from "./ValidityLib.sol";
  * any changes.
  */
 library ClaimProcessorLib {
+    using ComponentLib for bytes32;
     using ClaimProcessorLib for uint256;
     using ClaimProcessorLib for bytes32;
-    using ClaimProcessorLib for SplitComponent[];
     using EfficiencyLib for bool;
     using EfficiencyLib for uint256;
     using EfficiencyLib for bytes32;
@@ -178,33 +177,7 @@ library ClaimProcessorLib {
         bytes32 domainSeparator,
         function(address, address, uint256, uint256) internal returns (bool) operation
     ) internal returns (bool) {
-        // Declare variables for parameters that will be extracted from calldata.
-        uint256 id;
-        uint256 allocatedAmount;
-        SplitComponent[] calldata components;
-
-        assembly ("memory-safe") {
-            // Calculate pointer to claim parameters using provided offset.
-            let calldataPointerWithOffset := add(calldataPointer, offsetToId)
-
-            // Extract resource lock id and allocated amount.
-            id := calldataload(calldataPointerWithOffset)
-            allocatedAmount := calldataload(add(calldataPointerWithOffset, 0x20))
-
-            // Extract array of split components containing claimant addresses and amounts.
-            let componentsPtr := add(calldataPointer, calldataload(add(calldataPointerWithOffset, 0x40)))
-            components.offset := add(0x20, componentsPtr)
-            components.length := calldataload(componentsPtr)
-        }
-
-        // Validate the claim and extract the sponsor address.
-        address sponsor = messageHash.validate(id.toAllocatorId(), qualificationMessageHash, calldataPointer, domainSeparator, sponsorDomainSeparator, typehash);
-
-        // Verify the resource lock scope is compatible with the provided domain separator.
-        sponsorDomainSeparator.ensureValidScope(id);
-
-        // Process each split component, verifying total amount and executing operations.
-        return components.verifyAndProcessSplitComponents(sponsor, id, allocatedAmount, operation);
+        return messageHash.processClaimWithSplitComponents(qualificationMessageHash, calldataPointer, offsetToId, sponsorDomainSeparator, typehash, domainSeparator, operation, validate);
     }
 
     /**
@@ -233,76 +206,7 @@ library ClaimProcessorLib {
         bytes32 domainSeparator,
         function(address, address, uint256, uint256) internal returns (bool) operation
     ) internal returns (bool) {
-        // Declare variables for parameters that will be extracted from calldata.
-        BatchClaimComponent[] calldata claims;
-        address claimant;
-
-        assembly ("memory-safe") {
-            // Calculate pointer to claim parameters using provided offset.
-            let calldataPointerWithOffset := add(calldataPointer, offsetToId)
-
-            // Extract array of batch claim components and claimant address.
-            let claimsPtr := add(calldataPointer, calldataload(calldataPointerWithOffset))
-            claims.offset := add(0x20, claimsPtr)
-            claims.length := calldataload(claimsPtr)
-            claimant := calldataload(add(calldataPointerWithOffset, 0x20))
-        }
-
-        // Extract allocator id from first claim for validation.
-        uint96 firstAllocatorId = claims[0].id.toAllocatorId();
-
-        // Validate the claim and extract the sponsor address.
-        address sponsor = messageHash.validate(firstAllocatorId, qualificationMessageHash, calldataPointer, domainSeparator, sponsorDomainSeparator, typehash);
-
-        // Revert if the batch is empty.
-        uint256 totalClaims = claims.length;
-        assembly ("memory-safe") {
-            if iszero(totalClaims) {
-                // revert InvalidBatchAllocation()
-                mstore(0, 0x3a03d3bb)
-                revert(0x1c, 0x04)
-            }
-        }
-
-        // Process first claim and initialize error tracking.
-        // NOTE: many of the bounds checks on these array accesses can be skipped as an optimization
-        BatchClaimComponent calldata component = claims[0];
-        uint256 id = component.id;
-        uint256 amount = component.amount;
-        uint256 errorBuffer = component.allocatedAmount.allocationExceededOrScopeNotMultichain(amount, id, sponsorDomainSeparator).asUint256();
-
-        // Execute transfer or withdrawal for first claim.
-        operation(sponsor, claimant, id, amount);
-
-        unchecked {
-            // Process remaining claims while accumulating potential errors.
-            for (uint256 i = 1; i < totalClaims; ++i) {
-                component = claims[i];
-                id = component.id;
-                amount = component.amount;
-                errorBuffer |= (id.toAllocatorId() != firstAllocatorId).or(component.allocatedAmount.allocationExceededOrScopeNotMultichain(amount, id, sponsorDomainSeparator)).asUint256();
-
-                operation(sponsor, claimant, id, amount);
-            }
-
-            // If any errors occurred, identify specific failures and revert.
-            if (errorBuffer.asBool()) {
-                for (uint256 i = 0; i < totalClaims; ++i) {
-                    component = claims[i];
-                    component.amount.withinAllocated(component.allocatedAmount);
-                    id = component.id;
-                    sponsorDomainSeparator.ensureValidScope(component.id);
-                }
-
-                assembly ("memory-safe") {
-                    // revert InvalidBatchAllocation()
-                    mstore(0, 0x3a03d3bb)
-                    revert(0x1c, 0x04)
-                }
-            }
-        }
-
-        return true;
+        return messageHash.processClaimWithBatchComponents(qualificationMessageHash, calldataPointer, offsetToId, sponsorDomainSeparator, typehash, domainSeparator, operation, validate);
     }
 
     /**
@@ -331,108 +235,7 @@ library ClaimProcessorLib {
         bytes32 domainSeparator,
         function(address, address, uint256, uint256) internal returns (bool) operation
     ) internal returns (bool) {
-        // Declare variable for SplitBatchClaimComponent array that will be extracted from calldata.
-        SplitBatchClaimComponent[] calldata claims;
-
-        assembly ("memory-safe") {
-            // Extract array of split batch claim components.
-            let claimsPtr := add(calldataPointer, calldataload(add(calldataPointer, offsetToId)))
-            claims.offset := add(0x20, claimsPtr)
-            claims.length := calldataload(claimsPtr)
-        }
-
-        // Extract allocator id from first claim for validation.
-        uint96 firstAllocatorId = claims[0].id.toAllocatorId();
-
-        // Validate the claim and extract the sponsor address.
-        address sponsor = messageHash.validate(firstAllocatorId, qualificationMessageHash, calldataPointer, domainSeparator, sponsorDomainSeparator, typehash);
-
-        // Initialize tracking variables.
-        uint256 totalClaims = claims.length;
-        uint256 errorBuffer = (totalClaims == 0).asUint256();
-        uint256 id;
-
-        unchecked {
-            // Process each claim component while accumulating potential errors.
-            for (uint256 i = 0; i < totalClaims; ++i) {
-                SplitBatchClaimComponent calldata claimComponent = claims[i];
-                id = claimComponent.id;
-                errorBuffer |= (id.toAllocatorId() != firstAllocatorId).or(id.scopeNotMultichain(sponsorDomainSeparator)).asUint256();
-
-                // Process each split component, verifying total amount and executing operations.
-                claimComponent.portions.verifyAndProcessSplitComponents(sponsor, id, claimComponent.allocatedAmount, operation);
-            }
-
-            // If any errors occurred, identify specific scope failures and revert.
-            if (errorBuffer.asBool()) {
-                for (uint256 i = 0; i < totalClaims; ++i) {
-                    sponsorDomainSeparator.ensureValidScope(claims[i].id);
-                }
-
-                assembly ("memory-safe") {
-                    // revert InvalidBatchAllocation()
-                    mstore(0, 0x3a03d3bb)
-                    revert(0x1c, 0x04)
-                }
-            }
-        }
-
-        return true;
-    }
-
-    /**
-     * @notice Internal function for verifying and processing split components. Ensures that the
-     * sum of split amounts doesn't exceed the allocated amount, checks for arithmetic overflow,
-     * and executes the specified operation for each split recipient. Reverts if the total
-     * claimed amount exceeds the allocation or if arithmetic overflow occurs during summation.
-     * @param claimants       Array of split components specifying recipients and their amounts.
-     * @param sponsor         The address of the claim sponsor.
-     * @param id              The ERC6909 token identifier of the resource lock.
-     * @param allocatedAmount The total amount allocated for this claim.
-     * @param operation       Function pointer to either _release or _withdraw for executing the claim.
-     * @return                Whether all split components were successfully processed.
-     */
-    function verifyAndProcessSplitComponents(
-        SplitComponent[] calldata claimants,
-        address sponsor,
-        uint256 id,
-        uint256 allocatedAmount,
-        function(address, address, uint256, uint256) internal returns (bool) operation
-    ) internal returns (bool) {
-        // Initialize tracking variables.
-        uint256 totalClaims = claimants.length;
-        uint256 spentAmount = 0;
-        uint256 errorBuffer = (totalClaims == 0).asUint256();
-
-        unchecked {
-            // Process each split component while tracking total amount and checking for overflow.
-            for (uint256 i = 0; i < totalClaims; ++i) {
-                SplitComponent calldata component = claimants[i];
-                uint256 amount = component.amount;
-
-                // Track total amount claimed, checking for overflow.
-                uint256 updatedSpentAmount = amount + spentAmount;
-                errorBuffer |= (updatedSpentAmount < spentAmount).asUint256();
-                spentAmount = updatedSpentAmount;
-
-                // Execute transfer or withdrawal for the split component.
-                operation(sponsor, component.claimant, id, amount);
-            }
-        }
-
-        // Revert if an overflow occurred or if total claimed amount exceeds allocation.
-        errorBuffer |= (allocatedAmount < spentAmount).asUint256();
-        assembly ("memory-safe") {
-            if errorBuffer {
-                // revert AllocatedAmountExceeded(allocatedAmount, amount);
-                mstore(0, 0x3078b2f6)
-                mstore(0x20, allocatedAmount)
-                mstore(0x40, spentAmount)
-                revert(0x1c, 0x44)
-            }
-        }
-
-        return true;
+        return messageHash.processClaimWithSplitBatchComponents(qualificationMessageHash, calldataPointer, offsetToId, sponsorDomainSeparator, typehash, domainSeparator, operation, validate);
     }
 
     /**
