@@ -615,6 +615,7 @@ library FunctionCastLib {
         uint256,
         uint256,
         bytes32,
+        bytes32,
         function(address, address, uint256, uint256) internal returns (bool)
         ) internal returns (bool) fnIn
     )
@@ -625,6 +626,7 @@ library FunctionCastLib {
             bytes32,
             BasicClaim calldata,
             uint256,
+            bytes32,
             bytes32,
             function(address, address, uint256, uint256) internal returns (bool)
             ) internal returns (bool) fnOut
@@ -642,6 +644,7 @@ library FunctionCastLib {
         uint256,
         uint256,
         bytes32,
+        bytes32,
         function(address, address, uint256, uint256) internal returns (bool)
         ) internal returns (bool) fnIn
     )
@@ -653,6 +656,7 @@ library FunctionCastLib {
             bytes32,
             QualifiedClaim calldata,
             uint256,
+            bytes32,
             bytes32,
             function(address, address, uint256, uint256) internal returns (bool)
             ) internal returns (bool) fnOut
@@ -669,6 +673,7 @@ library FunctionCastLib {
         uint256,
         uint256,
         bytes32,
+        bytes32,
         function(address, address, uint256, uint256) internal returns (bool)
         ) internal returns (bool) fnIn
     )
@@ -679,6 +684,7 @@ library FunctionCastLib {
             bytes32,
             ClaimWithWitness calldata,
             uint256,
+            bytes32,
             bytes32,
             function(address, address, uint256, uint256) internal returns (bool)
             ) internal returns (bool) fnOut
@@ -696,6 +702,7 @@ library FunctionCastLib {
         uint256,
         uint256,
         bytes32,
+        bytes32,
         function(address, address, uint256, uint256) internal returns (bool)
         ) internal returns (bool) fnIn
     )
@@ -707,6 +714,7 @@ library FunctionCastLib {
             bytes32,
             QualifiedClaimWithWitness calldata,
             uint256,
+            bytes32,
             bytes32,
             function(address, address, uint256, uint256) internal returns (bool)
             ) internal returns (bool) fnOut
@@ -723,6 +731,7 @@ library FunctionCastLib {
         uint256,
         uint256,
         bytes32,
+        bytes32,
         function(address, address, uint256, uint256) internal returns (bool)
         ) internal returns (bool) fnIn
     )
@@ -733,6 +742,7 @@ library FunctionCastLib {
             bytes32,
             SplitClaim calldata,
             uint256,
+            bytes32,
             bytes32,
             function(address, address, uint256, uint256) internal returns (bool)
             ) internal returns (bool) fnOut
@@ -750,6 +760,7 @@ library FunctionCastLib {
         uint256,
         uint256,
         bytes32,
+        bytes32,
         function(address, address, uint256, uint256) internal returns (bool)
         ) internal returns (bool) fnIn
     )
@@ -761,6 +772,7 @@ library FunctionCastLib {
             bytes32,
             QualifiedSplitClaim calldata,
             uint256,
+            bytes32,
             bytes32,
             function(address, address, uint256, uint256) internal returns (bool)
             ) internal returns (bool) fnOut
@@ -777,6 +789,7 @@ library FunctionCastLib {
         uint256,
         uint256,
         bytes32,
+        bytes32,
         function(address, address, uint256, uint256) internal returns (bool)
         ) internal returns (bool) fnIn
     )
@@ -787,6 +800,7 @@ library FunctionCastLib {
             bytes32,
             SplitClaimWithWitness calldata,
             uint256,
+            bytes32,
             bytes32,
             function(address, address, uint256, uint256) internal returns (bool)
             ) internal returns (bool) fnOut
@@ -804,6 +818,7 @@ library FunctionCastLib {
         uint256,
         uint256,
         bytes32,
+        bytes32,
         function(address, address, uint256, uint256) internal returns (bool)
         ) internal returns (bool) fnIn
     )
@@ -815,6 +830,7 @@ library FunctionCastLib {
             bytes32,
             QualifiedSplitClaimWithWitness calldata,
             uint256,
+            bytes32,
             bytes32,
             function(address, address, uint256, uint256) internal returns (bool)
             ) internal returns (bool) fnOut
@@ -831,6 +847,7 @@ library FunctionCastLib {
         uint256,
         uint256,
         bytes32,
+        bytes32,
         function(address, address, uint256, uint256) internal returns (bool)
         ) internal returns (bool) fnIn
     )
@@ -841,6 +858,7 @@ library FunctionCastLib {
             bytes32,
             BatchClaim calldata,
             uint256,
+            bytes32,
             bytes32,
             function(address, address, uint256, uint256) internal returns (bool)
             ) internal returns (bool) fnOut
@@ -858,6 +876,7 @@ library FunctionCastLib {
         uint256,
         uint256,
         bytes32,
+        bytes32,
         function(address, address, uint256, uint256) internal returns (bool)
         ) internal returns (bool) fnIn
     )
@@ -869,6 +888,7 @@ library FunctionCastLib {
             bytes32,
             QualifiedBatchClaim calldata,
             uint256,
+            bytes32,
             bytes32,
             function(address, address, uint256, uint256) internal returns (bool)
             ) internal returns (bool) fnOut
@@ -885,6 +905,7 @@ library FunctionCastLib {
         uint256,
         uint256,
         bytes32,
+        bytes32,
         function(address, address, uint256, uint256) internal returns (bool)
         ) internal returns (bool) fnIn
     )
@@ -895,6 +916,7 @@ library FunctionCastLib {
             bytes32,
             BatchClaimWithWitness calldata,
             uint256,
+            bytes32,
             bytes32,
             function(address, address, uint256, uint256) internal returns (bool)
             ) internal returns (bool) fnOut
@@ -912,6 +934,7 @@ library FunctionCastLib {
         uint256,
         uint256,
         bytes32,
+        bytes32,
         function(address, address, uint256, uint256) internal returns (bool)
         ) internal returns (bool) fnIn
     )
@@ -923,6 +946,7 @@ library FunctionCastLib {
             bytes32,
             QualifiedBatchClaimWithWitness calldata,
             uint256,
+            bytes32,
             bytes32,
             function(address, address, uint256, uint256) internal returns (bool)
             ) internal returns (bool) fnOut
@@ -939,6 +963,7 @@ library FunctionCastLib {
         uint256,
         uint256,
         bytes32,
+        bytes32,
         function(address, address, uint256, uint256) internal returns (bool)
         ) internal returns (bool) fnIn
     )
@@ -949,6 +974,7 @@ library FunctionCastLib {
             bytes32,
             SplitBatchClaim calldata,
             uint256,
+            bytes32,
             bytes32,
             function(address, address, uint256, uint256) internal returns (bool)
             ) internal returns (bool) fnOut
@@ -966,6 +992,7 @@ library FunctionCastLib {
         uint256,
         uint256,
         bytes32,
+        bytes32,
         function(address, address, uint256, uint256) internal returns (bool)
         ) internal returns (bool) fnIn
     )
@@ -977,6 +1004,7 @@ library FunctionCastLib {
             bytes32,
             QualifiedSplitBatchClaim calldata,
             uint256,
+            bytes32,
             bytes32,
             function(address, address, uint256, uint256) internal returns (bool)
             ) internal returns (bool) fnOut
@@ -993,6 +1021,7 @@ library FunctionCastLib {
         uint256,
         uint256,
         bytes32,
+        bytes32,
         function(address, address, uint256, uint256) internal returns (bool)
         ) internal returns (bool) fnIn
     )
@@ -1003,6 +1032,7 @@ library FunctionCastLib {
             bytes32,
             SplitBatchClaimWithWitness calldata,
             uint256,
+            bytes32,
             bytes32,
             function(address, address, uint256, uint256) internal returns (bool)
             ) internal returns (bool) fnOut
@@ -1020,6 +1050,7 @@ library FunctionCastLib {
         uint256,
         uint256,
         bytes32,
+        bytes32,
         function(address, address, uint256, uint256) internal returns (bool)
         ) internal returns (bool) fnIn
     )
@@ -1031,6 +1062,7 @@ library FunctionCastLib {
             bytes32,
             QualifiedSplitBatchClaimWithWitness calldata,
             uint256,
+            bytes32,
             bytes32,
             function(address, address, uint256, uint256) internal returns (bool)
             ) internal returns (bool) fnOut
@@ -1047,6 +1079,7 @@ library FunctionCastLib {
         uint256,
         uint256,
         bytes32,
+        bytes32,
         function(address, address, uint256, uint256) internal returns (bool)
         ) internal returns (bool) fnIn
     )
@@ -1057,6 +1090,7 @@ library FunctionCastLib {
             bytes32,
             MultichainClaim calldata,
             uint256,
+            bytes32,
             bytes32,
             function(address, address, uint256, uint256) internal returns (bool)
             ) internal returns (bool) fnOut
@@ -1074,6 +1108,7 @@ library FunctionCastLib {
         uint256,
         uint256,
         bytes32,
+        bytes32,
         function(address, address, uint256, uint256) internal returns (bool)
         ) internal returns (bool) fnIn
     )
@@ -1085,6 +1120,7 @@ library FunctionCastLib {
             bytes32,
             QualifiedMultichainClaim calldata,
             uint256,
+            bytes32,
             bytes32,
             function(address, address, uint256, uint256) internal returns (bool)
             ) internal returns (bool) fnOut
@@ -1101,6 +1137,7 @@ library FunctionCastLib {
         uint256,
         uint256,
         bytes32,
+        bytes32,
         function(address, address, uint256, uint256) internal returns (bool)
         ) internal returns (bool) fnIn
     )
@@ -1111,6 +1148,7 @@ library FunctionCastLib {
             bytes32,
             MultichainClaimWithWitness calldata,
             uint256,
+            bytes32,
             bytes32,
             function(address, address, uint256, uint256) internal returns (bool)
             ) internal returns (bool) fnOut
@@ -1128,6 +1166,7 @@ library FunctionCastLib {
         uint256,
         uint256,
         bytes32,
+        bytes32,
         function(address, address, uint256, uint256) internal returns (bool)
         ) internal returns (bool) fnIn
     )
@@ -1139,6 +1178,7 @@ library FunctionCastLib {
             bytes32,
             QualifiedMultichainClaimWithWitness calldata,
             uint256,
+            bytes32,
             bytes32,
             function(address, address, uint256, uint256) internal returns (bool)
             ) internal returns (bool) fnOut
@@ -1155,6 +1195,7 @@ library FunctionCastLib {
         uint256,
         uint256,
         bytes32,
+        bytes32,
         function(address, address, uint256, uint256) internal returns (bool)
         ) internal returns (bool) fnIn
     )
@@ -1165,6 +1206,7 @@ library FunctionCastLib {
             bytes32,
             SplitMultichainClaim calldata,
             uint256,
+            bytes32,
             bytes32,
             function(address, address, uint256, uint256) internal returns (bool)
             ) internal returns (bool) fnOut
@@ -1182,6 +1224,7 @@ library FunctionCastLib {
         uint256,
         uint256,
         bytes32,
+        bytes32,
         function(address, address, uint256, uint256) internal returns (bool)
         ) internal returns (bool) fnIn
     )
@@ -1193,6 +1236,7 @@ library FunctionCastLib {
             bytes32,
             QualifiedSplitMultichainClaim calldata,
             uint256,
+            bytes32,
             bytes32,
             function(address, address, uint256, uint256) internal returns (bool)
             ) internal returns (bool) fnOut
@@ -1209,6 +1253,7 @@ library FunctionCastLib {
         uint256,
         uint256,
         bytes32,
+        bytes32,
         function(address, address, uint256, uint256) internal returns (bool)
         ) internal returns (bool) fnIn
     )
@@ -1219,6 +1264,7 @@ library FunctionCastLib {
             bytes32,
             SplitMultichainClaimWithWitness calldata,
             uint256,
+            bytes32,
             bytes32,
             function(address, address, uint256, uint256) internal returns (bool)
             ) internal returns (bool) fnOut
@@ -1236,6 +1282,7 @@ library FunctionCastLib {
         uint256,
         uint256,
         bytes32,
+        bytes32,
         function(address, address, uint256, uint256) internal returns (bool)
         ) internal returns (bool) fnIn
     )
@@ -1247,6 +1294,7 @@ library FunctionCastLib {
             bytes32,
             QualifiedSplitMultichainClaimWithWitness calldata,
             uint256,
+            bytes32,
             bytes32,
             function(address, address, uint256, uint256) internal returns (bool)
             ) internal returns (bool) fnOut
@@ -1263,6 +1311,7 @@ library FunctionCastLib {
         uint256,
         uint256,
         bytes32,
+        bytes32,
         function(address, address, uint256, uint256) internal returns (bool)
         ) internal returns (bool) fnIn
     )
@@ -1273,6 +1322,7 @@ library FunctionCastLib {
             bytes32,
             BatchMultichainClaim calldata,
             uint256,
+            bytes32,
             bytes32,
             function(address, address, uint256, uint256) internal returns (bool)
             ) internal returns (bool) fnOut
@@ -1290,6 +1340,7 @@ library FunctionCastLib {
         uint256,
         uint256,
         bytes32,
+        bytes32,
         function(address, address, uint256, uint256) internal returns (bool)
         ) internal returns (bool) fnIn
     )
@@ -1301,6 +1352,7 @@ library FunctionCastLib {
             bytes32,
             QualifiedBatchMultichainClaim calldata,
             uint256,
+            bytes32,
             bytes32,
             function(address, address, uint256, uint256) internal returns (bool)
             ) internal returns (bool) fnOut
@@ -1317,6 +1369,7 @@ library FunctionCastLib {
         uint256,
         uint256,
         bytes32,
+        bytes32,
         function(address, address, uint256, uint256) internal returns (bool)
         ) internal returns (bool) fnIn
     )
@@ -1327,6 +1380,7 @@ library FunctionCastLib {
             bytes32,
             BatchMultichainClaimWithWitness calldata,
             uint256,
+            bytes32,
             bytes32,
             function(address, address, uint256, uint256) internal returns (bool)
             ) internal returns (bool) fnOut
@@ -1344,6 +1398,7 @@ library FunctionCastLib {
         uint256,
         uint256,
         bytes32,
+        bytes32,
         function(address, address, uint256, uint256) internal returns (bool)
         ) internal returns (bool) fnIn
     )
@@ -1355,6 +1410,7 @@ library FunctionCastLib {
             bytes32,
             QualifiedBatchMultichainClaimWithWitness calldata,
             uint256,
+            bytes32,
             bytes32,
             function(address, address, uint256, uint256) internal returns (bool)
             ) internal returns (bool) fnOut
@@ -1371,6 +1427,7 @@ library FunctionCastLib {
         uint256,
         uint256,
         bytes32,
+        bytes32,
         function(address, address, uint256, uint256) internal returns (bool)
         ) internal returns (bool) fnIn
     )
@@ -1381,6 +1438,7 @@ library FunctionCastLib {
             bytes32,
             SplitBatchMultichainClaim calldata,
             uint256,
+            bytes32,
             bytes32,
             function(address, address, uint256, uint256) internal returns (bool)
             ) internal returns (bool) fnOut
@@ -1398,6 +1456,7 @@ library FunctionCastLib {
         uint256,
         uint256,
         bytes32,
+        bytes32,
         function(address, address, uint256, uint256) internal returns (bool)
         ) internal returns (bool) fnIn
     )
@@ -1409,6 +1468,7 @@ library FunctionCastLib {
             bytes32,
             QualifiedSplitBatchMultichainClaim calldata,
             uint256,
+            bytes32,
             bytes32,
             function(address, address, uint256, uint256) internal returns (bool)
             ) internal returns (bool) fnOut
@@ -1425,6 +1485,7 @@ library FunctionCastLib {
         uint256,
         uint256,
         bytes32,
+        bytes32,
         function(address, address, uint256, uint256) internal returns (bool)
         ) internal returns (bool) fnIn
     )
@@ -1435,6 +1496,7 @@ library FunctionCastLib {
             bytes32,
             SplitBatchMultichainClaimWithWitness calldata,
             uint256,
+            bytes32,
             bytes32,
             function(address, address, uint256, uint256) internal returns (bool)
             ) internal returns (bool) fnOut
@@ -1452,6 +1514,7 @@ library FunctionCastLib {
         uint256,
         uint256,
         bytes32,
+        bytes32,
         function(address, address, uint256, uint256) internal returns (bool)
         ) internal returns (bool) fnIn
     )
@@ -1463,6 +1526,7 @@ library FunctionCastLib {
             bytes32,
             QualifiedSplitBatchMultichainClaimWithWitness calldata,
             uint256,
+            bytes32,
             bytes32,
             function(address, address, uint256, uint256) internal returns (bool)
             ) internal returns (bool) fnOut
@@ -1480,6 +1544,7 @@ library FunctionCastLib {
         uint256,
         bytes32,
         bytes32,
+        bytes32,
         function(address, address, uint256, uint256) internal returns (bool)
         ) internal returns (bool) fnIn
     )
@@ -1490,6 +1555,7 @@ library FunctionCastLib {
             bytes32,
             ExogenousMultichainClaim calldata,
             uint256,
+            bytes32,
             bytes32,
             bytes32,
             function(address, address, uint256, uint256) internal returns (bool)
@@ -1509,6 +1575,7 @@ library FunctionCastLib {
         uint256,
         bytes32,
         bytes32,
+        bytes32,
         function(address, address, uint256, uint256) internal returns (bool)
         ) internal returns (bool) fnIn
     )
@@ -1520,6 +1587,7 @@ library FunctionCastLib {
             bytes32,
             ExogenousQualifiedMultichainClaim calldata,
             uint256,
+            bytes32,
             bytes32,
             bytes32,
             function(address, address, uint256, uint256) internal returns (bool)
@@ -1538,6 +1606,7 @@ library FunctionCastLib {
         uint256,
         bytes32,
         bytes32,
+        bytes32,
         function(address, address, uint256, uint256) internal returns (bool)
         ) internal returns (bool) fnIn
     )
@@ -1548,6 +1617,7 @@ library FunctionCastLib {
             bytes32,
             ExogenousMultichainClaimWithWitness calldata,
             uint256,
+            bytes32,
             bytes32,
             bytes32,
             function(address, address, uint256, uint256) internal returns (bool)
@@ -1567,6 +1637,7 @@ library FunctionCastLib {
         uint256,
         bytes32,
         bytes32,
+        bytes32,
         function(address, address, uint256, uint256) internal returns (bool)
         ) internal returns (bool) fnIn
     )
@@ -1578,6 +1649,7 @@ library FunctionCastLib {
             bytes32,
             ExogenousQualifiedMultichainClaimWithWitness calldata,
             uint256,
+            bytes32,
             bytes32,
             bytes32,
             function(address, address, uint256, uint256) internal returns (bool)
@@ -1596,6 +1668,7 @@ library FunctionCastLib {
         uint256,
         bytes32,
         bytes32,
+        bytes32,
         function(address, address, uint256, uint256) internal returns (bool)
         ) internal returns (bool) fnIn
     )
@@ -1606,6 +1679,7 @@ library FunctionCastLib {
             bytes32,
             ExogenousSplitMultichainClaim calldata,
             uint256,
+            bytes32,
             bytes32,
             bytes32,
             function(address, address, uint256, uint256) internal returns (bool)
@@ -1625,6 +1699,7 @@ library FunctionCastLib {
         uint256,
         bytes32,
         bytes32,
+        bytes32,
         function(address, address, uint256, uint256) internal returns (bool)
         ) internal returns (bool) fnIn
     )
@@ -1636,6 +1711,7 @@ library FunctionCastLib {
             bytes32,
             ExogenousQualifiedSplitMultichainClaim calldata,
             uint256,
+            bytes32,
             bytes32,
             bytes32,
             function(address, address, uint256, uint256) internal returns (bool)
@@ -1654,6 +1730,7 @@ library FunctionCastLib {
         uint256,
         bytes32,
         bytes32,
+        bytes32,
         function(address, address, uint256, uint256) internal returns (bool)
         ) internal returns (bool) fnIn
     )
@@ -1664,6 +1741,7 @@ library FunctionCastLib {
             bytes32,
             ExogenousSplitMultichainClaimWithWitness calldata,
             uint256,
+            bytes32,
             bytes32,
             bytes32,
             function(address, address, uint256, uint256) internal returns (bool)
@@ -1683,6 +1761,7 @@ library FunctionCastLib {
         uint256,
         bytes32,
         bytes32,
+        bytes32,
         function(address, address, uint256, uint256) internal returns (bool)
         ) internal returns (bool) fnIn
     )
@@ -1694,6 +1773,7 @@ library FunctionCastLib {
             bytes32,
             ExogenousQualifiedSplitMultichainClaimWithWitness calldata,
             uint256,
+            bytes32,
             bytes32,
             bytes32,
             function(address, address, uint256, uint256) internal returns (bool)
@@ -1712,6 +1792,7 @@ library FunctionCastLib {
         uint256,
         bytes32,
         bytes32,
+        bytes32,
         function(address, address, uint256, uint256) internal returns (bool)
         ) internal returns (bool) fnIn
     )
@@ -1722,6 +1803,7 @@ library FunctionCastLib {
             bytes32,
             ExogenousBatchMultichainClaim calldata,
             uint256,
+            bytes32,
             bytes32,
             bytes32,
             function(address, address, uint256, uint256) internal returns (bool)
@@ -1741,6 +1823,7 @@ library FunctionCastLib {
         uint256,
         bytes32,
         bytes32,
+        bytes32,
         function(address, address, uint256, uint256) internal returns (bool)
         ) internal returns (bool) fnIn
     )
@@ -1752,6 +1835,7 @@ library FunctionCastLib {
             bytes32,
             ExogenousQualifiedBatchMultichainClaim calldata,
             uint256,
+            bytes32,
             bytes32,
             bytes32,
             function(address, address, uint256, uint256) internal returns (bool)
@@ -1770,6 +1854,7 @@ library FunctionCastLib {
         uint256,
         bytes32,
         bytes32,
+        bytes32,
         function(address, address, uint256, uint256) internal returns (bool)
         ) internal returns (bool) fnIn
     )
@@ -1780,6 +1865,7 @@ library FunctionCastLib {
             bytes32,
             ExogenousBatchMultichainClaimWithWitness calldata,
             uint256,
+            bytes32,
             bytes32,
             bytes32,
             function(address, address, uint256, uint256) internal returns (bool)
@@ -1799,6 +1885,7 @@ library FunctionCastLib {
         uint256,
         bytes32,
         bytes32,
+        bytes32,
         function(address, address, uint256, uint256) internal returns (bool)
         ) internal returns (bool) fnIn
     )
@@ -1810,6 +1897,7 @@ library FunctionCastLib {
             bytes32,
             ExogenousQualifiedBatchMultichainClaimWithWitness calldata,
             uint256,
+            bytes32,
             bytes32,
             bytes32,
             function(address, address, uint256, uint256) internal returns (bool)
@@ -1828,6 +1916,7 @@ library FunctionCastLib {
         uint256,
         bytes32,
         bytes32,
+        bytes32,
         function(address, address, uint256, uint256) internal returns (bool)
         ) internal returns (bool) fnIn
     )
@@ -1838,6 +1927,7 @@ library FunctionCastLib {
             bytes32,
             ExogenousSplitBatchMultichainClaim calldata,
             uint256,
+            bytes32,
             bytes32,
             bytes32,
             function(address, address, uint256, uint256) internal returns (bool)
@@ -1857,6 +1947,7 @@ library FunctionCastLib {
         uint256,
         bytes32,
         bytes32,
+        bytes32,
         function(address, address, uint256, uint256) internal returns (bool)
         ) internal returns (bool) fnIn
     )
@@ -1868,6 +1959,7 @@ library FunctionCastLib {
             bytes32,
             ExogenousQualifiedSplitBatchMultichainClaim calldata,
             uint256,
+            bytes32,
             bytes32,
             bytes32,
             function(address, address, uint256, uint256) internal returns (bool)
@@ -1886,6 +1978,7 @@ library FunctionCastLib {
         uint256,
         bytes32,
         bytes32,
+        bytes32,
         function(address, address, uint256, uint256) internal returns (bool)
         ) internal returns (bool) fnIn
     )
@@ -1896,6 +1989,7 @@ library FunctionCastLib {
             bytes32,
             ExogenousSplitBatchMultichainClaimWithWitness calldata,
             uint256,
+            bytes32,
             bytes32,
             bytes32,
             function(address, address, uint256, uint256) internal returns (bool)
@@ -1915,6 +2009,7 @@ library FunctionCastLib {
         uint256,
         bytes32,
         bytes32,
+        bytes32,
         function(address, address, uint256, uint256) internal returns (bool)
         ) internal returns (bool) fnIn
     )
@@ -1926,6 +2021,7 @@ library FunctionCastLib {
             bytes32,
             ExogenousQualifiedSplitBatchMultichainClaimWithWitness calldata,
             uint256,
+            bytes32,
             bytes32,
             bytes32,
             function(address, address, uint256, uint256) internal returns (bool)
