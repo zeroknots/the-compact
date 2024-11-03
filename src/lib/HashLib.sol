@@ -146,6 +146,7 @@ library HashLib {
     using FunctionCastLib for function(uint256, uint256, function(uint256, uint256) internal view returns (bytes32)) internal view returns (bytes32);
     using FunctionCastLib for function(uint256, uint256, function(uint256, uint256) internal view returns (bytes32)) internal view returns (bytes32, bytes32);
     using FunctionCastLib for function(uint256, uint256, function(uint256, uint256, bytes32, bytes32, uint256) internal view returns (bytes32)) internal view returns (bytes32, bytes32);
+    using FunctionCastLib for function (uint256, uint256, function(uint256, uint256) internal view returns (bytes32, bytes32)) internal view returns (bytes32, bytes32, bytes32);
 
     using FunctionCastLib for function (BasicClaim calldata) internal view returns (bytes32);
     using FunctionCastLib for function (MultichainClaim calldata) internal view returns (bytes32);
@@ -155,6 +156,7 @@ library HashLib {
     using FunctionCastLib for function (ExogenousQualifiedMultichainClaim calldata) internal view returns (bytes32, bytes32);
     using FunctionCastLib for function (MultichainClaimWithWitness calldata) internal view returns (bytes32, bytes32);
     using FunctionCastLib for function (ExogenousMultichainClaimWithWitness calldata) internal view returns (bytes32, bytes32);
+    using FunctionCastLib for function (QualifiedClaimWithWitness calldata) internal view returns (bytes32, bytes32, bytes32);
 
     /// @dev `keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)")`.
     bytes32 internal constant _DOMAIN_TYPEHASH = 0x8b73c3c69bb8fe3d512ecc4cf759cc79239f7b179b0ffacaa9a75d522b39400f;
@@ -166,7 +168,6 @@ library HashLib {
     bytes32 internal constant _VERSION_HASH = 0x044852b2a670ade5407e78fb2863c51de9fcb96542a07186fe3aeda6bb8a116d;
 
     ///// CATEGORY 1: Transfer message hashes /////
-
     function toMessageHash(BasicTransfer calldata transfer) internal view returns (bytes32 messageHash) {
         assembly ("memory-safe") {
             let m := mload(0x40) // Grab the free memory pointer; memory will be left dirtied.
@@ -273,7 +274,6 @@ library HashLib {
     }
 
     ///// CATEGORY 2: Claim message hashes /////
-
     function toMessageHash(BasicClaim calldata claim) internal view returns (bytes32) {
         return _toBasicMessageHash(claim);
     }
@@ -374,7 +374,6 @@ library HashLib {
     }
 
     ///// CATEGORY 4: Claim with witness message & type hashes /////
-
     function toMessageHash(ClaimWithWitness calldata claim) internal view returns (bytes32, bytes32) {
         return _toMessageHashWithWitness.usingClaimWithWitness()(claim, 0);
     }
@@ -425,27 +424,20 @@ library HashLib {
     }
 
     ///// CATEGORY 5: Qualified claim with witness message, qualification, & type hashes /////
-
     function toMessageHash(QualifiedClaimWithWitness calldata claim) internal view returns (bytes32 messageHash, bytes32 qualificationMessageHash, bytes32 typehash) {
-        (messageHash, typehash) = _toMessageHashWithWitness.usingQualifiedClaimWithWitness()(claim, 0x40);
-        qualificationMessageHash = _toQualificationMessageHash.usingQualifiedClaimWithWitness()(claim, messageHash, 0x40);
+        return _toQualifiedClaimWithWitnessMessageHash(claim);
     }
 
     function toMessageHash(QualifiedSplitClaimWithWitness calldata claim) internal view returns (bytes32 messageHash, bytes32 qualificationMessageHash, bytes32 typehash) {
-        (messageHash, typehash) = _toMessageHashWithWitness.usingQualifiedSplitClaimWithWitness()(claim, 0x40);
-        qualificationMessageHash = _toQualificationMessageHash.usingQualifiedSplitClaimWithWitness()(claim, messageHash, 0x40);
+        return _toQualifiedClaimWithWitnessMessageHash.usingQualifiedSplitClaimWithWitness()(claim);
     }
 
     function toMessageHash(QualifiedBatchClaimWithWitness calldata claim) internal view returns (bytes32 messageHash, bytes32 qualificationMessageHash, bytes32 typehash) {
-        (messageHash, typehash) = _toBatchClaimWithWitnessMessageHash.usingQualifiedBatchClaimWithWitness()(claim, _toIdsAndAmountsHash(claim.claims));
-
-        qualificationMessageHash = _toQualificationMessageHash.usingQualifiedBatchClaimWithWitness()(claim, messageHash, 0x40);
+        return _toGenericQualifiedClaimWithWitnessMessageHash.usingQualifiedBatchClaimWithWitness()(claim, _toIdsAndAmountsHash(claim.claims), _toBatchClaimWithWitnessMessageHash);
     }
 
     function toMessageHash(QualifiedSplitBatchClaimWithWitness calldata claim) internal view returns (bytes32 messageHash, bytes32 qualificationMessageHash, bytes32 typehash) {
-        (messageHash, typehash) = _toBatchClaimWithWitnessMessageHash.usingQualifiedSplitBatchClaimWithWitness()(claim, _toSplitIdsAndAmountsHash(claim.claims));
-
-        qualificationMessageHash = _toQualificationMessageHash.usingQualifiedSplitBatchClaimWithWitness()(claim, messageHash, 0x40);
+        return _toGenericQualifiedClaimWithWitnessMessageHash.usingQualifiedSplitBatchClaimWithWitness()(claim, _toSplitIdsAndAmountsHash(claim.claims), _toBatchClaimWithWitnessMessageHash);
     }
 
     function toMessageHash(QualifiedMultichainClaimWithWitness calldata claim) internal view returns (bytes32 messageHash, bytes32 qualificationMessageHash, bytes32 typehash) {
@@ -611,7 +603,7 @@ library HashLib {
     }
 
     function _toGenericMultichainClaimWithWitnessMessageHash(uint256 claim, uint256 additionalInput, function (uint256, uint256, bytes32, bytes32, uint256) internal view returns (bytes32) hashFn)
-        internal
+        private
         view
         returns (bytes32 messageHash, bytes32 typehash)
     {
@@ -630,6 +622,19 @@ library HashLib {
         return _toGenericMultichainClaimWithWitnessMessageHash.usingExogenousMultichainClaimWithWitness()(
             claim, _toSingleIdAndAmountHash.usingExogenousMultichainClaimWithWitness()(claim, 0x80), _toExogenousMultichainClaimMessageHash
         );
+    }
+
+    function _toGenericQualifiedClaimWithWitnessMessageHash(uint256 claim, uint256 additionalInput, function (uint256, uint256) internal view returns (bytes32, bytes32) hashFn)
+        private
+        view
+        returns (bytes32 messageHash, bytes32 qualificationHash, bytes32 typehash)
+    {
+        (messageHash, typehash) = hashFn(claim, additionalInput);
+        qualificationHash = _toQualificationMessageHash(claim, messageHash, 0x40);
+    }
+
+    function _toQualifiedClaimWithWitnessMessageHash(QualifiedClaimWithWitness calldata claim) private view returns (bytes32, bytes32, bytes32) {
+        return _toGenericQualifiedClaimWithWitnessMessageHash.usingQualifiedClaimWithWitness()(claim, 0x40, _toMessageHashWithWitness);
     }
 
     function _toClaimMessageHash(uint256 claim, uint256 additionalOffset) private view returns (bytes32 messageHash) {

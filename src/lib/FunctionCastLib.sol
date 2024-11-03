@@ -419,6 +419,54 @@ library FunctionCastLib {
         }
     }
 
+    function usingQualifiedClaimWithWitness(function (uint256, uint256, function(uint256, uint256) internal view returns (bytes32, bytes32)) internal view returns (bytes32, bytes32, bytes32) fnIn)
+        internal
+        pure
+        returns (function (QualifiedClaimWithWitness calldata, uint256, function(uint256, uint256) internal view returns (bytes32, bytes32)) internal view returns (bytes32, bytes32, bytes32) fnOut)
+    {
+        assembly ("memory-safe") {
+            fnOut := fnIn
+        }
+    }
+
+    function usingQualifiedSplitClaimWithWitness(function (QualifiedClaimWithWitness calldata) internal view returns (bytes32) fnIn)
+        internal
+        pure
+        returns (function (QualifiedSplitClaimWithWitness calldata) internal view returns (bytes32) fnOut)
+    {
+        assembly ("memory-safe") {
+            fnOut := fnIn
+        }
+    }
+
+    function usingQualifiedBatchClaimWithWitness(
+        function (uint256, uint256, function(uint256, uint256) internal view returns (bytes32, bytes32)) internal view returns (bytes32, bytes32, bytes32) fnIn
+    )
+        internal
+        pure
+        returns (
+            function (QualifiedBatchClaimWithWitness calldata, uint256, function(uint256, uint256) internal view returns (bytes32, bytes32)) internal view returns (bytes32, bytes32, bytes32) fnOut
+        )
+    {
+        assembly ("memory-safe") {
+            fnOut := fnIn
+        }
+    }
+
+    function usingQualifiedSplitBatchClaimWithWitness(
+        function (uint256, uint256, function(uint256, uint256) internal view returns (bytes32, bytes32)) internal view returns (bytes32, bytes32, bytes32) fnIn
+    )
+        internal
+        pure
+        returns (
+            function (QualifiedSplitBatchClaimWithWitness calldata, uint256, function(uint256, uint256) internal view returns (bytes32, bytes32)) internal view returns (bytes32, bytes32, bytes32) fnOut
+        )
+    {
+        assembly ("memory-safe") {
+            fnOut := fnIn
+        }
+    }
+
     function usingSplitTransfer(function (bytes32, address, BasicTransfer calldata) internal fnIn) internal pure returns (function (bytes32, address, SplitTransfer calldata) internal fnOut) {
         assembly ("memory-safe") {
             fnOut := fnIn
