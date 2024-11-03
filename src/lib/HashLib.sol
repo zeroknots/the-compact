@@ -42,6 +42,8 @@ library HashLib {
     using EfficiencyLib for bool;
     using EfficiencyLib for uint256;
     using FunctionCastLib for function (BatchTransfer calldata, uint256) internal view returns (bytes32);
+    using HashLib for uint256;
+    using HashLib for BatchTransfer;
 
     function toBasicTransferMessageHash(BasicTransfer calldata transfer) internal view returns (bytes32 messageHash) {
         assembly ("memory-safe") {
@@ -101,7 +103,7 @@ library HashLib {
             idsAndAmountsHash := keccak256(m, totalTransferData)
         }
 
-        return deriveBatchCompactMessageHash(transfer, idsAndAmountsHash);
+        return transfer.deriveBatchCompactMessageHash(idsAndAmountsHash);
     }
 
     function toSplitBatchTransferMessageHash(SplitBatchTransfer calldata transfer) internal view returns (bytes32) {
@@ -249,11 +251,11 @@ library HashLib {
     }
 
     function toSimpleMultichainClaimMessageHash(uint256 claim, uint256 idsAndAmountsHash) internal view returns (bytes32 messageHash) {
-        return toMultichainClaimMessageHash(claim, uint256(0).asStubborn(), SEGMENT_TYPEHASH, MULTICHAIN_COMPACT_TYPEHASH, idsAndAmountsHash);
+        return claim.toMultichainClaimMessageHash(uint256(0).asStubborn(), SEGMENT_TYPEHASH, MULTICHAIN_COMPACT_TYPEHASH, idsAndAmountsHash);
     }
 
     function toQualifiedMultichainClaimMessageHash(uint256 claim, uint256 idsAndAmountsHash) internal view returns (bytes32 messageHash) {
-        return toMultichainClaimMessageHash(claim, uint256(0x40).asStubborn(), SEGMENT_TYPEHASH, MULTICHAIN_COMPACT_TYPEHASH, idsAndAmountsHash);
+        return claim.toMultichainClaimMessageHash(uint256(0x40).asStubborn(), SEGMENT_TYPEHASH, MULTICHAIN_COMPACT_TYPEHASH, idsAndAmountsHash);
     }
 
     function toMultichainClaimMessageHash(uint256 claim, uint256 additionalOffset, bytes32 allocationTypehash, bytes32 multichainCompactTypehash, uint256 idsAndAmountsHash)
@@ -290,11 +292,11 @@ library HashLib {
     }
 
     function toSimpleExogenousMultichainClaimMessageHash(uint256 claim, uint256 idsAndAmountsHash) internal view returns (bytes32 messageHash) {
-        return toExogenousMultichainClaimMessageHash(claim, uint256(0).asStubborn(), SEGMENT_TYPEHASH, MULTICHAIN_COMPACT_TYPEHASH, idsAndAmountsHash);
+        return claim.toExogenousMultichainClaimMessageHash(uint256(0).asStubborn(), SEGMENT_TYPEHASH, MULTICHAIN_COMPACT_TYPEHASH, idsAndAmountsHash);
     }
 
     function toExogenousQualifiedMultichainClaimMessageHash(uint256 claim, uint256 idsAndAmountsHash) internal view returns (bytes32 messageHash) {
-        return toExogenousMultichainClaimMessageHash(claim, uint256(0x40).asStubborn(), SEGMENT_TYPEHASH, MULTICHAIN_COMPACT_TYPEHASH, idsAndAmountsHash);
+        return claim.toExogenousMultichainClaimMessageHash(uint256(0x40).asStubborn(), SEGMENT_TYPEHASH, MULTICHAIN_COMPACT_TYPEHASH, idsAndAmountsHash);
     }
 
     function toExogenousMultichainClaimMessageHash(uint256 claim, uint256 additionalOffset, bytes32 allocationTypehash, bytes32 multichainCompactTypehash, uint256 idsAndAmountsHash)
