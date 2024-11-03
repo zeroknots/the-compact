@@ -433,6 +433,7 @@ interface ITheCompact {
      * @return                Whether the withdrawal was successful.
      */
     function allocatedWithdrawal(SplitBatchTransfer calldata withdrawal) external returns (bool);
+
     /**
      * @notice External function to initiate a forced withdrawal for a resource lock. Once
      * enabled, forced withdrawals can be executed after the reset period has elapsed. The

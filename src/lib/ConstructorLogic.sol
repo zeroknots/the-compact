@@ -25,15 +25,29 @@ contract ConstructorLogic is Tstorish {
     using HashLib for uint256;
     using IdLib for uint256;
 
+    // Address of the Permit2 contract, optionally used for depositing ERC20 tokens.
     address private constant _PERMIT2 = 0x000000000022D473030F116dDEE9F6B43aC78BA3;
 
+    // Storage slot used for the reentrancy guard, whether using TSTORE or SSTORE.
     uint256 private constant _REENTRANCY_GUARD_SLOT = 0x929eee149b4bd21268;
 
+    // Chain ID at deployment, used for triggering EIP-712 domain separator updates.
     uint256 private immutable _INITIAL_CHAIN_ID;
+
+    // Initial EIP-712 domain separator, computed at deployment time.
     bytes32 private immutable _INITIAL_DOMAIN_SEPARATOR;
+
+    // Instance of the metadata renderer contract deployed during construction.
     MetadataRenderer private immutable _METADATA_RENDERER;
+
+    // Whether Permit2 was deployed on the chain at construction time.
     bool private immutable _PERMIT2_INITIALLY_DEPLOYED;
 
+    /**
+     * @notice Constructor that initializes immutable variables and deploys the metadata
+     * renderer. Captures the initial chain ID and domain separator, deploys the metadata
+     * renderer, and checks for Permit2 deployment.
+     */
     constructor() {
         _INITIAL_CHAIN_ID = block.chainid;
         _INITIAL_DOMAIN_SEPARATOR = block.chainid.toNotarizedDomainSeparator();
@@ -41,14 +55,27 @@ contract ConstructorLogic is Tstorish {
         _PERMIT2_INITIALLY_DEPLOYED = _checkPermit2Deployment();
     }
 
+    /**
+     * @notice Internal function to set the reentrancy guard using either TSTORE or SSTORE.
+     * Called as part of functions that require reentrancy protection.
+     */
     function _setReentrancyGuard() internal {
         _setTstorish(_REENTRANCY_GUARD_SLOT, 1);
     }
 
+    /**
+     * @notice Internal function to clear the reentrancy guard using either TSTORE or SSTORE.
+     * Called as part of functions that require reentrancy protection.
+     */
     function _clearReentrancyGuard() internal {
         _clearTstorish(_REENTRANCY_GUARD_SLOT);
     }
 
+    /**
+     * @notice Internal view function that checks whether Permit2 is deployed. Returns true
+     * if Permit2 was deployed at construction time, otherwise checks current deployment status.
+     * @return Whether Permit2 is currently deployed.
+     */
     function _isPermit2Deployed() internal view returns (bool) {
         if (_PERMIT2_INITIALLY_DEPLOYED) {
             return true;
@@ -57,25 +84,47 @@ contract ConstructorLogic is Tstorish {
         return _checkPermit2Deployment();
     }
 
+    /**
+     * @notice Internal view function that returns the current EIP-712 domain separator,
+     * updating it if the chain ID has changed since deployment.
+     * @return The current domain separator.
+     */
     function _domainSeparator() internal view returns (bytes32) {
         return _INITIAL_DOMAIN_SEPARATOR.toLatest(_INITIAL_CHAIN_ID);
     }
 
-    /// @dev Returns the symbol for token `id`.
+    /**
+     * @notice Internal view function for retrieving the name for a given token ID.
+     * @param id The ERC6909 token identifier.
+     * @return The token's name.
+     */
     function _name(uint256 id) internal view returns (string memory) {
         return _METADATA_RENDERER.name(id);
     }
 
-    /// @dev Returns the symbol for token `id`.
+    /**
+     * @notice Internal view function for retrieving the symbol for a given token ID.
+     * @param id The ERC6909 token identifier.
+     * @return The token's symbol.
+     */
     function _symbol(uint256 id) internal view returns (string memory) {
         return _METADATA_RENDERER.symbol(id);
     }
 
-    /// @dev Returns the Uniform Resource Identifier (URI) for token `id`.
+    /**
+     * @notice Internal view function for retrieving the URI for a given token ID.
+     * @param id The ERC6909 token identifier.
+     * @return The token's URI.
+     */
     function _tokenURI(uint256 id) internal view returns (string memory) {
         return _METADATA_RENDERER.uri(id.toLock(), id);
     }
 
+    /**
+     * @notice Private view function that checks whether Permit2 is currently deployed by
+     * checking for code at the Permit2 address.
+     * @return permit2Deployed Whether there is code at the Permit2 address.
+     */
     function _checkPermit2Deployment() private view returns (bool permit2Deployed) {
         assembly ("memory-safe") {
             permit2Deployed := iszero(iszero(extcodesize(_PERMIT2)))
