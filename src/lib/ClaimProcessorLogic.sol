@@ -53,6 +53,7 @@ import { SplitComponent, BatchClaimComponent, SplitBatchClaimComponent } from ".
 import { ClaimHashLib } from "./ClaimHashLib.sol";
 import { ClaimProcessorLib } from "./ClaimProcessorLib.sol";
 import { EfficiencyLib } from "./EfficiencyLib.sol";
+import { EventLib } from "./EventLib.sol";
 import { FunctionCastLib } from "./FunctionCastLib.sol";
 import { HashLib } from "./HashLib.sol";
 import { IdLib } from "./IdLib.sol";
@@ -75,6 +76,7 @@ contract ClaimProcessorLogic is SharedLogic {
     using EfficiencyLib for bool;
     using EfficiencyLib for bytes32;
     using EfficiencyLib for uint256;
+    using EventLib for address;
     using FunctionCastLib for function(bytes32, uint256, uint256, bytes32, bytes32, function(address, address, uint256, uint256) internal returns (bool)) internal returns (bool);
     using FunctionCastLib for function(bytes32, uint256, uint256, bytes32, bytes32, bytes32, function(address, address, uint256, uint256) internal returns (bool)) internal returns (bool);
     using FunctionCastLib for function(bytes32, bytes32, uint256, uint256, bytes32, bytes32, function(address, address, uint256, uint256) internal returns (bool)) internal returns (bool);
@@ -580,7 +582,7 @@ contract ClaimProcessorLogic is SharedLogic {
         qualificationMessageHash.signedBy(allocator, allocatorSignature, domainSeparator);
 
         // Emit claim event.
-        _emitClaim(sponsor, messageHash, allocator);
+        sponsor.emitClaim(messageHash, allocator);
     }
 
     /**

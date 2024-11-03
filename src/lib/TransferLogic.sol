@@ -7,6 +7,7 @@ import { SplitComponent, TransferComponent, SplitByIdComponent } from "../types/
 
 import { ClaimHashLib } from "./ClaimHashLib.sol";
 import { EfficiencyLib } from "./EfficiencyLib.sol";
+import { EventLib } from "./EventLib.sol";
 import { FunctionCastLib } from "./FunctionCastLib.sol";
 import { IdLib } from "./IdLib.sol";
 import { SharedLogic } from "./SharedLogic.sol";
@@ -27,6 +28,7 @@ contract TransferLogic is SharedLogic {
     using ClaimHashLib for SplitBatchTransfer;
     using IdLib for uint256;
     using EfficiencyLib for bool;
+    using EventLib for address;
     using ValidityLib for uint96;
     using ValidityLib for uint256;
     using ValidityLib for bytes32;
@@ -228,7 +230,7 @@ contract TransferLogic is SharedLogic {
         messageHash.signedBy(allocator, transferPayload.allocatorSignature, _domainSeparator());
 
         // Emit Claim event.
-        _emitClaim(msg.sender, messageHash, allocator);
+        msg.sender.emitClaim(messageHash, allocator);
     }
 
     /**
