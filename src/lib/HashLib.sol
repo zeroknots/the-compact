@@ -171,109 +171,20 @@ library HashLib {
     bytes32 internal constant _VERSION_HASH = 0x044852b2a670ade5407e78fb2863c51de9fcb96542a07186fe3aeda6bb8a116d;
 
     ///// CATEGORY 1: Transfer message hashes /////
-    function toMessageHash(BasicTransfer calldata transfer) internal view returns (bytes32 messageHash) {
-        assembly ("memory-safe") {
-            let m := mload(0x40) // Grab the free memory pointer; memory will be left dirtied.
-
-            mstore(m, COMPACT_TYPEHASH)
-            mstore(add(m, 0x20), caller()) // arbiter: msg.sender
-            mstore(add(m, 0x40), caller()) // sponsor: msg.sender
-            calldatacopy(add(m, 0x60), add(transfer, 0x20), 0x80) // nonce, expires, id, amount
-            messageHash := keccak256(m, 0xe0)
-        }
+    function toMessageHash(BasicTransfer calldata transfer) internal view returns (bytes32) {
+        return _toBasicTransferMessageHash(transfer);
     }
 
-    function toMessageHash(SplitTransfer calldata transfer) internal view returns (bytes32 messageHash) {
-        uint256 amount = 0;
-        uint256 currentAmount;
-
-        SplitComponent[] calldata recipients = transfer.recipients;
-        uint256 totalRecipients = recipients.length;
-        uint256 errorBuffer;
-
-        unchecked {
-            for (uint256 i = 0; i < totalRecipients; ++i) {
-                currentAmount = recipients[i].amount;
-                amount += currentAmount;
-                errorBuffer |= (amount < currentAmount).asUint256();
-            }
-        }
-
-        assembly ("memory-safe") {
-            if errorBuffer {
-                // Revert Panic(0x11) (arithmetic overflow)
-                mstore(0, 0x4e487b71)
-                mstore(0x20, 0x11)
-                revert(0x1c, 0x24)
-            }
-
-            let m := mload(0x40) // Grab the free memory pointer; memory will be left dirtied.
-
-            mstore(m, COMPACT_TYPEHASH)
-            mstore(add(m, 0x20), caller()) // arbiter: msg.sender
-            mstore(add(m, 0x40), caller()) // sponsor: msg.sender
-            calldatacopy(add(m, 0x60), add(transfer, 0x20), 0x60) // nonce, expires, id
-            mstore(add(m, 0xc0), amount)
-            messageHash := keccak256(m, 0xe0)
-        }
+    function toMessageHash(SplitTransfer calldata transfer) internal view returns (bytes32) {
+        return _toSplitTransferMessageHash(transfer);
     }
 
-    function toMessageHash(BatchTransfer calldata transfer) internal view returns (bytes32 messageHash) {
-        TransferComponent[] calldata transfers = transfer.transfers;
-        uint256 idsAndAmountsHash;
-        assembly ("memory-safe") {
-            let m := mload(0x40) // Grab the free memory pointer; memory will be left dirtied.
-
-            let totalTransferData := mul(transfers.length, 0x40)
-            calldatacopy(m, transfers.offset, totalTransferData)
-            idsAndAmountsHash := keccak256(m, totalTransferData)
-        }
-
-        messageHash = _deriveBatchCompactMessageHash(transfer, idsAndAmountsHash);
+    function toMessageHash(BatchTransfer calldata transfer) internal view returns (bytes32) {
+        return _toBatchTransferMessageHash(transfer);
     }
 
-    function toMessageHash(SplitBatchTransfer calldata transfer) internal view returns (bytes32 messageHash) {
-        SplitByIdComponent[] calldata transfers = transfer.transfers;
-        uint256 totalIds = transfers.length;
-
-        bytes memory idsAndAmounts = new bytes(totalIds * 0x40);
-        uint256 errorBuffer;
-
-        unchecked {
-            for (uint256 i = 0; i < totalIds; ++i) {
-                SplitByIdComponent calldata transferComponent = transfers[i];
-                uint256 id = transferComponent.id;
-                uint256 amount = 0;
-                uint256 singleAmount;
-
-                SplitComponent[] calldata portions = transferComponent.portions;
-                uint256 portionsLength = portions.length;
-                for (uint256 j = 0; j < portionsLength; ++j) {
-                    singleAmount = portions[j].amount;
-                    amount += singleAmount;
-                    errorBuffer |= (amount < singleAmount).asUint256();
-                }
-
-                assembly ("memory-safe") {
-                    let extraOffset := add(add(idsAndAmounts, 0x20), mul(i, 0x40))
-                    mstore(extraOffset, id)
-                    mstore(add(extraOffset, 0x20), amount)
-                }
-            }
-        }
-
-        uint256 idsAndAmountsHash;
-        assembly ("memory-safe") {
-            if errorBuffer {
-                // Revert Panic(0x11) (arithmetic overflow)
-                mstore(0, 0x4e487b71)
-                mstore(0x20, 0x11)
-                revert(0x1c, 0x24)
-            }
-            idsAndAmountsHash := keccak256(add(idsAndAmounts, 0x20), mload(idsAndAmounts))
-        }
-
-        messageHash = _deriveBatchCompactMessageHash.usingSplitBatchTransfer()(transfer, idsAndAmountsHash);
+    function toMessageHash(SplitBatchTransfer calldata transfer) internal view returns (bytes32) {
+        return _toSplitBatchTransferMessageHash(transfer);
     }
 
     ///// CATEGORY 2: Claim message hashes /////
@@ -528,6 +439,111 @@ library HashLib {
     }
 
     ///// Private helper functions /////
+    function _toBasicTransferMessageHash(BasicTransfer calldata transfer) private view returns (bytes32 messageHash) {
+        assembly ("memory-safe") {
+            let m := mload(0x40) // Grab the free memory pointer; memory will be left dirtied.
+
+            mstore(m, COMPACT_TYPEHASH)
+            mstore(add(m, 0x20), caller()) // arbiter: msg.sender
+            mstore(add(m, 0x40), caller()) // sponsor: msg.sender
+            calldatacopy(add(m, 0x60), add(transfer, 0x20), 0x80) // nonce, expires, id, amount
+            messageHash := keccak256(m, 0xe0)
+        }
+    }
+
+    function _toSplitTransferMessageHash(SplitTransfer calldata transfer) private view returns (bytes32 messageHash) {
+        uint256 amount = 0;
+        uint256 currentAmount;
+
+        SplitComponent[] calldata recipients = transfer.recipients;
+        uint256 totalRecipients = recipients.length;
+        uint256 errorBuffer;
+
+        unchecked {
+            for (uint256 i = 0; i < totalRecipients; ++i) {
+                currentAmount = recipients[i].amount;
+                amount += currentAmount;
+                errorBuffer |= (amount < currentAmount).asUint256();
+            }
+        }
+
+        assembly ("memory-safe") {
+            if errorBuffer {
+                // Revert Panic(0x11) (arithmetic overflow)
+                mstore(0, 0x4e487b71)
+                mstore(0x20, 0x11)
+                revert(0x1c, 0x24)
+            }
+
+            let m := mload(0x40) // Grab the free memory pointer; memory will be left dirtied.
+
+            mstore(m, COMPACT_TYPEHASH)
+            mstore(add(m, 0x20), caller()) // arbiter: msg.sender
+            mstore(add(m, 0x40), caller()) // sponsor: msg.sender
+            calldatacopy(add(m, 0x60), add(transfer, 0x20), 0x60) // nonce, expires, id
+            mstore(add(m, 0xc0), amount)
+            messageHash := keccak256(m, 0xe0)
+        }
+    }
+
+    function _toBatchTransferMessageHash(BatchTransfer calldata transfer) private view returns (bytes32) {
+        TransferComponent[] calldata transfers = transfer.transfers;
+        uint256 idsAndAmountsHash;
+        assembly ("memory-safe") {
+            let m := mload(0x40) // Grab the free memory pointer; memory will be left dirtied.
+
+            let totalTransferData := mul(transfers.length, 0x40)
+            calldatacopy(m, transfers.offset, totalTransferData)
+            idsAndAmountsHash := keccak256(m, totalTransferData)
+        }
+
+        return _deriveBatchCompactMessageHash(transfer, idsAndAmountsHash);
+    }
+
+    function _toSplitBatchTransferMessageHash(SplitBatchTransfer calldata transfer) private view returns (bytes32) {
+        SplitByIdComponent[] calldata transfers = transfer.transfers;
+        uint256 totalIds = transfers.length;
+
+        bytes memory idsAndAmounts = new bytes(totalIds * 0x40);
+        uint256 errorBuffer;
+
+        unchecked {
+            for (uint256 i = 0; i < totalIds; ++i) {
+                SplitByIdComponent calldata transferComponent = transfers[i];
+                uint256 id = transferComponent.id;
+                uint256 amount = 0;
+                uint256 singleAmount;
+
+                SplitComponent[] calldata portions = transferComponent.portions;
+                uint256 portionsLength = portions.length;
+                for (uint256 j = 0; j < portionsLength; ++j) {
+                    singleAmount = portions[j].amount;
+                    amount += singleAmount;
+                    errorBuffer |= (amount < singleAmount).asUint256();
+                }
+
+                assembly ("memory-safe") {
+                    let extraOffset := add(add(idsAndAmounts, 0x20), mul(i, 0x40))
+                    mstore(extraOffset, id)
+                    mstore(add(extraOffset, 0x20), amount)
+                }
+            }
+        }
+
+        uint256 idsAndAmountsHash;
+        assembly ("memory-safe") {
+            if errorBuffer {
+                // Revert Panic(0x11) (arithmetic overflow)
+                mstore(0, 0x4e487b71)
+                mstore(0x20, 0x11)
+                revert(0x1c, 0x24)
+            }
+            idsAndAmountsHash := keccak256(add(idsAndAmounts, 0x20), mload(idsAndAmounts))
+        }
+
+        return _deriveBatchCompactMessageHash.usingSplitBatchTransfer()(transfer, idsAndAmountsHash);
+    }
+
     function _toGenericMessageHash(uint256 claim, uint256 additionalInput, function(uint256, uint256) internal view returns (bytes32) hashFn) private view returns (bytes32) {
         return hashFn(claim, additionalInput);
     }
@@ -574,21 +590,19 @@ library HashLib {
     function _toGenericMultichainClaimWithWitnessMessageHash(uint256 claim, uint256 additionalInput, function (uint256, uint256, bytes32, bytes32, uint256) internal view returns (bytes32) hashFn)
         private
         view
-        returns (bytes32 messageHash, bytes32 typehash)
+        returns (bytes32, bytes32)
     {
-        bytes32 allocationTypehash;
-        (allocationTypehash, typehash) = _toMultichainTypehashes(claim);
-        messageHash = hashFn(claim, uint256(0x40).asStubborn(), allocationTypehash, typehash, additionalInput);
+        (bytes32 allocationTypehash, bytes32 typehash) = _toMultichainTypehashes(claim);
+        return (hashFn(claim, uint256(0x40).asStubborn(), allocationTypehash, typehash, additionalInput), typehash);
     }
 
     function _toGenericMultichainClaimWithWitnessMessageHashPriorToQualification(
         uint256 claim,
         uint256 additionalInput,
         function (uint256, uint256, bytes32, bytes32, uint256) internal view returns (bytes32) hashFn
-    ) private view returns (bytes32 messageHash, bytes32 typehash) {
-        bytes32 allocationTypehash;
-        (allocationTypehash, typehash) = _toMultichainTypehashes(claim);
-        messageHash = hashFn(claim, uint256(0x80).asStubborn(), allocationTypehash, typehash, additionalInput);
+    ) private view returns (bytes32, bytes32) {
+        (bytes32 allocationTypehash, bytes32 typehash) = _toMultichainTypehashes(claim);
+        return (hashFn(claim, uint256(0x80).asStubborn(), allocationTypehash, typehash, additionalInput), typehash);
     }
 
     function _toMultichainClaimWithWitnessMessageHash(MultichainClaimWithWitness calldata claim) private view returns (bytes32, bytes32) {
@@ -606,10 +620,10 @@ library HashLib {
     function _toGenericQualifiedClaimWithWitnessMessageHash(uint256 claim, uint256 additionalInput, function (uint256, uint256) internal view returns (bytes32, bytes32) hashFn)
         private
         view
-        returns (bytes32 messageHash, bytes32 qualificationHash, bytes32 typehash)
+        returns (bytes32, bytes32, bytes32)
     {
-        (messageHash, typehash) = hashFn(claim, additionalInput);
-        qualificationHash = _toQualificationMessageHash(claim, messageHash, uint256(0x40).asStubborn());
+        (bytes32 messageHash, bytes32 typehash) = hashFn(claim, additionalInput);
+        return (messageHash, _toQualificationMessageHash(claim, messageHash, uint256(0x40).asStubborn()), typehash);
     }
 
     function _toQualifiedClaimWithWitnessMessageHash(QualifiedClaimWithWitness calldata claim) private view returns (bytes32, bytes32, bytes32) {
@@ -620,8 +634,8 @@ library HashLib {
         uint256 claim,
         uint256 additionalInput,
         function (uint256, uint256, bytes32, bytes32, uint256) internal view returns (bytes32) hashFn
-    ) private view returns (bytes32 messageHash, bytes32 qualificationHash, bytes32 typehash) {
-        (messageHash, typehash) = _toGenericMultichainClaimWithWitnessMessageHashPriorToQualification(claim, additionalInput, hashFn);
+    ) private view returns (bytes32, bytes32, bytes32) {
+        (bytes32 messageHash, bytes32 typehash) = _toGenericMultichainClaimWithWitnessMessageHashPriorToQualification(claim, additionalInput, hashFn);
         return (messageHash, _toQualificationMessageHash(claim, messageHash, uint256(0x40).asStubborn()), typehash);
     }
 
