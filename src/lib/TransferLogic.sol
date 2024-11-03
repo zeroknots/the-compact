@@ -5,9 +5,9 @@ import { BatchTransfer, SplitBatchTransfer } from "../types/BatchClaims.sol";
 import { BasicTransfer, SplitTransfer } from "../types/Claims.sol";
 import { SplitComponent, TransferComponent, SplitByIdComponent } from "../types/Components.sol";
 
+import { ClaimHashLib } from "./ClaimHashLib.sol";
 import { EfficiencyLib } from "./EfficiencyLib.sol";
 import { FunctionCastLib } from "./FunctionCastLib.sol";
-import { HashLib } from "./HashLib.sol";
 import { IdLib } from "./IdLib.sol";
 import { SharedLogic } from "./SharedLogic.sol";
 import { ValidityLib } from "./ValidityLib.sol";
@@ -21,10 +21,10 @@ import { ValidityLib } from "./ValidityLib.sol";
  * sponsor.
  */
 contract TransferLogic is SharedLogic {
-    using HashLib for BasicTransfer;
-    using HashLib for SplitTransfer;
-    using HashLib for BatchTransfer;
-    using HashLib for SplitBatchTransfer;
+    using ClaimHashLib for BasicTransfer;
+    using ClaimHashLib for SplitTransfer;
+    using ClaimHashLib for BatchTransfer;
+    using ClaimHashLib for SplitBatchTransfer;
     using IdLib for uint256;
     using EfficiencyLib for bool;
     using ValidityLib for uint96;
@@ -45,7 +45,7 @@ contract TransferLogic is SharedLogic {
      */
     function _processBasicTransfer(BasicTransfer calldata transfer, function(address, address, uint256, uint256) internal returns (bool) operation) internal returns (bool) {
         // Derive hash, validate expiry, consume nonce, and check allocator signature.
-        _notExpiredAndSignedByAllocator(transfer.toMessageHash(), transfer.id.toRegisteredAllocatorWithConsumed(transfer.nonce), transfer);
+        _notExpiredAndSignedByAllocator(transfer.toClaimHash(), transfer.id.toRegisteredAllocatorWithConsumed(transfer.nonce), transfer);
 
         // Perform the transfer or withdrawal.
         return operation(msg.sender, transfer.recipient, transfer.id, transfer.amount);
@@ -61,7 +61,7 @@ contract TransferLogic is SharedLogic {
      */
     function _processSplitTransfer(SplitTransfer calldata transfer, function(address, address, uint256, uint256) internal returns (bool) operation) internal returns (bool) {
         // Derive hash, validate expiry, consume nonce, and check allocator signature.
-        _notExpiredAndSignedByAllocator.usingSplitTransfer()(transfer.toMessageHash(), transfer.id.toRegisteredAllocatorWithConsumed(transfer.nonce), transfer);
+        _notExpiredAndSignedByAllocator.usingSplitTransfer()(transfer.toClaimHash(), transfer.id.toRegisteredAllocatorWithConsumed(transfer.nonce), transfer);
 
         // Retrieve the total number of components.
         uint256 totalSplits = transfer.recipients.length;
@@ -91,7 +91,7 @@ contract TransferLogic is SharedLogic {
      */
     function _processBatchTransfer(BatchTransfer calldata transfer, function(address, address, uint256, uint256) internal returns (bool) operation) internal returns (bool) {
         // Derive hash, validate expiry, consume nonce, and check allocator signature.
-        _notExpiredAndSignedByAllocator.usingBatchTransfer()(transfer.toMessageHash(), _deriveConsistentAllocatorAndConsumeNonce(transfer.transfers, transfer.nonce), transfer);
+        _notExpiredAndSignedByAllocator.usingBatchTransfer()(transfer.toClaimHash(), _deriveConsistentAllocatorAndConsumeNonce(transfer.transfers, transfer.nonce), transfer);
 
         // Retrieve the total number of components.
         uint256 totalTransfers = transfer.transfers.length;
@@ -121,7 +121,7 @@ contract TransferLogic is SharedLogic {
      */
     function _processSplitBatchTransfer(SplitBatchTransfer calldata transfer, function(address, address, uint256, uint256) internal returns (bool) operation) internal returns (bool) {
         // Derive hash, validate expiry, consume nonce, and check allocator signature.
-        _notExpiredAndSignedByAllocator.usingSplitBatchTransfer()(transfer.toMessageHash(), _deriveConsistentAllocatorAndConsumeNonceWithSplit(transfer.transfers, transfer.nonce), transfer);
+        _notExpiredAndSignedByAllocator.usingSplitBatchTransfer()(transfer.toClaimHash(), _deriveConsistentAllocatorAndConsumeNonceWithSplit(transfer.transfers, transfer.nonce), transfer);
 
         // Declare a variable for tracking the id of each component.
         uint256 id;
