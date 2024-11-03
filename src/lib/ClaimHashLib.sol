@@ -65,7 +65,7 @@ import {
     ExogenousQualifiedSplitBatchMultichainClaimWithWitness
 } from "../types/BatchMultichainClaims.sol";
 
-import { TransferComponent, SplitComponent, SplitByIdComponent, BatchClaimComponent, SplitBatchClaimComponent } from "../types/Components.sol";
+import { BatchClaimComponent, SplitBatchClaimComponent } from "../types/Components.sol";
 
 import { ResetPeriod } from "../types/ResetPeriod.sol";
 import { Scope } from "../types/Scope.sol";

@@ -51,9 +51,10 @@ import {
 
 import { ClaimHashLib } from "./ClaimHashLib.sol";
 import { ClaimProcessorLib } from "./ClaimProcessorLib.sol";
+import { DomainLib } from "./DomainLib.sol";
+import { HashLib } from "./HashLib.sol";
 import { EfficiencyLib } from "./EfficiencyLib.sol";
 import { FunctionCastLib } from "./FunctionCastLib.sol";
-import { HashLib } from "./HashLib.sol";
 import { SharedLogic } from "./SharedLogic.sol";
 import { ValidityLib } from "./ValidityLib.sol";
 
@@ -117,12 +118,13 @@ contract ClaimProcessorLogic is SharedLogic {
     using ClaimHashLib for ExogenousQualifiedSplitBatchMultichainClaim;
     using ClaimHashLib for ExogenousQualifiedSplitBatchMultichainClaimWithWitness;
     using ClaimProcessorLib for uint256;
+    using DomainLib for uint256;
+    using HashLib for uint256;
     using EfficiencyLib for uint256;
     using FunctionCastLib for function(bytes32, uint256, uint256, bytes32, bytes32, function(address, address, uint256, uint256) internal returns (bool)) internal returns (bool);
     using FunctionCastLib for function(bytes32, uint256, uint256, bytes32, bytes32, bytes32, function(address, address, uint256, uint256) internal returns (bool)) internal returns (bool);
     using FunctionCastLib for function(bytes32, bytes32, uint256, uint256, bytes32, bytes32, function(address, address, uint256, uint256) internal returns (bool)) internal returns (bool);
     using FunctionCastLib for function(bytes32, bytes32, uint256, uint256, bytes32, bytes32, bytes32, function(address, address, uint256, uint256) internal returns (bool)) internal returns (bool);
-    using HashLib for uint256;
     using ValidityLib for uint96;
     using ValidityLib for uint256;
     using ValidityLib for bytes32;

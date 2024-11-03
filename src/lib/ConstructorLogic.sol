@@ -5,7 +5,7 @@ import { Lock } from "../types/Lock.sol";
 import { ResetPeriod } from "../types/ResetPeriod.sol";
 import { Scope } from "../types/Scope.sol";
 
-import { HashLib } from "./HashLib.sol";
+import { DomainLib } from "./DomainLib.sol";
 import { IdLib } from "./IdLib.sol";
 import { MetadataRenderer } from "./MetadataRenderer.sol";
 
@@ -21,8 +21,8 @@ import { Tstorish } from "tstorish/Tstorish.sol";
  * for activating TSTORE support if the chain eventually adds support for it.
  */
 contract ConstructorLogic is Tstorish {
-    using HashLib for bytes32;
-    using HashLib for uint256;
+    using DomainLib for bytes32;
+    using DomainLib for uint256;
     using IdLib for uint256;
 
     // Address of the Permit2 contract, optionally used for depositing ERC20 tokens.

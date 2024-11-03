@@ -3,9 +3,10 @@ pragma solidity ^0.8.27;
 
 import { BatchTransfer, SplitBatchTransfer } from "../types/BatchClaims.sol";
 import { BasicTransfer, SplitTransfer } from "../types/Claims.sol";
-import { SplitComponent, TransferComponent, SplitByIdComponent } from "../types/Components.sol";
+import { TransferComponent, SplitByIdComponent } from "../types/Components.sol";
 
 import { ClaimHashLib } from "./ClaimHashLib.sol";
+import { ComponentLib } from "./ComponentLib.sol";
 import { EfficiencyLib } from "./EfficiencyLib.sol";
 import { EventLib } from "./EventLib.sol";
 import { FunctionCastLib } from "./FunctionCastLib.sol";
@@ -26,13 +27,17 @@ contract TransferLogic is SharedLogic {
     using ClaimHashLib for SplitTransfer;
     using ClaimHashLib for BatchTransfer;
     using ClaimHashLib for SplitBatchTransfer;
+    using ComponentLib for SplitTransfer;
+    using ComponentLib for BatchTransfer;
+    using ComponentLib for SplitBatchTransfer;
     using IdLib for uint256;
     using EfficiencyLib for bool;
     using EventLib for address;
     using ValidityLib for uint96;
     using ValidityLib for uint256;
     using ValidityLib for bytes32;
-    using FunctionCastLib for function(bytes32, address, BasicTransfer calldata) internal;
+    using FunctionCastLib for function (bytes32, address, BasicTransfer calldata) internal;
+    using FunctionCastLib for function(TransferComponent[] calldata, uint256, function (TransferComponent[] calldata, uint256) internal pure returns (uint96)) internal returns (address);
 
     // bytes4(keccak256("attest(address,address,address,uint256,uint256)")).
     uint32 private constant _ATTEST_SELECTOR = 0x1a808f91;
@@ -65,21 +70,8 @@ contract TransferLogic is SharedLogic {
         // Derive hash, validate expiry, consume nonce, and check allocator signature.
         _notExpiredAndSignedByAllocator.usingSplitTransfer()(transfer.toClaimHash(), transfer.id.toRegisteredAllocatorWithConsumed(transfer.nonce), transfer);
 
-        // Retrieve the total number of components.
-        uint256 totalSplits = transfer.recipients.length;
-
-        unchecked {
-            // Iterate over each additional component in calldata.
-            for (uint256 i = 0; i < totalSplits; ++i) {
-                // Navigate to location of the component in calldata.
-                SplitComponent calldata component = transfer.recipients[i];
-
-                // Perform the transfer or withdrawal for the portion.
-                operation(msg.sender, component.claimant, transfer.id, component.amount);
-            }
-        }
-
-        return true;
+        // Perform the split transfers or withdrawals.
+        return transfer.processSplitTransfer(operation);
     }
 
     /**
@@ -93,23 +85,12 @@ contract TransferLogic is SharedLogic {
      */
     function _processBatchTransfer(BatchTransfer calldata transfer, function(address, address, uint256, uint256) internal returns (bool) operation) internal returns (bool) {
         // Derive hash, validate expiry, consume nonce, and check allocator signature.
-        _notExpiredAndSignedByAllocator.usingBatchTransfer()(transfer.toClaimHash(), _deriveConsistentAllocatorAndConsumeNonce(transfer.transfers, transfer.nonce), transfer);
+        _notExpiredAndSignedByAllocator.usingBatchTransfer()(
+            transfer.toClaimHash(), _deriveConsistentAllocatorAndConsumeNonce(transfer.transfers, transfer.nonce, _allocatorIdOfTransferComponentId), transfer
+        );
 
-        // Retrieve the total number of components.
-        uint256 totalTransfers = transfer.transfers.length;
-
-        unchecked {
-            // Iterate over each component in calldata.
-            for (uint256 i = 0; i < totalTransfers; ++i) {
-                // Navigate to location of the component in calldata.
-                TransferComponent calldata component = transfer.transfers[i];
-
-                // Perform the transfer or withdrawal for the component.
-                operation(msg.sender, transfer.recipient, component.id, component.amount);
-            }
-        }
-
-        return true;
+        // Perform the batch transfers or withdrawals.
+        return transfer.performBatchTransfer(operation);
     }
 
     /**
@@ -123,41 +104,12 @@ contract TransferLogic is SharedLogic {
      */
     function _processSplitBatchTransfer(SplitBatchTransfer calldata transfer, function(address, address, uint256, uint256) internal returns (bool) operation) internal returns (bool) {
         // Derive hash, validate expiry, consume nonce, and check allocator signature.
-        _notExpiredAndSignedByAllocator.usingSplitBatchTransfer()(transfer.toClaimHash(), _deriveConsistentAllocatorAndConsumeNonceWithSplit(transfer.transfers, transfer.nonce), transfer);
+        _notExpiredAndSignedByAllocator.usingSplitBatchTransfer()(
+            transfer.toClaimHash(), _deriveConsistentAllocatorAndConsumeNonce.usingSplitByIdComponent()(transfer.transfers, transfer.nonce, _allocatorIdOfSplitByIdComponent), transfer
+        );
 
-        // Declare a variable for tracking the id of each component.
-        uint256 id;
-
-        // Retrieve the total number of components.
-        uint256 totalIds = transfer.transfers.length;
-
-        unchecked {
-            // Iterate over each component in calldata.
-            for (uint256 i = 0; i < totalIds; ++i) {
-                // Navigate to location of the component in calldata.
-                SplitByIdComponent calldata component = transfer.transfers[i];
-
-                // Retrieve the id for the component.
-                id = component.id;
-
-                // Navigate to location of component portions in calldata.
-                SplitComponent[] calldata portions = component.portions;
-
-                // Retrieve the total number of portions on the component.
-                uint256 totalPortions = portions.length;
-
-                // Iterate over each portion in calldata.
-                for (uint256 j = 0; j < totalPortions; ++j) {
-                    // Navigate to the location of the portion in calldata.
-                    SplitComponent calldata portion = portions[j];
-
-                    // Perform the transfer or withdrawal for the portion.
-                    operation(msg.sender, portion.claimant, id, portion.amount);
-                }
-            }
-        }
-
-        return true;
+        // Perform the split batch transfers or withdrawals.
+        return transfer.performSplitBatchTransfer(operation);
     }
 
     /**
@@ -237,19 +189,24 @@ contract TransferLogic is SharedLogic {
      * @notice Private function that ensures all components in a batch transfer share the
      * same allocator and consumes the nonce. Reverts if any component has a different
      * allocator or if the batch is empty.
-     * @param components Array of transfer components to check.
-     * @param nonce      The nonce to consume.
-     * @return allocator The validated allocator address.
+     * @param components           Array of transfer components to check.
+     * @param nonce                The nonce to consume.
+     * @param allocatorIdRetrieval Function pointer to retrieve allocatorId from components array (handles split components).
+     * @return allocator           The validated allocator address.
      */
-    function _deriveConsistentAllocatorAndConsumeNonce(TransferComponent[] calldata components, uint256 nonce) private returns (address allocator) {
+    function _deriveConsistentAllocatorAndConsumeNonce(
+        TransferComponent[] calldata components,
+        uint256 nonce,
+        function (TransferComponent[] calldata, uint256) internal pure returns (uint96) allocatorIdRetrieval
+    ) private returns (address allocator) {
         // Retrieve the total number of components.
         uint256 totalComponents = components.length;
 
         // Track errors, starting with whether total number of components is zero.
         uint256 errorBuffer = (totalComponents == 0).asUint256();
 
-        // NOTE: bounds checks on these array accesses can be skipped as an optimization
-        uint96 allocatorId = components[0].id.toAllocatorId();
+        // Retrieve the ID of the initial component and derive the allocator ID.
+        uint96 allocatorId = allocatorIdRetrieval(components, 0);
 
         // Retrieve the allocator address and consume the nonce.
         allocator = allocatorId.fromRegisteredAllocatorIdWithConsumed(nonce);
@@ -257,8 +214,8 @@ contract TransferLogic is SharedLogic {
         unchecked {
             // Iterate over each additional component in calldata.
             for (uint256 i = 1; i < totalComponents; ++i) {
-                // Mark as an error if the allocatorId does not match the initial one.
-                errorBuffer |= (components[i].id.toAllocatorId() != allocatorId).asUint256();
+                // Retrieve ID and mark error if derived allocatorId differs from initial one.
+                errorBuffer |= (allocatorIdRetrieval(components, i) != allocatorId).asUint256();
             }
         }
 
@@ -273,41 +230,26 @@ contract TransferLogic is SharedLogic {
     }
 
     /**
-     * @notice Private function that ensures all components in a split batch transfer share
-     * the same allocator and consumes the nonce. Reverts if any component has a different
-     * allocator or if the batch is empty.
-     * @param components Array of split transfer components to check.
-     * @param nonce      The nonce to consume.
-     * @return allocator The validated allocator address.
+     * @notice Private pure function that retrieves the ID of a batch transfer component from
+     * an array of components at a specific index and uses it to derive an allocator ID.
+     * @param components   Array of batch transfer components.
+     * @param index        The index of the batch transfer component to retrieve.
+     * @return allocatorId The allocator ID derived from the transfer component at the given index.
      */
-    function _deriveConsistentAllocatorAndConsumeNonceWithSplit(SplitByIdComponent[] calldata components, uint256 nonce) private returns (address allocator) {
-        // Retrieve the total number of components.
-        uint256 totalComponents = components.length;
+    function _allocatorIdOfTransferComponentId(TransferComponent[] calldata components, uint256 index) private pure returns (uint96) {
+        // Retrieve ID from the component and derive corresponding allocator ID.
+        return components[index].id.toAllocatorId();
+    }
 
-        // Track errors, starting with whether total number of components is zero.
-        uint256 errorBuffer = (totalComponents == 0).asUint256();
-
-        // NOTE: bounds checks on these array accesses can be skipped as an optimization
-        uint96 allocatorId = components[0].id.toAllocatorId();
-
-        // Retrieve the allocator address and consume the nonce.
-        allocator = allocatorId.fromRegisteredAllocatorIdWithConsumed(nonce);
-
-        unchecked {
-            // Iterate over each additional component in calldata.
-            for (uint256 i = 1; i < totalComponents; ++i) {
-                // Mark as an error if the allocatorId does not match the initial one.
-                errorBuffer |= (components[i].id.toAllocatorId() != allocatorId).asUint256();
-            }
-        }
-
-        // Revert if an error was encountered.
-        assembly ("memory-safe") {
-            if errorBuffer {
-                // revert InvalidBatchAllocation()
-                mstore(0, 0x3a03d3bb)
-                revert(0x1c, 0x04)
-            }
-        }
+    /**
+     * @notice Private pure function that retrieves the ID of a split batch transfer component
+     * from an array of components at a specific index and uses it to derive an allocator ID.
+     * @param components   Array of split batch transfer components.
+     * @param index        The index of the split batch transfer component to retrieve.
+     * @return allocatorId The allocator ID derived from the transfer component at the given index.
+     */
+    function _allocatorIdOfSplitByIdComponent(SplitByIdComponent[] calldata components, uint256 index) private pure returns (uint96) {
+        // Retrieve ID from the component and derive corresponding allocator ID.
+        return components[index].id.toAllocatorId();
     }
 }

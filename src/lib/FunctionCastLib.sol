@@ -3427,4 +3427,14 @@ library FunctionCastLib {
             fnOut := fnIn
         }
     }
+
+    function usingSplitByIdComponent(function(TransferComponent[] calldata, uint256, function (TransferComponent[] calldata, uint256) internal pure returns (uint96)) internal returns (address) fnIn)
+        internal
+        pure
+        returns (function(SplitByIdComponent[] calldata, uint256, function (SplitByIdComponent[] calldata, uint256) internal pure returns (uint96)) internal returns (address) fnOut)
+    {
+        assembly ("memory-safe") {
+            fnOut := fnIn
+        }
+    }
 }

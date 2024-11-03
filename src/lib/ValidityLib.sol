@@ -6,7 +6,7 @@ import { Scope } from "../types/Scope.sol";
 import { IdLib } from "./IdLib.sol";
 import { ConsumerLib } from "./ConsumerLib.sol";
 import { EfficiencyLib } from "./EfficiencyLib.sol";
-import { HashLib } from "./HashLib.sol";
+import { DomainLib } from "./DomainLib.sol";
 import { SignatureCheckerLib } from "solady/utils/SignatureCheckerLib.sol";
 
 /**
@@ -19,7 +19,7 @@ library ValidityLib {
     using IdLib for uint256;
     using ConsumerLib for uint256;
     using EfficiencyLib for bool;
-    using HashLib for bytes32;
+    using DomainLib for bytes32;
     using SignatureCheckerLib for address;
     using ValidityLib for uint256;
 
