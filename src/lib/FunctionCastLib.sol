@@ -2764,20 +2764,4 @@ library FunctionCastLib {
             fnOut := fnIn
         }
     }
-
-    /**
-     * @notice Function cast to provide a SplitBatchTransfer calldata struct while
-     * treating it as a BatchTransfer calldata struct.
-     * @param fnIn   Function pointer to HashLib.toBatchTransferMessageHashUsingIdsAndAmountsHash(BatchTransfer calldata, uint256)
-     * @return fnOut Modified function for HashLib.toBatchTransferMessageHashUsingIdsAndAmountsHash(SplitBatchTransfer calldata, uint256)
-     */
-    function usingSplitBatchTransfer(function(BatchTransfer calldata, uint256) internal view returns (bytes32) fnIn)
-        internal
-        pure
-        returns (function(SplitBatchTransfer calldata, uint256) internal view returns (bytes32) fnOut)
-    {
-        assembly ("memory-safe") {
-            fnOut := fnIn
-        }
-    }
 }

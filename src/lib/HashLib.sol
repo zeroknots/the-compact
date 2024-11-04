@@ -27,7 +27,7 @@ import {
 } from "../types/EIP712Types.sol";
 
 import { EfficiencyLib } from "./EfficiencyLib.sol";
-import { FunctionCastLib } from "./FunctionCastLib.sol";
+import { TransferFunctionCastLib } from "./TransferFunctionCastLib.sol";
 
 /**
  * @title HashLib
@@ -39,7 +39,7 @@ import { FunctionCastLib } from "./FunctionCastLib.sol";
 library HashLib {
     using EfficiencyLib for bool;
     using EfficiencyLib for uint256;
-    using FunctionCastLib for function (BatchTransfer calldata, uint256) internal view returns (bytes32);
+    using TransferFunctionCastLib for function (BatchTransfer calldata, uint256) internal view returns (bytes32);
     using HashLib for uint256;
     using HashLib for BatchTransfer;
 
