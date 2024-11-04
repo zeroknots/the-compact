@@ -70,10 +70,21 @@ import { TransferComponent, SplitByIdComponent, BatchClaimComponent, SplitBatchC
 /**
  * @title FunctionCastLib
  * @notice Libray contract implementing function casts used throughout the codebase,
- * particularly as part of processing claims.
+ * particularly as part of processing claims. The input function operates on a
+ * function that takes some argument that differs from what is currently available.
+ * The output function modifies one or more argument types so that they match the
+ * arguments that are being used to call the function. Note that from the perspective
+ * of the function being modified, the original type is still in force; great care
+ * should be taken to preserve offsets and general structure between the two structs.
  * @dev Note that some of these function casts may no longer be in use.
  */
 library FunctionCastLib {
+    /**
+     * @notice Function cast to provide a BasicClaim calldata struct while
+     * treating it as a uint256 representing a calldata pointer location.
+     * @param fnIn   Function pointer to ClaimHashLib._toGenericMessageHash
+     * @return fnOut Modified function for ClaimHashLib._toBasicMessageHash
+     */
     function usingBasicClaim(function (uint256, uint256, function(uint256, uint256) internal view returns (bytes32)) internal view returns (bytes32) fnIn)
         internal
         pure
@@ -84,12 +95,24 @@ library FunctionCastLib {
         }
     }
 
+    /**
+     * @notice Function cast to provide a SplitClaim calldata struct while
+     * treating it as a BasicClaim calldata struct.
+     * @param fnIn   Function pointer to ClaimHashLib._toBasicMessageHash(BasicClaim calldata)
+     * @return fnOut Modified function for ClaimHashLib.toClaimHash(SplitClaim calldata)
+     */
     function usingSplitClaim(function (BasicClaim calldata) internal view returns (bytes32) fnIn) internal pure returns (function (SplitClaim calldata) internal view returns (bytes32) fnOut) {
         assembly ("memory-safe") {
             fnOut := fnIn
         }
     }
 
+    /**
+     * @notice Function cast to provide a BatchClaim calldata struct while
+     * treating it as a uint256 representing a calldata pointer location.
+     * @param fnIn   Function pointer to ClaimHashLib._toGenericMessageHash
+     * @return fnOut Modified function for ClaimHashLib._toBasicMessageHash(BatchClaim calldata)
+     */
     function usingBatchClaim(function (uint256, uint256, function(uint256, uint256) internal view returns (bytes32)) internal view returns (bytes32) fnIn)
         internal
         pure
@@ -100,6 +123,12 @@ library FunctionCastLib {
         }
     }
 
+    /**
+     * @notice Function cast to provide a SplitBatchClaim calldata struct while
+     * treating it as a uint256 representing a calldata pointer location.
+     * @param fnIn   Function pointer to ClaimHashLib._toGenericMessageHash
+     * @return fnOut Modified function for ClaimHashLib._toBasicMessageHash(SplitBatchClaim calldata)
+     */
     function usingSplitBatchClaim(function (uint256, uint256, function(uint256, uint256) internal view returns (bytes32)) internal view returns (bytes32) fnIn)
         internal
         pure
@@ -110,6 +139,12 @@ library FunctionCastLib {
         }
     }
 
+    /**
+     * @notice Function cast to provide a MultichainClaim calldata struct while
+     * treating it as a uint256 representing a calldata pointer location.
+     * @param fnIn   Function pointer to ClaimHashLib._toGenericMessageHash
+     * @return fnOut Modified function for ClaimHashLib._toMultichainMessageHash(MultichainClaim calldata)
+     */
     function usingMultichainClaim(function (uint256, uint256, function(uint256, uint256) internal view returns (bytes32)) internal view returns (bytes32) fnIn)
         internal
         pure
@@ -120,6 +155,12 @@ library FunctionCastLib {
         }
     }
 
+    /**
+     * @notice Function cast to provide a SplitMultichainClaim calldata struct while
+     * treating it as a MultichainClaim calldata struct.
+     * @param fnIn   Function pointer to ClaimHashLib._toMultichainMessageHash(MultichainClaim calldata)
+     * @return fnOut Modified function for ClaimHashLib.toClaimHash(SplitMultichainClaim calldata)
+     */
     function usingSplitMultichainClaim(function (MultichainClaim calldata) internal view returns (bytes32) fnIn)
         internal
         pure
@@ -130,6 +171,12 @@ library FunctionCastLib {
         }
     }
 
+    /**
+     * @notice Function cast to provide a BatchMultichainClaim calldata struct while
+     * treating it as a uint256 representing a calldata pointer location.
+     * @param fnIn   Function pointer to ClaimHashLib._toGenericMessageHash
+     * @return fnOut Modified function for ClaimHashLib._toBatchMultichainMessageHash(BatchMultichainClaim calldata)
+     */
     function usingBatchMultichainClaim(function (uint256, uint256, function(uint256, uint256) internal view returns (bytes32)) internal view returns (bytes32) fnIn)
         internal
         pure
@@ -140,6 +187,12 @@ library FunctionCastLib {
         }
     }
 
+    /**
+     * @notice Function cast to provide a SplitBatchMultichainClaim calldata struct while
+     * treating it as a uint256 representing a calldata pointer location.
+     * @param fnIn   Function pointer to ClaimHashLib._toGenericMessageHash
+     * @return fnOut Modified function for ClaimHashLib._toBasicMessageHash(SplitBatchMultichainClaim calldata)
+     */
     function usingSplitBatchMultichainClaim(function (uint256, uint256, function(uint256, uint256) internal view returns (bytes32)) internal view returns (bytes32) fnIn)
         internal
         pure
@@ -150,6 +203,12 @@ library FunctionCastLib {
         }
     }
 
+    /**
+     * @notice Function cast to provide an ExogenousMultichainClaim calldata struct while
+     * treating it as a uint256 representing a calldata pointer location.
+     * @param fnIn   Function pointer to ClaimHashLib._toGenericMessageHash
+     * @return fnOut Modified function for ClaimHashLib._toExogenousMultichainMessageHash(ExogenousMultichainClaim calldata)
+     */
     function usingExogenousMultichainClaim(function (uint256, uint256, function(uint256, uint256) internal view returns (bytes32)) internal view returns (bytes32) fnIn)
         internal
         pure
@@ -160,6 +219,12 @@ library FunctionCastLib {
         }
     }
 
+    /**
+     * @notice Function cast to provide an ExogenousSplitMultichainClaim calldata struct while
+     * treating it as an ExogenousMultichainClaim calldata struct.
+     * @param fnIn   Function pointer to ClaimHashLib._toExogenousMultichainMessageHash(ExogenousMultichainClaim calldata)
+     * @return fnOut Modified function for ClaimHashLib.toClaimHash(ExogenousSplitMultichainClaim calldata)
+     */
     function usingExogenousSplitMultichainClaim(function (ExogenousMultichainClaim calldata) internal view returns (bytes32) fnIn)
         internal
         pure
@@ -190,6 +255,12 @@ library FunctionCastLib {
         }
     }
 
+    /**
+     * @notice Function cast to provide a QualifiedClaim calldata struct while
+     * treating it as a uint256 representing a calldata pointer location.
+     * @param fnIn   Function pointer to ClaimHashLib._toGenericMessageHashWithQualificationHash
+     * @return fnOut Modified function for ClaimHashLib._toQualifiedMessageHash(QualifiedClaim calldata)
+     */
     function usingQualifiedClaim(function (uint256, uint256, function(uint256, uint256) internal view returns (bytes32)) internal view returns (bytes32, bytes32) fnIn)
         internal
         pure
@@ -200,6 +271,12 @@ library FunctionCastLib {
         }
     }
 
+    /**
+     * @notice Function cast to provide a QualifiedSplitClaim calldata struct while
+     * treating it as a QualifiedClaim calldata struct.
+     * @param fnIn   Function pointer to ClaimHashLib._toQualifiedMessageHash(QualifiedClaim calldata)
+     * @return fnOut Modified function for ClaimHashLib.toMessageHashes(QualifiedSplitClaim calldata)
+     */
     function usingQualifiedSplitClaim(function (QualifiedClaim calldata) internal view returns (bytes32, bytes32) fnIn)
         internal
         pure
@@ -230,6 +307,12 @@ library FunctionCastLib {
         }
     }
 
+    /**
+     * @notice Function cast to provide a QualifiedMultichainClaim calldata struct while
+     * treating it as a uint256 representing a calldata pointer location.
+     * @param fnIn   Function pointer to ClaimHashLib._toGenericMessageHashWithQualificationHash
+     * @return fnOut Modified function for ClaimHashLib._toQualifiedMultichainMessageHash(QualifiedMultichainClaim calldata)
+     */
     function usingQualifiedMultichainClaim(function (uint256, uint256, function(uint256, uint256) internal view returns (bytes32)) internal view returns (bytes32, bytes32) fnIn)
         internal
         pure
@@ -240,6 +323,12 @@ library FunctionCastLib {
         }
     }
 
+    /**
+     * @notice Function cast to provide a QualifiedSplitMultichainClaim calldata struct while
+     * treating it as a QualifiedMultichainClaim calldata struct.
+     * @param fnIn   Function pointer to ClaimHashLib._toQualifiedMultichainMessageHash(QualifiedMultichainClaim calldata)
+     * @return fnOut Modified function for ClaimHashLib.toMessageHashes(QualifiedSplitMultichainClaim calldata)
+     */
     function usingQualifiedSplitMultichainClaim(function (QualifiedMultichainClaim calldata) internal view returns (bytes32, bytes32) fnIn)
         internal
         pure
@@ -270,6 +359,12 @@ library FunctionCastLib {
         }
     }
 
+    /**
+     * @notice Function cast to provide an ExogenousQualifiedMultichainClaim calldata struct
+     * while treating it as a uint256 representing a calldata pointer location.
+     * @param fnIn   Function pointer to ClaimHashLib._toGenericMessageHashWithQualificationHash
+     * @return fnOut Modified function for ClaimHashLib._toExogenousQualifiedMultichainMessageHash(ExogenousQualifiedMultichainClaim calldata)
+     */
     function usingExogenousQualifiedMultichainClaim(function (uint256, uint256, function(uint256, uint256) internal view returns (bytes32)) internal view returns (bytes32, bytes32) fnIn)
         internal
         pure
@@ -280,6 +375,12 @@ library FunctionCastLib {
         }
     }
 
+    /**
+     * @notice Function cast to provide an ExogenousQualifiedSplitMultichainClaim calldata
+     * struct while treating it as an ExogenousQualifiedMultichainClaim calldata struct.
+     * @param fnIn   Function pointer to ClaimHashLib._toExogenousQualifiedMultichainMessageHash(ExogenousQualifiedMultichainClaim calldata)
+     * @return fnOut Modified function for ClaimHashLib.toMessageHashes(ExogenousQualifiedSplitMultichainClaim calldata)
+     */
     function usingExogenousQualifiedSplitMultichainClaim(function (ExogenousQualifiedMultichainClaim calldata) internal view returns (bytes32, bytes32) fnIn)
         internal
         pure
@@ -310,6 +411,12 @@ library FunctionCastLib {
         }
     }
 
+    /**
+     * @notice Function cast to provide a MultichainClaimWithWitness calldata struct while
+     * treating it as a uint256 representing a calldata pointer location with witness data.
+     * @param fnIn   Function pointer to ClaimHashLib._toGenericMultichainClaimWithWitnessMessageHash
+     * @return fnOut Modified function for ClaimHashLib._toMultichainClaimWithWitnessMessageHash(MultichainClaimWithWitness calldata)
+     */
     function usingMultichainClaimWithWitness(
         function (uint256, uint256, function (uint256, uint256, bytes32, bytes32, uint256) internal view returns (bytes32)) internal view returns (bytes32, bytes32) fnIn
     )
@@ -324,6 +431,12 @@ library FunctionCastLib {
         }
     }
 
+    /**
+     * @notice Function cast to provide a SplitMultichainClaimWithWitness calldata struct while
+     * treating it as a MultichainClaimWithWitness calldata struct.
+     * @param fnIn   Function pointer to ClaimHashLib._toMultichainClaimWithWitnessMessageHash(MultichainClaimWithWitness calldata)
+     * @return fnOut Modified function for ClaimHashLib.toMessageHashes(SplitMultichainClaimWithWitness calldata)
+     */
     function usingSplitMultichainClaimWithWitness(function (MultichainClaimWithWitness calldata) internal view returns (bytes32, bytes32) fnIn)
         internal
         pure
@@ -334,6 +447,12 @@ library FunctionCastLib {
         }
     }
 
+    /**
+     * @notice Function cast to provide a BatchMultichainClaimWithWitness calldata struct while
+     * treating it as a uint256 representing a calldata pointer location with witness data.
+     * @param fnIn   Function pointer to ClaimHashLib._toGenericMultichainClaimWithWitnessMessageHash
+     * @return fnOut Modified function for ClaimHashLib._toBatchMultichainClaimWithWitnessMessageHash(BatchMultichainClaimWithWitness calldata)
+     */
     function usingBatchMultichainClaimWithWitness(
         function (uint256, uint256, function (uint256, uint256, bytes32, bytes32, uint256) internal view returns (bytes32)) internal view returns (bytes32, bytes32) fnIn
     )
@@ -348,6 +467,12 @@ library FunctionCastLib {
         }
     }
 
+    /**
+     * @notice Function cast to provide a SplitBatchMultichainClaimWithWitness calldata struct
+     * while treating it as a uint256 representing a calldata pointer location with witness data.
+     * @param fnIn   Function pointer to ClaimHashLib._toGenericMultichainClaimWithWitnessMessageHash
+     * @return fnOut Modified function for ClaimHashLib._toSplitBatchMultichainClaimWithWitnessMessageHash(SplitBatchMultichainClaimWithWitness calldata)
+     */
     function usingSplitBatchMultichainClaimWithWitness(
         function (uint256, uint256, function (uint256, uint256, bytes32, bytes32, uint256) internal view returns (bytes32)) internal view returns (bytes32, bytes32) fnIn
     )
@@ -363,6 +488,12 @@ library FunctionCastLib {
         }
     }
 
+    /**
+     * @notice Function cast to provide an ExogenousMultichainClaimWithWitness calldata struct
+     * while treating it as a uint256 representing a calldata pointer location with witness data.
+     * @param fnIn   Function pointer to ClaimHashLib._toGenericMultichainClaimWithWitnessMessageHash
+     * @return fnOut Modified function for ClaimHashLib._toExogenousMultichainClaimWithWitnessMessageHash(ExogenousMultichainClaimWithWitness calldata)
+     */
     function usingExogenousMultichainClaimWithWitness(
         function (uint256, uint256, function (uint256, uint256, bytes32, bytes32, uint256) internal view returns (bytes32)) internal view returns (bytes32, bytes32) fnIn
     )
@@ -378,6 +509,12 @@ library FunctionCastLib {
         }
     }
 
+    /**
+     * @notice Function cast to provide an ExogenousSplitMultichainClaimWithWitness calldata
+     * struct while treating it as an ExogenousMultichainClaimWithWitness calldata struct.
+     * @param fnIn   Function pointer to ClaimHashLib._toExogenousMultichainClaimWithWitnessMessageHash(ExogenousMultichainClaimWithWitness calldata)
+     * @return fnOut Modified function for ClaimHashLib.toMessageHashes(ExogenousSplitMultichainClaimWithWitness calldata)
+     */
     function usingExogenousSplitMultichainClaimWithWitness(function (ExogenousMultichainClaimWithWitness calldata) internal view returns (bytes32, bytes32) fnIn)
         internal
         pure
@@ -388,6 +525,12 @@ library FunctionCastLib {
         }
     }
 
+    /**
+     * @notice Function cast to provide an ExogenousBatchMultichainClaimWithWitness calldata
+     * struct while treating it as a uint256 representing a calldata pointer location with witness data.
+     * @param fnIn   Function pointer to ClaimHashLib._toGenericMultichainClaimWithWitnessMessageHash
+     * @return fnOut Modified function for ClaimHashLib._toExogenousBatchMultichainClaimWithWitnessMessageHash(ExogenousBatchMultichainClaimWithWitness calldata)
+     */
     function usingExogenousBatchMultichainClaimWithWitness(
         function (uint256, uint256, function (uint256, uint256, bytes32, bytes32, uint256) internal view returns (bytes32)) internal view returns (bytes32, bytes32) fnIn
     )
@@ -403,6 +546,12 @@ library FunctionCastLib {
         }
     }
 
+    /**
+     * @notice Function cast to provide an ExogenousSplitBatchMultichainClaimWithWitness calldata
+     * struct while treating it as a uint256 representing a calldata pointer location with witness data.
+     * @param fnIn   Function pointer to ClaimHashLib._toGenericMultichainClaimWithWitnessMessageHash
+     * @return fnOut Modified function for ClaimHashLib._toExogenousSplitBatchMultichainClaimWithWitnessMessageHash(ExogenousSplitBatchMultichainClaimWithWitness calldata)
+     */
     function usingExogenousSplitBatchMultichainClaimWithWitness(
         function (uint256, uint256, function (uint256, uint256, bytes32, bytes32, uint256) internal view returns (bytes32)) internal view returns (bytes32, bytes32) fnIn
     )
@@ -418,6 +567,12 @@ library FunctionCastLib {
         }
     }
 
+    /**
+     * @notice Function cast to provide a QualifiedClaimWithWitness calldata struct while
+     * treating it as a uint256 representing a calldata pointer location with witness data.
+     * @param fnIn   Function pointer to ClaimHashLib._toGenericQualifiedClaimWithWitnessMessageHash
+     * @return fnOut Modified function for ClaimHashLib._toQualifiedClaimWithWitnessMessageHash(QualifiedClaimWithWitness calldata)
+     */
     function usingQualifiedClaimWithWitness(function (uint256, uint256, function(uint256, uint256) internal view returns (bytes32, bytes32)) internal view returns (bytes32, bytes32, bytes32) fnIn)
         internal
         pure
@@ -428,6 +583,12 @@ library FunctionCastLib {
         }
     }
 
+    /**
+     * @notice Function cast to provide a QualifiedSplitClaimWithWitness calldata struct while
+     * treating it as a QualifiedClaimWithWitness calldata struct.
+     * @param fnIn   Function pointer to ClaimHashLib._toQualifiedClaimWithWitnessMessageHash(QualifiedClaimWithWitness calldata)
+     * @return fnOut Modified function for ClaimHashLib.toMessageHashes(QualifiedSplitClaimWithWitness calldata)
+     */
     function usingQualifiedSplitClaimWithWitness(function (QualifiedClaimWithWitness calldata) internal view returns (bytes32) fnIn)
         internal
         pure
@@ -438,6 +599,12 @@ library FunctionCastLib {
         }
     }
 
+    /**
+     * @notice Function cast to provide a QualifiedBatchClaimWithWitness calldata struct while
+     * treating it as a uint256 representing a calldata pointer location with witness data.
+     * @param fnIn   Function pointer to ClaimHashLib._toGenericQualifiedClaimWithWitnessMessageHash
+     * @return fnOut Modified function for ClaimHashLib._toQualifiedBatchClaimWithWitnessMessageHash(QualifiedBatchClaimWithWitness calldata)
+     */
     function usingQualifiedBatchClaimWithWitness(
         function (uint256, uint256, function(uint256, uint256) internal view returns (bytes32, bytes32)) internal view returns (bytes32, bytes32, bytes32) fnIn
     )
@@ -452,6 +619,12 @@ library FunctionCastLib {
         }
     }
 
+    /**
+     * @notice Function cast to provide a QualifiedSplitBatchClaimWithWitness calldata struct
+     * while treating it as a uint256 representing a calldata pointer location with witness data.
+     * @param fnIn   Function pointer to ClaimHashLib._toGenericQualifiedClaimWithWitnessMessageHash
+     * @return fnOut Modified function for ClaimHashLib._toQualifiedSplitBatchClaimWithWitnessMessageHash(QualifiedSplitBatchClaimWithWitness calldata)
+     */
     function usingQualifiedSplitBatchClaimWithWitness(
         function (uint256, uint256, function(uint256, uint256) internal view returns (bytes32, bytes32)) internal view returns (bytes32, bytes32, bytes32) fnIn
     )
@@ -576,18 +749,36 @@ library FunctionCastLib {
         }
     }
 
+    /**
+     * @notice Function cast to provide a SplitTransfer calldata struct while
+     * treating it as a BasicTransfer calldata struct.
+     * @param fnIn   Function pointer to ClaimProcessorLib._notExpiredAndSignedByAllocator(bytes32, address, BasicTransfer calldata)
+     * @return fnOut Modified function for ClaimProcessorLib._notExpiredAndSignedByAllocator(bytes32, address, SplitTransfer calldata)
+     */
     function usingSplitTransfer(function (bytes32, address, BasicTransfer calldata) internal fnIn) internal pure returns (function (bytes32, address, SplitTransfer calldata) internal fnOut) {
         assembly ("memory-safe") {
             fnOut := fnIn
         }
     }
 
+    /**
+     * @notice Function cast to provide a BatchTransfer calldata struct while
+     * treating it as a BasicTransfer calldata struct.
+     * @param fnIn   Function pointer to ClaimProcessorLib._notExpiredAndSignedByAllocator(bytes32, address, BasicTransfer calldata)
+     * @return fnOut Modified function for ClaimProcessorLib._notExpiredAndSignedByAllocator(bytes32, address, BatchTransfer calldata)
+     */
     function usingBatchTransfer(function (bytes32, address, BasicTransfer calldata) internal fnIn) internal pure returns (function (bytes32, address, BatchTransfer calldata) internal fnOut) {
         assembly ("memory-safe") {
             fnOut := fnIn
         }
     }
 
+    /**
+     * @notice Function cast to provide a SplitBatchTransfer calldata struct while
+     * treating it as a BasicTransfer calldata struct.
+     * @param fnIn   Function pointer to ClaimProcessorLib._notExpiredAndSignedByAllocator(bytes32, address, BasicTransfer calldata)
+     * @return fnOut Modified function for ClaimProcessorLib._notExpiredAndSignedByAllocator(bytes32, address, SplitBatchTransfer calldata)
+     */
     function usingSplitBatchTransfer(function (bytes32, address, BasicTransfer calldata) internal fnIn)
         internal
         pure
@@ -598,6 +789,12 @@ library FunctionCastLib {
         }
     }
 
+    /**
+     * @notice Function cast to provide a SplitBatchTransfer calldata struct while
+     * treating it as a BatchTransfer calldata struct.
+     * @param fnIn   Function pointer to HashLib.toBatchTransferMessageHashUsingIdsAndAmountsHash(BatchTransfer calldata, uint256)
+     * @return fnOut Modified function for HashLib.toBatchTransferMessageHashUsingIdsAndAmountsHash(SplitBatchTransfer calldata, uint256)
+     */
     function usingSplitBatchTransfer(function(BatchTransfer calldata, uint256) internal view returns (bytes32) fnIn)
         internal
         pure
@@ -2032,6 +2229,12 @@ library FunctionCastLib {
         }
     }
 
+    /**
+     * @notice Function cast to provide a QualifiedSplitClaimWithWitness calldata struct while
+     * treating it as a QualifiedClaimWithWitness calldata struct.
+     * @param fnIn   Function pointer to ClaimHashLib._toQualifiedClaimWithWitnessMessageHash(QualifiedClaimWithWitness calldata)
+     * @return fnOut Modified function for ClaimHashLib.toMessageHashes(QualifiedSplitClaimWithWitness calldata)
+     */
     function usingQualifiedSplitClaimWithWitness(function (QualifiedClaimWithWitness calldata) internal view returns (bytes32, bytes32, bytes32) fnIn)
         internal
         pure
@@ -2052,6 +2255,12 @@ library FunctionCastLib {
         }
     }
 
+    /**
+     * @notice Function cast to provide a ClaimWithWitness calldata struct while
+     * treating it as a uint256 representing a calldata pointer location.
+     * @param fnIn   Function pointer to HashLib.toMessageHashWithWitness(uint256, uint256)
+     * @return fnOut Modified function for HashLib.toMessageHashWithWitness(ClaimWithWitness calldata, uint256)
+     */
     function usingClaimWithWitness(function (uint256, uint256) internal view returns (bytes32, bytes32) fnIn)
         internal
         pure
@@ -2162,6 +2371,12 @@ library FunctionCastLib {
         }
     }
 
+    /**
+     * @notice Function cast to provide a SplitByIdComponent array while treating it
+     * as a TransferComponent array in the allocator consistency check.
+     * @param fnIn   Function pointer to TransferLogic._deriveConsistentAllocatorAndConsumeNonce(TransferComponent[], uint256, function)
+     * @return fnOut Modified function for TransferLogic._deriveConsistentAllocatorAndConsumeNonce(SplitByIdComponent[], uint256, function)
+     */
     function usingSplitByIdComponent(function(TransferComponent[] calldata, uint256, function (TransferComponent[] calldata, uint256) internal pure returns (uint96)) internal returns (address) fnIn)
         internal
         pure
