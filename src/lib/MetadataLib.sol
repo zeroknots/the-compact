@@ -68,8 +68,7 @@ library MetadataLib {
         string memory tokenDecimals = uint256(lock.token.readDecimals()).toString();
 
         string memory name = string.concat("{\"name\": \"Compact ", tokenSymbol, "\",");
-        string memory description =
-            string.concat("\"description\": \"Compact ", tokenName, " (", tokenAddress, ") resource lock with allocator ", allocator, " and reset period of ", resetPeriod, "\",");
+        string memory description = string.concat("\"description\": \"Compact ", tokenName, " (", tokenAddress, ") resource lock with allocator ", allocator, " and reset period of ", resetPeriod, "\",");
         string memory attributes = string.concat(
             "\"attributes\": [",
             toAttributeString("ID", id.toString(), false),

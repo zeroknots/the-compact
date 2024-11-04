@@ -51,10 +51,10 @@ import {
 
 import { ClaimHashLib } from "./ClaimHashLib.sol";
 import { ClaimProcessorLib } from "./ClaimProcessorLib.sol";
+import { ClaimProcessorFunctionCastLib } from "./ClaimProcessorFunctionCastLib.sol";
 import { DomainLib } from "./DomainLib.sol";
 import { HashLib } from "./HashLib.sol";
 import { EfficiencyLib } from "./EfficiencyLib.sol";
-import { FunctionCastLib } from "./FunctionCastLib.sol";
 import { SharedLogic } from "./SharedLogic.sol";
 import { ValidityLib } from "./ValidityLib.sol";
 
@@ -118,29 +118,26 @@ contract ClaimProcessorLogic is SharedLogic {
     using ClaimHashLib for ExogenousQualifiedSplitBatchMultichainClaim;
     using ClaimHashLib for ExogenousQualifiedSplitBatchMultichainClaimWithWitness;
     using ClaimProcessorLib for uint256;
+    using ClaimProcessorFunctionCastLib for function(bytes32, uint256, uint256, bytes32, bytes32, function(address, address, uint256, uint256) internal returns (bool)) internal returns (bool);
+    using ClaimProcessorFunctionCastLib for function(bytes32, uint256, uint256, bytes32, bytes32, bytes32, function(address, address, uint256, uint256) internal returns (bool)) internal returns (bool);
+    using ClaimProcessorFunctionCastLib for function(bytes32, bytes32, uint256, uint256, bytes32, bytes32, function(address, address, uint256, uint256) internal returns (bool)) internal returns (bool);
+    using ClaimProcessorFunctionCastLib for function(bytes32, bytes32, uint256, uint256, bytes32, bytes32, bytes32, function(address, address, uint256, uint256) internal returns (bool)) internal returns (bool);
     using DomainLib for uint256;
     using HashLib for uint256;
     using EfficiencyLib for uint256;
-    using FunctionCastLib for function(bytes32, uint256, uint256, bytes32, bytes32, function(address, address, uint256, uint256) internal returns (bool)) internal returns (bool);
-    using FunctionCastLib for function(bytes32, uint256, uint256, bytes32, bytes32, bytes32, function(address, address, uint256, uint256) internal returns (bool)) internal returns (bool);
-    using FunctionCastLib for function(bytes32, bytes32, uint256, uint256, bytes32, bytes32, function(address, address, uint256, uint256) internal returns (bool)) internal returns (bool);
-    using FunctionCastLib for function(bytes32, bytes32, uint256, uint256, bytes32, bytes32, bytes32, function(address, address, uint256, uint256) internal returns (bool)) internal returns (bool);
     using ValidityLib for uint96;
     using ValidityLib for uint256;
     using ValidityLib for bytes32;
 
     ///// 1. Claims /////
     function _processBasicClaim(BasicClaim calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation) internal returns (bool) {
-        return ClaimProcessorLib.processSimpleClaim.usingBasicClaim()(
-            claimPayload.toClaimHash(), claimPayload, uint256(0xa0).asStubborn(), uint256(0).asStubborn().typehashes(), _domainSeparator(), operation
-        );
+        return ClaimProcessorLib.processSimpleClaim.usingBasicClaim()(claimPayload.toClaimHash(), claimPayload, uint256(0xa0).asStubborn(), uint256(0).asStubborn().typehashes(), _domainSeparator(), operation);
     }
 
     function _processQualifiedClaim(QualifiedClaim calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation) internal returns (bool) {
         (bytes32 messageHash, bytes32 qualificationMessageHash) = claimPayload.toMessageHashes();
-        return ClaimProcessorLib.processClaimWithQualification.usingQualifiedClaim()(
-            messageHash, qualificationMessageHash, claimPayload, 0xe0, uint256(0).asStubborn().typehashes(), _domainSeparator(), operation
-        );
+        return
+            ClaimProcessorLib.processClaimWithQualification.usingQualifiedClaim()(messageHash, qualificationMessageHash, claimPayload, 0xe0, uint256(0).asStubborn().typehashes(), _domainSeparator(), operation);
     }
 
     function _processClaimWithWitness(ClaimWithWitness calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation) internal returns (bool) {
@@ -148,10 +145,7 @@ contract ClaimProcessorLogic is SharedLogic {
         return ClaimProcessorLib.processSimpleClaim.usingClaimWithWitness()(messageHash, claimPayload, 0xe0, typehash, _domainSeparator(), operation);
     }
 
-    function _processQualifiedClaimWithWitness(QualifiedClaimWithWitness calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation)
-        internal
-        returns (bool)
-    {
+    function _processQualifiedClaimWithWitness(QualifiedClaimWithWitness calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation) internal returns (bool) {
         (bytes32 messageHash, bytes32 qualificationMessageHash, bytes32 typehash) = claimPayload.toMessageHashes();
         return ClaimProcessorLib.processClaimWithQualification.usingQualifiedClaimWithWitness()(messageHash, qualificationMessageHash, claimPayload, 0x120, typehash, _domainSeparator(), operation);
     }
@@ -177,9 +171,7 @@ contract ClaimProcessorLogic is SharedLogic {
         returns (bool)
     {
         (bytes32 messageHash, bytes32 qualificationMessageHash, bytes32 typehash) = claimPayload.toMessageHashes();
-        return ClaimProcessorLib.processSplitClaimWithQualification.usingQualifiedSplitClaimWithWitness()(
-            messageHash, qualificationMessageHash, claimPayload, 0x120, typehash, _domainSeparator(), operation
-        );
+        return ClaimProcessorLib.processSplitClaimWithQualification.usingQualifiedSplitClaimWithWitness()(messageHash, qualificationMessageHash, claimPayload, 0x120, typehash, _domainSeparator(), operation);
     }
 
     ///// 2. Batch Claims /////
@@ -204,14 +196,11 @@ contract ClaimProcessorLogic is SharedLogic {
         returns (bool)
     {
         (bytes32 messageHash, bytes32 qualificationMessageHash, bytes32 typehash) = claimPayload.toMessageHashes();
-        return ClaimProcessorLib.processBatchClaimWithQualification.usingQualifiedBatchClaimWithWitness()(
-            messageHash, qualificationMessageHash, claimPayload, 0x120, typehash, _domainSeparator(), operation
-        );
+        return ClaimProcessorLib.processBatchClaimWithQualification.usingQualifiedBatchClaimWithWitness()(messageHash, qualificationMessageHash, claimPayload, 0x120, typehash, _domainSeparator(), operation);
     }
 
     function _processSplitBatchClaim(SplitBatchClaim calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation) internal returns (bool) {
-        return
-            ClaimProcessorLib.processSimpleSplitBatchClaim.usingSplitBatchClaim()(claimPayload.toClaimHash(), claimPayload, 0xa0, uint256(1).asStubborn().typehashes(), _domainSeparator(), operation);
+        return ClaimProcessorLib.processSimpleSplitBatchClaim.usingSplitBatchClaim()(claimPayload.toClaimHash(), claimPayload, 0xa0, uint256(1).asStubborn().typehashes(), _domainSeparator(), operation);
     }
 
     function _processQualifiedSplitBatchClaim(QualifiedSplitBatchClaim calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation) internal returns (bool) {
@@ -221,10 +210,7 @@ contract ClaimProcessorLogic is SharedLogic {
         );
     }
 
-    function _processSplitBatchClaimWithWitness(SplitBatchClaimWithWitness calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation)
-        internal
-        returns (bool)
-    {
+    function _processSplitBatchClaimWithWitness(SplitBatchClaimWithWitness calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation) internal returns (bool) {
         (bytes32 messageHash, bytes32 typehash) = claimPayload.toMessageHashes();
         return ClaimProcessorLib.processSimpleSplitBatchClaim.usingSplitBatchClaimWithWitness()(messageHash, claimPayload, 0xe0, typehash, _domainSeparator(), operation);
     }
@@ -251,10 +237,7 @@ contract ClaimProcessorLogic is SharedLogic {
         );
     }
 
-    function _processMultichainClaimWithWitness(MultichainClaimWithWitness calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation)
-        internal
-        returns (bool)
-    {
+    function _processMultichainClaimWithWitness(MultichainClaimWithWitness calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation) internal returns (bool) {
         (bytes32 messageHash, bytes32 typehash) = claimPayload.toMessageHashes();
         return ClaimProcessorLib.processSimpleClaim.usingMultichainClaimWithWitness()(messageHash, claimPayload, 0x100, typehash, _domainSeparator(), operation);
     }
@@ -264,20 +247,14 @@ contract ClaimProcessorLogic is SharedLogic {
         returns (bool)
     {
         (bytes32 messageHash, bytes32 qualificationMessageHash, bytes32 typehash) = claimPayload.toMessageHashes();
-        return ClaimProcessorLib.processClaimWithQualification.usingQualifiedMultichainClaimWithWitness()(
-            messageHash, qualificationMessageHash, claimPayload, 0x140, typehash, _domainSeparator(), operation
-        );
+        return ClaimProcessorLib.processClaimWithQualification.usingQualifiedMultichainClaimWithWitness()(messageHash, qualificationMessageHash, claimPayload, 0x140, typehash, _domainSeparator(), operation);
     }
 
     function _processSplitMultichainClaim(SplitMultichainClaim calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation) internal returns (bool) {
-        return
-            ClaimProcessorLib.processSimpleSplitClaim.usingSplitMultichainClaim()(claimPayload.toClaimHash(), claimPayload, 0xc0, uint256(2).asStubborn().typehashes(), _domainSeparator(), operation);
+        return ClaimProcessorLib.processSimpleSplitClaim.usingSplitMultichainClaim()(claimPayload.toClaimHash(), claimPayload, 0xc0, uint256(2).asStubborn().typehashes(), _domainSeparator(), operation);
     }
 
-    function _processQualifiedSplitMultichainClaim(QualifiedSplitMultichainClaim calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation)
-        internal
-        returns (bool)
-    {
+    function _processQualifiedSplitMultichainClaim(QualifiedSplitMultichainClaim calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation) internal returns (bool) {
         (bytes32 messageHash, bytes32 qualificationMessageHash) = claimPayload.toMessageHashes();
         return ClaimProcessorLib.processSplitClaimWithQualification.usingQualifiedSplitMultichainClaim()(
             messageHash, qualificationMessageHash, claimPayload, 0x100, uint256(2).asStubborn().typehashes(), _domainSeparator(), operation
@@ -292,10 +269,10 @@ contract ClaimProcessorLogic is SharedLogic {
         return ClaimProcessorLib.processSimpleSplitClaim.usingSplitMultichainClaimWithWitness()(messageHash, claimPayload, 0x100, typehash, _domainSeparator(), operation);
     }
 
-    function _processQualifiedSplitMultichainClaimWithWitness(
-        QualifiedSplitMultichainClaimWithWitness calldata claimPayload,
-        function(address, address, uint256, uint256) internal returns (bool) operation
-    ) internal returns (bool) {
+    function _processQualifiedSplitMultichainClaimWithWitness(QualifiedSplitMultichainClaimWithWitness calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation)
+        internal
+        returns (bool)
+    {
         (bytes32 messageHash, bytes32 qualificationMessageHash, bytes32 typehash) = claimPayload.toMessageHashes();
         return ClaimProcessorLib.processSplitClaimWithQualification.usingQualifiedSplitMultichainClaimWithWitness()(
             messageHash, qualificationMessageHash, claimPayload, 0x140, typehash, _domainSeparator(), operation
@@ -304,14 +281,10 @@ contract ClaimProcessorLogic is SharedLogic {
 
     ///// 4. Batch Multichain Claims /////
     function _processBatchMultichainClaim(BatchMultichainClaim calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation) internal returns (bool) {
-        return
-            ClaimProcessorLib.processSimpleBatchClaim.usingBatchMultichainClaim()(claimPayload.toClaimHash(), claimPayload, 0xc0, uint256(2).asStubborn().typehashes(), _domainSeparator(), operation);
+        return ClaimProcessorLib.processSimpleBatchClaim.usingBatchMultichainClaim()(claimPayload.toClaimHash(), claimPayload, 0xc0, uint256(2).asStubborn().typehashes(), _domainSeparator(), operation);
     }
 
-    function _processQualifiedBatchMultichainClaim(QualifiedBatchMultichainClaim calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation)
-        internal
-        returns (bool)
-    {
+    function _processQualifiedBatchMultichainClaim(QualifiedBatchMultichainClaim calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation) internal returns (bool) {
         (bytes32 messageHash, bytes32 qualificationMessageHash) = claimPayload.toMessageHashes();
         return ClaimProcessorLib.processBatchClaimWithQualification.usingQualifiedBatchMultichainClaim()(
             messageHash, qualificationMessageHash, claimPayload, 0x100, uint256(2).asStubborn().typehashes(), _domainSeparator(), operation
@@ -326,23 +299,19 @@ contract ClaimProcessorLogic is SharedLogic {
         return ClaimProcessorLib.processSimpleBatchClaim.usingBatchMultichainClaimWithWitness()(messageHash, claimPayload, 0x100, typehash, _domainSeparator(), operation);
     }
 
-    function _processQualifiedBatchMultichainClaimWithWitness(
-        QualifiedBatchMultichainClaimWithWitness calldata claimPayload,
-        function(address, address, uint256, uint256) internal returns (bool) operation
-    ) internal returns (bool) {
+    function _processQualifiedBatchMultichainClaimWithWitness(QualifiedBatchMultichainClaimWithWitness calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation)
+        internal
+        returns (bool)
+    {
         (bytes32 messageHash, bytes32 qualificationMessageHash, bytes32 typehash) = claimPayload.toMessageHashes();
         return ClaimProcessorLib.processBatchClaimWithQualification.usingQualifiedBatchMultichainClaimWithWitness()(
             messageHash, qualificationMessageHash, claimPayload, 0x140, typehash, _domainSeparator(), operation
         );
     }
 
-    function _processSplitBatchMultichainClaim(SplitBatchMultichainClaim calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation)
-        internal
-        returns (bool)
-    {
-        return ClaimProcessorLib.processSimpleSplitBatchClaim.usingSplitBatchMultichainClaim()(
-            claimPayload.toClaimHash(), claimPayload, 0xc0, uint256(2).asStubborn().typehashes(), _domainSeparator(), operation
-        );
+    function _processSplitBatchMultichainClaim(SplitBatchMultichainClaim calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation) internal returns (bool) {
+        return
+            ClaimProcessorLib.processSimpleSplitBatchClaim.usingSplitBatchMultichainClaim()(claimPayload.toClaimHash(), claimPayload, 0xc0, uint256(2).asStubborn().typehashes(), _domainSeparator(), operation);
     }
 
     function _processQualifiedSplitBatchMultichainClaim(QualifiedSplitBatchMultichainClaim calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation)
@@ -410,29 +379,26 @@ contract ClaimProcessorLogic is SharedLogic {
         );
     }
 
-    function _processExogenousSplitMultichainClaim(ExogenousSplitMultichainClaim calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation)
-        internal
-        returns (bool)
-    {
+    function _processExogenousSplitMultichainClaim(ExogenousSplitMultichainClaim calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation) internal returns (bool) {
         return ClaimProcessorLib.processSplitClaimWithSponsorDomain.usingExogenousSplitMultichainClaim()(
             claimPayload.toClaimHash(), claimPayload, 0x100, claimPayload.notarizedChainId.toNotarizedDomainSeparator(), uint256(2).asStubborn().typehashes(), _domainSeparator(), operation
         );
     }
 
-    function _processExogenousQualifiedSplitMultichainClaim(
-        ExogenousQualifiedSplitMultichainClaim calldata claimPayload,
-        function(address, address, uint256, uint256) internal returns (bool) operation
-    ) internal returns (bool) {
+    function _processExogenousQualifiedSplitMultichainClaim(ExogenousQualifiedSplitMultichainClaim calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation)
+        internal
+        returns (bool)
+    {
         (bytes32 messageHash, bytes32 qualificationMessageHash) = claimPayload.toMessageHashes();
         return ClaimProcessorLib.processSplitClaimWithQualificationAndSponsorDomain.usingExogenousQualifiedSplitMultichainClaim()(
             messageHash, qualificationMessageHash, claimPayload, 0x140, claimPayload.notarizedChainId.toNotarizedDomainSeparator(), uint256(2).asStubborn().typehashes(), _domainSeparator(), operation
         );
     }
 
-    function _processExogenousSplitMultichainClaimWithWitness(
-        ExogenousSplitMultichainClaimWithWitness calldata claimPayload,
-        function(address, address, uint256, uint256) internal returns (bool) operation
-    ) internal returns (bool) {
+    function _processExogenousSplitMultichainClaimWithWitness(ExogenousSplitMultichainClaimWithWitness calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation)
+        internal
+        returns (bool)
+    {
         (bytes32 messageHash, bytes32 typehash) = claimPayload.toMessageHashes();
         return ClaimProcessorLib.processSplitClaimWithSponsorDomain.usingExogenousSplitMultichainClaimWithWitness()(
             messageHash, claimPayload, 0x140, claimPayload.notarizedChainId.toNotarizedDomainSeparator(), typehash, _domainSeparator(), operation
@@ -450,29 +416,26 @@ contract ClaimProcessorLogic is SharedLogic {
     }
 
     ///// 6. Exogenous Batch Multichain Claims /////
-    function _processExogenousBatchMultichainClaim(ExogenousBatchMultichainClaim calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation)
-        internal
-        returns (bool)
-    {
+    function _processExogenousBatchMultichainClaim(ExogenousBatchMultichainClaim calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation) internal returns (bool) {
         return ClaimProcessorLib.processBatchClaimWithSponsorDomain.usingExogenousBatchMultichainClaim()(
             claimPayload.toClaimHash(), claimPayload, 0x100, claimPayload.notarizedChainId.toNotarizedDomainSeparator(), uint256(2).asStubborn().typehashes(), _domainSeparator(), operation
         );
     }
 
-    function _processExogenousQualifiedBatchMultichainClaim(
-        ExogenousQualifiedBatchMultichainClaim calldata claimPayload,
-        function(address, address, uint256, uint256) internal returns (bool) operation
-    ) internal returns (bool) {
+    function _processExogenousQualifiedBatchMultichainClaim(ExogenousQualifiedBatchMultichainClaim calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation)
+        internal
+        returns (bool)
+    {
         (bytes32 messageHash, bytes32 qualificationMessageHash) = claimPayload.toMessageHashes();
         return ClaimProcessorLib.processBatchClaimWithQualificationAndSponsorDomain.usingExogenousQualifiedBatchMultichainClaim()(
             messageHash, qualificationMessageHash, claimPayload, 0x140, claimPayload.notarizedChainId.toNotarizedDomainSeparator(), uint256(2).asStubborn().typehashes(), _domainSeparator(), operation
         );
     }
 
-    function _processExogenousBatchMultichainClaimWithWitness(
-        ExogenousBatchMultichainClaimWithWitness calldata claimPayload,
-        function(address, address, uint256, uint256) internal returns (bool) operation
-    ) internal returns (bool) {
+    function _processExogenousBatchMultichainClaimWithWitness(ExogenousBatchMultichainClaimWithWitness calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation)
+        internal
+        returns (bool)
+    {
         (bytes32 messageHash, bytes32 typehash) = claimPayload.toMessageHashes();
         return ClaimProcessorLib.processBatchClaimWithSponsorDomain.usingExogenousBatchMultichainClaimWithWitness()(
             messageHash, claimPayload, 0x140, claimPayload.notarizedChainId.toNotarizedDomainSeparator(), typehash, _domainSeparator(), operation

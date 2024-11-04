@@ -39,7 +39,7 @@ import { TransferFunctionCastLib } from "./TransferFunctionCastLib.sol";
 library HashLib {
     using EfficiencyLib for bool;
     using EfficiencyLib for uint256;
-    using TransferFunctionCastLib for function (BatchTransfer calldata, uint256) internal view returns (bytes32);
+    using TransferFunctionCastLib for function(BatchTransfer calldata, uint256) internal view returns (bytes32);
     using HashLib for uint256;
     using HashLib for BatchTransfer;
 

@@ -36,7 +36,7 @@ contract TransferLogic is SharedLogic {
     using ValidityLib for uint96;
     using ValidityLib for uint256;
     using ValidityLib for bytes32;
-    using TransferFunctionCastLib for function (bytes32, address, BasicTransfer calldata) internal;
+    using TransferFunctionCastLib for function(bytes32, address, BasicTransfer calldata) internal;
     using TransferFunctionCastLib for function(TransferComponent[] calldata, uint256, function (TransferComponent[] calldata, uint256) internal pure returns (uint96)) internal returns (address);
 
     // bytes4(keccak256("attest(address,address,address,uint256,uint256)")).
@@ -85,9 +85,7 @@ contract TransferLogic is SharedLogic {
      */
     function _processBatchTransfer(BatchTransfer calldata transfer, function(address, address, uint256, uint256) internal returns (bool) operation) internal returns (bool) {
         // Derive hash, validate expiry, consume nonce, and check allocator signature.
-        _notExpiredAndSignedByAllocator.usingBatchTransfer()(
-            transfer.toClaimHash(), _deriveConsistentAllocatorAndConsumeNonce(transfer.transfers, transfer.nonce, _allocatorIdOfTransferComponentId), transfer
-        );
+        _notExpiredAndSignedByAllocator.usingBatchTransfer()(transfer.toClaimHash(), _deriveConsistentAllocatorAndConsumeNonce(transfer.transfers, transfer.nonce, _allocatorIdOfTransferComponentId), transfer);
 
         // Perform the batch transfers or withdrawals.
         return transfer.performBatchTransfer(operation);

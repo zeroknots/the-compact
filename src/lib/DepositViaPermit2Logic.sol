@@ -130,8 +130,7 @@ contract DepositViaPermit2Logic is DepositLogic {
     }
 
     function _depositBatchViaPermit2(ISignatureTransfer.TokenPermissions[] calldata permitted, address recipient, bytes calldata signature) internal returns (uint256[] memory) {
-        (uint256 totalTokensLessInitialNative, bool firstUnderlyingTokenIsNative, uint256[] memory ids, uint256[] memory initialTokenBalances) =
-            _preprocessAndPerformInitialNativeDeposit(permitted, recipient);
+        (uint256 totalTokensLessInitialNative, bool firstUnderlyingTokenIsNative, uint256[] memory ids, uint256[] memory initialTokenBalances) = _preprocessAndPerformInitialNativeDeposit(permitted, recipient);
 
         bytes32 witness = _deriveCompactDepositWitnessHash(uint256(0x84).asStubborn());
 
@@ -163,8 +162,7 @@ contract DepositViaPermit2Logic is DepositLogic {
         string calldata witness,
         bytes calldata signature
     ) internal returns (uint256[] memory) {
-        (uint256 totalTokensLessInitialNative, bool firstUnderlyingTokenIsNative, uint256[] memory ids, uint256[] memory initialTokenBalances) =
-            _preprocessAndPerformInitialNativeDeposit(permitted, depositor);
+        (uint256 totalTokensLessInitialNative, bool firstUnderlyingTokenIsNative, uint256[] memory ids, uint256[] memory initialTokenBalances) = _preprocessAndPerformInitialNativeDeposit(permitted, depositor);
 
         uint256 idsHash;
         assembly ("memory-safe") {
@@ -212,8 +210,7 @@ contract DepositViaPermit2Logic is DepositLogic {
             //  * the callvalue is zero but the first token is native
             //  * the callvalue is nonzero but the first token is non-native
             //  * the first token is non-native and the callvalue doesn't equal the first amount
-            if or(iszero(totalTokens), or(eq(firstUnderlyingTokenIsNative, iszero(callvalue())), and(firstUnderlyingTokenIsNative, iszero(eq(callvalue(), calldataload(add(permittedOffset, 0x20)))))))
-            {
+            if or(iszero(totalTokens), or(eq(firstUnderlyingTokenIsNative, iszero(callvalue())), and(firstUnderlyingTokenIsNative, iszero(eq(callvalue(), calldataload(add(permittedOffset, 0x20))))))) {
                 // revert InvalidBatchDepositStructure()
                 mstore(0, 0xca0fc08e)
                 revert(0x1c, 0x04)
@@ -332,13 +329,11 @@ contract DepositViaPermit2Logic is DepositLogic {
     }
 
     // NOTE: all tokens must be supplied in ascending order and cannot be duplicated.
-    function _prepareIdsAndGetBalances(
-        uint256[] memory ids,
-        uint256 totalTokensLessInitialNative,
-        bool firstUnderlyingTokenIsNative,
-        ISignatureTransfer.TokenPermissions[] calldata permitted,
-        uint256 id
-    ) private view returns (uint256[] memory tokenBalances) {
+    function _prepareIdsAndGetBalances(uint256[] memory ids, uint256 totalTokensLessInitialNative, bool firstUnderlyingTokenIsNative, ISignatureTransfer.TokenPermissions[] calldata permitted, uint256 id)
+        private
+        view
+        returns (uint256[] memory tokenBalances)
+    {
         unchecked {
             tokenBalances = new uint256[](totalTokensLessInitialNative);
 

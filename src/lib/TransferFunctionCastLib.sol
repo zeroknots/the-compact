@@ -46,11 +46,7 @@ library TransferFunctionCastLib {
      * @param fnIn   Function pointer to `TransferLogic._notExpiredAndSignedByAllocator`.
      * @return fnOut Modified function used in `TransferLogic._processSplitBatchTransfer`.
      */
-    function usingSplitBatchTransfer(function (bytes32, address, BasicTransfer calldata) internal fnIn)
-        internal
-        pure
-        returns (function (bytes32, address, SplitBatchTransfer calldata) internal fnOut)
-    {
+    function usingSplitBatchTransfer(function (bytes32, address, BasicTransfer calldata) internal fnIn) internal pure returns (function (bytes32, address, SplitBatchTransfer calldata) internal fnOut) {
         assembly ("memory-safe") {
             fnOut := fnIn
         }

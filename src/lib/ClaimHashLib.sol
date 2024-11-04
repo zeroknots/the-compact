@@ -71,7 +71,7 @@ import { ResetPeriod } from "../types/ResetPeriod.sol";
 import { Scope } from "../types/Scope.sol";
 
 import { EfficiencyLib } from "./EfficiencyLib.sol";
-import { FunctionCastLib } from "./FunctionCastLib.sol";
+import { ClaimHashFunctionCastLib } from "./ClaimHashFunctionCastLib.sol";
 import { HashLib } from "./HashLib.sol";
 
 /**
@@ -80,25 +80,25 @@ import { HashLib } from "./HashLib.sol";
  * claims, allocated transfers, and withdrawals.
  */
 library ClaimHashLib {
+    using ClaimHashFunctionCastLib for function(uint256, uint256) internal pure returns (uint256);
+    using ClaimHashFunctionCastLib for function(uint256, uint256) internal view returns (bytes32, bytes32);
+    using ClaimHashFunctionCastLib for function(uint256, uint256, function(uint256, uint256) internal view returns (bytes32)) internal view returns (bytes32);
+    using ClaimHashFunctionCastLib for function(uint256, uint256, function(uint256, uint256) internal view returns (bytes32)) internal view returns (bytes32, bytes32);
+    using ClaimHashFunctionCastLib for function(uint256, uint256, function(uint256, uint256, bytes32, bytes32, uint256) internal view returns (bytes32)) internal view returns (bytes32, bytes32);
+    using ClaimHashFunctionCastLib for function(uint256, uint256, function(uint256, uint256) internal view returns (bytes32, bytes32)) internal view returns (bytes32, bytes32, bytes32);
+    using ClaimHashFunctionCastLib for function(uint256, uint256, function (uint256, uint256, bytes32, bytes32, uint256) internal view returns (bytes32)) internal view returns (bytes32, bytes32, bytes32);
+    using ClaimHashFunctionCastLib for function(BasicClaim calldata) internal view returns (bytes32);
+    using ClaimHashFunctionCastLib for function(MultichainClaim calldata) internal view returns (bytes32);
+    using ClaimHashFunctionCastLib for function(ExogenousMultichainClaim calldata) internal view returns (bytes32);
+    using ClaimHashFunctionCastLib for function(QualifiedClaim calldata) internal view returns (bytes32, bytes32);
+    using ClaimHashFunctionCastLib for function(QualifiedMultichainClaim calldata) internal view returns (bytes32, bytes32);
+    using ClaimHashFunctionCastLib for function(ExogenousQualifiedMultichainClaim calldata) internal view returns (bytes32, bytes32);
+    using ClaimHashFunctionCastLib for function(MultichainClaimWithWitness calldata) internal view returns (bytes32, bytes32);
+    using ClaimHashFunctionCastLib for function(ExogenousMultichainClaimWithWitness calldata) internal view returns (bytes32, bytes32);
+    using ClaimHashFunctionCastLib for function(QualifiedClaimWithWitness calldata) internal view returns (bytes32, bytes32, bytes32);
+    using ClaimHashFunctionCastLib for function(QualifiedMultichainClaimWithWitness calldata) internal view returns (bytes32, bytes32, bytes32);
+    using ClaimHashFunctionCastLib for function(ExogenousQualifiedMultichainClaimWithWitness calldata) internal view returns (bytes32, bytes32, bytes32);
     using EfficiencyLib for uint256;
-    using FunctionCastLib for function (uint256, uint256) internal pure returns (uint256);
-    using FunctionCastLib for function (uint256, uint256) internal view returns (bytes32, bytes32);
-    using FunctionCastLib for function (uint256, uint256, function(uint256, uint256) internal view returns (bytes32)) internal view returns (bytes32);
-    using FunctionCastLib for function (uint256, uint256, function(uint256, uint256) internal view returns (bytes32)) internal view returns (bytes32, bytes32);
-    using FunctionCastLib for function (uint256, uint256, function(uint256, uint256, bytes32, bytes32, uint256) internal view returns (bytes32)) internal view returns (bytes32, bytes32);
-    using FunctionCastLib for function (uint256, uint256, function(uint256, uint256) internal view returns (bytes32, bytes32)) internal view returns (bytes32, bytes32, bytes32);
-    using FunctionCastLib for function (uint256, uint256, function (uint256, uint256, bytes32, bytes32, uint256) internal view returns (bytes32)) internal view returns (bytes32, bytes32, bytes32);
-    using FunctionCastLib for function (BasicClaim calldata) internal view returns (bytes32);
-    using FunctionCastLib for function (MultichainClaim calldata) internal view returns (bytes32);
-    using FunctionCastLib for function (ExogenousMultichainClaim calldata) internal view returns (bytes32);
-    using FunctionCastLib for function (QualifiedClaim calldata) internal view returns (bytes32, bytes32);
-    using FunctionCastLib for function (QualifiedMultichainClaim calldata) internal view returns (bytes32, bytes32);
-    using FunctionCastLib for function (ExogenousQualifiedMultichainClaim calldata) internal view returns (bytes32, bytes32);
-    using FunctionCastLib for function (MultichainClaimWithWitness calldata) internal view returns (bytes32, bytes32);
-    using FunctionCastLib for function (ExogenousMultichainClaimWithWitness calldata) internal view returns (bytes32, bytes32);
-    using FunctionCastLib for function (QualifiedClaimWithWitness calldata) internal view returns (bytes32, bytes32, bytes32);
-    using FunctionCastLib for function (QualifiedMultichainClaimWithWitness calldata) internal view returns (bytes32, bytes32, bytes32);
-    using FunctionCastLib for function (ExogenousQualifiedMultichainClaimWithWitness calldata) internal view returns (bytes32, bytes32, bytes32);
     using HashLib for uint256;
     using HashLib for BatchClaimComponent[];
     using HashLib for SplitBatchClaimComponent[];
@@ -215,14 +215,12 @@ library ClaimHashLib {
     }
 
     function toMessageHashes(ExogenousQualifiedBatchMultichainClaim calldata claim) internal view returns (bytes32 claimHash, bytes32 qualificationHash) {
-        return
-            _toGenericMessageHashWithQualificationHash.usingExogenousQualifiedBatchMultichainClaim()(claim, claim.claims.toIdsAndAmountsHash(), HashLib.toExogenousQualifiedMultichainClaimMessageHash);
+        return _toGenericMessageHashWithQualificationHash.usingExogenousQualifiedBatchMultichainClaim()(claim, claim.claims.toIdsAndAmountsHash(), HashLib.toExogenousQualifiedMultichainClaimMessageHash);
     }
 
     function toMessageHashes(ExogenousQualifiedSplitBatchMultichainClaim calldata claim) internal view returns (bytes32 claimHash, bytes32 qualificationHash) {
-        return _toGenericMessageHashWithQualificationHash.usingExogenousQualifiedSplitBatchMultichainClaim()(
-            claim, claim.claims.toSplitIdsAndAmountsHash(), HashLib.toExogenousQualifiedMultichainClaimMessageHash
-        );
+        return
+            _toGenericMessageHashWithQualificationHash.usingExogenousQualifiedSplitBatchMultichainClaim()(claim, claim.claims.toSplitIdsAndAmountsHash(), HashLib.toExogenousQualifiedMultichainClaimMessageHash);
     }
 
     ///// CATEGORY 4: Claim with witness message & type hashes /////
@@ -271,9 +269,7 @@ library ClaimHashLib {
     }
 
     function toMessageHashes(ExogenousSplitBatchMultichainClaimWithWitness calldata claim) internal view returns (bytes32 claimHash, bytes32 typehash) {
-        return _toGenericMultichainClaimWithWitnessMessageHash.usingExogenousSplitBatchMultichainClaimWithWitness()(
-            claim, claim.claims.toSplitIdsAndAmountsHash(), HashLib.toExogenousMultichainClaimMessageHash
-        );
+        return _toGenericMultichainClaimWithWitnessMessageHash.usingExogenousSplitBatchMultichainClaimWithWitness()(claim, claim.claims.toSplitIdsAndAmountsHash(), HashLib.toExogenousMultichainClaimMessageHash);
     }
 
     ///// CATEGORY 5: Qualified claim with witness message, qualification, & type hashes /////
@@ -306,9 +302,7 @@ library ClaimHashLib {
     }
 
     function toMessageHashes(QualifiedSplitBatchMultichainClaimWithWitness calldata claim) internal view returns (bytes32 claimHash, bytes32 qualificationHash, bytes32 typehash) {
-        return _toGenericQualifiedMultichainClaimWithWitnessMessageHash.usingQualifiedSplitBatchMultichainClaimWithWitness()(
-            claim, claim.claims.toSplitIdsAndAmountsHash(), HashLib.toMultichainClaimMessageHash
-        );
+        return _toGenericQualifiedMultichainClaimWithWitnessMessageHash.usingQualifiedSplitBatchMultichainClaimWithWitness()(claim, claim.claims.toSplitIdsAndAmountsHash(), HashLib.toMultichainClaimMessageHash);
     }
 
     function toMessageHashes(ExogenousQualifiedMultichainClaimWithWitness calldata claim) internal view returns (bytes32 claimHash, bytes32 qualificationHash, bytes32 typehash) {
@@ -418,20 +412,16 @@ library ClaimHashLib {
         return _toGenericQualifiedClaimWithWitnessMessageHash.usingQualifiedClaimWithWitness()(claim, uint256(0x40).asStubborn(), HashLib.toMessageHashWithWitness);
     }
 
-    function _toGenericQualifiedMultichainClaimWithWitnessMessageHash(
-        uint256 claim,
-        uint256 additionalInput,
-        function (uint256, uint256, bytes32, bytes32, uint256) internal view returns (bytes32) hashFn
-    ) private view returns (bytes32, /* claimHash */ bytes32 qualificationHash, bytes32 /* typehash */ ) {
+    function _toGenericQualifiedMultichainClaimWithWitnessMessageHash(uint256 claim, uint256 additionalInput, function (uint256, uint256, bytes32, bytes32, uint256) internal view returns (bytes32) hashFn)
+        private
+        view
+        returns (bytes32, /* claimHash */ bytes32 qualificationHash, bytes32 /* typehash */ )
+    {
         (bytes32 messageHash, bytes32 typehash) = _toGenericMultichainClaimWithWitnessMessageHashPriorToQualification(claim, additionalInput, hashFn);
         return (messageHash, claim.toQualificationMessageHash(messageHash, uint256(0x40).asStubborn()), typehash);
     }
 
-    function _toQualifiedMultichainClaimWithWitnessMessageHash(QualifiedMultichainClaimWithWitness calldata claim)
-        private
-        view
-        returns (bytes32 claimHash, bytes32 qualificationHash, bytes32 typehash)
-    {
+    function _toQualifiedMultichainClaimWithWitnessMessageHash(QualifiedMultichainClaimWithWitness calldata claim) private view returns (bytes32 claimHash, bytes32 qualificationHash, bytes32 typehash) {
         return _toGenericQualifiedMultichainClaimWithWitnessMessageHash.usingQualifiedMultichainClaimWithWitness()(
             claim, HashLib.toSingleIdAndAmountHash.usingQualifiedMultichainClaimWithWitness()(claim, uint256(0x80).asStubborn()), HashLib.toMultichainClaimMessageHash
         );
