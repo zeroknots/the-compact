@@ -9,7 +9,7 @@ import { ClaimHashLib } from "./ClaimHashLib.sol";
 import { ComponentLib } from "./ComponentLib.sol";
 import { EfficiencyLib } from "./EfficiencyLib.sol";
 import { EventLib } from "./EventLib.sol";
-import { FunctionCastLib } from "./FunctionCastLib.sol";
+import { TransferLogicFunctionCastLib } from "./TransferLogicFunctionCastLib.sol";
 import { IdLib } from "./IdLib.sol";
 import { SharedLogic } from "./SharedLogic.sol";
 import { ValidityLib } from "./ValidityLib.sol";
@@ -36,8 +36,8 @@ contract TransferLogic is SharedLogic {
     using ValidityLib for uint96;
     using ValidityLib for uint256;
     using ValidityLib for bytes32;
-    using FunctionCastLib for function (bytes32, address, BasicTransfer calldata) internal;
-    using FunctionCastLib for function(TransferComponent[] calldata, uint256, function (TransferComponent[] calldata, uint256) internal pure returns (uint96)) internal returns (address);
+    using TransferLogicFunctionCastLib for function (bytes32, address, BasicTransfer calldata) internal;
+    using TransferLogicFunctionCastLib for function(TransferComponent[] calldata, uint256, function (TransferComponent[] calldata, uint256) internal pure returns (uint96)) internal returns (address);
 
     // bytes4(keccak256("attest(address,address,address,uint256,uint256)")).
     uint32 private constant _ATTEST_SELECTOR = 0x1a808f91;
