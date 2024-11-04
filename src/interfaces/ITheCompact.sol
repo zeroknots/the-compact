@@ -193,18 +193,9 @@ interface ITheCompact {
      * @param signature   The Permit2 signature from the depositor authorizing the deposit.
      * @return id         The ERC6909 token identifier of the associated resource lock.
      */
-    function deposit(
-        address token,
-        uint256 amount,
-        uint256 nonce,
-        uint256 deadline,
-        address depositor,
-        address allocator,
-        ResetPeriod resetPeriod,
-        Scope scope,
-        address recipient,
-        bytes calldata signature
-    ) external returns (uint256 id);
+    function deposit(address token, uint256 amount, uint256 nonce, uint256 deadline, address depositor, address allocator, ResetPeriod resetPeriod, Scope scope, address recipient, bytes calldata signature)
+        external
+        returns (uint256 id);
 
     /**
      * @notice External function for depositing ERC20 tokens using Permit2 authorization and
