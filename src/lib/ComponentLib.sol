@@ -44,23 +44,8 @@ library ComponentLib {
      * @return          Whether the transfer was successfully processed.
      */
     function processSplitTransfer(SplitTransfer calldata transfer, function(address, address, uint256, uint256) internal returns (bool) operation) internal returns (bool) {
-        // Navigate to the split components in calldata.
-        SplitComponent[] calldata recipients = transfer.recipients;
-
-        // Retrieve the resource lock ID and the total number of components.
-        uint256 id = transfer.id;
-        uint256 totalSplits = recipients.length;
-
-        unchecked {
-            // Iterate over each additional component in calldata.
-            for (uint256 i = 0; i < totalSplits; ++i) {
-                // Navigate to location of the component in calldata.
-                SplitComponent calldata component = recipients[i];
-
-                // Perform the transfer or withdrawal for the portion.
-                operation(msg.sender, component.claimant, id, component.amount);
-            }
-        }
+        // Process the transfer for each split component.
+        _processSplitTransferComponents(transfer.recipients, transfer.id, operation);
 
         return true;
     }
@@ -104,9 +89,6 @@ library ComponentLib {
      * @return          Whether the transfer was successfully processed.
      */
     function performSplitBatchTransfer(SplitBatchTransfer calldata transfer, function(address, address, uint256, uint256) internal returns (bool) operation) internal returns (bool) {
-        // Declare a variable for tracking the id of each component.
-        uint256 id;
-
         // Navigate to the split batch components array in calldata.
         SplitByIdComponent[] calldata transfers = transfer.transfers;
 
@@ -119,23 +101,8 @@ library ComponentLib {
                 // Navigate to location of the component in calldata.
                 SplitByIdComponent calldata component = transfers[i];
 
-                // Retrieve the id for the component.
-                id = component.id;
-
-                // Navigate to location of component portions in calldata.
-                SplitComponent[] calldata portions = component.portions;
-
-                // Retrieve the total number of portions on the component.
-                uint256 totalPortions = portions.length;
-
-                // Iterate over each portion in calldata.
-                for (uint256 j = 0; j < totalPortions; ++j) {
-                    // Navigate to the location of the portion in calldata.
-                    SplitComponent calldata portion = portions[j];
-
-                    // Perform the transfer or withdrawal for the portion.
-                    operation(msg.sender, portion.claimant, id, portion.amount);
-                }
+                // Process transfer for each split component in the set.
+                _processSplitTransferComponents(component.portions, component.id, operation);
             }
         }
 
@@ -249,20 +216,13 @@ library ComponentLib {
 
         // Revert if the batch is empty.
         uint256 totalClaims = claims.length;
-        assembly ("memory-safe") {
-            if iszero(totalClaims) {
-                // revert InvalidBatchAllocation()
-                mstore(0, 0x3a03d3bb)
-                revert(0x1c, 0x04)
-            }
-        }
 
         // Process first claim and initialize error tracking.
         // NOTE: many of the bounds checks on these array accesses can be skipped as an optimization
         BatchClaimComponent calldata component = claims[0];
         uint256 id = component.id;
         uint256 amount = component.amount;
-        uint256 errorBuffer = component.allocatedAmount.allocationExceededOrScopeNotMultichain(amount, id, sponsorDomainSeparator).asUint256();
+        uint256 errorBuffer = (totalClaims == 0).or(component.allocatedAmount.allocationExceededOrScopeNotMultichain(amount, id, sponsorDomainSeparator)).asUint256();
 
         // Execute transfer or withdrawal for first claim.
         operation(sponsor, claimant, id, amount);
@@ -278,21 +238,7 @@ library ComponentLib {
                 operation(sponsor, claimant, id, amount);
             }
 
-            // If any errors occurred, identify specific failures and revert.
-            if (errorBuffer.asBool()) {
-                for (uint256 i = 0; i < totalClaims; ++i) {
-                    component = claims[i];
-                    component.amount.withinAllocated(component.allocatedAmount);
-                    id = component.id;
-                    sponsorDomainSeparator.ensureValidScope(component.id);
-                }
-
-                assembly ("memory-safe") {
-                    // revert InvalidBatchAllocation()
-                    mstore(0, 0x3a03d3bb)
-                    revert(0x1c, 0x04)
-                }
-            }
+            _revertWithInvalidBatchAllocationIfError(errorBuffer);
         }
 
         return true;
@@ -358,18 +304,8 @@ library ComponentLib {
                 claimComponent.portions.verifyAndProcessSplitComponents(sponsor, id, claimComponent.allocatedAmount, operation);
             }
 
-            // If any errors occurred, identify specific scope failures and revert.
-            if (errorBuffer.asBool()) {
-                for (uint256 i = 0; i < totalClaims; ++i) {
-                    sponsorDomainSeparator.ensureValidScope(claims[i].id);
-                }
-
-                assembly ("memory-safe") {
-                    // revert InvalidBatchAllocation()
-                    mstore(0, 0x3a03d3bb)
-                    revert(0x1c, 0x04)
-                }
-            }
+            // Revert if any errors occurred.
+            _revertWithInvalidBatchAllocationIfError(errorBuffer);
         }
 
         return true;
@@ -428,5 +364,45 @@ library ComponentLib {
         }
 
         return true;
+    }
+
+    /**
+     * @notice Private function for performing a set of split transfers or withdrawals
+     * given an array of split components and an ID for an associated resource lock.
+     * Executes the transfer or withdrawal operation targeting multiple recipients.
+     * @param recipients A SplitComponent struct array containing split transfer details.
+     * @param id         The ERC6909 token identifier of the resource lock.
+     * @param operation  Function pointer to either _release or _withdraw for executing the claim.
+     */
+    function _processSplitTransferComponents(SplitComponent[] calldata recipients, uint256 id, function(address, address, uint256, uint256) internal returns (bool) operation) private {
+        // Retrieve the total number of components.
+        uint256 totalSplits = recipients.length;
+
+        unchecked {
+            // Iterate over each additional component in calldata.
+            for (uint256 i = 0; i < totalSplits; ++i) {
+                // Navigate to location of the component in calldata.
+                SplitComponent calldata component = recipients[i];
+
+                // Perform the transfer or withdrawal for the portion.
+                operation(msg.sender, component.claimant, id, component.amount);
+            }
+        }
+    }
+
+    /**
+     * @notice Private pure function that reverts with an InvalidBatchAllocation error
+     * if an error buffer is nonzero.
+     * @param errorBuffer The error buffer to check.
+     */
+    function _revertWithInvalidBatchAllocationIfError(uint256 errorBuffer) private pure {
+        // Revert if any errors occurred.
+        assembly ("memory-safe") {
+            if errorBuffer {
+                // revert InvalidBatchAllocation()
+                mstore(0, 0x3a03d3bb)
+                revert(0x1c, 0x04)
+            }
+        }
     }
 }

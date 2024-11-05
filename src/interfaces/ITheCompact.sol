@@ -567,4 +567,5 @@ interface ITheCompact {
     error InvalidDepositBalanceChange();
     error Permit2CallFailed();
     error InvalidRegistrationDuration(uint256 duration);
+    error ReentrantCall(address existingCaller);
 }

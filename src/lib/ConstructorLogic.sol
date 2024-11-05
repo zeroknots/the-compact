@@ -57,10 +57,27 @@ contract ConstructorLogic is Tstorish {
 
     /**
      * @notice Internal function to set the reentrancy guard using either TSTORE or SSTORE.
-     * Called as part of functions that require reentrancy protection.
+     * Called as part of functions that require reentrancy protection. Reverts if called
+     * again before the reentrancy guard has been cleared.
+     * @dev Note that the caller is set to the value; this enables external contracts to
+     * ascertain the account originating the ongoing call while handling the call as long
+     * as exttload is available.
      */
     function _setReentrancyGuard() internal {
-        _setTstorish(_REENTRANCY_GUARD_SLOT, 1);
+        uint256 entered = _getTstorish(_REENTRANCY_GUARD_SLOT);
+
+        assembly ("memory-safe") {
+            if entered {
+                // revert ReentrantCall(address existingCaller)
+                mstore(0, 0xf57c448b)
+                mstore(0x20, entered)
+                revert(0x1c, 0x24)
+            }
+
+            entered := caller()
+        }
+
+        _setTstorish(_REENTRANCY_GUARD_SLOT, entered);
     }
 
     /**
