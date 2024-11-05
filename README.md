@@ -716,6 +716,19 @@ In addition to standard ERC6909 view functions, The Compact includes the followi
 
 
 ## Contract Layout
-The Compact is primarily represented by a single deployed contract, with the exception of a metadata renderer that it calls to retrieve information on ERC6909 tokenURI metadata for resource locks. That said, the underlying code is spread across multiple inherited logic contracts.
+The Compact is primarily represented by a single deployed contract, with the exception of a metadata renderer that it calls to retrieve information on ERC6909 tokenURI metadata for resource locks. The deployed contract is comprised of multiple inherited logic contracts which in turn make extensive use of various library contracts. A shared set of struct and enum types are utilized throughout the codebase and as a component in many function interfaces.
 
 ![TheCompact Inheritance Graph](images/TheCompact-Inheritance-Graph.png)
+
+The core interface is divided into two parts: one designed to be called by depositors, allocators, and other general-purpose entities, and one designed to be called by arbiters as part of processing claims.
+
+## The Path to V1
+The Compact is currently in _**Version 0**_ — this version is meant to serve as a fully-featured proof-of-concept so that development of contracts and infrastructure related to arbiters and allocators can commence in earnest.
+
+> Important reminder: Version 0 lacks rigorous testing, review, or audits. Exercise caution and prudence when interacting with it until it has reached a more mature state. Version 1 will incorporate various bugfixes and improvements informed by integration with additional actors in the system and by more extensive scrutiny of its security.
+
+Candidate features for Version 1 to consider when reviewing or integrating with Version 0 include:
+ - Revising the interface between The Compact and allocators — currently, allocators authorize claims via direct calls (i.e. arbiter == allocator), ECDSA signatures, or EIP-1271 `isValidSignature(bytes32 domainHash, bytes signature) external view` calls. This may prove overly restrictive for many use-cases, including fully onchain varieties of allocator (especially when the allocator and the arbiter are not the same entity). Alternatives to consider include a stateful callback and/or the use of transient storage to register key details concerning the claim so that allocators and other actors can access them when needed.
+ - Revisiting function dispatch and reentrancy guard mechanics — in Version 0, function dispatch and standard solidity function ABI decoding consumes a significant amount of total gas expenditure and available contract size due to the sheer number of external functions supported. Furthermore, reentrancy guards are set and cleared on an as-needed basis, and not at the initial entrypoint to the contract. One alternative is to include a top-level fallback function with a global reentrancy lock and custom dispatch for processing claims or other external calls based on detected properties of the call.
+ - Reworking metadata — Version 0 implements relatively rudimentary metadata rendering. Version 1 should improve on this metadata, particularly as it relates to images and other rich metadata, without compromising on the core autonomy and reproducibility present in Version 0.
+ - General optimization: Version 0 already contains a significant amount of low-level code in order to succintly represent the necessary logic. Version 1 could improve on overall efficiency by implementing further optimizations and by bringing the codesize down further to allow for dialing up compiler optimization.
