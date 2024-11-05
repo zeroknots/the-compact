@@ -8,7 +8,7 @@
 ## Summary
 The Compact is an ownerless ERC6909 contract that facilitates the voluntary formation (and, if necessary, eventual dissolution) of reusable resource locks.
 
-Resource locks are entered into by ERC20 or native token holders, called the _**sponsor**_. Once a resource lock has been established, sponsors can create a compact, or a commitment allowing interested parties to claim their tokens through an _**arbiter**_ indicated by the sponsor that attests to the specified conditions of the compact having been met.
+Resource locks are entered into by ERC20 or native token holders, called the _**depositor**_. Once a resource lock has been established, the owner of the ERC6909 token representing a resource lock can act as a _**sponsor**_ and create a _**compact**_. A compact is a commitment allowing interested parties to claim their tokens through the sponsor's indicated _**arbiter**_. The arbiter is then responsible for processing the claim once it has attested to the specified conditions of the compact having been met.
 
 Each resource lock is mediated by an _**allocator**_, tasked with attesting to the availability of the underlying token balances and preserving the balances required for the commitments they have attested to; in other words, an allocator ensures that sponsors do not "double-spend," transfer, or withdraw any token balances that are already committed to a specific compact.
 
@@ -22,7 +22,7 @@ The Compact effectively "activates" any deposited tokens to be instantly spent o
 
 Sponsors have recourse from potential censorship in the form of a "forced withdrawal." When depositing tokens into a resource lock, the sponsor provides a "reset period" as a parameter. Then, the sponsor can initiate a forced withdrawal at any point; after the reset period has elapsed, the full token balance can be withdrawn regardless of any pending claims on their balance. In the case of cross-chain swaps, reset periods only need to be long enough for the claim to finalize (generally some multiple of the slowest blockchain involved in the swap).
 
-Claimants must bear varying degrees of trust assumptions with regards to allocators, with the potential design space including reputation-based systems, trusted execution environments, smart-contract-based systems, or even dedicated rollups. The Compact takes a neutral stance on implementations of both allocators and arbiters, and instead treats them both as a "black box" but each with a simple and consistent interface.
+Claimants must bear varying degrees of trust assumptions with regards to allocators, with the potential design space including reputation-based systems, trusted execution environments, smart-contract-based systems, or even dedicated rollups. The Compact takes a neutral stance on implementations of both allocators and arbiters, enabling support for a wide variety of potential applications while ensuring adherence to a consistent interface when integrating with the system as a whole.
 
 ## Setup
 ```
