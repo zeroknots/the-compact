@@ -148,8 +148,7 @@ interface ITheCompact {
      * approve The Compact to transfer sufficient amounts on its behalf. The ERC6909 token amounts
      * received by the recipient are derived from the differences between starting and ending
      * balances held in the resource locks, which may differ from the amounts transferred depending
-     * on the implementation details of the respective tokens. Note that resouce lock ids must be
-     * supplied in alphanumeric order.
+     * on the implementation details of the respective tokens.
      * @param idsAndAmounts Array of [id, amount] pairs with each pair indicating the resource lock and amount to deposit.
      * @param recipient     The address that will receive the corresponding ERC6909 tokens.
      * @return              Whether the batch deposit was successfully completed.
