@@ -12,6 +12,7 @@
   "claim": "56974",
   "claimAndWithdraw": "73432",
   "claimWithWitness": "59471",
+  "depositAndRegisterMultiChainViaPermit2": "124517",
   "depositAndRegisterViaPermit2": "124429",
   "depositBatchSingleERC20": "68050",
   "depositBatchSingleNative": "28353",
