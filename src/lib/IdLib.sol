@@ -324,7 +324,7 @@ library IdLib {
     function toCompactFlag(address allocator) internal pure returns (uint8 compactFlag) {
         assembly ("memory-safe") {
             // Extract the uppermost 72 bits of the address.
-            let x := shr(168, shl(96, allocator))
+            let x := shr(184, shl(96, allocator))
 
             // Propagate the highest set bit.
             x := or(x, shr(1, x))

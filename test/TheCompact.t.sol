@@ -11,6 +11,7 @@ import { CompactCategory } from "../src/types/CompactCategory.sol";
 import { ISignatureTransfer } from "permit2/src/interfaces/ISignatureTransfer.sol";
 
 import { HashLib } from "../src/lib/HashLib.sol";
+import { IdLib } from "../src/lib/IdLib.sol";
 
 import { AlwaysOKAllocator } from "../src/test/AlwaysOKAllocator.sol";
 
@@ -5076,5 +5077,23 @@ contract TheCompactTest is Test {
         assertEq(address(theCompact).balance, amount);
         assertEq(theCompact.balanceOf(swapper, id), 0);
         assertEq(theCompact.balanceOf(recipient, id), amount);
+    }
+
+    function test_allocatorId_leadingZeroes() public pure {
+        address allocator1 = address(0x00000000000018DF021Ff2467dF97ff846E09f48);
+        uint8 compactFlag1 = IdLib.toCompactFlag(allocator1);
+        assertEq(compactFlag1, 9);
+
+        address allocator2 = address(0x0000000000000000000000000000000000000000);
+        uint8 compactFlag2 = IdLib.toCompactFlag(allocator2);
+        assertEq(compactFlag2, 15);
+
+        address allocator3 = address(0x0009524d380Dd4D95dfB975C50DaF3343BC177D9);
+        uint8 compactFlag3 = IdLib.toCompactFlag(allocator3);
+        assertEq(compactFlag3, 0);
+
+        address allocator4 = address(0x00002752B69c388ac734CF666fB335588AE92618);
+        uint8 compactFlag4 = IdLib.toCompactFlag(allocator4);
+        assertEq(compactFlag4, 1);
     }
 }
