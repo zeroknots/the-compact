@@ -5096,4 +5096,30 @@ contract TheCompactTest is Test {
         uint8 compactFlag4 = IdLib.toCompactFlag(allocator4);
         assertEq(compactFlag4, 1);
     }
+
+    function test_fuzz_addressToCompactFlag(address a) public pure {
+        uint256 leadingZeroes = _countLeadingZeroes(a);
+        uint8 compactFlag = IdLib.toCompactFlag(a);
+
+        /**
+         * The full scoring formula is:
+         *  - 0-3 leading zero nibbles: 0
+         *  - 4-17 leading zero nibbles: number of leading zeros minus 3
+         *  - 18+ leading zero nibbles: 15
+         */
+        if (leadingZeroes < 4) assertEq(compactFlag, 0);
+        else if (leadingZeroes <= 18) assertEq(compactFlag, leadingZeroes - 3);
+        else assertEq(compactFlag, 15);
+    }
+
+    function _countLeadingZeroes(address a) internal pure returns (uint256) {
+        address flag = address(0x0fffFFFFFfFfffFfFfFFffFffFffFFfffFfFFFFf);
+
+        // addresses have a maximum of 40 leading 0s
+        for (uint256 i = 0; i < 40; i++) {
+            if (uint160(a) > uint160(uint160(flag) >> (4 * i))) return i;
+        }
+        // if the loop exits, the address is the 0 address
+        return 40;
+    }
 }
