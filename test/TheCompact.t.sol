@@ -131,12 +131,12 @@ contract TheCompactTest is Test {
         bytes32 salt = bytes32(0x00000000000000000000000000000000000000008a0f466a78cd1102ce3d82f7);
         address targetAddress = address(0xddD0Cdada636059D154Da844e329cE39F36e38BA);
 
-        // to deploy using create2 (need to rederive salt and target address when changing code):
-        theCompact = TheCompact(ImmutableCreate2Factory(immutableCreate2Factory).safeCreate2(salt, type(TheCompact).creationCode));
-        assertEq(address(theCompact), targetAddress);
+        // // to deploy using create2 (need to rederive salt and target address when changing code):
+        // theCompact = TheCompact(ImmutableCreate2Factory(immutableCreate2Factory).safeCreate2(salt, type(TheCompact).creationCode));
+        // assertEq(address(theCompact), targetAddress);
 
-        // // to deploy using standard create:
-        // theCompact = new TheCompact();
+        // to deploy using standard create:
+        theCompact = new TheCompact();
 
         (swapper, swapperPrivateKey) = makeAddrAndKey("swapper");
         (allocator, allocatorPrivateKey) = makeAddrAndKey("allocator");
@@ -161,14 +161,14 @@ contract TheCompactTest is Test {
     }
 
     function test_domainSeparator() public view {
-        bytes32 domainSeparator = keccak256(abi.encode(compactEIP712DomainHash, keccak256(bytes("The Compact")), keccak256(bytes("0")), block.chainid, address(theCompact)));
+        bytes32 domainSeparator = keccak256(abi.encode(compactEIP712DomainHash, keccak256(bytes("The Compact")), keccak256(bytes("1")), block.chainid, address(theCompact)));
         assertEq(domainSeparator, theCompact.DOMAIN_SEPARATOR());
     }
 
     function test_domainSeparatorOnNewChain() public {
         uint256 currentChainId = block.chainid;
         uint256 differentChainId = currentChainId + 42;
-        bytes32 domainSeparator = keccak256(abi.encode(compactEIP712DomainHash, keccak256(bytes("The Compact")), keccak256(bytes("0")), differentChainId, address(theCompact)));
+        bytes32 domainSeparator = keccak256(abi.encode(compactEIP712DomainHash, keccak256(bytes("The Compact")), keccak256(bytes("1")), differentChainId, address(theCompact)));
         vm.chainId(differentChainId);
         assertEq(block.chainid, differentChainId);
         assertEq(domainSeparator, theCompact.DOMAIN_SEPARATOR());
