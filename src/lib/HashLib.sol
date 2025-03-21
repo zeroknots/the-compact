@@ -3,7 +3,7 @@ pragma solidity ^0.8.27;
 
 import { BatchTransfer, SplitBatchTransfer } from "../types/BatchClaims.sol";
 import { BasicTransfer, SplitTransfer } from "../types/Claims.sol";
-import { TransferComponent, SplitComponent, SplitByIdComponent, BatchClaimComponent, SplitBatchClaimComponent } from "../types/Components.sol";
+import { TransferComponent, SplitComponent, SplitByIdComponent, SplitBatchClaimComponent } from "../types/Components.sol";
 import {
     COMPACT_TYPEHASH,
     COMPACT_TYPESTRING_FRAGMENT_ONE,
@@ -625,41 +625,6 @@ library HashLib {
 
             // Derive the idsAndAmounts hash from the stored data.
             idsAndAmountsHash := keccak256(0, 0x40)
-        }
-    }
-
-    /**
-     * @notice Internal pure function for deriving the hash of the ids and amounts.
-     * @param claims             An array of BatchClaimComponent structs.
-     * @return idsAndAmountsHash The hash of the ids and amounts.
-     */
-    function toIdsAndAmountsHash(BatchClaimComponent[] calldata claims) internal pure returns (uint256 idsAndAmountsHash) {
-        // Retrieve the total number of ids in the claims array.
-        uint256 totalIds = claims.length;
-
-        // Prepare a memory region for storing the ids and amounts.
-        bytes memory idsAndAmounts = new bytes(totalIds * 0x40);
-
-        unchecked {
-            // Iterate over the claims array.
-            for (uint256 i = 0; i < totalIds; ++i) {
-                // Navigate to the current claim component in calldata.
-                BatchClaimComponent calldata claimComponent = claims[i];
-
-                assembly ("memory-safe") {
-                    // Derive the offset to the current position in the memory region.
-                    let extraOffset := add(add(idsAndAmounts, 0x20), mul(i, 0x40))
-
-                    // Retrieve and store the id and amount at the current position.
-                    mstore(extraOffset, calldataload(claimComponent))
-                    mstore(add(extraOffset, 0x20), calldataload(add(claimComponent, 0x20)))
-                }
-            }
-        }
-
-        assembly ("memory-safe") {
-            // Derive the hash of the ids and amounts from the prepared data.
-            idsAndAmountsHash := keccak256(add(idsAndAmounts, 0x20), mload(idsAndAmounts))
         }
     }
 
