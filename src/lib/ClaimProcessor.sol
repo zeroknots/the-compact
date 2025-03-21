@@ -6,12 +6,7 @@ import { ClaimProcessorLogic } from "./ClaimProcessorLogic.sol";
 
 import { BasicClaim, ClaimWithWitness, SplitClaim, SplitClaimWithWitness } from "../types/Claims.sol";
 
-import {
-    BatchClaim,
-    BatchClaimWithWitness,
-    SplitBatchClaim,
-    SplitBatchClaimWithWitness
-} from "../types/BatchClaims.sol";
+import { BatchClaim, BatchClaimWithWitness, SplitBatchClaim, SplitBatchClaimWithWitness } from "../types/BatchClaims.sol";
 
 import {
     MultichainClaim,

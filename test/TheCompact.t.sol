@@ -15,22 +15,8 @@ import { IdLib } from "../src/lib/IdLib.sol";
 
 import { AlwaysOKAllocator } from "../src/test/AlwaysOKAllocator.sol";
 
-import {
-    BasicTransfer,
-    SplitTransfer,
-    BasicClaim,
-    ClaimWithWitness,
-    SplitClaim,
-    SplitClaimWithWitness
-} from "../src/types/Claims.sol";
-import {
-    BatchTransfer,
-    SplitBatchTransfer,
-    BatchClaim,
-    BatchClaimWithWitness,
-    SplitBatchClaim,
-    SplitBatchClaimWithWitness
-} from "../src/types/BatchClaims.sol";
+import { BasicTransfer, SplitTransfer, BasicClaim, ClaimWithWitness, SplitClaim, SplitClaimWithWitness } from "../src/types/Claims.sol";
+import { BatchTransfer, SplitBatchTransfer, BatchClaim, BatchClaimWithWitness, SplitBatchClaim, SplitBatchClaimWithWitness } from "../src/types/BatchClaims.sol";
 
 import {
     MultichainClaim,

@@ -2,12 +2,7 @@
 pragma solidity ^0.8.27;
 
 import { BasicClaim, ClaimWithWitness, SplitClaim, SplitClaimWithWitness } from "../types/Claims.sol";
-import {
-    BatchClaim,
-    BatchClaimWithWitness,
-    SplitBatchClaim,
-    SplitBatchClaimWithWitness
-} from "../types/BatchClaims.sol";
+import { BatchClaim, BatchClaimWithWitness, SplitBatchClaim, SplitBatchClaimWithWitness } from "../types/BatchClaims.sol";
 import {
     MultichainClaim,
     MultichainClaimWithWitness,

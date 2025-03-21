@@ -1,23 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.27;
 
-import {
-    BasicTransfer,
-    SplitTransfer,
-    BasicClaim,
-    ClaimWithWitness,
-    SplitClaim,
-    SplitClaimWithWitness
-} from "../types/Claims.sol";
+import { BasicTransfer, SplitTransfer, BasicClaim, ClaimWithWitness, SplitClaim, SplitClaimWithWitness } from "../types/Claims.sol";
 
-import {
-    BatchTransfer,
-    SplitBatchTransfer,
-    BatchClaim,
-    BatchClaimWithWitness,
-    SplitBatchClaim,
-    SplitBatchClaimWithWitness
-} from "../types/BatchClaims.sol";
+import { BatchTransfer, SplitBatchTransfer, BatchClaim, BatchClaimWithWitness, SplitBatchClaim, SplitBatchClaimWithWitness } from "../types/BatchClaims.sol";
 
 import {
     MultichainClaim,
