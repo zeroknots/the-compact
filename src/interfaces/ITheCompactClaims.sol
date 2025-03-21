@@ -14,19 +14,10 @@ import { BatchMultichainClaim, ExogenousBatchMultichainClaim } from "../types/Ba
  * @custom:version 1 (early-stage proof-of-concept)
  * @author 0age (0age.eth)
  * @notice Claim endpoints can only be called by the arbiter indicated on the associated
- * compact, and are used to settle the compact in question. There are 48 endpoints in total,
+ * compact, and are used to settle the compact in question. There are 12 endpoints in total,
  * based on all the various possible combinations of a number of factors:
  *  - transfer vs. withdrawal: whether to transfer the claimed ERC6909 tokens directly, or to
  *    withdraw the underlying claimed tokens (e.g. calling `claim` or `claimAndWithdraw`)
- *  - no witness vs. witness: whether or not the sponsor has elected to extend the Compact
- *    EIP-712 payload with an additional witness argument (generally using a new struct).
- *    When witness data is utilized, the call takes two additional arguments: one
- *    representing the EIP-712 hash of the witness data (or the direct data if it is a single
- *    value) and one representing the additional EIP-712 typestring that will extend the
- *    default arguments to include the witness.
- *  - whether or not to perform a "split": with no split, the caller specifies a single
- *    recipient, whereas with a split the caller specifies multiple recipients and respective
- *    amounts.
  *  - whether or not to utilize a "batch" of resource locks on a specific chain: When the
  *    sponsor is utilizing multiple resource locks on a specific chain, they will sign or
  *    register a `BatchCompact` EIP-712 payload. (Single-chain claims sign or register a
