@@ -5,15 +5,9 @@ import { BasicTransfer, SplitTransfer, SplitClaimWithWitness } from "../types/Cl
 
 import { BatchTransfer, SplitBatchTransfer, SplitBatchClaimWithWitness } from "../types/BatchClaims.sol";
 
-import {
-    SplitMultichainClaimWithWitness,
-    ExogenousSplitMultichainClaimWithWitness
-} from "../types/MultichainClaims.sol";
+import { SplitMultichainClaimWithWitness, ExogenousSplitMultichainClaimWithWitness } from "../types/MultichainClaims.sol";
 
-import {
-    SplitBatchMultichainClaimWithWitness,
-    ExogenousSplitBatchMultichainClaimWithWitness
-} from "../types/BatchMultichainClaims.sol";
+import { SplitBatchMultichainClaimWithWitness, ExogenousSplitBatchMultichainClaimWithWitness } from "../types/BatchMultichainClaims.sol";
 
 import { SplitBatchClaimComponent } from "../types/Components.sol";
 

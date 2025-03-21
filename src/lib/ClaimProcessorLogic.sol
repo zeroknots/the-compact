@@ -3,14 +3,8 @@ pragma solidity ^0.8.27;
 
 import { SplitClaimWithWitness } from "../types/Claims.sol";
 import { SplitBatchClaimWithWitness } from "../types/BatchClaims.sol";
-import {
-    SplitMultichainClaimWithWitness,
-    ExogenousSplitMultichainClaimWithWitness
-} from "../types/MultichainClaims.sol";
-import {
-    SplitBatchMultichainClaimWithWitness,
-    ExogenousSplitBatchMultichainClaimWithWitness
-} from "../types/BatchMultichainClaims.sol";
+import { SplitMultichainClaimWithWitness, ExogenousSplitMultichainClaimWithWitness } from "../types/MultichainClaims.sol";
+import { SplitBatchMultichainClaimWithWitness, ExogenousSplitBatchMultichainClaimWithWitness } from "../types/BatchMultichainClaims.sol";
 
 import { ClaimHashLib } from "./ClaimHashLib.sol";
 import { ClaimProcessorLib } from "./ClaimProcessorLib.sol";

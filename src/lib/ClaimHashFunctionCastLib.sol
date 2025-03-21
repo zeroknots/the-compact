@@ -5,15 +5,9 @@ import { SplitClaimWithWitness } from "../types/Claims.sol";
 
 import { SplitBatchClaimWithWitness } from "../types/BatchClaims.sol";
 
-import {
-    SplitMultichainClaimWithWitness,
-    ExogenousSplitMultichainClaimWithWitness
-} from "../types/MultichainClaims.sol";
+import { SplitMultichainClaimWithWitness, ExogenousSplitMultichainClaimWithWitness } from "../types/MultichainClaims.sol";
 
-import {
-    SplitBatchMultichainClaimWithWitness,
-    ExogenousSplitBatchMultichainClaimWithWitness
-} from "../types/BatchMultichainClaims.sol";
+import { SplitBatchMultichainClaimWithWitness, ExogenousSplitBatchMultichainClaimWithWitness } from "../types/BatchMultichainClaims.sol";
 
 /**
  * @title ClaimHashFunctionCastLib
@@ -109,7 +103,9 @@ library ClaimHashFunctionCastLib {
     function usingMultichainClaimWithWitness(function (uint256, uint256, function (uint256, uint256, bytes32, bytes32, uint256) internal view returns (bytes32)) internal view returns (bytes32, bytes32) fnIn)
         internal
         pure
-        returns (function (SplitMultichainClaimWithWitness calldata, uint256, function (uint256, uint256, bytes32, bytes32, uint256) internal view returns (bytes32)) internal view returns (bytes32, bytes32) fnOut)
+        returns (
+            function (SplitMultichainClaimWithWitness calldata, uint256, function (uint256, uint256, bytes32, bytes32, uint256) internal view returns (bytes32)) internal view returns (bytes32, bytes32) fnOut
+        )
     {
         assembly ("memory-safe") {
             fnOut := fnIn
@@ -122,10 +118,14 @@ library ClaimHashFunctionCastLib {
      * @param fnIn   Function pointer to `ClaimHashLib._toGenericMultichainClaimWithWitnessMessageHash`.
      * @return fnOut Modified function used in `ClaimHashLib.toMessageHashes(MultichainClaimWithWitness calldata)`.
      */
-    function usingExogenousMultichainClaimWithWitness(function (uint256, uint256, function (uint256, uint256, bytes32, bytes32, uint256) internal view returns (bytes32)) internal view returns (bytes32, bytes32) fnIn)
+    function usingExogenousMultichainClaimWithWitness(
+        function (uint256, uint256, function (uint256, uint256, bytes32, bytes32, uint256) internal view returns (bytes32)) internal view returns (bytes32, bytes32) fnIn
+    )
         internal
         pure
-        returns (function (ExogenousSplitMultichainClaimWithWitness calldata, uint256, function (uint256, uint256, bytes32, bytes32, uint256) internal view returns (bytes32)) internal view returns (bytes32, bytes32) fnOut)
+        returns (
+            function (ExogenousSplitMultichainClaimWithWitness calldata, uint256, function (uint256, uint256, bytes32, bytes32, uint256) internal view returns (bytes32)) internal view returns (bytes32, bytes32) fnOut
+        )
     {
         assembly ("memory-safe") {
             fnOut := fnIn

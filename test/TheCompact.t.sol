@@ -18,15 +18,9 @@ import { AlwaysOKAllocator } from "../src/test/AlwaysOKAllocator.sol";
 import { BasicTransfer, SplitTransfer, SplitClaimWithWitness } from "../src/types/Claims.sol";
 import { BatchTransfer, SplitBatchTransfer, SplitBatchClaimWithWitness } from "../src/types/BatchClaims.sol";
 
-import {
-    SplitMultichainClaimWithWitness,
-    ExogenousSplitMultichainClaimWithWitness
-} from "../src/types/MultichainClaims.sol";
+import { SplitMultichainClaimWithWitness, ExogenousSplitMultichainClaimWithWitness } from "../src/types/MultichainClaims.sol";
 
-import {
-    SplitBatchMultichainClaimWithWitness,
-    ExogenousSplitBatchMultichainClaimWithWitness
-} from "../src/types/BatchMultichainClaims.sol";
+import { SplitBatchMultichainClaimWithWitness, ExogenousSplitBatchMultichainClaimWithWitness } from "../src/types/BatchMultichainClaims.sol";
 
 import { SplitComponent, TransferComponent, SplitByIdComponent, SplitBatchClaimComponent } from "../src/types/Components.sol";
 
@@ -942,18 +936,7 @@ contract TheCompactTest is Test {
 
         bytes32 typehash = keccak256(bytes(compactTypestring));
 
-        bytes32 claimHash = keccak256(
-            abi.encode(
-                typehash,
-                arbiter,
-                swapper,
-                nonce,
-                expires,
-                id,
-                amount,
-                witness
-            )
-        );
+        bytes32 claimHash = keccak256(abi.encode(typehash, arbiter, swapper, nonce, expires, id, amount, witness));
 
         bytes32 digest = keccak256(abi.encodePacked(bytes2(0x1901), theCompact.DOMAIN_SEPARATOR(), claimHash));
 
@@ -1021,18 +1004,7 @@ contract TheCompactTest is Test {
 
         bytes32 typehash = keccak256(bytes(compactTypestring));
 
-        bytes32 claimHash = keccak256(
-            abi.encode(
-                typehash,
-                arbiter,
-                swapper,
-                nonce,
-                expires,
-                id,
-                amount,
-                witness
-            )
-        );
+        bytes32 claimHash = keccak256(abi.encode(typehash, arbiter, swapper, nonce, expires, id, amount, witness));
 
         bytes32 digest = keccak256(abi.encodePacked(bytes2(0x1901), theCompact.DOMAIN_SEPARATOR(), claimHash));
 
