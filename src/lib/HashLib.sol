@@ -565,18 +565,6 @@ library HashLib {
 
     /**
      * @notice Internal view function for deriving the EIP-712 message hash for
-     * a qualified multichain claim.
-     * @param claim             Pointer to the claim location in calldata.
-     * @param idsAndAmountsHash A hash of the ids and amounts (formatted as a uint256).
-     * @return messageHash      The EIP-712 compliant message hash.
-     */
-    function toQualifiedMultichainClaimMessageHash(uint256 claim, uint256 idsAndAmountsHash) internal view returns (bytes32 messageHash) {
-        // Derive the message hash from the claim and idsAndAmounts hash.
-        return claim.toMultichainClaimMessageHash(uint256(0x40).asStubborn(), SEGMENT_TYPEHASH, MULTICHAIN_COMPACT_TYPEHASH, idsAndAmountsHash);
-    }
-
-    /**
-     * @notice Internal view function for deriving the EIP-712 message hash for
      * a simple exogenous multichain claim.
      * @param claim             Pointer to the claim location in calldata.
      * @param idsAndAmountsHash A hash of the ids and amounts.
@@ -585,18 +573,6 @@ library HashLib {
     function toSimpleExogenousMultichainClaimMessageHash(uint256 claim, uint256 idsAndAmountsHash) internal view returns (bytes32 messageHash) {
         // Derive the message hash from the claim and idsAndAmounts hash.
         return claim.toExogenousMultichainClaimMessageHash(uint256(0).asStubborn(), SEGMENT_TYPEHASH, MULTICHAIN_COMPACT_TYPEHASH, idsAndAmountsHash);
-    }
-
-    /**
-     * @notice Internal view function for deriving the EIP-712 message hash for
-     * a qualified exogenous multichain claim.
-     * @param claim             Pointer to the claim location in calldata.
-     * @param idsAndAmountsHash A hash of the ids and amounts.
-     * @return messageHash      The EIP-712 compliant message hash.
-     */
-    function toExogenousQualifiedMultichainClaimMessageHash(uint256 claim, uint256 idsAndAmountsHash) internal view returns (bytes32 messageHash) {
-        // Derive the message hash from the claim and idsAndAmounts hash.
-        return claim.toExogenousMultichainClaimMessageHash(uint256(0x40).asStubborn(), SEGMENT_TYPEHASH, MULTICHAIN_COMPACT_TYPEHASH, idsAndAmountsHash);
     }
 
     /**
@@ -628,37 +604,6 @@ library HashLib {
             // Derive the segment typehash and multichain compact typehash from the prepared data.
             segmentTypehash := keccak256(add(m, 0x53), add(0x43, witnessTypestringLength))
             multichainCompactTypehash := keccak256(m, add(0x96, witnessTypestringLength))
-        }
-    }
-
-    /**
-     * @notice Internal pure function for deriving the EIP-712 message hash for
-     * a qualification.
-     * @param claim                     Pointer to the claim location in calldata.
-     * @param messageHash               A bytes32 representing the message hash.
-     * @param witnessOffset             Additional offset from claim pointer to witness from most compact case.
-     * @return qualificationMessageHash The EIP-712 compliant message hash.
-     */
-    function toQualificationMessageHash(uint256 claim, bytes32 messageHash, uint256 witnessOffset) internal pure returns (bytes32 qualificationMessageHash) {
-        assembly ("memory-safe") {
-            // Retrieve the free memory pointer; memory will be left dirtied.
-            let m := mload(0x40)
-
-            // Derive the pointer to the qualification payload and retrieve the length.
-            let qualificationPayloadPtr := add(claim, calldataload(add(claim, add(0xc0, witnessOffset))))
-            let qualificationPayloadLength := calldataload(qualificationPayloadPtr)
-
-            // Prepare first qualification message data component: qualification typehash.
-            mstore(m, calldataload(add(claim, add(0xa0, witnessOffset)))) // qualificationTypehash
-
-            // Prepare second qualification message data component: message hash.
-            mstore(add(m, 0x20), messageHash)
-
-            // Copy remaining qualification payload from calldata to memory.
-            calldatacopy(add(m, 0x40), add(0x20, qualificationPayloadPtr), qualificationPayloadLength)
-
-            // Derive the qualification message hash from the prepared data.
-            qualificationMessageHash := keccak256(m, add(0x40, qualificationPayloadLength))
         }
     }
 

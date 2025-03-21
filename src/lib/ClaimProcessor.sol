@@ -4,55 +4,35 @@ pragma solidity ^0.8.27;
 import { ITheCompactClaims } from "../interfaces/ITheCompactClaims.sol";
 import { ClaimProcessorLogic } from "./ClaimProcessorLogic.sol";
 
-import { BasicClaim, QualifiedClaim, ClaimWithWitness, QualifiedClaimWithWitness, SplitClaim, SplitClaimWithWitness, QualifiedSplitClaim, QualifiedSplitClaimWithWitness } from "../types/Claims.sol";
+import { BasicClaim, ClaimWithWitness, SplitClaim, SplitClaimWithWitness } from "../types/Claims.sol";
 
 import {
     BatchClaim,
-    QualifiedBatchClaim,
     BatchClaimWithWitness,
-    QualifiedBatchClaimWithWitness,
     SplitBatchClaim,
-    SplitBatchClaimWithWitness,
-    QualifiedSplitBatchClaim,
-    QualifiedSplitBatchClaimWithWitness
+    SplitBatchClaimWithWitness
 } from "../types/BatchClaims.sol";
 
 import {
     MultichainClaim,
-    QualifiedMultichainClaim,
     MultichainClaimWithWitness,
-    QualifiedMultichainClaimWithWitness,
     SplitMultichainClaim,
     SplitMultichainClaimWithWitness,
-    QualifiedSplitMultichainClaim,
-    QualifiedSplitMultichainClaimWithWitness,
     ExogenousMultichainClaim,
-    ExogenousQualifiedMultichainClaim,
     ExogenousMultichainClaimWithWitness,
-    ExogenousQualifiedMultichainClaimWithWitness,
     ExogenousSplitMultichainClaim,
-    ExogenousSplitMultichainClaimWithWitness,
-    ExogenousQualifiedSplitMultichainClaim,
-    ExogenousQualifiedSplitMultichainClaimWithWitness
+    ExogenousSplitMultichainClaimWithWitness
 } from "../types/MultichainClaims.sol";
 
 import {
     BatchMultichainClaim,
-    QualifiedBatchMultichainClaim,
     BatchMultichainClaimWithWitness,
-    QualifiedBatchMultichainClaimWithWitness,
     SplitBatchMultichainClaim,
     SplitBatchMultichainClaimWithWitness,
-    QualifiedSplitBatchMultichainClaim,
-    QualifiedSplitBatchMultichainClaimWithWitness,
     ExogenousBatchMultichainClaim,
-    ExogenousQualifiedBatchMultichainClaim,
     ExogenousBatchMultichainClaimWithWitness,
-    ExogenousQualifiedBatchMultichainClaimWithWitness,
     ExogenousSplitBatchMultichainClaim,
-    ExogenousSplitBatchMultichainClaimWithWitness,
-    ExogenousQualifiedSplitBatchMultichainClaim,
-    ExogenousQualifiedSplitBatchMultichainClaimWithWitness
+    ExogenousSplitBatchMultichainClaimWithWitness
 } from "../types/BatchMultichainClaims.sol";
 
 /**
@@ -70,28 +50,12 @@ contract ClaimProcessor is ITheCompactClaims, ClaimProcessorLogic {
         return _processBasicClaim(claimPayload, _withdraw);
     }
 
-    function claim(QualifiedClaim calldata claimPayload) external returns (bool) {
-        return _processQualifiedClaim(claimPayload, _release);
-    }
-
-    function claimAndWithdraw(QualifiedClaim calldata claimPayload) external returns (bool) {
-        return _processQualifiedClaim(claimPayload, _withdraw);
-    }
-
     function claim(ClaimWithWitness calldata claimPayload) external returns (bool) {
         return _processClaimWithWitness(claimPayload, _release);
     }
 
     function claimAndWithdraw(ClaimWithWitness calldata claimPayload) external returns (bool) {
         return _processClaimWithWitness(claimPayload, _withdraw);
-    }
-
-    function claim(QualifiedClaimWithWitness calldata claimPayload) external returns (bool) {
-        return _processQualifiedClaimWithWitness(claimPayload, _release);
-    }
-
-    function claimAndWithdraw(QualifiedClaimWithWitness calldata claimPayload) external returns (bool) {
-        return _processQualifiedClaimWithWitness(claimPayload, _withdraw);
     }
 
     function claim(SplitClaim calldata claimPayload) external returns (bool) {
@@ -102,28 +66,12 @@ contract ClaimProcessor is ITheCompactClaims, ClaimProcessorLogic {
         return _processSplitClaim(claimPayload, _withdraw);
     }
 
-    function claim(QualifiedSplitClaim calldata claimPayload) external returns (bool) {
-        return _processQualifiedSplitClaim(claimPayload, _release);
-    }
-
-    function claimAndWithdraw(QualifiedSplitClaim calldata claimPayload) external returns (bool) {
-        return _processQualifiedSplitClaim(claimPayload, _withdraw);
-    }
-
     function claim(SplitClaimWithWitness calldata claimPayload) external returns (bool) {
         return _processSplitClaimWithWitness(claimPayload, _release);
     }
 
     function claimAndWithdraw(SplitClaimWithWitness calldata claimPayload) external returns (bool) {
         return _processSplitClaimWithWitness(claimPayload, _withdraw);
-    }
-
-    function claim(QualifiedSplitClaimWithWitness calldata claimPayload) external returns (bool) {
-        return _processQualifiedSplitClaimWithWitness(claimPayload, _release);
-    }
-
-    function claimAndWithdraw(QualifiedSplitClaimWithWitness calldata claimPayload) external returns (bool) {
-        return _processQualifiedSplitClaimWithWitness(claimPayload, _withdraw);
     }
 
     function claim(BatchClaim calldata claimPayload) external returns (bool) {
@@ -134,28 +82,12 @@ contract ClaimProcessor is ITheCompactClaims, ClaimProcessorLogic {
         return _processBatchClaim(claimPayload, _withdraw);
     }
 
-    function claim(QualifiedBatchClaim calldata claimPayload) external returns (bool) {
-        return _processQualifiedBatchClaim(claimPayload, _release);
-    }
-
-    function claimAndWithdraw(QualifiedBatchClaim calldata claimPayload) external returns (bool) {
-        return _processQualifiedBatchClaim(claimPayload, _withdraw);
-    }
-
     function claim(BatchClaimWithWitness calldata claimPayload) external returns (bool) {
         return _processBatchClaimWithWitness(claimPayload, _release);
     }
 
     function claimAndWithdraw(BatchClaimWithWitness calldata claimPayload) external returns (bool) {
         return _processBatchClaimWithWitness(claimPayload, _withdraw);
-    }
-
-    function claim(QualifiedBatchClaimWithWitness calldata claimPayload) external returns (bool) {
-        return _processQualifiedBatchClaimWithWitness(claimPayload, _release);
-    }
-
-    function claimAndWithdraw(QualifiedBatchClaimWithWitness calldata claimPayload) external returns (bool) {
-        return _processQualifiedBatchClaimWithWitness(claimPayload, _withdraw);
     }
 
     function claim(SplitBatchClaim calldata claimPayload) external returns (bool) {
@@ -166,28 +98,12 @@ contract ClaimProcessor is ITheCompactClaims, ClaimProcessorLogic {
         return _processSplitBatchClaim(claimPayload, _withdraw);
     }
 
-    function claim(QualifiedSplitBatchClaim calldata claimPayload) external returns (bool) {
-        return _processQualifiedSplitBatchClaim(claimPayload, _release);
-    }
-
-    function claimAndWithdraw(QualifiedSplitBatchClaim calldata claimPayload) external returns (bool) {
-        return _processQualifiedSplitBatchClaim(claimPayload, _withdraw);
-    }
-
     function claim(SplitBatchClaimWithWitness calldata claimPayload) external returns (bool) {
         return _processSplitBatchClaimWithWitness(claimPayload, _release);
     }
 
     function claimAndWithdraw(SplitBatchClaimWithWitness calldata claimPayload) external returns (bool) {
         return _processSplitBatchClaimWithWitness(claimPayload, _withdraw);
-    }
-
-    function claim(QualifiedSplitBatchClaimWithWitness calldata claimPayload) external returns (bool) {
-        return _processQualifiedSplitBatchClaimWithWitness(claimPayload, _release);
-    }
-
-    function claimAndWithdraw(QualifiedSplitBatchClaimWithWitness calldata claimPayload) external returns (bool) {
-        return _processQualifiedSplitBatchClaimWithWitness(claimPayload, _withdraw);
     }
 
     function claim(MultichainClaim calldata claimPayload) external returns (bool) {
@@ -206,22 +122,6 @@ contract ClaimProcessor is ITheCompactClaims, ClaimProcessorLogic {
         return _processExogenousMultichainClaim(claimPayload, _withdraw);
     }
 
-    function claim(QualifiedMultichainClaim calldata claimPayload) external returns (bool) {
-        return _processQualifiedMultichainClaim(claimPayload, _release);
-    }
-
-    function claimAndWithdraw(QualifiedMultichainClaim calldata claimPayload) external returns (bool) {
-        return _processQualifiedMultichainClaim(claimPayload, _withdraw);
-    }
-
-    function claim(ExogenousQualifiedMultichainClaim calldata claimPayload) external returns (bool) {
-        return _processExogenousQualifiedMultichainClaim(claimPayload, _release);
-    }
-
-    function claimAndWithdraw(ExogenousQualifiedMultichainClaim calldata claimPayload) external returns (bool) {
-        return _processExogenousQualifiedMultichainClaim(claimPayload, _withdraw);
-    }
-
     function claim(MultichainClaimWithWitness calldata claimPayload) external returns (bool) {
         return _processMultichainClaimWithWitness(claimPayload, _release);
     }
@@ -236,22 +136,6 @@ contract ClaimProcessor is ITheCompactClaims, ClaimProcessorLogic {
 
     function claimAndWithdraw(ExogenousMultichainClaimWithWitness calldata claimPayload) external returns (bool) {
         return _processExogenousMultichainClaimWithWitness(claimPayload, _withdraw);
-    }
-
-    function claim(QualifiedMultichainClaimWithWitness calldata claimPayload) external returns (bool) {
-        return _processQualifiedMultichainClaimWithWitness(claimPayload, _release);
-    }
-
-    function claimAndWithdraw(QualifiedMultichainClaimWithWitness calldata claimPayload) external returns (bool) {
-        return _processQualifiedMultichainClaimWithWitness(claimPayload, _withdraw);
-    }
-
-    function claim(ExogenousQualifiedMultichainClaimWithWitness calldata claimPayload) external returns (bool) {
-        return _processExogenousQualifiedMultichainClaimWithWitness(claimPayload, _release);
-    }
-
-    function claimAndWithdraw(ExogenousQualifiedMultichainClaimWithWitness calldata claimPayload) external returns (bool) {
-        return _processExogenousQualifiedMultichainClaimWithWitness(claimPayload, _withdraw);
     }
 
     function claim(SplitMultichainClaim calldata claimPayload) external returns (bool) {
@@ -270,22 +154,6 @@ contract ClaimProcessor is ITheCompactClaims, ClaimProcessorLogic {
         return _processExogenousSplitMultichainClaim(claimPayload, _withdraw);
     }
 
-    function claim(QualifiedSplitMultichainClaim calldata claimPayload) external returns (bool) {
-        return _processQualifiedSplitMultichainClaim(claimPayload, _release);
-    }
-
-    function claimAndWithdraw(QualifiedSplitMultichainClaim calldata claimPayload) external returns (bool) {
-        return _processQualifiedSplitMultichainClaim(claimPayload, _withdraw);
-    }
-
-    function claim(ExogenousQualifiedSplitMultichainClaim calldata claimPayload) external returns (bool) {
-        return _processExogenousQualifiedSplitMultichainClaim(claimPayload, _release);
-    }
-
-    function claimAndWithdraw(ExogenousQualifiedSplitMultichainClaim calldata claimPayload) external returns (bool) {
-        return _processExogenousQualifiedSplitMultichainClaim(claimPayload, _withdraw);
-    }
-
     function claim(SplitMultichainClaimWithWitness calldata claimPayload) external returns (bool) {
         return _processSplitMultichainClaimWithWitness(claimPayload, _release);
     }
@@ -300,22 +168,6 @@ contract ClaimProcessor is ITheCompactClaims, ClaimProcessorLogic {
 
     function claimAndWithdraw(ExogenousSplitMultichainClaimWithWitness calldata claimPayload) external returns (bool) {
         return _processExogenousSplitMultichainClaimWithWitness(claimPayload, _withdraw);
-    }
-
-    function claim(QualifiedSplitMultichainClaimWithWitness calldata claimPayload) external returns (bool) {
-        return _processQualifiedSplitMultichainClaimWithWitness(claimPayload, _release);
-    }
-
-    function claimAndWithdraw(QualifiedSplitMultichainClaimWithWitness calldata claimPayload) external returns (bool) {
-        return _processQualifiedSplitMultichainClaimWithWitness(claimPayload, _withdraw);
-    }
-
-    function claim(ExogenousQualifiedSplitMultichainClaimWithWitness calldata claimPayload) external returns (bool) {
-        return _processExogenousQualifiedSplitMultichainClaimWithWitness(claimPayload, _release);
-    }
-
-    function claimAndWithdraw(ExogenousQualifiedSplitMultichainClaimWithWitness calldata claimPayload) external returns (bool) {
-        return _processExogenousQualifiedSplitMultichainClaimWithWitness(claimPayload, _withdraw);
     }
 
     function claim(BatchMultichainClaim calldata claimPayload) external returns (bool) {
@@ -334,22 +186,6 @@ contract ClaimProcessor is ITheCompactClaims, ClaimProcessorLogic {
         return _processExogenousBatchMultichainClaim(claimPayload, _withdraw);
     }
 
-    function claim(QualifiedBatchMultichainClaim calldata claimPayload) external returns (bool) {
-        return _processQualifiedBatchMultichainClaim(claimPayload, _release);
-    }
-
-    function claimAndWithdraw(QualifiedBatchMultichainClaim calldata claimPayload) external returns (bool) {
-        return _processQualifiedBatchMultichainClaim(claimPayload, _withdraw);
-    }
-
-    function claim(ExogenousQualifiedBatchMultichainClaim calldata claimPayload) external returns (bool) {
-        return _processExogenousQualifiedBatchMultichainClaim(claimPayload, _release);
-    }
-
-    function claimAndWithdraw(ExogenousQualifiedBatchMultichainClaim calldata claimPayload) external returns (bool) {
-        return _processExogenousQualifiedBatchMultichainClaim(claimPayload, _withdraw);
-    }
-
     function claim(BatchMultichainClaimWithWitness calldata claimPayload) external returns (bool) {
         return _processBatchMultichainClaimWithWitness(claimPayload, _release);
     }
@@ -364,22 +200,6 @@ contract ClaimProcessor is ITheCompactClaims, ClaimProcessorLogic {
 
     function claimAndWithdraw(ExogenousBatchMultichainClaimWithWitness calldata claimPayload) external returns (bool) {
         return _processExogenousBatchMultichainClaimWithWitness(claimPayload, _withdraw);
-    }
-
-    function claim(QualifiedBatchMultichainClaimWithWitness calldata claimPayload) external returns (bool) {
-        return _processQualifiedBatchMultichainClaimWithWitness(claimPayload, _release);
-    }
-
-    function claimAndWithdraw(QualifiedBatchMultichainClaimWithWitness calldata claimPayload) external returns (bool) {
-        return _processQualifiedBatchMultichainClaimWithWitness(claimPayload, _withdraw);
-    }
-
-    function claim(ExogenousQualifiedBatchMultichainClaimWithWitness calldata claimPayload) external returns (bool) {
-        return _processExogenousQualifiedBatchMultichainClaimWithWitness(claimPayload, _release);
-    }
-
-    function claimAndWithdraw(ExogenousQualifiedBatchMultichainClaimWithWitness calldata claimPayload) external returns (bool) {
-        return _processExogenousQualifiedBatchMultichainClaimWithWitness(claimPayload, _withdraw);
     }
 
     function claim(SplitBatchMultichainClaim calldata claimPayload) external returns (bool) {
@@ -398,22 +218,6 @@ contract ClaimProcessor is ITheCompactClaims, ClaimProcessorLogic {
         return _processExogenousSplitBatchMultichainClaim(claimPayload, _withdraw);
     }
 
-    function claim(QualifiedSplitBatchMultichainClaim calldata claimPayload) external returns (bool) {
-        return _processQualifiedSplitBatchMultichainClaim(claimPayload, _release);
-    }
-
-    function claimAndWithdraw(QualifiedSplitBatchMultichainClaim calldata claimPayload) external returns (bool) {
-        return _processQualifiedSplitBatchMultichainClaim(claimPayload, _withdraw);
-    }
-
-    function claim(ExogenousQualifiedSplitBatchMultichainClaim calldata claimPayload) external returns (bool) {
-        return _processExogenousQualifiedSplitBatchMultichainClaim(claimPayload, _release);
-    }
-
-    function claimAndWithdraw(ExogenousQualifiedSplitBatchMultichainClaim calldata claimPayload) external returns (bool) {
-        return _processExogenousQualifiedSplitBatchMultichainClaim(claimPayload, _withdraw);
-    }
-
     function claim(SplitBatchMultichainClaimWithWitness calldata claimPayload) external returns (bool) {
         return _processSplitBatchMultichainClaimWithWitness(claimPayload, _release);
     }
@@ -428,21 +232,5 @@ contract ClaimProcessor is ITheCompactClaims, ClaimProcessorLogic {
 
     function claimAndWithdraw(ExogenousSplitBatchMultichainClaimWithWitness calldata claimPayload) external returns (bool) {
         return _processExogenousSplitBatchMultichainClaimWithWitness(claimPayload, _withdraw);
-    }
-
-    function claim(QualifiedSplitBatchMultichainClaimWithWitness calldata claimPayload) external returns (bool) {
-        return _processQualifiedSplitBatchMultichainClaimWithWitness(claimPayload, _release);
-    }
-
-    function claimAndWithdraw(QualifiedSplitBatchMultichainClaimWithWitness calldata claimPayload) external returns (bool) {
-        return _processQualifiedSplitBatchMultichainClaimWithWitness(claimPayload, _withdraw);
-    }
-
-    function claim(ExogenousQualifiedSplitBatchMultichainClaimWithWitness calldata claimPayload) external returns (bool) {
-        return _processExogenousQualifiedSplitBatchMultichainClaimWithWitness(claimPayload, _release);
-    }
-
-    function claimAndWithdraw(ExogenousQualifiedSplitBatchMultichainClaimWithWitness calldata claimPayload) external returns (bool) {
-        return _processExogenousQualifiedSplitBatchMultichainClaimWithWitness(claimPayload, _withdraw);
     }
 }
