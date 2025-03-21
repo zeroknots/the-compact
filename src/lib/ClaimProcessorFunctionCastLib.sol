@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.27;
 
-import { SplitClaimWithWitness } from "../types/Claims.sol";
+import { Claim } from "../types/Claims.sol";
 
-import { SplitBatchClaimWithWitness } from "../types/BatchClaims.sol";
+import { BatchClaim } from "../types/BatchClaims.sol";
 
-import { SplitMultichainClaimWithWitness, ExogenousSplitMultichainClaimWithWitness } from "../types/MultichainClaims.sol";
+import { MultichainClaim, ExogenousMultichainClaim } from "../types/MultichainClaims.sol";
 
-import { SplitBatchMultichainClaimWithWitness, ExogenousSplitBatchMultichainClaimWithWitness } from "../types/BatchMultichainClaims.sol";
+import { BatchMultichainClaim, ExogenousBatchMultichainClaim } from "../types/BatchMultichainClaims.sol";
 
 /**
  * @title ClaimProcessorFunctionCastLib
@@ -22,15 +22,15 @@ import { SplitBatchMultichainClaimWithWitness, ExogenousSplitBatchMultichainClai
  */
 library ClaimProcessorFunctionCastLib {
     /**
-     * @notice Function cast to provide a SplitClaimWithWitness calldata struct while
+     * @notice Function cast to provide a Claim calldata struct while
      * treating it as a uint256 representing a calldata pointer location.
      * @param fnIn   Function pointer to `ClaimProcessorLib.processSimpleSplitClaim`.
-     * @return fnOut Modified function used in `ClaimProcessorLogic._processSplitClaimWithWitness`.
+     * @return fnOut Modified function used in `ClaimProcessorLogic._processClaim`.
      */
-    function usingSplitClaimWithWitness(function(bytes32, uint256, uint256, bytes32, bytes32, function(address, address, uint256, uint256) internal returns (bool)) internal returns (bool) fnIn)
+    function usingClaim(function(bytes32, uint256, uint256, bytes32, bytes32, function(address, address, uint256, uint256) internal returns (bool)) internal returns (bool) fnIn)
         internal
         pure
-        returns (function(bytes32, SplitClaimWithWitness calldata, uint256, bytes32, bytes32, function(address, address, uint256, uint256) internal returns (bool)) internal returns (bool) fnOut)
+        returns (function(bytes32, Claim calldata, uint256, bytes32, bytes32, function(address, address, uint256, uint256) internal returns (bool)) internal returns (bool) fnOut)
     {
         assembly ("memory-safe") {
             fnOut := fnIn
@@ -38,15 +38,15 @@ library ClaimProcessorFunctionCastLib {
     }
 
     /**
-     * @notice Function cast to provide a SplitBatchClaimWithWitness calldata struct while
+     * @notice Function cast to provide a BatchClaim calldata struct while
      * treating it as a uint256 representing a calldata pointer location.
      * @param fnIn   Function pointer to `ClaimProcessorLib.processSimpleSplitBatchClaim`.
-     * @return fnOut Modified function used in `ClaimProcessorLogic._processSplitBatchClaimWithWitness`.
+     * @return fnOut Modified function used in `ClaimProcessorLogic._processBatchClaim`.
      */
-    function usingSplitBatchClaimWithWitness(function(bytes32, uint256, uint256, bytes32, bytes32, function(address, address, uint256, uint256) internal returns (bool)) internal returns (bool) fnIn)
+    function usingBatchClaim(function(bytes32, uint256, uint256, bytes32, bytes32, function(address, address, uint256, uint256) internal returns (bool)) internal returns (bool) fnIn)
         internal
         pure
-        returns (function(bytes32, SplitBatchClaimWithWitness calldata, uint256, bytes32, bytes32, function(address, address, uint256, uint256) internal returns (bool)) internal returns (bool) fnOut)
+        returns (function(bytes32, BatchClaim calldata, uint256, bytes32, bytes32, function(address, address, uint256, uint256) internal returns (bool)) internal returns (bool) fnOut)
     {
         assembly ("memory-safe") {
             fnOut := fnIn
@@ -54,15 +54,15 @@ library ClaimProcessorFunctionCastLib {
     }
 
     /**
-     * @notice Function cast to provide a SplitMultichainClaimWithWitness calldata struct while
+     * @notice Function cast to provide a MultichainClaim calldata struct while
      * treating it as a uint256 representing a calldata pointer location.
      * @param fnIn   Function pointer to `ClaimProcessorLib.processSimpleSplitClaim`.
-     * @return fnOut Modified function used in `ClaimProcessorLogic._processSplitMultichainClaimWithWitness`.
+     * @return fnOut Modified function used in `ClaimProcessorLogic._processMultichainClaim`.
      */
-    function usingSplitMultichainClaimWithWitness(function(bytes32, uint256, uint256, bytes32, bytes32, function(address, address, uint256, uint256) internal returns (bool)) internal returns (bool) fnIn)
+    function usingMultichainClaim(function(bytes32, uint256, uint256, bytes32, bytes32, function(address, address, uint256, uint256) internal returns (bool)) internal returns (bool) fnIn)
         internal
         pure
-        returns (function(bytes32, SplitMultichainClaimWithWitness calldata, uint256, bytes32, bytes32, function(address, address, uint256, uint256) internal returns (bool)) internal returns (bool) fnOut)
+        returns (function(bytes32, MultichainClaim calldata, uint256, bytes32, bytes32, function(address, address, uint256, uint256) internal returns (bool)) internal returns (bool) fnOut)
     {
         assembly ("memory-safe") {
             fnOut := fnIn
@@ -70,15 +70,15 @@ library ClaimProcessorFunctionCastLib {
     }
 
     /**
-     * @notice Function cast to provide a SplitBatchMultichainClaimWithWitness calldata struct while
+     * @notice Function cast to provide a BatchMultichainClaim calldata struct while
      * treating it as a uint256 representing a calldata pointer location.
      * @param fnIn   Function pointer to `ClaimProcessorLib.processSimpleSplitBatchClaim`.
-     * @return fnOut Modified function used in `ClaimProcessorLogic._processSplitBatchMultichainClaimWithWitness`.
+     * @return fnOut Modified function used in `ClaimProcessorLogic._processBatchMultichainClaim`.
      */
-    function usingSplitBatchMultichainClaimWithWitness(function(bytes32, uint256, uint256, bytes32, bytes32, function(address, address, uint256, uint256) internal returns (bool)) internal returns (bool) fnIn)
+    function usingBatchMultichainClaim(function(bytes32, uint256, uint256, bytes32, bytes32, function(address, address, uint256, uint256) internal returns (bool)) internal returns (bool) fnIn)
         internal
         pure
-        returns (function(bytes32, SplitBatchMultichainClaimWithWitness calldata, uint256, bytes32, bytes32, function(address, address, uint256, uint256) internal returns (bool)) internal returns (bool) fnOut)
+        returns (function(bytes32, BatchMultichainClaim calldata, uint256, bytes32, bytes32, function(address, address, uint256, uint256) internal returns (bool)) internal returns (bool) fnOut)
     {
         assembly ("memory-safe") {
             fnOut := fnIn
@@ -86,19 +86,15 @@ library ClaimProcessorFunctionCastLib {
     }
 
     /**
-     * @notice Function cast to provide a ExogenousSplitMultichainClaimWithWitness calldata struct while
+     * @notice Function cast to provide a ExogenousMultichainClaim calldata struct while
      * treating it as a uint256 representing a calldata pointer location.
      * @param fnIn   Function pointer to `ClaimProcessorLib.processSplitClaimWithSponsorDomain`.
-     * @return fnOut Modified function used in `ClaimProcessorLogic._processExogenousSplitMultichainClaimWithWitness`.
+     * @return fnOut Modified function used in `ClaimProcessorLogic._processExogenousMultichainClaim`.
      */
-    function usingExogenousSplitMultichainClaimWithWitness(
-        function(bytes32, uint256, uint256, bytes32, bytes32, bytes32, function(address, address, uint256, uint256) internal returns (bool)) internal returns (bool) fnIn
-    )
+    function usingExogenousMultichainClaim(function(bytes32, uint256, uint256, bytes32, bytes32, bytes32, function(address, address, uint256, uint256) internal returns (bool)) internal returns (bool) fnIn)
         internal
         pure
-        returns (
-            function(bytes32, ExogenousSplitMultichainClaimWithWitness calldata, uint256, bytes32, bytes32, bytes32, function(address, address, uint256, uint256) internal returns (bool)) internal returns (bool) fnOut
-        )
+        returns (function(bytes32, ExogenousMultichainClaim calldata, uint256, bytes32, bytes32, bytes32, function(address, address, uint256, uint256) internal returns (bool)) internal returns (bool) fnOut)
     {
         assembly ("memory-safe") {
             fnOut := fnIn
@@ -106,19 +102,16 @@ library ClaimProcessorFunctionCastLib {
     }
 
     /**
-     * @notice Function cast to provide a ExogenousSplitBatchMultichainClaimWithWitness calldata struct while
+     * @notice Function cast to provide a ExogenousBatchMultichainClaim calldata struct while
      * treating it as a uint256 representing a calldata pointer location.
      * @param fnIn   Function pointer to `ClaimProcessorLib.processSplitBatchClaimWithSponsorDomain`.
-     * @return fnOut Modified function used in `ClaimProcessorLogic._processExogenousSplitBatchMultichainClaimWithWitness`.
+     * @return fnOut Modified function used in `ClaimProcessorLogic._processExogenousBatchMultichainClaim`.
      */
-    function usingExogenousSplitBatchMultichainClaimWithWitness(
-        function(bytes32, uint256, uint256, bytes32, bytes32, bytes32, function(address, address, uint256, uint256) internal returns (bool)) internal returns (bool) fnIn
-    )
+    function usingExogenousBatchMultichainClaim(function(bytes32, uint256, uint256, bytes32, bytes32, bytes32, function(address, address, uint256, uint256) internal returns (bool)) internal returns (bool) fnIn)
         internal
         pure
         returns (
-            function(bytes32, ExogenousSplitBatchMultichainClaimWithWitness calldata, uint256, bytes32, bytes32, bytes32, function(address, address, uint256, uint256) internal returns (bool)) internal returns (bool)
-            fnOut
+            function(bytes32, ExogenousBatchMultichainClaim calldata, uint256, bytes32, bytes32, bytes32, function(address, address, uint256, uint256) internal returns (bool)) internal returns (bool) fnOut
         )
     {
         assembly ("memory-safe") {

@@ -18,7 +18,7 @@ struct SplitBatchTransfer {
     SplitByIdComponent[] transfers; // The recipients and amounts of each transfer for each ID.
 }
 
-struct SplitBatchClaimWithWitness {
+struct BatchClaim {
     bytes allocatorSignature; // Authorization from the allocator.
     bytes sponsorSignature; // Authorization from the sponsor.
     address sponsor; // The account to source the tokens from.

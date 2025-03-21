@@ -15,12 +15,12 @@ import { IdLib } from "../src/lib/IdLib.sol";
 
 import { AlwaysOKAllocator } from "../src/test/AlwaysOKAllocator.sol";
 
-import { BasicTransfer, SplitTransfer, SplitClaimWithWitness } from "../src/types/Claims.sol";
-import { BatchTransfer, SplitBatchTransfer, SplitBatchClaimWithWitness } from "../src/types/BatchClaims.sol";
+import { BasicTransfer, SplitTransfer, Claim } from "../src/types/Claims.sol";
+import { BatchTransfer, SplitBatchTransfer, BatchClaim } from "../src/types/BatchClaims.sol";
 
-import { SplitMultichainClaimWithWitness, ExogenousSplitMultichainClaimWithWitness } from "../src/types/MultichainClaims.sol";
+import { MultichainClaim, ExogenousMultichainClaim } from "../src/types/MultichainClaims.sol";
 
-import { SplitBatchMultichainClaimWithWitness, ExogenousSplitBatchMultichainClaimWithWitness } from "../src/types/BatchMultichainClaims.sol";
+import { BatchMultichainClaim, ExogenousBatchMultichainClaim } from "../src/types/BatchMultichainClaims.sol";
 
 import { SplitComponent, TransferComponent, SplitByIdComponent, SplitBatchClaimComponent } from "../src/types/Components.sol";
 
@@ -953,7 +953,7 @@ contract TheCompactTest is Test {
 
         bytes memory sponsorSignature = "";
 
-        SplitClaimWithWitness memory claim = SplitClaimWithWitness(allocatorSignature, sponsorSignature, swapper, nonce, expires, witness, witnessTypestring, id, amount, recipients);
+        Claim memory claim = Claim(allocatorSignature, sponsorSignature, swapper, nonce, expires, witness, witnessTypestring, id, amount, recipients);
 
         vm.prank(swapper);
         (bool status) = theCompact.register(claimHash, typehash, 1000);
@@ -1022,7 +1022,7 @@ contract TheCompactTest is Test {
         recipients[0] = splitOne;
         recipients[1] = splitTwo;
 
-        SplitClaimWithWitness memory claim = SplitClaimWithWitness(allocatorSignature, sponsorSignature, swapper, nonce, expires, witness, witnessTypestring, id, amount, recipients);
+        Claim memory claim = Claim(allocatorSignature, sponsorSignature, swapper, nonce, expires, witness, witnessTypestring, id, amount, recipients);
 
         vm.prank(arbiter);
         (bool status) = theCompact.claimAndWithdraw(claim);
@@ -1125,7 +1125,7 @@ contract TheCompactTest is Test {
         recipients[0] = splitOne;
         recipients[1] = splitTwo;
 
-        SplitClaimWithWitness memory claim = SplitClaimWithWitness(allocatorSignature, sponsorSignature, swapper, nonce, expires, witness, witnessTypestring, id, amount, recipients);
+        Claim memory claim = Claim(allocatorSignature, sponsorSignature, swapper, nonce, expires, witness, witnessTypestring, id, amount, recipients);
 
         vm.prank(arbiter);
         (bool status) = theCompact.claim(claim);
@@ -1190,7 +1190,7 @@ contract TheCompactTest is Test {
         recipients[0] = splitOne;
         recipients[1] = splitTwo;
 
-        SplitClaimWithWitness memory claim = SplitClaimWithWitness(allocatorSignature, sponsorSignature, swapper, nonce, expires, witness, witnessTypestring, id, amount, recipients);
+        Claim memory claim = Claim(allocatorSignature, sponsorSignature, swapper, nonce, expires, witness, witnessTypestring, id, amount, recipients);
 
         vm.prank(arbiter);
         (bool status) = theCompact.claim(claim);
@@ -1337,7 +1337,7 @@ contract TheCompactTest is Test {
         aThirdPortion[0] = SplitComponent({ claimant: recipientTwo, amount: aThirdAmount });
         claims[2] = SplitBatchClaimComponent({ id: aThirdId, allocatedAmount: aThirdAmount, portions: aThirdPortion });
 
-        SplitBatchClaimWithWitness memory claim = SplitBatchClaimWithWitness(allocatorSignature, sponsorSignature, swapper, nonce, expires, witness, witnessTypestring, claims);
+        BatchClaim memory claim = BatchClaim(allocatorSignature, sponsorSignature, swapper, nonce, expires, witness, witnessTypestring, claims);
 
         vm.prank(arbiter);
         (bool status) = theCompact.claim(claim);
@@ -1426,7 +1426,7 @@ contract TheCompactTest is Test {
         aThirdPortion[0] = SplitComponent({ claimant: recipientTwo, amount: aThirdAmount });
         claims[2] = SplitBatchClaimComponent({ id: aThirdId, allocatedAmount: aThirdAmount, portions: aThirdPortion });
 
-        SplitBatchClaimWithWitness memory claim = SplitBatchClaimWithWitness(allocatorSignature, sponsorSignature, swapper, nonce, expires, witness, witnessTypestring, claims);
+        BatchClaim memory claim = BatchClaim(allocatorSignature, sponsorSignature, swapper, nonce, expires, witness, witnessTypestring, claims);
 
         vm.prank(arbiter);
         (bool status) = theCompact.claim(claim);
@@ -1532,8 +1532,7 @@ contract TheCompactTest is Test {
         recipients[0] = splitOne;
         recipients[1] = splitTwo;
 
-        SplitMultichainClaimWithWitness memory claim =
-            SplitMultichainClaimWithWitness(allocatorSignature, sponsorSignature, swapper, nonce, expires, witness, witnessTypestring, additionalChains, id, amount, recipients);
+        MultichainClaim memory claim = MultichainClaim(allocatorSignature, sponsorSignature, swapper, nonce, expires, witness, witnessTypestring, additionalChains, id, amount, recipients);
 
         uint256 snapshotId = vm.snapshot();
         vm.prank(arbiter);
@@ -1566,7 +1565,7 @@ contract TheCompactTest is Test {
         additionalChains[0] = allocationHashOne;
         uint256 chainIndex = 0;
 
-        ExogenousSplitMultichainClaimWithWitness memory anotherClaim = ExogenousSplitMultichainClaimWithWitness(
+        ExogenousMultichainClaim memory anotherClaim = ExogenousMultichainClaim(
             exogenousAllocatorSignature, sponsorSignature, swapper, nonce, expires, witness, witnessTypestring, additionalChains, chainIndex, notarizedChainId, anotherId, anotherAmount, recipients
         );
 
@@ -1688,7 +1687,7 @@ contract TheCompactTest is Test {
             claims[0] = SplitBatchClaimComponent({ id: id, allocatedAmount: amount, portions: recipients });
         }
 
-        SplitBatchMultichainClaimWithWitness memory claim;
+        BatchMultichainClaim memory claim;
         claim.sponsorSignature = sponsorSignature;
 
         {
@@ -1742,7 +1741,7 @@ contract TheCompactTest is Test {
             claims[1] = SplitBatchClaimComponent({ id: aThirdId, allocatedAmount: aThirdAmount, portions: recipients });
         }
 
-        ExogenousSplitBatchMultichainClaimWithWitness memory anotherClaim;
+        ExogenousBatchMultichainClaim memory anotherClaim;
         anotherClaim.allocatorSignature = abi.encodePacked(r, vs);
         anotherClaim.sponsorSignature = sponsorSignature;
         anotherClaim.witnessTypestring = "Witness witness)Witness(uint256 witnessArgument)";

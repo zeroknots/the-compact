@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.27;
 
-import { SplitClaimWithWitness } from "../types/Claims.sol";
+import { Claim } from "../types/Claims.sol";
 
-import { SplitBatchClaimWithWitness } from "../types/BatchClaims.sol";
+import { BatchClaim } from "../types/BatchClaims.sol";
 
-import { SplitMultichainClaimWithWitness, ExogenousSplitMultichainClaimWithWitness } from "../types/MultichainClaims.sol";
+import { MultichainClaim, ExogenousMultichainClaim } from "../types/MultichainClaims.sol";
 
-import { SplitBatchMultichainClaimWithWitness, ExogenousSplitBatchMultichainClaimWithWitness } from "../types/BatchMultichainClaims.sol";
+import { BatchMultichainClaim, ExogenousBatchMultichainClaim } from "../types/BatchMultichainClaims.sol";
 
 /**
  * @title The Compact — Claims Interface
@@ -47,27 +47,27 @@ import { SplitBatchMultichainClaimWithWitness, ExogenousSplitBatchMultichainClai
  *    for the domain that the multichain claim was signed against.
  */
 interface ITheCompactClaims {
-    function claim(SplitClaimWithWitness calldata claimPayload) external returns (bool);
+    function claim(Claim calldata claimPayload) external returns (bool);
 
-    function claimAndWithdraw(SplitClaimWithWitness calldata claimPayload) external returns (bool);
+    function claimAndWithdraw(Claim calldata claimPayload) external returns (bool);
 
-    function claim(SplitBatchClaimWithWitness calldata claimPayload) external returns (bool);
+    function claim(BatchClaim calldata claimPayload) external returns (bool);
 
-    function claimAndWithdraw(SplitBatchClaimWithWitness calldata claimPayload) external returns (bool);
+    function claimAndWithdraw(BatchClaim calldata claimPayload) external returns (bool);
 
-    function claim(SplitMultichainClaimWithWitness calldata claimPayload) external returns (bool);
+    function claim(MultichainClaim calldata claimPayload) external returns (bool);
 
-    function claimAndWithdraw(SplitMultichainClaimWithWitness calldata claimPayload) external returns (bool);
+    function claimAndWithdraw(MultichainClaim calldata claimPayload) external returns (bool);
 
-    function claim(ExogenousSplitMultichainClaimWithWitness calldata claimPayload) external returns (bool);
+    function claim(ExogenousMultichainClaim calldata claimPayload) external returns (bool);
 
-    function claimAndWithdraw(ExogenousSplitMultichainClaimWithWitness calldata claimPayload) external returns (bool);
+    function claimAndWithdraw(ExogenousMultichainClaim calldata claimPayload) external returns (bool);
 
-    function claim(SplitBatchMultichainClaimWithWitness calldata claimPayload) external returns (bool);
+    function claim(BatchMultichainClaim calldata claimPayload) external returns (bool);
 
-    function claimAndWithdraw(SplitBatchMultichainClaimWithWitness calldata claimPayload) external returns (bool);
+    function claimAndWithdraw(BatchMultichainClaim calldata claimPayload) external returns (bool);
 
-    function claim(ExogenousSplitBatchMultichainClaimWithWitness calldata claimPayload) external returns (bool);
+    function claim(ExogenousBatchMultichainClaim calldata claimPayload) external returns (bool);
 
-    function claimAndWithdraw(ExogenousSplitBatchMultichainClaimWithWitness calldata claimPayload) external returns (bool);
+    function claimAndWithdraw(ExogenousBatchMultichainClaim calldata claimPayload) external returns (bool);
 }

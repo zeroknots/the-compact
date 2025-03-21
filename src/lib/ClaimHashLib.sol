@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.27;
 
-import { BasicTransfer, SplitTransfer, SplitClaimWithWitness } from "../types/Claims.sol";
+import { BasicTransfer, SplitTransfer, Claim } from "../types/Claims.sol";
 
-import { BatchTransfer, SplitBatchTransfer, SplitBatchClaimWithWitness } from "../types/BatchClaims.sol";
+import { BatchTransfer, SplitBatchTransfer, BatchClaim } from "../types/BatchClaims.sol";
 
-import { SplitMultichainClaimWithWitness, ExogenousSplitMultichainClaimWithWitness } from "../types/MultichainClaims.sol";
+import { MultichainClaim, ExogenousMultichainClaim } from "../types/MultichainClaims.sol";
 
-import { SplitBatchMultichainClaimWithWitness, ExogenousSplitBatchMultichainClaimWithWitness } from "../types/BatchMultichainClaims.sol";
+import { BatchMultichainClaim, ExogenousBatchMultichainClaim } from "../types/BatchMultichainClaims.sol";
 
 import { SplitBatchClaimComponent } from "../types/Components.sol";
 
@@ -57,28 +57,28 @@ library ClaimHashLib {
     }
 
     ///// CATEGORY 2: Claim with witness message & type hashes /////
-    function toMessageHashes(SplitClaimWithWitness calldata claim) internal view returns (bytes32 claimHash, bytes32 typehash) {
-        return HashLib.toMessageHashWithWitness.usingSplitClaimWithWitness()(claim, 0);
+    function toMessageHashes(Claim calldata claim) internal view returns (bytes32 claimHash, bytes32 typehash) {
+        return HashLib.toMessageHashWithWitness.usingClaim()(claim, 0);
     }
 
-    function toMessageHashes(SplitBatchClaimWithWitness calldata claim) internal view returns (bytes32 claimHash, bytes32 typehash) {
-        return HashLib.toBatchClaimWithWitnessMessageHash.usingSplitBatchClaimWithWitness()(claim, claim.claims.toSplitIdsAndAmountsHash());
+    function toMessageHashes(BatchClaim calldata claim) internal view returns (bytes32 claimHash, bytes32 typehash) {
+        return HashLib.toBatchClaimWithWitnessMessageHash.usingBatchClaim()(claim, claim.claims.toSplitIdsAndAmountsHash());
     }
 
-    function toMessageHashes(SplitMultichainClaimWithWitness calldata claim) internal view returns (bytes32 claimHash, bytes32 typehash) {
+    function toMessageHashes(MultichainClaim calldata claim) internal view returns (bytes32 claimHash, bytes32 typehash) {
         return _toMultichainClaimWithWitnessMessageHash(claim);
     }
 
-    function toMessageHashes(SplitBatchMultichainClaimWithWitness calldata claim) internal view returns (bytes32 claimHash, bytes32 typehash) {
-        return _toGenericMultichainClaimWithWitnessMessageHash.usingSplitBatchMultichainClaimWithWitness()(claim, claim.claims.toSplitIdsAndAmountsHash(), HashLib.toMultichainClaimMessageHash);
+    function toMessageHashes(BatchMultichainClaim calldata claim) internal view returns (bytes32 claimHash, bytes32 typehash) {
+        return _toGenericMultichainClaimWithWitnessMessageHash.usingBatchMultichainClaim()(claim, claim.claims.toSplitIdsAndAmountsHash(), HashLib.toMultichainClaimMessageHash);
     }
 
-    function toMessageHashes(ExogenousSplitMultichainClaimWithWitness calldata claim) internal view returns (bytes32 claimHash, bytes32 typehash) {
+    function toMessageHashes(ExogenousMultichainClaim calldata claim) internal view returns (bytes32 claimHash, bytes32 typehash) {
         return _toExogenousMultichainClaimWithWitnessMessageHash(claim);
     }
 
-    function toMessageHashes(ExogenousSplitBatchMultichainClaimWithWitness calldata claim) internal view returns (bytes32 claimHash, bytes32 typehash) {
-        return _toGenericMultichainClaimWithWitnessMessageHash.usingExogenousSplitBatchMultichainClaimWithWitness()(claim, claim.claims.toSplitIdsAndAmountsHash(), HashLib.toExogenousMultichainClaimMessageHash);
+    function toMessageHashes(ExogenousBatchMultichainClaim calldata claim) internal view returns (bytes32 claimHash, bytes32 typehash) {
+        return _toGenericMultichainClaimWithWitnessMessageHash.usingExogenousBatchMultichainClaim()(claim, claim.claims.toSplitIdsAndAmountsHash(), HashLib.toExogenousMultichainClaimMessageHash);
     }
 
     ///// Private helper functions /////
@@ -95,13 +95,13 @@ library ClaimHashLib {
         return (hashFn(claim, uint256(0x40).asStubborn(), allocationTypehash, typehash, additionalInput), typehash);
     }
 
-    function _toMultichainClaimWithWitnessMessageHash(SplitMultichainClaimWithWitness calldata claim) private view returns (bytes32 claimHash, bytes32 typehash) {
+    function _toMultichainClaimWithWitnessMessageHash(MultichainClaim calldata claim) private view returns (bytes32 claimHash, bytes32 typehash) {
         return _toGenericMultichainClaimWithWitnessMessageHash.usingMultichainClaimWithWitness()(
             claim, HashLib.toSingleIdAndAmountHash.usingMultichainClaimWithWitness()(claim, uint256(0x40).asStubborn()), HashLib.toMultichainClaimMessageHash
         );
     }
 
-    function _toExogenousMultichainClaimWithWitnessMessageHash(ExogenousSplitMultichainClaimWithWitness calldata claim) private view returns (bytes32 claimHash, bytes32 typehash) {
+    function _toExogenousMultichainClaimWithWitnessMessageHash(ExogenousMultichainClaim calldata claim) private view returns (bytes32 claimHash, bytes32 typehash) {
         return _toGenericMultichainClaimWithWitnessMessageHash.usingExogenousMultichainClaimWithWitness()(
             claim, HashLib.toSingleIdAndAmountHash.usingExogenousMultichainClaimWithWitness()(claim, uint256(0x80).asStubborn()), HashLib.toExogenousMultichainClaimMessageHash
         );

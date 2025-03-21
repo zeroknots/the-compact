@@ -3,7 +3,7 @@ pragma solidity ^0.8.27;
 
 import { SplitComponent } from "./Components.sol";
 
-struct SplitMultichainClaimWithWitness {
+struct MultichainClaim {
     bytes allocatorSignature; // Authorization from the allocator.
     bytes sponsorSignature; // Authorization from the sponsor.
     address sponsor; // The account to source the tokens from.
@@ -17,7 +17,7 @@ struct SplitMultichainClaimWithWitness {
     SplitComponent[] claimants; // The claim recipients and amounts; specified by the arbiter.
 }
 
-struct ExogenousSplitMultichainClaimWithWitness {
+struct ExogenousMultichainClaim {
     bytes allocatorSignature; // Authorization from the allocator.
     bytes sponsorSignature; // Authorization from the sponsor.
     address sponsor; // The account to source the tokens from.
