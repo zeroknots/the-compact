@@ -552,30 +552,6 @@ library HashLib {
     }
 
     /**
-     * @notice Internal view function for deriving the EIP-712 message hash for
-     * a simple multichain claim.
-     * @param claim             Pointer to the claim location in calldata.
-     * @param idsAndAmountsHash A hash of the ids and amounts (formatted as a uint256).
-     * @return messageHash      The EIP-712 compliant message hash.
-     */
-    function toSimpleMultichainClaimMessageHash(uint256 claim, uint256 idsAndAmountsHash) internal view returns (bytes32 messageHash) {
-        // Derive the message hash from the claim and idsAndAmounts hash.
-        return claim.toMultichainClaimMessageHash(uint256(0).asStubborn(), SEGMENT_TYPEHASH, MULTICHAIN_COMPACT_TYPEHASH, idsAndAmountsHash);
-    }
-
-    /**
-     * @notice Internal view function for deriving the EIP-712 message hash for
-     * a simple exogenous multichain claim.
-     * @param claim             Pointer to the claim location in calldata.
-     * @param idsAndAmountsHash A hash of the ids and amounts.
-     * @return messageHash      The EIP-712 compliant message hash.
-     */
-    function toSimpleExogenousMultichainClaimMessageHash(uint256 claim, uint256 idsAndAmountsHash) internal view returns (bytes32 messageHash) {
-        // Derive the message hash from the claim and idsAndAmounts hash.
-        return claim.toExogenousMultichainClaimMessageHash(uint256(0).asStubborn(), SEGMENT_TYPEHASH, MULTICHAIN_COMPACT_TYPEHASH, idsAndAmountsHash);
-    }
-
-    /**
      * @notice Internal pure function for deriving the EIP-712 typehashes for
      * multichain claims.
      * @param claim                      Pointer to the claim location in calldata.

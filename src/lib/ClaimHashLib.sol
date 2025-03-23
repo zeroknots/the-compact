@@ -82,28 +82,24 @@ library ClaimHashLib {
     }
 
     ///// Private helper functions /////
-    function _toGenericMessageHash(uint256 claim, uint256 additionalInput, function(uint256, uint256) internal view returns (bytes32) hashFn) private view returns (bytes32 claimHash) {
-        return hashFn(claim, additionalInput);
-    }
-
     function _toGenericMultichainClaimWithWitnessMessageHash(uint256 claim, uint256 additionalInput, function (uint256, uint256, bytes32, bytes32, uint256) internal view returns (bytes32) hashFn)
         private
         view
         returns (bytes32 claimHash, bytes32 /* typehash */ )
     {
         (bytes32 allocationTypehash, bytes32 typehash) = claim.toMultichainTypehashes();
-        return (hashFn(claim, uint256(0x40).asStubborn(), allocationTypehash, typehash, additionalInput), typehash);
+        return (hashFn(claim, uint256(0x40), allocationTypehash, typehash, additionalInput), typehash);
     }
 
     function _toMultichainClaimWithWitnessMessageHash(MultichainClaim calldata claim) private view returns (bytes32 claimHash, bytes32 typehash) {
         return _toGenericMultichainClaimWithWitnessMessageHash.usingMultichainClaimWithWitness()(
-            claim, HashLib.toSingleIdAndAmountHash.usingMultichainClaimWithWitness()(claim, uint256(0x40).asStubborn()), HashLib.toMultichainClaimMessageHash
+            claim, HashLib.toSingleIdAndAmountHash.usingMultichainClaimWithWitness()(claim, uint256(0x40)), HashLib.toMultichainClaimMessageHash
         );
     }
 
     function _toExogenousMultichainClaimWithWitnessMessageHash(ExogenousMultichainClaim calldata claim) private view returns (bytes32 claimHash, bytes32 typehash) {
         return _toGenericMultichainClaimWithWitnessMessageHash.usingExogenousMultichainClaimWithWitness()(
-            claim, HashLib.toSingleIdAndAmountHash.usingExogenousMultichainClaimWithWitness()(claim, uint256(0x80).asStubborn()), HashLib.toExogenousMultichainClaimMessageHash
+            claim, HashLib.toSingleIdAndAmountHash.usingExogenousMultichainClaimWithWitness()(claim, uint256(0x80)), HashLib.toExogenousMultichainClaimMessageHash
         );
     }
 }
