@@ -1013,7 +1013,7 @@ contract TheCompactTest is Test {
 
         (bool isActive, uint256 expiresAt) = theCompact.getRegistrationStatus(swapper, claimHash, typehash);
         assert(isActive);
-        assertEq(expiresAt, block.timestamp + 1000);
+        assertEq(expiresAt, block.timestamp + 10 * 60);
 
         bytes memory sponsorSignature = "";
 

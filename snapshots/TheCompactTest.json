@@ -1,14 +1,24 @@
 {
+<<<<<<< HEAD
   "basicTransfer": "56867",
   "basicWithdrawal": "59992",
+=======
+  "basicTransfer": "56955",
+  "basicWithdrawal": "60014",
+>>>>>>> 435a241 (Use provided reset period instead of expiry as reset period, excess:  1146 bytes)
   "batchClaim": "112534",
   "batchClaimRegisteredWithDeposit": "112534",
   "batchClaimRegisteredWithDepositWithWitness": "113359",
   "batchClaimWithWitness": "113353",
   "batchDepositAndRegisterViaPermit2": "222176",
   "batchDepositAndRegisterWithWitnessViaPermit2": "222154",
+<<<<<<< HEAD
   "batchTransfer": "81344",
   "batchWithdrawal": "100137",
+=======
+  "batchTransfer": "81366",
+  "batchWithdrawal": "100115",
+>>>>>>> 435a241 (Use provided reset period instead of expiry as reset period, excess:  1146 bytes)
   "claim": "57062",
   "claimAndWithdraw": "73520",
   "claimWithWitness": "59493",
@@ -17,19 +27,29 @@
   "depositBatchSingleNative": "28441",
   "depositBatchViaPermit2NativeAndERC20": "129839",
   "depositBatchViaPermit2SingleERC20": "104993",
-  "depositERC20AndURI": "67320",
+  "depositERC20AndURI": "67298",
   "depositERC20Basic": "67390",
   "depositERC20ViaPermit2AndURI": "98471",
+<<<<<<< HEAD
   "depositETHAndURI": "26754",
   "depositETHBasic": "28391",
   "qualifiedBatchClaim": "114134",
   "qualifiedBatchClaimWithWitness": "113672",
   "qualifiedClaim": "60406",
+=======
+  "depositETHAndURI": "26776",
+  "depositETHBasic": "28479",
+  "depositRegisterFor": "529",
+  "qualifiedBatchClaim": "114222",
+  "qualifiedBatchClaimWithWitness": "113760",
+  "qualifiedClaim": "60428",
+>>>>>>> 435a241 (Use provided reset period instead of expiry as reset period, excess:  1146 bytes)
   "qualifiedClaimWithWitness": "59098",
   "qualifiedSplitBatchClaim": "141574",
   "qualifiedSplitBatchClaimWithWitness": "141640",
   "qualifiedSplitClaim": "87065",
   "qualifiedSplitClaimWithWitness": "87540",
+<<<<<<< HEAD
   "register": "25408",
   "splitBatchClaim": "140876",
   "splitBatchClaimWithWitness": "140837",
@@ -39,4 +59,15 @@
   "splitClaimWithWitness": "86232",
   "splitTransfer": "82482",
   "splitWithdrawal": "93770"
+=======
+  "register": "25401",
+  "splitBatchClaim": "140876",
+  "splitBatchClaimWithWitness": "140837",
+  "splitBatchTransfer": "110696",
+  "splitBatchWithdrawal": "140383",
+  "splitClaim": "86839",
+  "splitClaimWithWitness": "86320",
+  "splitTransfer": "82570",
+  "splitWithdrawal": "93858"
+>>>>>>> 435a241 (Use provided reset period instead of expiry as reset period, excess:  1146 bytes)
 }
