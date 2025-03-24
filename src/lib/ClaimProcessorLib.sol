@@ -9,6 +9,8 @@ import { IdLib } from "./IdLib.sol";
 import { RegistrationLib } from "./RegistrationLib.sol";
 import { ValidityLib } from "./ValidityLib.sol";
 
+import { AllocatorLib } from "./AllocatorLib.sol";
+
 /**
  * @title ClaimProcessorLib
  * @notice Library contract implementing internal functions with helper logic for
@@ -32,6 +34,7 @@ library ClaimProcessorLib {
     using ValidityLib for uint96;
     using ValidityLib for bytes32;
     using RegistrationLib for address;
+    using AllocatorLib for address;
 
     /**
      * @notice Internal function for validating claim execution parameters. Extracts and validates
@@ -45,24 +48,31 @@ library ClaimProcessorLib {
      * @param calldataPointer          Pointer to the location of the associated struct in calldata.
      * @param domainSeparator          The local domain separator.
      * @param sponsorDomainSeparator   The domain separator for the sponsor's signature, or zero for non-exogenous claims.
+     * @param idsAndAmounts            The claimable resource lock IDs and amounts.
      * @param typehash                 The EIP-712 typehash used for the claim message.
      * @return sponsor                 The extracted address of the claim sponsor.
      */
-    function validate(bytes32 messageHash, uint96 allocatorId, bytes32 qualificationMessageHash, uint256 calldataPointer, bytes32 domainSeparator, bytes32 sponsorDomainSeparator, bytes32 typehash)
-        internal
-        returns (address sponsor)
-    {
+    function validate(
+        bytes32 messageHash,
+        uint96 allocatorId,
+        bytes32 qualificationMessageHash,
+        uint256 calldataPointer,
+        bytes32 domainSeparator,
+        bytes32 sponsorDomainSeparator,
+        bytes32 typehash,
+        uint256[2][] memory idsAndAmounts
+    ) internal returns (address sponsor) {
         // Declare variables for signatures and parameters that will be extracted from calldata.
-        bytes calldata allocatorSignature;
+        bytes calldata allocatorData;
         bytes calldata sponsorSignature;
         uint256 nonce;
         uint256 expires;
 
         assembly ("memory-safe") {
             // Extract allocator signature from calldata using offset stored at calldataPointer.
-            let allocatorSignaturePtr := add(calldataPointer, calldataload(calldataPointer))
-            allocatorSignature.offset := add(0x20, allocatorSignaturePtr)
-            allocatorSignature.length := calldataload(allocatorSignaturePtr)
+            let allocatorDataPtr := add(calldataPointer, calldataload(calldataPointer))
+            allocatorData.offset := add(0x20, allocatorDataPtr)
+            allocatorData.length := calldataload(allocatorDataPtr)
 
             // Extract sponsor signature from calldata using offset stored at calldataPointer + 0x20.
             let sponsorSignaturePtr := add(calldataPointer, calldataload(add(calldataPointer, 0x20)))
@@ -93,63 +103,10 @@ library ClaimProcessorLib {
             messageHash.signedBy(sponsor, sponsorSignature, sponsorDomainSeparator);
         }
 
-        // Validate allocator authorization against qualification message.
-        qualificationMessageHash.signedBy(allocator, allocatorSignature, domainSeparator);
+        allocator.callAuthorizeClaim(qualificationMessageHash, sponsor, nonce, expires, idsAndAmounts, allocatorData);
 
         // Emit claim event.
         sponsor.emitClaim(messageHash, allocator);
-    }
-
-    /**
-     * @notice Internal function for processing qualified claims with potentially exogenous
-     * sponsor signatures. Extracts claim parameters from calldata, validates the scope,
-     * ensures the claimed amount is within the allocated amount, validates the claim,
-     * and executes either a release of ERC6909 tokens or a withdrawal of underlying tokens.
-     * @param messageHash              The EIP-712 hash of the claim message.
-     * @param qualificationMessageHash The EIP-712 hash of the allocator's qualification message.
-     * @param calldataPointer          Pointer to the location of the associated struct in calldata.
-     * @param offsetToId               Offset to segment of calldata where relevant claim parameters begin.
-     * @param sponsorDomainSeparator   The domain separator for the sponsor's signature, or zero for non-exogenous claims.
-     * @param typehash                 The EIP-712 typehash used for the claim message.
-     * @param domainSeparator          The local domain separator.
-     * @param operation                Function pointer to either _release or _withdraw for executing the claim.
-     * @return                         Whether the claim was successfully processed.
-     */
-    function processClaimWithQualificationAndSponsorDomain(
-        bytes32 messageHash,
-        bytes32 qualificationMessageHash,
-        uint256 calldataPointer,
-        uint256 offsetToId,
-        bytes32 sponsorDomainSeparator,
-        bytes32 typehash,
-        bytes32 domainSeparator,
-        function(address, address, uint256, uint256) internal returns (bool) operation
-    ) internal returns (bool) {
-        // Declare variables for parameters that will be extracted from calldata.
-        uint256 id;
-        uint256 allocatedAmount;
-        address claimant;
-        uint256 amount;
-
-        assembly ("memory-safe") {
-            // Calculate pointer to claim parameters using provided offset.
-            let calldataPointerWithOffset := add(calldataPointer, offsetToId)
-
-            // Extract resource lock id, allocated amount, claimant address, and claim amount.
-            id := calldataload(calldataPointerWithOffset)
-            allocatedAmount := calldataload(add(calldataPointerWithOffset, 0x20))
-            claimant := shr(96, shl(96, calldataload(add(calldataPointerWithOffset, 0x40))))
-            amount := calldataload(add(calldataPointerWithOffset, 0x60))
-        }
-
-        // Verify the resource lock scope is compatible with the provided domain separator.
-        sponsorDomainSeparator.ensureValidScope(id);
-
-        // Ensure the claimed amount does not exceed the allocated amount.
-        amount.withinAllocated(allocatedAmount);
-
-        // Validate the claim and execute the specified operation (either release or withdraw).
-        return operation(messageHash.validate(id.toAllocatorId(), qualificationMessageHash, calldataPointer, domainSeparator, sponsorDomainSeparator, typehash), claimant, id, amount);
     }
 
     /**

@@ -23,6 +23,8 @@ contract AllocatorLogic {
     using EfficiencyLib for uint256;
     using ValidityLib for address;
 
+    error InvalidAllocation(address allocator);
+
     /**
      * @notice Internal function for marking allocator nonces as consumed. Once consumed, a nonce
      * cannot be reused to claim resource locks referencing that allocator. Called by the external

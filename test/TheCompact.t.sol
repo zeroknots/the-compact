@@ -14,6 +14,7 @@ import { HashLib } from "../src/lib/HashLib.sol";
 import { IdLib } from "../src/lib/IdLib.sol";
 
 import { AlwaysOKAllocator } from "../src/test/AlwaysOKAllocator.sol";
+import { SimpleAllocator } from "../src/examples/allocator/SimpleAllocator.sol";
 
 import { BasicTransfer, SplitTransfer, Claim } from "../src/types/Claims.sol";
 import { BatchTransfer, SplitBatchTransfer, BatchClaim } from "../src/types/BatchClaims.sol";
@@ -80,7 +81,10 @@ contract TheCompactTest is Test {
         // assertEq(address(theCompact), targetAddress);
 
         (swapper, swapperPrivateKey) = makeAddrAndKey("swapper");
-        (allocator, allocatorPrivateKey) = makeAddrAndKey("allocator");
+        address allocatorSigningKey;
+        (allocatorSigningKey, allocatorPrivateKey) = makeAddrAndKey("allocator");
+
+        allocator = address(new SimpleAllocator(allocatorSigningKey));
 
         vm.deal(swapper, 2e18);
         token.mint(swapper, 1e18);
@@ -965,9 +969,9 @@ contract TheCompactTest is Test {
         assertEq(expiresAt, block.timestamp + 1000);
 
         vm.prank(arbiter);
-        (status) = theCompact.claim(claim);
+        (bytes32 returnedClaimHash) = theCompact.claim(claim);
         vm.snapshotGasLastCall("claim");
-        assert(status);
+        assertEq(returnedClaimHash, claimHash);
 
         assertEq(address(theCompact).balance, amount);
         assertEq(recipientOne.balance, 0);
@@ -1025,9 +1029,9 @@ contract TheCompactTest is Test {
         Claim memory claim = Claim(allocatorSignature, sponsorSignature, swapper, nonce, expires, witness, witnessTypestring, id, amount, recipients);
 
         vm.prank(arbiter);
-        (bool status) = theCompact.claimAndWithdraw(claim);
+        (bytes32 returnedClaimHash) = theCompact.claimAndWithdraw(claim);
         vm.snapshotGasLastCall("claimAndWithdraw");
-        assert(status);
+        assertEq(returnedClaimHash, claimHash);
 
         assertEq(address(theCompact).balance, 0);
         assertEq(recipientOne.balance, amountOne);
@@ -1128,9 +1132,9 @@ contract TheCompactTest is Test {
         Claim memory claim = Claim(allocatorSignature, sponsorSignature, swapper, nonce, expires, witness, witnessTypestring, id, amount, recipients);
 
         vm.prank(arbiter);
-        (bool status) = theCompact.claim(claim);
+        (bytes32 returnedClaimHash) = theCompact.claim(claim);
         vm.snapshotGasLastCall("claim");
-        assert(status);
+        assertEq(returnedClaimHash, claimHash);
 
         assertEq(token.balanceOf(address(theCompact)), amount);
         assertEq(theCompact.balanceOf(swapper, id), 0);
@@ -1193,9 +1197,9 @@ contract TheCompactTest is Test {
         Claim memory claim = Claim(allocatorSignature, sponsorSignature, swapper, nonce, expires, witness, witnessTypestring, id, amount, recipients);
 
         vm.prank(arbiter);
-        (bool status) = theCompact.claim(claim);
+        (bytes32 returnedClaimHash) = theCompact.claim(claim);
         vm.snapshotGasLastCall("splitClaimWithWitness");
-        assert(status);
+        assertEq(returnedClaimHash, claimHash);
 
         assertEq(address(theCompact).balance, amount);
         assertEq(recipientOne.balance, 0);
@@ -1340,9 +1344,9 @@ contract TheCompactTest is Test {
         BatchClaim memory claim = BatchClaim(allocatorSignature, sponsorSignature, swapper, nonce, expires, witness, witnessTypestring, claims);
 
         vm.prank(arbiter);
-        (bool status) = theCompact.claim(claim);
+        (bytes32 returnedClaimHash) = theCompact.claim(claim);
         vm.snapshotGasLastCall("batchClaimRegisteredWithDepositWithWitness");
-        assert(status);
+        assertEq(returnedClaimHash, claimHash);
 
         assertEq(address(theCompact).balance, amount);
         assertEq(token.balanceOf(address(theCompact)), anotherAmount);
@@ -1429,9 +1433,9 @@ contract TheCompactTest is Test {
         BatchClaim memory claim = BatchClaim(allocatorSignature, sponsorSignature, swapper, nonce, expires, witness, witnessTypestring, claims);
 
         vm.prank(arbiter);
-        (bool status) = theCompact.claim(claim);
+        (bytes32 returnedClaimHash) = theCompact.claim(claim);
         vm.snapshotGasLastCall("splitBatchClaimWithWitness");
-        assert(status);
+        assertEq(returnedClaimHash, claimHash);
 
         assertEq(address(theCompact).balance, amount);
         assertEq(token.balanceOf(address(theCompact)), anotherAmount);
@@ -1536,8 +1540,9 @@ contract TheCompactTest is Test {
 
         uint256 snapshotId = vm.snapshot();
         vm.prank(arbiter);
-        (bool status) = theCompact.claim(claim);
-        assert(status);
+        (bytes32 returnedClaimHash) = theCompact.claim(claim);
+        vm.snapshotGasLastCall("splitMultichainClaimWithWitness");
+        assertEq(returnedClaimHash, claimHash);
 
         assertEq(address(theCompact).balance, amount);
         assertEq(recipientOne.balance, 0);
@@ -1570,8 +1575,9 @@ contract TheCompactTest is Test {
         );
 
         vm.prank(arbiter);
-        (bool exogenousStatus) = theCompact.claim(anotherClaim);
-        assert(exogenousStatus);
+        (returnedClaimHash) = theCompact.claim(anotherClaim);
+        vm.snapshotGasLastCall("exogenousSplitMultichainClaimWithWitness");
+        assertEq(returnedClaimHash, claimHash);
 
         assertEq(theCompact.balanceOf(swapper, anotherId), 0);
         assertEq(theCompact.balanceOf(recipientOne, anotherId), amountOne);
@@ -1703,8 +1709,9 @@ contract TheCompactTest is Test {
             claim.claims = claims;
 
             vm.prank(arbiter);
-            (bool status) = theCompact.claim(claim);
-            assert(status);
+            (bytes32 returnedClaimHash) = theCompact.claim(claim);
+            vm.snapshotGasLastCall("splitBatchMultichainClaimWithWitness");
+            assertEq(returnedClaimHash, claimHash);
 
             assertEq(address(theCompact).balance, amount);
             assertEq(recipientOne.balance, 0);
@@ -1759,8 +1766,9 @@ contract TheCompactTest is Test {
 
         {
             vm.prank(arbiter);
-            (bool exogenousStatus) = theCompact.claim(anotherClaim);
-            assert(exogenousStatus);
+            (bytes32 returnedClaimHash) = theCompact.claim(anotherClaim);
+            vm.snapshotGasLastCall("exogenousSplitBatchMultichainClaimWithWitness");
+            assertEq(returnedClaimHash, claimHash);
         }
 
         assertEq(theCompact.balanceOf(swapper, anotherId), 0);
