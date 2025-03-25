@@ -311,7 +311,7 @@ interface ITheCompact {
     /**
      * @notice Transfers ERC6909 tokens to a single recipient with allocator approval.
      * @param transfer A BasicTransfer struct containing the following:
-     *  -  allocatorSignature Authorization signature from the allocator.
+     *  -  allocatorData Authorization signature from the allocator.
      *  -  nonce              Parameter enforcing replay protection, scoped to the allocator.
      *  -  expires            Timestamp after which the transfer cannot be executed.
      *  -  id                 The ERC6909 token identifier of the resource lock.
@@ -324,7 +324,7 @@ interface ITheCompact {
     /**
      * @notice Withdraws underlying tokens to a single recipient with allocator approval.
      * @param withdrawal A BasicTransfer struct containing the following:
-     *  -  allocatorSignature Authorization signature from the allocator.
+     *  -  allocatorData Authorization signature from the allocator.
      *  -  nonce              Parameter enforcing replay protection, scoped to the allocator.
      *  -  expires            Timestamp after which the withdrawal cannot be executed.
      *  -  id                 The ERC6909 token identifier of the resource lock.
@@ -337,7 +337,7 @@ interface ITheCompact {
     /**
      * @notice Transfers ERC6909 tokens to multiple recipients with allocator approval.
      * @param transfer A SplitTransfer struct containing the following:
-     *  -  allocatorSignature Authorization signature from the allocator.
+     *  -  allocatorData Authorization signature from the allocator.
      *  -  nonce              Parameter enforcing replay protection, scoped to the allocator.
      *  -  expires            Timestamp after which the transfer cannot be executed.
      *  -  id                 The ERC6909 token identifier of the resource lock.
@@ -351,7 +351,7 @@ interface ITheCompact {
     /**
      * @notice Withdraws underlying tokens to multiple recipients with allocator approval.
      * @param withdrawal A SplitTransfer struct containing the following:
-     *  -  allocatorSignature Authorization signature from the allocator.
+     *  -  allocatorData Authorization signature from the allocator.
      *  -  nonce              Parameter enforcing replay protection, scoped to the allocator.
      *  -  expires            Timestamp after which the withdrawal cannot be executed.
      *  -  id                 The ERC6909 token identifier of the resource lock.
@@ -366,7 +366,7 @@ interface ITheCompact {
      * @notice Transfers ERC6909 tokens from multiple resource locks to a single recipient with
      * allocator approval.
      * @param transfer A BatchTransfer struct containing the following:
-     *  -  allocatorSignature Authorization signature from the allocator.
+     *  -  allocatorData Authorization signature from the allocator.
      *  -  nonce              Parameter enforcing replay protection, scoped to the allocator.
      *  -  expires            Timestamp after which the transfer cannot be executed.
      *  -  transfers          Array of TransferComponents, each containing:
@@ -381,7 +381,7 @@ interface ITheCompact {
      * @notice Withdraws underlying tokens from multiple resource locks to a single recipient
      * with allocator approval.
      * @param withdrawal A BatchTransfer struct containing the following:
-     *  -  allocatorSignature Authorization signature from the allocator.
+     *  -  allocatorData Authorization signature from the allocator.
      *  -  nonce              Parameter enforcing replay protection, scoped to the allocator.
      *  -  expires            Timestamp after which the withdrawal cannot be executed.
      *  -  transfers          Array of TransferComponents, each containing:
@@ -396,7 +396,7 @@ interface ITheCompact {
      * @notice Transfers ERC6909 tokens from multiple resource locks to multiple recipients
      * with allocator approval.
      * @param transfer A SplitBatchTransfer struct containing the following:
-     *  -  allocatorSignature Authorization signature from the allocator.
+     *  -  allocatorData Authorization signature from the allocator.
      *  -  nonce              Parameter enforcing replay protection, scoped to the allocator.
      *  -  expires            Timestamp after which the transfer cannot be executed.
      *  -  transfers          Array of SplitByIdComponents, each containing:
@@ -412,7 +412,7 @@ interface ITheCompact {
      * @notice Withdraws underlying tokens from multiple resource locks to multiple recipients
      * with allocator approval.
      * @param withdrawal A SplitBatchTransfer struct containing the following:
-     *  -  allocatorSignature Authorization signature from the allocator.
+     *  -  allocatorData Authorization signature from the allocator.
      *  -  nonce              Parameter enforcing replay protection, scoped to the allocator.
      *  -  expires            Timestamp after which the withdrawal cannot be executed.
      *  -  transfers          Array of SplitByIdComponents, each containing:
