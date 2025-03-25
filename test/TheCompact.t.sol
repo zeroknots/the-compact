@@ -25,8 +25,6 @@ import { BatchMultichainClaim, ExogenousBatchMultichainClaim } from "../src/type
 
 import { SplitComponent, TransferComponent, SplitByIdComponent, SplitBatchClaimComponent } from "../src/types/Components.sol";
 
-import { console2 } from "forge-std/console2.sol";
-
 interface EIP712 {
     function DOMAIN_SEPARATOR() external view returns (bytes32);
 }
@@ -48,7 +46,7 @@ contract TheCompactTest is Test {
     bytes32 permit2EIP712DomainHash = keccak256("EIP712Domain(string name,uint256 chainId,address verifyingContract)");
     address alwaysOKAllocator;
 
-    function setUp() public virtual {
+    function setUp() public {
         address permit2Deployer = address(0x4e59b44847b379578588920cA78FbF26c0B4956C);
         address deployedPermit2Deployer;
         address permit2DeployerDeployer = address(0x3fAB184622Dc19b6109349B94811493BF2a45362);
@@ -521,12 +519,9 @@ contract TheCompactTest is Test {
                 keccak256(abi.encode(keccak256("Compact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256 id,uint256 amount)"), swapper, swapper, nonce, expiration, id, amount))
             )
         );
-        console2.log("digest");
-        console2.logBytes32(digest);
 
         (bytes32 r, bytes32 vs) = vm.signCompact(allocatorPrivateKey, digest);
         bytes memory allocatorSignature = abi.encodePacked(r, vs);
-        console2.logBytes(allocatorSignature);
 
         SplitComponent memory splitOne = SplitComponent({ claimant: recipientOne, amount: amountOne });
 
