@@ -572,10 +572,9 @@ contract TheCompactTest is Test {
         );
 
         (bytes32 r, bytes32 vs) = vm.signCompact(allocatorPrivateKey, qualifiedDigest);
-        bytes memory allocatorSignature = abi.encodePacked(r, vs);
+        bytes memory allocatorData = abi.encodePacked(r, vs);
 
-        BasicTransfer memory transfer =
-            BasicTransfer({ nonce: nonce, expires: expiration, allocatorSignature: abi.encode(allocatorSignature, qualificationArgument), id: id, amount: amount, recipient: recipient });
+        BasicTransfer memory transfer = BasicTransfer({ nonce: nonce, expires: expiration, allocatorData: abi.encode(allocatorData, qualificationArgument), id: id, amount: amount, recipient: recipient });
 
         vm.prank(swapper);
         bool status = theCompact.allocatedTransfer(transfer);
