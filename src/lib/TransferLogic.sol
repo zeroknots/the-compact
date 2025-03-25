@@ -259,7 +259,7 @@ contract TransferLogic is SharedLogic {
             transferPayload.nonce,
             transferPayload.expires,
             idsAndAmounts,
-            transferPayload.allocatorSignature
+            transferPayload.allocatorData
         );
 
         // Emit Claim event.
