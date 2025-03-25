@@ -2,13 +2,21 @@
 pragma solidity ^0.8.27;
 
 import { IAllocator } from "../../interfaces/IAllocator.sol";
+import { SignatureCheckerLib } from "solady/utils/SignatureCheckerLib.sol";
+
+interface EIP712 {
+    function DOMAIN_SEPARATOR() external view returns (bytes32);
+}
 
 contract SimpleAllocator is IAllocator {
-    address public signer;
+    using SignatureCheckerLib for address;
 
-    constructor(address _signer) {
+    address public signer;
+    EIP712 internal immutable COMPACT;
+
+    constructor(address _signer, address compact) {
         signer = _signer;
-        // TODO: set The Compact and verify it's the caller on other fns
+        COMPACT = EIP712(compact);
     }
 
     function attest(address, address, address, uint256, uint256) external pure returns (bytes4) {
@@ -23,16 +31,19 @@ contract SimpleAllocator is IAllocator {
         uint256 expires, // The time at which the claim expires.
         uint256[2][] calldata idsAndAmounts, // The allocated token IDs and amounts.
         bytes calldata allocatorData // Arbitrary data provided by the arbiter.
-    ) external pure returns (bytes4) {
-        claimHash;
+    ) external view returns (bytes4) {
         arbiter;
         sponsor;
         nonce;
         expires;
         idsAndAmounts;
-        allocatorData;
 
-        // TODO: use signer
+        // pulling the domain separator for every authorizeClaim call is inefficient, and should not be used in prod.
+        // this is just for test purposes, since TheCompact.t.sol is using vm.chainId().
+        // @dev Consider inheriting EIP712 in the Allocator or caching the compact domain separator as an immutable
+        bytes32 digest = keccak256(abi.encodePacked(bytes2(0x1901), COMPACT.DOMAIN_SEPARATOR(), claimHash));
+        require(signer.isValidSignatureNow(digest, allocatorData), "Invalid Sig");
+
         return this.authorizeClaim.selector;
     }
 }

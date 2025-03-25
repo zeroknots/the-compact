@@ -84,7 +84,7 @@ contract TheCompactTest is Test {
         address allocatorSigningKey;
         (allocatorSigningKey, allocatorPrivateKey) = makeAddrAndKey("allocator");
 
-        allocator = address(new SimpleAllocator(allocatorSigningKey));
+        allocator = address(new SimpleAllocator(allocatorSigningKey, address(theCompact)));
 
         vm.deal(swapper, 2e18);
         token.mint(swapper, 1e18);
