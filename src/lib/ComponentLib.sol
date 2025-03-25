@@ -114,7 +114,6 @@ library ComponentLib {
      * validates the scope, and executes either releases of ERC6909 tokens or withdrawals of
      * underlying tokens to multiple recipients.
      * @param messageHash              The EIP-712 hash of the claim message.
-     * @param qualificationMessageHash The EIP-712 hash of the allocator's qualification message.
      * @param calldataPointer          Pointer to the location of the associated struct in calldata.
      * @param offsetToId               Offset to segment of calldata where relevant claim parameters begin.
      * @param sponsorDomainSeparator   The domain separator for the sponsor's signature, or zero for non-exogenous claims.
@@ -126,14 +125,13 @@ library ComponentLib {
      */
     function processClaimWithSplitComponents(
         bytes32 messageHash,
-        bytes32 qualificationMessageHash,
         uint256 calldataPointer,
         uint256 offsetToId,
         bytes32 sponsorDomainSeparator,
         bytes32 typehash,
         bytes32 domainSeparator,
         function(address, address, uint256, uint256) internal returns (bool) operation,
-        function(bytes32, uint96, bytes32, uint256, bytes32, bytes32, bytes32, uint256[2][] memory) internal returns (address) validation
+        function(bytes32, uint96, uint256, bytes32, bytes32, bytes32, uint256[2][] memory) internal returns (address) validation
     ) internal returns (bool) {
         // Declare variables for parameters that will be extracted from calldata.
         uint256 id;
@@ -159,7 +157,7 @@ library ComponentLib {
         idsAndAmounts[0] = [id, allocatedAmount];
 
         // Validate the claim and extract the sponsor address.
-        address sponsor = validation(messageHash, id.toAllocatorId(), qualificationMessageHash, calldataPointer, domainSeparator, sponsorDomainSeparator, typehash, idsAndAmounts);
+        address sponsor = validation(messageHash, id.toAllocatorId(), calldataPointer, domainSeparator, sponsorDomainSeparator, typehash, idsAndAmounts);
 
         // Verify the resource lock scope is compatible with the provided domain separator.
         sponsorDomainSeparator.ensureValidScope(id);
@@ -175,7 +173,6 @@ library ComponentLib {
      * validation of allocator consistency and scopes, with explicit validation on failure to
      * identify specific issues. Each resource lock can be split among multiple recipients.
      * @param messageHash              The EIP-712 hash of the claim message.
-     * @param qualificationMessageHash The EIP-712 hash of the allocator's qualification message.
      * @param calldataPointer          Pointer to the location of the associated struct in calldata.
      * @param offsetToId               Offset to segment of calldata where relevant claim parameters begin.
      * @param sponsorDomainSeparator   The domain separator for the sponsor's signature, or zero for non-exogenous claims.
@@ -187,14 +184,13 @@ library ComponentLib {
      */
     function processClaimWithSplitBatchComponents(
         bytes32 messageHash,
-        bytes32 qualificationMessageHash,
         uint256 calldataPointer,
         uint256 offsetToId,
         bytes32 sponsorDomainSeparator,
         bytes32 typehash,
         bytes32 domainSeparator,
         function(address, address, uint256, uint256) internal returns (bool) operation,
-        function(bytes32, uint96, bytes32, uint256, bytes32, bytes32, bytes32, uint256[2][] memory) internal returns (address) validation
+        function(bytes32, uint96, uint256, bytes32, bytes32, bytes32, uint256[2][] memory) internal returns (address) validation
     ) internal returns (bool) {
         // Declare variable for SplitBatchClaimComponent array that will be extracted from calldata.
         SplitBatchClaimComponent[] calldata claims;
@@ -233,7 +229,7 @@ library ComponentLib {
             _revertWithInvalidBatchAllocationIfError(errorBuffer);
 
             // Validate the claim and extract the sponsor address.
-            address sponsor = validation(messageHash, firstAllocatorId, qualificationMessageHash, calldataPointer, domainSeparator, sponsorDomainSeparator, typehash, idsAndAmounts);
+            address sponsor = validation(messageHash, firstAllocatorId, calldataPointer, domainSeparator, sponsorDomainSeparator, typehash, idsAndAmounts);
 
             // Process each claim component.
             for (uint256 i = 0; i < totalClaims; ++i) {

@@ -4,7 +4,7 @@ pragma solidity ^0.8.27;
 import { SplitComponent } from "./Components.sol";
 
 struct MultichainClaim {
-    bytes allocatorSignature; // Authorization from the allocator.
+    bytes allocatorData; // Authorization from the allocator.
     bytes sponsorSignature; // Authorization from the sponsor.
     address sponsor; // The account to source the tokens from.
     uint256 nonce; // A parameter to enforce replay protection, scoped to allocator.
@@ -18,7 +18,7 @@ struct MultichainClaim {
 }
 
 struct ExogenousMultichainClaim {
-    bytes allocatorSignature; // Authorization from the allocator.
+    bytes allocatorData; // Authorization from the allocator.
     bytes sponsorSignature; // Authorization from the sponsor.
     address sponsor; // The account to source the tokens from.
     uint256 nonce; // A parameter to enforce replay protection, scoped to allocator.

@@ -42,9 +42,9 @@ library ClaimProcessorLib {
      * nonce, derives the domain separator, and validates both the sponsor authorization (either
      * through direct registration or a provided signature or EIP-1271 call) and the (potentially
      * qualified) allocator authorization. Finally, emits a Claim event.
+     * @dev caller of this function MUST implement reentrancy guard.
      * @param messageHash              The EIP-712 hash of the claim message.
      * @param allocatorId              The unique identifier for the allocator mediating the claim.
-     * @param qualificationMessageHash The EIP-712 hash of the allocator's qualification message.
      * @param calldataPointer          Pointer to the location of the associated struct in calldata.
      * @param domainSeparator          The local domain separator.
      * @param sponsorDomainSeparator   The domain separator for the sponsor's signature, or zero for non-exogenous claims.
@@ -52,16 +52,10 @@ library ClaimProcessorLib {
      * @param typehash                 The EIP-712 typehash used for the claim message.
      * @return sponsor                 The extracted address of the claim sponsor.
      */
-    function validate(
-        bytes32 messageHash,
-        uint96 allocatorId,
-        bytes32 qualificationMessageHash,
-        uint256 calldataPointer,
-        bytes32 domainSeparator,
-        bytes32 sponsorDomainSeparator,
-        bytes32 typehash,
-        uint256[2][] memory idsAndAmounts
-    ) internal returns (address sponsor) {
+    function validate(bytes32 messageHash, uint96 allocatorId, uint256 calldataPointer, bytes32 domainSeparator, bytes32 sponsorDomainSeparator, bytes32 typehash, uint256[2][] memory idsAndAmounts)
+        internal
+        returns (address sponsor)
+    {
         // Declare variables for signatures and parameters that will be extracted from calldata.
         bytes calldata allocatorData;
         bytes calldata sponsorSignature;
@@ -103,7 +97,7 @@ library ClaimProcessorLib {
             messageHash.signedBy(sponsor, sponsorSignature, sponsorDomainSeparator);
         }
 
-        allocator.callAuthorizeClaim(qualificationMessageHash, sponsor, nonce, expires, idsAndAmounts, allocatorData);
+        allocator.callAuthorizeClaim(messageHash, sponsor, nonce, expires, idsAndAmounts, allocatorData);
 
         // Emit claim event.
         sponsor.emitClaim(messageHash, allocator);
@@ -115,7 +109,6 @@ library ClaimProcessorLib {
      * validates the scope, and executes either releases of ERC6909 tokens or withdrawals of
      * underlying tokens to multiple recipients.
      * @param messageHash              The EIP-712 hash of the claim message.
-     * @param qualificationMessageHash The EIP-712 hash of the allocator's qualification message.
      * @param calldataPointer          Pointer to the location of the associated struct in calldata.
      * @param offsetToId               Offset to segment of calldata where relevant claim parameters begin.
      * @param sponsorDomainSeparator   The domain separator for the sponsor's signature, or zero for non-exogenous claims.
@@ -126,7 +119,6 @@ library ClaimProcessorLib {
      */
     function processSplitClaimWithQualificationAndSponsorDomain(
         bytes32 messageHash,
-        bytes32 qualificationMessageHash,
         uint256 calldataPointer,
         uint256 offsetToId,
         bytes32 sponsorDomainSeparator,
@@ -134,7 +126,7 @@ library ClaimProcessorLib {
         bytes32 domainSeparator,
         function(address, address, uint256, uint256) internal returns (bool) operation
     ) internal returns (bool) {
-        return messageHash.processClaimWithSplitComponents(qualificationMessageHash, calldataPointer, offsetToId, sponsorDomainSeparator, typehash, domainSeparator, operation, validate);
+        return messageHash.processClaimWithSplitComponents(calldataPointer, offsetToId, sponsorDomainSeparator, typehash, domainSeparator, operation, validate);
     }
 
     /**
@@ -144,7 +136,6 @@ library ClaimProcessorLib {
      * validation of allocator consistency and scopes, with explicit validation on failure to
      * identify specific issues. Each resource lock can be split among multiple recipients.
      * @param messageHash              The EIP-712 hash of the claim message.
-     * @param qualificationMessageHash The EIP-712 hash of the allocator's qualification message.
      * @param calldataPointer          Pointer to the location of the associated struct in calldata.
      * @param offsetToId               Offset to segment of calldata where relevant claim parameters begin.
      * @param sponsorDomainSeparator   The domain separator for the sponsor's signature, or zero for non-exogenous claims.
@@ -155,7 +146,6 @@ library ClaimProcessorLib {
      */
     function processSplitBatchClaimWithQualificationAndSponsorDomain(
         bytes32 messageHash,
-        bytes32 qualificationMessageHash,
         uint256 calldataPointer,
         uint256 offsetToId,
         bytes32 sponsorDomainSeparator,
@@ -163,7 +153,7 @@ library ClaimProcessorLib {
         bytes32 domainSeparator,
         function(address, address, uint256, uint256) internal returns (bool) operation
     ) internal returns (bool) {
-        return messageHash.processClaimWithSplitBatchComponents(qualificationMessageHash, calldataPointer, offsetToId, sponsorDomainSeparator, typehash, domainSeparator, operation, validate);
+        return messageHash.processClaimWithSplitBatchComponents(calldataPointer, offsetToId, sponsorDomainSeparator, typehash, domainSeparator, operation, validate);
     }
 
     /**
@@ -187,7 +177,7 @@ library ClaimProcessorLib {
         bytes32 domainSeparator,
         function(address, address, uint256, uint256) internal returns (bool) operation
     ) internal returns (bool) {
-        return messageHash.processSplitClaimWithQualificationAndSponsorDomain(messageHash, calldataPointer, offsetToId, bytes32(0), typehash, domainSeparator, operation);
+        return messageHash.processSplitClaimWithQualificationAndSponsorDomain(calldataPointer, offsetToId, bytes32(0), typehash, domainSeparator, operation);
     }
 
     /**
@@ -211,7 +201,7 @@ library ClaimProcessorLib {
         bytes32 domainSeparator,
         function(address, address, uint256, uint256) internal returns (bool) operation
     ) internal returns (bool) {
-        return messageHash.processSplitBatchClaimWithQualificationAndSponsorDomain(messageHash, calldataPointer, offsetToId, bytes32(0), typehash, domainSeparator, operation);
+        return messageHash.processSplitBatchClaimWithQualificationAndSponsorDomain(calldataPointer, offsetToId, bytes32(0), typehash, domainSeparator, operation);
     }
 
     /**
@@ -237,7 +227,7 @@ library ClaimProcessorLib {
         bytes32 domainSeparator,
         function(address, address, uint256, uint256) internal returns (bool) operation
     ) internal returns (bool) {
-        return messageHash.processSplitClaimWithQualificationAndSponsorDomain(messageHash, calldataPointer, offsetToId, sponsorDomain, typehash, domainSeparator, operation);
+        return messageHash.processSplitClaimWithQualificationAndSponsorDomain(calldataPointer, offsetToId, sponsorDomain, typehash, domainSeparator, operation);
     }
 
     /**
@@ -264,6 +254,6 @@ library ClaimProcessorLib {
         bytes32 domainSeparator,
         function(address, address, uint256, uint256) internal returns (bool) operation
     ) internal returns (bool) {
-        return messageHash.processSplitBatchClaimWithQualificationAndSponsorDomain(messageHash, calldataPointer, offsetToId, sponsorDomain, typehash, domainSeparator, operation);
+        return messageHash.processSplitBatchClaimWithQualificationAndSponsorDomain(calldataPointer, offsetToId, sponsorDomain, typehash, domainSeparator, operation);
     }
 }
