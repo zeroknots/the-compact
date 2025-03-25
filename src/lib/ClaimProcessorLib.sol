@@ -42,6 +42,7 @@ library ClaimProcessorLib {
      * nonce, derives the domain separator, and validates both the sponsor authorization (either
      * through direct registration or a provided signature or EIP-1271 call) and the (potentially
      * qualified) allocator authorization. Finally, emits a Claim event.
+     * @dev caller of this function MUST implement reentrancy guard.
      * @param messageHash              The EIP-712 hash of the claim message.
      * @param allocatorId              The unique identifier for the allocator mediating the claim.
      * @param qualificationMessageHash The EIP-712 hash of the allocator's qualification message.
