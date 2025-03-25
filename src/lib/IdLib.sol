@@ -27,6 +27,7 @@ library IdLib {
     using EfficiencyLib for bool;
     using EfficiencyLib for uint8;
     using EfficiencyLib for uint96;
+    using EfficiencyLib for bytes12;
     using EfficiencyLib for uint256;
     using EfficiencyLib for address;
     using EfficiencyLib for ResetPeriod;
@@ -100,7 +101,7 @@ library IdLib {
         uint96 allocatorId = allocator.toAllocatorIdIfRegistered();
 
         // Derive resource lock ID (pack scope, reset period, allocator ID, & token).
-        id = ((scope.asUint256() << 255) | (resetPeriod.asUint256() << 252) | (allocatorId.asUint256() << 160) | token.asUint256());
+        id = (allocatorId.toLockTag(scope, resetPeriod).asUint256() | token.asUint256());
     }
 
     /**
@@ -203,19 +204,46 @@ library IdLib {
      * @return lock A Lock struct containing token, allocator, reset period, and scope.
      */
     function toLock(uint256 id) internal view returns (Lock memory lock) {
-        lock.token = id.toToken();
+        lock.token = id.toAddress();
         lock.allocator = id.toAllocator();
         lock.resetPeriod = id.toResetPeriod();
         lock.scope = id.toScope();
     }
 
     /**
-     * @notice Internal pure function for extracting the address of the
-     * underlying token from a resource lock ID.
-     * @param id The resource lock ID to extract from.
-     * @return   The underlying token address.
+     * @notice Internal pure function for building the "lock tag" from an
+     * allocatorId, scope, and reset period.
+     * @param allocatorId The allocator ID.
+     * @param scope       The scope of the resource lock (multichain or single chain).
+     * @param resetPeriod The duration after which the resource lock can be reset.
+     * @return            The lock tag.
      */
-    function toToken(uint256 id) internal pure returns (address) {
+    function toLockTag(uint96 allocatorId, Scope scope, ResetPeriod resetPeriod) internal pure returns (bytes12) {
+        // Derive lock tag (pack scope, reset period, & allocator ID).
+        return ((scope.asUint256() << 255) | (resetPeriod.asUint256() << 252) | (allocatorId.asUint256() << 160)).asBytes12();
+    }
+
+    /**
+     * @notice Internal pure function for extracting the "lock tag" from an ID.
+     * @param id The resource lock ID.
+     * @return lockTag The lock tag.
+     */
+    function toLockTag(uint256 id) internal pure returns (bytes12 lockTag) {
+        // Extract the lock tag.
+        assembly ("memory-safe") {
+            lockTag := shl(160, shr(160, id))
+        }
+    }
+
+    /**
+     * @notice Internal pure function for extracting the last 20 bytes of an
+     * underlying uint256 as an address. This represents either the token
+     * address (for a resource lock ID) or the claimant address (for a claimant
+     * value).
+     * @param id The uint256 to extract from.
+     * @return   The address.
+     */
+    function toAddress(uint256 id) internal pure returns (address) {
         return id.asSanitizedAddress();
     }
 
@@ -229,6 +257,19 @@ library IdLib {
     function withReplacedToken(uint256 id, address token) internal pure returns (uint256 updatedId) {
         assembly ("memory-safe") {
             updatedId := or(shl(160, shr(160, id)), shr(96, shl(96, token)))
+        }
+    }
+
+    /**
+     * @notice Internal pure function for creating a new resource lock ID from an
+     * existing id and a lock tag.
+     * @param id         The resource lock ID to modify.
+     * @param lockTag    The new lock tag.
+     * @return updatedId The modified resource lock ID.
+     */
+    function withReplacedLockTag(uint256 id, bytes12 lockTag) internal pure returns (uint256 updatedId) {
+        assembly ("memory-safe") {
+            updatedId := or(shl(160, shr(160, lockTag)), shr(96, shl(96, id)))
         }
     }
 
@@ -324,7 +365,7 @@ library IdLib {
     function toCompactFlag(address allocator) internal pure returns (uint8 compactFlag) {
         assembly ("memory-safe") {
             // Extract the uppermost 72 bits of the address.
-            let x := shr(168, shl(96, allocator))
+            let x := shr(184, shl(96, allocator))
 
             // Propagate the highest set bit.
             x := or(x, shr(1, x))
