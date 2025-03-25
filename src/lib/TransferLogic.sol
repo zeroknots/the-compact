@@ -3,7 +3,7 @@ pragma solidity ^0.8.27;
 
 import { BatchTransfer, SplitBatchTransfer } from "../types/BatchClaims.sol";
 import { BasicTransfer, SplitTransfer } from "../types/Claims.sol";
-import { TransferComponent, SplitByIdComponent } from "../types/Components.sol";
+import { TransferComponent, SplitComponent, SplitByIdComponent } from "../types/Components.sol";
 
 import { ClaimHashLib } from "./ClaimHashLib.sol";
 import { ComponentLib } from "./ComponentLib.sol";
@@ -13,6 +13,7 @@ import { TransferFunctionCastLib } from "./TransferFunctionCastLib.sol";
 import { IdLib } from "./IdLib.sol";
 import { SharedLogic } from "./SharedLogic.sol";
 import { ValidityLib } from "./ValidityLib.sol";
+import { AllocatorLib } from "./AllocatorLib.sol";
 
 /**
  * @title TransferLogic
@@ -30,14 +31,16 @@ contract TransferLogic is SharedLogic {
     using ComponentLib for SplitTransfer;
     using ComponentLib for BatchTransfer;
     using ComponentLib for SplitBatchTransfer;
+    using ComponentLib for SplitComponent[];
     using IdLib for uint256;
     using EfficiencyLib for bool;
     using EventLib for address;
     using ValidityLib for uint96;
     using ValidityLib for uint256;
     using ValidityLib for bytes32;
-    using TransferFunctionCastLib for function(bytes32, address, BasicTransfer calldata) internal;
+    using TransferFunctionCastLib for function(bytes32, address, BasicTransfer calldata, uint256[2][] memory) internal;
     using TransferFunctionCastLib for function(TransferComponent[] calldata, uint256, function (TransferComponent[] calldata, uint256) internal pure returns (uint96)) internal returns (address);
+    using AllocatorLib for address;
 
     // bytes4(keccak256("attest(address,address,address,uint256,uint256)")).
     uint32 private constant _ATTEST_SELECTOR = 0x1a808f91;
@@ -51,11 +54,22 @@ contract TransferLogic is SharedLogic {
      * @return          Whether the transfer or withdrawal was successfully processed.
      */
     function _processBasicTransfer(BasicTransfer calldata transfer, function(address, address, uint256, uint256) internal returns (bool) operation) internal returns (bool) {
+        // Set the reentrancy guard.
+        _setReentrancyGuard();
+
+        uint256[2][] memory idsAndAmounts = new uint256[2][](1);
+        idsAndAmounts[0] = [transfer.id, transfer.amount];
+
         // Derive hash, validate expiry, consume nonce, and check allocator signature.
-        _notExpiredAndSignedByAllocator(transfer.toClaimHash(), transfer.id.toRegisteredAllocatorWithConsumed(transfer.nonce), transfer);
+        _notExpiredAndAuthorizedByAllocator(transfer.toClaimHash(), transfer.id.toRegisteredAllocatorWithConsumed(transfer.nonce), transfer, idsAndAmounts);
 
         // Perform the transfer or withdrawal.
-        return operation(msg.sender, transfer.recipient, transfer.id, transfer.amount);
+        operation(msg.sender, transfer.recipient, transfer.id, transfer.amount);
+
+        // Clear the reentancy guard.
+        _clearReentrancyGuard();
+
+        return true;
     }
 
     /**
@@ -67,11 +81,22 @@ contract TransferLogic is SharedLogic {
      * @return          Whether the transfer was successfully processed.
      */
     function _processSplitTransfer(SplitTransfer calldata transfer, function(address, address, uint256, uint256) internal returns (bool) operation) internal returns (bool) {
+        // Set the reentrancy guard.
+        _setReentrancyGuard();
+
+        uint256[2][] memory idsAndAmounts = new uint256[2][](1);
+        idsAndAmounts[0] = [transfer.id, transfer.recipients.aggregate()];
+
         // Derive hash, validate expiry, consume nonce, and check allocator signature.
-        _notExpiredAndSignedByAllocator.usingSplitTransfer()(transfer.toClaimHash(), transfer.id.toRegisteredAllocatorWithConsumed(transfer.nonce), transfer);
+        _notExpiredAndAuthorizedByAllocator.usingSplitTransfer()(transfer.toClaimHash(), transfer.id.toRegisteredAllocatorWithConsumed(transfer.nonce), transfer, idsAndAmounts);
 
         // Perform the split transfers or withdrawals.
-        return transfer.processSplitTransfer(operation);
+        transfer.processSplitTransfer(operation);
+
+        // Clear the reentancy guard.
+        _clearReentrancyGuard();
+
+        return true;
     }
 
     /**
@@ -84,11 +109,36 @@ contract TransferLogic is SharedLogic {
      * @return          Whether the transfer was successfully processed.
      */
     function _processBatchTransfer(BatchTransfer calldata transfer, function(address, address, uint256, uint256) internal returns (bool) operation) internal returns (bool) {
+        // Set the reentrancy guard.
+        _setReentrancyGuard();
+
+        // Navigate to the transfer components in calldata.
+        TransferComponent[] calldata transfers = transfer.transfers;
+        uint256 totalTransfers = transfers.length;
+        uint256[2][] memory idsAndAmounts = new uint256[2][](totalTransfers);
+
+        unchecked {
+            // Iterate over each component in calldata.
+            for (uint256 i = 0; i < totalTransfers; ++i) {
+                // Navigate to location of the component in calldata.
+                TransferComponent calldata component = transfers[i];
+
+                idsAndAmounts[i] = [component.id, component.amount];
+            }
+        }
+
         // Derive hash, validate expiry, consume nonce, and check allocator signature.
-        _notExpiredAndSignedByAllocator.usingBatchTransfer()(transfer.toClaimHash(), _deriveConsistentAllocatorAndConsumeNonce(transfer.transfers, transfer.nonce, _allocatorIdOfTransferComponentId), transfer);
+        _notExpiredAndAuthorizedByAllocator.usingBatchTransfer()(
+            transfer.toClaimHash(), _deriveConsistentAllocatorAndConsumeNonce(transfer.transfers, transfer.nonce, _allocatorIdOfTransferComponentId), transfer, idsAndAmounts
+        );
 
         // Perform the batch transfers or withdrawals.
-        return transfer.performBatchTransfer(operation);
+        transfer.performBatchTransfer(operation);
+
+        // Clear the reentancy guard.
+        _clearReentrancyGuard();
+
+        return true;
     }
 
     /**
@@ -101,13 +151,39 @@ contract TransferLogic is SharedLogic {
      * @return          Whether the transfer was successfully processed.
      */
     function _processSplitBatchTransfer(SplitBatchTransfer calldata transfer, function(address, address, uint256, uint256) internal returns (bool) operation) internal returns (bool) {
+        // Set the reentrancy guard.
+        _setReentrancyGuard();
+
+        // Navigate to the split batch components array in calldata.
+        SplitByIdComponent[] calldata transfers = transfer.transfers;
+
+        // Retrieve the total number of components.
+        uint256 totalIds = transfers.length;
+        uint256[2][] memory idsAndAmounts = new uint256[2][](totalIds);
+
+        unchecked {
+            // Iterate over each component in calldata.
+            for (uint256 i = 0; i < totalIds; ++i) {
+                // Navigate to location of the component in calldata.
+                SplitByIdComponent calldata component = transfers[i];
+
+                // Process transfer for each split component in the set.
+                idsAndAmounts[i] = [component.id, component.portions.aggregate()];
+            }
+        }
+
         // Derive hash, validate expiry, consume nonce, and check allocator signature.
-        _notExpiredAndSignedByAllocator.usingSplitBatchTransfer()(
-            transfer.toClaimHash(), _deriveConsistentAllocatorAndConsumeNonce.usingSplitByIdComponent()(transfer.transfers, transfer.nonce, _allocatorIdOfSplitByIdComponent), transfer
+        _notExpiredAndAuthorizedByAllocator.usingSplitBatchTransfer()(
+            transfer.toClaimHash(), _deriveConsistentAllocatorAndConsumeNonce.usingSplitByIdComponent()(transfer.transfers, transfer.nonce, _allocatorIdOfSplitByIdComponent), transfer, idsAndAmounts
         );
 
         // Perform the split batch transfers or withdrawals.
-        return transfer.performSplitBatchTransfer(operation);
+        transfer.performSplitBatchTransfer(operation);
+
+        // Clear the reentancy guard.
+        _clearReentrancyGuard();
+
+        return true;
     }
 
     /**
@@ -171,13 +247,20 @@ contract TransferLogic is SharedLogic {
      * @param messageHash     The EIP-712 hash of the transfer message.
      * @param allocator       The address of the allocator.
      * @param transferPayload The BasicTransfer struct containing signature and expiry.
+     * @param idsAndAmounts   An array with IDs and aggregate transfer amounts.
      */
-    function _notExpiredAndSignedByAllocator(bytes32 messageHash, address allocator, BasicTransfer calldata transferPayload) private {
+    function _notExpiredAndAuthorizedByAllocator(bytes32 messageHash, address allocator, BasicTransfer calldata transferPayload, uint256[2][] memory idsAndAmounts) private {
         // Ensure that the expiration timestamp is still in the future.
         transferPayload.expires.later();
 
-        // Derive domain separator and domain hash and validate allocator signature.
-        messageHash.signedBy(allocator, transferPayload.allocatorSignature, _domainSeparator());
+        allocator.callAuthorizeClaim(
+            messageHash,
+            msg.sender, // sponsor
+            transferPayload.nonce,
+            transferPayload.expires,
+            idsAndAmounts,
+            transferPayload.allocatorData
+        );
 
         // Emit Claim event.
         msg.sender.emitClaim(messageHash, allocator);

@@ -14,6 +14,8 @@ import { HashLib } from "../src/lib/HashLib.sol";
 import { IdLib } from "../src/lib/IdLib.sol";
 
 import { AlwaysOKAllocator } from "../src/test/AlwaysOKAllocator.sol";
+import { SimpleAllocator } from "../src/examples/allocator/SimpleAllocator.sol";
+import { QualifiedAllocator } from "../src/examples/allocator/QualifiedAllocator.sol";
 
 import { BasicTransfer, SplitTransfer, Claim } from "../src/types/Claims.sol";
 import { BatchTransfer, SplitBatchTransfer, BatchClaim } from "../src/types/BatchClaims.sol";
@@ -80,7 +82,10 @@ contract TheCompactTest is Test {
         // assertEq(address(theCompact), targetAddress);
 
         (swapper, swapperPrivateKey) = makeAddrAndKey("swapper");
-        (allocator, allocatorPrivateKey) = makeAddrAndKey("allocator");
+        address allocatorSigningKey;
+        (allocatorSigningKey, allocatorPrivateKey) = makeAddrAndKey("allocator");
+
+        allocator = address(new SimpleAllocator(allocatorSigningKey, address(theCompact)));
 
         vm.deal(swapper, 2e18);
         token.mint(swapper, 1e18);
@@ -475,9 +480,9 @@ contract TheCompactTest is Test {
         );
 
         (bytes32 r, bytes32 vs) = vm.signCompact(allocatorPrivateKey, digest);
-        bytes memory allocatorSignature = abi.encodePacked(r, vs);
+        bytes memory allocatorData = abi.encodePacked(r, vs);
 
-        BasicTransfer memory transfer = BasicTransfer({ nonce: nonce, expires: expiration, allocatorSignature: allocatorSignature, id: id, amount: amount, recipient: recipient });
+        BasicTransfer memory transfer = BasicTransfer({ nonce: nonce, expires: expiration, allocatorData: allocatorData, id: id, amount: amount, recipient: recipient });
 
         vm.prank(swapper);
         bool status = theCompact.allocatedTransfer(transfer);
@@ -517,7 +522,7 @@ contract TheCompactTest is Test {
         );
 
         (bytes32 r, bytes32 vs) = vm.signCompact(allocatorPrivateKey, digest);
-        bytes memory allocatorSignature = abi.encodePacked(r, vs);
+        bytes memory allocatorData = abi.encodePacked(r, vs);
 
         SplitComponent memory splitOne = SplitComponent({ claimant: recipientOne, amount: amountOne });
 
@@ -527,7 +532,7 @@ contract TheCompactTest is Test {
         recipients[0] = splitOne;
         recipients[1] = splitTwo;
 
-        SplitTransfer memory transfer = SplitTransfer({ nonce: nonce, expires: expiration, allocatorSignature: allocatorSignature, id: id, recipients: recipients });
+        SplitTransfer memory transfer = SplitTransfer({ nonce: nonce, expires: expiration, allocatorData: allocatorData, id: id, recipients: recipients });
 
         vm.prank(swapper);
         bool status = theCompact.allocatedTransfer(transfer);
@@ -539,6 +544,47 @@ contract TheCompactTest is Test {
         assertEq(theCompact.balanceOf(swapper, id), 0);
         assertEq(theCompact.balanceOf(recipientOne, id), amountOne);
         assertEq(theCompact.balanceOf(recipientTwo, id), amountTwo);
+    }
+
+    function test_qualified_basicTransfer() public {
+        ResetPeriod resetPeriod = ResetPeriod.TenMinutes;
+        Scope scope = Scope.Multichain;
+        uint256 amount = 1e18;
+        uint256 nonce = 0;
+        uint256 expiration = block.timestamp + 1000;
+        address recipient = 0x1111111111111111111111111111111111111111;
+
+        allocator = address(new QualifiedAllocator(vm.addr(allocatorPrivateKey), address(theCompact)));
+
+        vm.prank(allocator);
+        theCompact.__registerAllocator(allocator, "");
+
+        vm.prank(swapper);
+        uint256 id = theCompact.deposit(address(token), allocator, resetPeriod, scope, amount, swapper);
+        assertEq(theCompact.balanceOf(swapper, id), amount);
+
+        bytes32 claimHash = keccak256(abi.encode(keccak256("Compact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256 id,uint256 amount)"), swapper, swapper, nonce, expiration, id, amount));
+
+        bytes32 qualificationArgument = keccak256("qualification");
+
+        bytes32 qualifiedDigest = keccak256(
+            abi.encodePacked(bytes2(0x1901), theCompact.DOMAIN_SEPARATOR(), keccak256(abi.encode(keccak256("QualifiedClaim(bytes32 claimHash,bytes32 qualificationArg)"), claimHash, qualificationArgument)))
+        );
+
+        (bytes32 r, bytes32 vs) = vm.signCompact(allocatorPrivateKey, qualifiedDigest);
+        bytes memory allocatorData = abi.encodePacked(r, vs);
+
+        BasicTransfer memory transfer = BasicTransfer({ nonce: nonce, expires: expiration, allocatorData: abi.encode(allocatorData, qualificationArgument), id: id, amount: amount, recipient: recipient });
+
+        vm.prank(swapper);
+        bool status = theCompact.allocatedTransfer(transfer);
+        vm.snapshotGasLastCall("qualified_basicTransfer");
+        assert(status);
+
+        assertEq(token.balanceOf(address(theCompact)), amount);
+        assertEq(token.balanceOf(recipient), 0);
+        assertEq(theCompact.balanceOf(swapper, id), 0);
+        assertEq(theCompact.balanceOf(recipient, id), amount);
     }
 
     function test_batchTransfer() public {
@@ -583,13 +629,13 @@ contract TheCompactTest is Test {
         );
 
         (bytes32 r, bytes32 vs) = vm.signCompact(allocatorPrivateKey, digest);
-        bytes memory allocatorSignature = abi.encodePacked(r, vs);
+        bytes memory allocatorData = abi.encodePacked(r, vs);
 
         TransferComponent[] memory transfers = new TransferComponent[](2);
         transfers[0] = TransferComponent({ id: idOne, amount: amountOne });
         transfers[1] = TransferComponent({ id: idTwo, amount: amountTwo });
 
-        BatchTransfer memory transfer = BatchTransfer({ nonce: nonce, expires: expiration, allocatorSignature: allocatorSignature, transfers: transfers, recipient: recipient });
+        BatchTransfer memory transfer = BatchTransfer({ nonce: nonce, expires: expiration, allocatorData: allocatorData, transfers: transfers, recipient: recipient });
 
         vm.prank(swapper);
         bool status = theCompact.allocatedTransfer(transfer);
@@ -630,7 +676,7 @@ contract TheCompactTest is Test {
         );
 
         (bytes32 r, bytes32 vs) = vm.signCompact(allocatorPrivateKey, digest);
-        bytes memory allocatorSignature = abi.encodePacked(r, vs);
+        bytes memory allocatorData = abi.encodePacked(r, vs);
 
         SplitComponent memory splitOne = SplitComponent({ claimant: recipientOne, amount: amountOne });
 
@@ -640,7 +686,7 @@ contract TheCompactTest is Test {
         recipients[0] = splitOne;
         recipients[1] = splitTwo;
 
-        SplitTransfer memory transfer = SplitTransfer({ nonce: nonce, expires: expiration, allocatorSignature: allocatorSignature, id: id, recipients: recipients });
+        SplitTransfer memory transfer = SplitTransfer({ nonce: nonce, expires: expiration, allocatorData: allocatorData, id: id, recipients: recipients });
 
         vm.prank(swapper);
         bool status = theCompact.allocatedWithdrawal(transfer);
@@ -697,13 +743,13 @@ contract TheCompactTest is Test {
         );
 
         (bytes32 r, bytes32 vs) = vm.signCompact(allocatorPrivateKey, digest);
-        bytes memory allocatorSignature = abi.encodePacked(r, vs);
+        bytes memory allocatorData = abi.encodePacked(r, vs);
 
         TransferComponent[] memory transfers = new TransferComponent[](2);
         transfers[0] = TransferComponent({ id: idOne, amount: amountOne });
         transfers[1] = TransferComponent({ id: idTwo, amount: amountTwo });
 
-        BatchTransfer memory transfer = BatchTransfer({ nonce: nonce, expires: expiration, allocatorSignature: allocatorSignature, transfers: transfers, recipient: recipient });
+        BatchTransfer memory transfer = BatchTransfer({ nonce: nonce, expires: expiration, allocatorData: allocatorData, transfers: transfers, recipient: recipient });
 
         vm.prank(swapper);
         bool status = theCompact.allocatedWithdrawal(transfer);
@@ -764,7 +810,7 @@ contract TheCompactTest is Test {
         );
 
         (bytes32 r, bytes32 vs) = vm.signCompact(allocatorPrivateKey, digest);
-        bytes memory allocatorSignature = abi.encodePacked(r, vs);
+        bytes memory allocatorData = abi.encodePacked(r, vs);
 
         SplitByIdComponent[] memory transfers = new SplitByIdComponent[](2);
 
@@ -778,7 +824,7 @@ contract TheCompactTest is Test {
         transfers[0] = SplitByIdComponent({ id: idOne, portions: portionsOne });
         transfers[1] = SplitByIdComponent({ id: idTwo, portions: portionsTwo });
 
-        SplitBatchTransfer memory transfer = SplitBatchTransfer({ nonce: nonce, expires: expiration, allocatorSignature: allocatorSignature, transfers: transfers });
+        SplitBatchTransfer memory transfer = SplitBatchTransfer({ nonce: nonce, expires: expiration, allocatorData: allocatorData, transfers: transfers });
 
         vm.prank(swapper);
         bool status = theCompact.allocatedTransfer(transfer);
@@ -818,9 +864,9 @@ contract TheCompactTest is Test {
         );
 
         (bytes32 r, bytes32 vs) = vm.signCompact(allocatorPrivateKey, digest);
-        bytes memory allocatorSignature = abi.encodePacked(r, vs);
+        bytes memory allocatorData = abi.encodePacked(r, vs);
 
-        BasicTransfer memory transfer = BasicTransfer({ nonce: nonce, expires: expiration, allocatorSignature: allocatorSignature, id: id, amount: amount, recipient: recipient });
+        BasicTransfer memory transfer = BasicTransfer({ nonce: nonce, expires: expiration, allocatorData: allocatorData, id: id, amount: amount, recipient: recipient });
 
         vm.prank(swapper);
         bool status = theCompact.allocatedWithdrawal(transfer);
@@ -877,7 +923,7 @@ contract TheCompactTest is Test {
         );
 
         (bytes32 r, bytes32 vs) = vm.signCompact(allocatorPrivateKey, digest);
-        bytes memory allocatorSignature = abi.encodePacked(r, vs);
+        bytes memory allocatorData = abi.encodePacked(r, vs);
 
         SplitByIdComponent[] memory transfers = new SplitByIdComponent[](2);
 
@@ -891,7 +937,7 @@ contract TheCompactTest is Test {
         transfers[0] = SplitByIdComponent({ id: idOne, portions: portionsOne });
         transfers[1] = SplitByIdComponent({ id: idTwo, portions: portionsTwo });
 
-        SplitBatchTransfer memory transfer = SplitBatchTransfer({ nonce: nonce, expires: expiration, allocatorSignature: allocatorSignature, transfers: transfers });
+        SplitBatchTransfer memory transfer = SplitBatchTransfer({ nonce: nonce, expires: expiration, allocatorData: allocatorData, transfers: transfers });
 
         vm.prank(swapper);
         bool status = theCompact.allocatedWithdrawal(transfer);
@@ -941,7 +987,7 @@ contract TheCompactTest is Test {
         bytes32 digest = keccak256(abi.encodePacked(bytes2(0x1901), theCompact.DOMAIN_SEPARATOR(), claimHash));
 
         (bytes32 r, bytes32 vs) = vm.signCompact(allocatorPrivateKey, digest);
-        bytes memory allocatorSignature = abi.encodePacked(r, vs);
+        bytes memory allocatorData = abi.encodePacked(r, vs);
 
         SplitComponent memory splitOne = SplitComponent({ claimant: recipientOne, amount: amountOne });
 
@@ -953,7 +999,7 @@ contract TheCompactTest is Test {
 
         bytes memory sponsorSignature = "";
 
-        Claim memory claim = Claim(allocatorSignature, sponsorSignature, swapper, nonce, expires, witness, witnessTypestring, id, amount, recipients);
+        Claim memory claim = Claim(allocatorData, sponsorSignature, swapper, nonce, expires, witness, witnessTypestring, id, amount, recipients);
 
         vm.prank(swapper);
         (bool status) = theCompact.register(claimHash, typehash, 1000);
@@ -965,9 +1011,9 @@ contract TheCompactTest is Test {
         assertEq(expiresAt, block.timestamp + 1000);
 
         vm.prank(arbiter);
-        (status) = theCompact.claim(claim);
+        (bytes32 returnedClaimHash) = theCompact.claim(claim);
         vm.snapshotGasLastCall("claim");
-        assert(status);
+        assertEq(returnedClaimHash, claimHash);
 
         assertEq(address(theCompact).balance, amount);
         assertEq(recipientOne.balance, 0);
@@ -1012,7 +1058,7 @@ contract TheCompactTest is Test {
         bytes memory sponsorSignature = abi.encodePacked(r, vs);
 
         (r, vs) = vm.signCompact(allocatorPrivateKey, digest);
-        bytes memory allocatorSignature = abi.encodePacked(r, vs);
+        bytes memory allocatorData = abi.encodePacked(r, vs);
 
         SplitComponent memory splitOne = SplitComponent({ claimant: recipientOne, amount: amountOne });
 
@@ -1022,12 +1068,12 @@ contract TheCompactTest is Test {
         recipients[0] = splitOne;
         recipients[1] = splitTwo;
 
-        Claim memory claim = Claim(allocatorSignature, sponsorSignature, swapper, nonce, expires, witness, witnessTypestring, id, amount, recipients);
+        Claim memory claim = Claim(allocatorData, sponsorSignature, swapper, nonce, expires, witness, witnessTypestring, id, amount, recipients);
 
         vm.prank(arbiter);
-        (bool status) = theCompact.claimAndWithdraw(claim);
+        (bytes32 returnedClaimHash) = theCompact.claimAndWithdraw(claim);
         vm.snapshotGasLastCall("claimAndWithdraw");
-        assert(status);
+        assertEq(returnedClaimHash, claimHash);
 
         assertEq(address(theCompact).balance, 0);
         assertEq(recipientOne.balance, amountOne);
@@ -1115,7 +1161,7 @@ contract TheCompactTest is Test {
         bytes memory sponsorSignature = "";
 
         (r, vs) = vm.signCompact(allocatorPrivateKey, digest);
-        bytes memory allocatorSignature = abi.encodePacked(r, vs);
+        bytes memory allocatorData = abi.encodePacked(r, vs);
 
         SplitComponent memory splitOne = SplitComponent({ claimant: recipientOne, amount: amountOne });
 
@@ -1125,12 +1171,12 @@ contract TheCompactTest is Test {
         recipients[0] = splitOne;
         recipients[1] = splitTwo;
 
-        Claim memory claim = Claim(allocatorSignature, sponsorSignature, swapper, nonce, expires, witness, witnessTypestring, id, amount, recipients);
+        Claim memory claim = Claim(allocatorData, sponsorSignature, swapper, nonce, expires, witness, witnessTypestring, id, amount, recipients);
 
         vm.prank(arbiter);
-        (bool status) = theCompact.claim(claim);
+        (bytes32 returnedClaimHash) = theCompact.claim(claim);
         vm.snapshotGasLastCall("claim");
-        assert(status);
+        assertEq(returnedClaimHash, claimHash);
 
         assertEq(token.balanceOf(address(theCompact)), amount);
         assertEq(theCompact.balanceOf(swapper, id), 0);
@@ -1180,7 +1226,7 @@ contract TheCompactTest is Test {
         bytes memory sponsorSignature = abi.encodePacked(r, vs);
 
         (r, vs) = vm.signCompact(allocatorPrivateKey, digest);
-        bytes memory allocatorSignature = abi.encodePacked(r, vs);
+        bytes memory allocatorData = abi.encodePacked(r, vs);
 
         SplitComponent memory splitOne = SplitComponent({ claimant: recipientOne, amount: amountOne });
 
@@ -1190,12 +1236,12 @@ contract TheCompactTest is Test {
         recipients[0] = splitOne;
         recipients[1] = splitTwo;
 
-        Claim memory claim = Claim(allocatorSignature, sponsorSignature, swapper, nonce, expires, witness, witnessTypestring, id, amount, recipients);
+        Claim memory claim = Claim(allocatorData, sponsorSignature, swapper, nonce, expires, witness, witnessTypestring, id, amount, recipients);
 
         vm.prank(arbiter);
-        (bool status) = theCompact.claim(claim);
+        (bytes32 returnedClaimHash) = theCompact.claim(claim);
         vm.snapshotGasLastCall("splitClaimWithWitness");
-        assert(status);
+        assertEq(returnedClaimHash, claimHash);
 
         assertEq(address(theCompact).balance, amount);
         assertEq(recipientOne.balance, 0);
@@ -1323,7 +1369,7 @@ contract TheCompactTest is Test {
         bytes memory sponsorSignature = abi.encodePacked(r, vs);
 
         (r, vs) = vm.signCompact(allocatorPrivateKey, digest);
-        bytes memory allocatorSignature = abi.encodePacked(r, vs);
+        bytes memory allocatorData = abi.encodePacked(r, vs);
 
         SplitBatchClaimComponent[] memory claims = new SplitBatchClaimComponent[](3);
         SplitComponent[] memory portions = new SplitComponent[](2);
@@ -1337,12 +1383,12 @@ contract TheCompactTest is Test {
         aThirdPortion[0] = SplitComponent({ claimant: recipientTwo, amount: aThirdAmount });
         claims[2] = SplitBatchClaimComponent({ id: aThirdId, allocatedAmount: aThirdAmount, portions: aThirdPortion });
 
-        BatchClaim memory claim = BatchClaim(allocatorSignature, sponsorSignature, swapper, nonce, expires, witness, witnessTypestring, claims);
+        BatchClaim memory claim = BatchClaim(allocatorData, sponsorSignature, swapper, nonce, expires, witness, witnessTypestring, claims);
 
         vm.prank(arbiter);
-        (bool status) = theCompact.claim(claim);
+        (bytes32 returnedClaimHash) = theCompact.claim(claim);
         vm.snapshotGasLastCall("batchClaimRegisteredWithDepositWithWitness");
-        assert(status);
+        assertEq(returnedClaimHash, claimHash);
 
         assertEq(address(theCompact).balance, amount);
         assertEq(token.balanceOf(address(theCompact)), anotherAmount);
@@ -1412,7 +1458,7 @@ contract TheCompactTest is Test {
         bytes memory sponsorSignature = abi.encodePacked(r, vs);
 
         (r, vs) = vm.signCompact(allocatorPrivateKey, digest);
-        bytes memory allocatorSignature = abi.encodePacked(r, vs);
+        bytes memory allocatorData = abi.encodePacked(r, vs);
 
         SplitBatchClaimComponent[] memory claims = new SplitBatchClaimComponent[](3);
         SplitComponent[] memory portions = new SplitComponent[](2);
@@ -1426,12 +1472,12 @@ contract TheCompactTest is Test {
         aThirdPortion[0] = SplitComponent({ claimant: recipientTwo, amount: aThirdAmount });
         claims[2] = SplitBatchClaimComponent({ id: aThirdId, allocatedAmount: aThirdAmount, portions: aThirdPortion });
 
-        BatchClaim memory claim = BatchClaim(allocatorSignature, sponsorSignature, swapper, nonce, expires, witness, witnessTypestring, claims);
+        BatchClaim memory claim = BatchClaim(allocatorData, sponsorSignature, swapper, nonce, expires, witness, witnessTypestring, claims);
 
         vm.prank(arbiter);
-        (bool status) = theCompact.claim(claim);
+        (bytes32 returnedClaimHash) = theCompact.claim(claim);
         vm.snapshotGasLastCall("splitBatchClaimWithWitness");
-        assert(status);
+        assertEq(returnedClaimHash, claimHash);
 
         assertEq(address(theCompact).balance, amount);
         assertEq(token.balanceOf(address(theCompact)), anotherAmount);
@@ -1519,7 +1565,7 @@ contract TheCompactTest is Test {
         bytes memory sponsorSignature = abi.encodePacked(r, vs);
 
         (r, vs) = vm.signCompact(allocatorPrivateKey, digest);
-        bytes memory allocatorSignature = abi.encodePacked(r, vs);
+        bytes memory allocatorData = abi.encodePacked(r, vs);
 
         bytes32[] memory additionalChains = new bytes32[](1);
         additionalChains[0] = allocationHashTwo;
@@ -1532,12 +1578,13 @@ contract TheCompactTest is Test {
         recipients[0] = splitOne;
         recipients[1] = splitTwo;
 
-        MultichainClaim memory claim = MultichainClaim(allocatorSignature, sponsorSignature, swapper, nonce, expires, witness, witnessTypestring, additionalChains, id, amount, recipients);
+        MultichainClaim memory claim = MultichainClaim(allocatorData, sponsorSignature, swapper, nonce, expires, witness, witnessTypestring, additionalChains, id, amount, recipients);
 
         uint256 snapshotId = vm.snapshot();
         vm.prank(arbiter);
-        (bool status) = theCompact.claim(claim);
-        assert(status);
+        (bytes32 returnedClaimHash) = theCompact.claim(claim);
+        vm.snapshotGasLastCall("splitMultichainClaimWithWitness");
+        assertEq(returnedClaimHash, claimHash);
 
         assertEq(address(theCompact).balance, amount);
         assertEq(recipientOne.balance, 0);
@@ -1560,18 +1607,19 @@ contract TheCompactTest is Test {
         digest = keccak256(abi.encodePacked(bytes2(0x1901), anotherDomainSeparator, claimHash));
 
         (r, vs) = vm.signCompact(allocatorPrivateKey, digest);
-        bytes memory exogenousAllocatorSignature = abi.encodePacked(r, vs);
+        bytes memory exogenousallocatorData = abi.encodePacked(r, vs);
 
         additionalChains[0] = allocationHashOne;
         uint256 chainIndex = 0;
 
         ExogenousMultichainClaim memory anotherClaim = ExogenousMultichainClaim(
-            exogenousAllocatorSignature, sponsorSignature, swapper, nonce, expires, witness, witnessTypestring, additionalChains, chainIndex, notarizedChainId, anotherId, anotherAmount, recipients
+            exogenousallocatorData, sponsorSignature, swapper, nonce, expires, witness, witnessTypestring, additionalChains, chainIndex, notarizedChainId, anotherId, anotherAmount, recipients
         );
 
         vm.prank(arbiter);
-        (bool exogenousStatus) = theCompact.claim(anotherClaim);
-        assert(exogenousStatus);
+        (returnedClaimHash) = theCompact.claim(anotherClaim);
+        vm.snapshotGasLastCall("exogenousSplitMultichainClaimWithWitness");
+        assertEq(returnedClaimHash, claimHash);
 
         assertEq(theCompact.balanceOf(swapper, anotherId), 0);
         assertEq(theCompact.balanceOf(recipientOne, anotherId), amountOne);
@@ -1693,7 +1741,7 @@ contract TheCompactTest is Test {
         {
             uint256 snapshotId = vm.snapshot();
 
-            claim.allocatorSignature = abi.encodePacked(r, vs);
+            claim.allocatorData = abi.encodePacked(r, vs);
             claim.sponsor = swapper;
             claim.nonce = 0;
             claim.expires = expires;
@@ -1703,8 +1751,9 @@ contract TheCompactTest is Test {
             claim.claims = claims;
 
             vm.prank(arbiter);
-            (bool status) = theCompact.claim(claim);
-            assert(status);
+            (bytes32 returnedClaimHash) = theCompact.claim(claim);
+            vm.snapshotGasLastCall("splitBatchMultichainClaimWithWitness");
+            assertEq(returnedClaimHash, claimHash);
 
             assertEq(address(theCompact).balance, amount);
             assertEq(recipientOne.balance, 0);
@@ -1742,7 +1791,7 @@ contract TheCompactTest is Test {
         }
 
         ExogenousBatchMultichainClaim memory anotherClaim;
-        anotherClaim.allocatorSignature = abi.encodePacked(r, vs);
+        anotherClaim.allocatorData = abi.encodePacked(r, vs);
         anotherClaim.sponsorSignature = sponsorSignature;
         anotherClaim.witnessTypestring = "Witness witness)Witness(uint256 witnessArgument)";
         anotherClaim.additionalChains = additionalChains;
@@ -1759,8 +1808,9 @@ contract TheCompactTest is Test {
 
         {
             vm.prank(arbiter);
-            (bool exogenousStatus) = theCompact.claim(anotherClaim);
-            assert(exogenousStatus);
+            (bytes32 returnedClaimHash) = theCompact.claim(anotherClaim);
+            vm.snapshotGasLastCall("exogenousSplitBatchMultichainClaimWithWitness");
+            assertEq(returnedClaimHash, claimHash);
         }
 
         assertEq(theCompact.balanceOf(swapper, anotherId), 0);

@@ -44,42 +44,90 @@ contract ClaimProcessorLogic is SharedLogic {
     using ValidityLib for bytes32;
 
     ///// 1. Claims /////
-    function _processClaim(Claim calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation) internal returns (bool) {
-        (bytes32 messageHash, bytes32 typehash) = claimPayload.toMessageHashes();
-        return ClaimProcessorLib.processSimpleSplitClaim.usingClaim()(messageHash, claimPayload, 0xe0, typehash, _domainSeparator(), operation);
+    function _processClaim(Claim calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation) internal returns (bytes32 claimHash) {
+        // Set the reentrancy guard.
+        _setReentrancyGuard();
+
+        bytes32 typehash;
+        (claimHash, typehash) = claimPayload.toMessageHashes();
+        ClaimProcessorLib.processSimpleSplitClaim.usingClaim()(claimHash, claimPayload, 0xe0, typehash, _domainSeparator(), operation);
+
+        // Clear the reentrancy guard.
+        _clearReentrancyGuard();
     }
 
     ///// 2. Batch Claims /////
-    function _processBatchClaim(BatchClaim calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation) internal returns (bool) {
-        (bytes32 messageHash, bytes32 typehash) = claimPayload.toMessageHashes();
-        return ClaimProcessorLib.processSimpleSplitBatchClaim.usingBatchClaim()(messageHash, claimPayload, 0xe0, typehash, _domainSeparator(), operation);
+    function _processBatchClaim(BatchClaim calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation) internal returns (bytes32 claimHash) {
+        // Set the reentrancy guard.
+        _setReentrancyGuard();
+
+        bytes32 typehash;
+        (claimHash, typehash) = claimPayload.toMessageHashes();
+        ClaimProcessorLib.processSimpleSplitBatchClaim.usingBatchClaim()(claimHash, claimPayload, 0xe0, typehash, _domainSeparator(), operation);
+
+        // Clear the reentrancy guard.
+        _clearReentrancyGuard();
     }
 
     ///// 3. Multichain Claims /////
-    function _processMultichainClaim(MultichainClaim calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation) internal returns (bool) {
-        (bytes32 messageHash, bytes32 typehash) = claimPayload.toMessageHashes();
-        return ClaimProcessorLib.processSimpleSplitClaim.usingMultichainClaim()(messageHash, claimPayload, 0x100, typehash, _domainSeparator(), operation);
+    function _processMultichainClaim(MultichainClaim calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation) internal returns (bytes32 claimHash) {
+        // Set the reentrancy guard.
+        _setReentrancyGuard();
+
+        bytes32 typehash;
+        (claimHash, typehash) = claimPayload.toMessageHashes();
+        ClaimProcessorLib.processSimpleSplitClaim.usingMultichainClaim()(claimHash, claimPayload, 0x100, typehash, _domainSeparator(), operation);
+
+        // Clear the reentrancy guard.
+        _clearReentrancyGuard();
     }
 
     ///// 4. Batch Multichain Claims /////
-    function _processBatchMultichainClaim(BatchMultichainClaim calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation) internal returns (bool) {
-        (bytes32 messageHash, bytes32 typehash) = claimPayload.toMessageHashes();
-        return ClaimProcessorLib.processSimpleSplitBatchClaim.usingBatchMultichainClaim()(messageHash, claimPayload, 0x100, typehash, _domainSeparator(), operation);
+    function _processBatchMultichainClaim(BatchMultichainClaim calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation) internal returns (bytes32 claimHash) {
+        // Set the reentrancy guard.
+        _setReentrancyGuard();
+
+        bytes32 typehash;
+        (claimHash, typehash) = claimPayload.toMessageHashes();
+        ClaimProcessorLib.processSimpleSplitBatchClaim.usingBatchMultichainClaim()(claimHash, claimPayload, 0x100, typehash, _domainSeparator(), operation);
+
+        // Clear the reentrancy guard.
+        _clearReentrancyGuard();
     }
 
     ///// 5. Exogenous Multichain Claims /////
-    function _processExogenousMultichainClaim(ExogenousMultichainClaim calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation) internal returns (bool) {
-        (bytes32 messageHash, bytes32 typehash) = claimPayload.toMessageHashes();
-        return ClaimProcessorLib.processSplitClaimWithSponsorDomain.usingExogenousMultichainClaim()(
-            messageHash, claimPayload, 0x140, claimPayload.notarizedChainId.toNotarizedDomainSeparator(), typehash, _domainSeparator(), operation
+    function _processExogenousMultichainClaim(ExogenousMultichainClaim calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation)
+        internal
+        returns (bytes32 claimHash)
+    {
+        // Set the reentrancy guard.
+        _setReentrancyGuard();
+
+        bytes32 typehash;
+        (claimHash, typehash) = claimPayload.toMessageHashes();
+        ClaimProcessorLib.processSplitClaimWithSponsorDomain.usingExogenousMultichainClaim()(
+            claimHash, claimPayload, 0x140, claimPayload.notarizedChainId.toNotarizedDomainSeparator(), typehash, _domainSeparator(), operation
         );
+
+        // Clear the reentrancy guard.
+        _clearReentrancyGuard();
     }
 
     ///// 6. Exogenous Batch Multichain Claims /////
-    function _processExogenousBatchMultichainClaim(ExogenousBatchMultichainClaim calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation) internal returns (bool) {
-        (bytes32 messageHash, bytes32 typehash) = claimPayload.toMessageHashes();
-        return ClaimProcessorLib.processSplitBatchClaimWithSponsorDomain.usingExogenousBatchMultichainClaim()(
-            messageHash, claimPayload, 0x140, claimPayload.notarizedChainId.toNotarizedDomainSeparator(), typehash, _domainSeparator(), operation
+    function _processExogenousBatchMultichainClaim(ExogenousBatchMultichainClaim calldata claimPayload, function(address, address, uint256, uint256) internal returns (bool) operation)
+        internal
+        returns (bytes32 claimHash)
+    {
+        // Set the reentrancy guard.
+        _setReentrancyGuard();
+
+        bytes32 typehash;
+        (claimHash, typehash) = claimPayload.toMessageHashes();
+        ClaimProcessorLib.processSplitBatchClaimWithSponsorDomain.usingExogenousBatchMultichainClaim()(
+            claimHash, claimPayload, 0x140, claimPayload.notarizedChainId.toNotarizedDomainSeparator(), typehash, _domainSeparator(), operation
         );
+
+        // Clear the reentrancy guard.
+        _clearReentrancyGuard();
     }
 }

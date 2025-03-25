@@ -9,6 +9,10 @@ contract AlwaysOKAllocator is IAllocator, IERC1271 {
         return IAllocator.attest.selector;
     }
 
+    function authorizeClaim(bytes32, address, address, uint256, uint256, uint256[2][] calldata, bytes calldata) external pure returns (bytes4) {
+        return IAllocator.authorizeClaim.selector;
+    }
+
     function isValidSignature(bytes32, bytes calldata) external pure returns (bytes4) {
         return IERC1271.isValidSignature.selector;
     }

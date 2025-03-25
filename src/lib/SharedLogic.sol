@@ -95,9 +95,6 @@ contract SharedLogic is ConstructorLogic {
      * @return       Whether the withdrawal was successful.
      */
     function _withdraw(address from, address to, uint256 id, uint256 amount) internal virtual returns (bool) {
-        // Set reentrancy guard due to external token transfers.
-        _setReentrancyGuard();
-
         // Derive the underlying token from the id of the resource lock.
         address token = id.toToken();
 
@@ -147,9 +144,6 @@ contract SharedLogic is ConstructorLogic {
             mstore(0x20, amount)
             log4(0x00, 0x40, _TRANSFER_EVENT_SIGNATURE, shr(0x60, shl(0x60, from)), 0, id)
         }
-
-        // Clear the reentrancy guard.
-        _clearReentrancyGuard();
 
         return true;
     }
