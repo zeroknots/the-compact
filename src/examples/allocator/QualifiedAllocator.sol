@@ -8,7 +8,7 @@ interface EIP712 {
     function DOMAIN_SEPARATOR() external view returns (bytes32);
 }
 
-contract SimpleAllocator is IAllocator {
+contract QualifiedAllocator is IAllocator {
     using SignatureCheckerLib for address;
 
     address public signer;
@@ -38,11 +38,14 @@ contract SimpleAllocator is IAllocator {
         expires;
         idsAndAmounts;
 
+        (bytes memory signature, bytes32 qualificationArg) = abi.decode(allocatorData, (bytes, bytes32));
+
+        bytes32 qualifiedHash = keccak256(abi.encode(keccak256("QualifiedClaim(bytes32 claimHash,bytes32 qualificationArg)"), claimHash, qualificationArg));
         // pulling the domain separator for every authorizeClaim call is inefficient, and should not be used in prod.
         // this is just for test purposes, since TheCompact.t.sol is using vm.chainId().
         // @dev Consider inheriting EIP712 in the Allocator or caching the compact domain separator as an immutable
-        bytes32 digest = keccak256(abi.encodePacked(bytes2(0x1901), COMPACT.DOMAIN_SEPARATOR(), claimHash));
-        require(signer.isValidSignatureNow(digest, allocatorData), "Invalid Sig");
+        bytes32 digest = keccak256(abi.encodePacked(bytes2(0x1901), COMPACT.DOMAIN_SEPARATOR(), qualifiedHash));
+        require(signer.isValidSignatureNow(digest, signature), "Invalid Sig");
 
         return this.authorizeClaim.selector;
     }

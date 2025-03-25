@@ -15,6 +15,7 @@ import { IdLib } from "../src/lib/IdLib.sol";
 
 import { AlwaysOKAllocator } from "../src/test/AlwaysOKAllocator.sol";
 import { SimpleAllocator } from "../src/examples/allocator/SimpleAllocator.sol";
+import { QualifiedAllocator } from "../src/examples/allocator/QualifiedAllocator.sol";
 
 import { BasicTransfer, SplitTransfer, Claim } from "../src/types/Claims.sol";
 import { BatchTransfer, SplitBatchTransfer, BatchClaim } from "../src/types/BatchClaims.sol";
@@ -84,7 +85,7 @@ contract TheCompactTest is Test {
         address allocatorSigningKey;
         (allocatorSigningKey, allocatorPrivateKey) = makeAddrAndKey("allocator");
 
-        allocator = address(new SimpleAllocator(allocatorSigningKey));
+        allocator = address(new SimpleAllocator(allocatorSigningKey, address(theCompact)));
 
         vm.deal(swapper, 2e18);
         token.mint(swapper, 1e18);
@@ -543,6 +544,47 @@ contract TheCompactTest is Test {
         assertEq(theCompact.balanceOf(swapper, id), 0);
         assertEq(theCompact.balanceOf(recipientOne, id), amountOne);
         assertEq(theCompact.balanceOf(recipientTwo, id), amountTwo);
+    }
+
+    function test_qualified_basicTransfer() public {
+        ResetPeriod resetPeriod = ResetPeriod.TenMinutes;
+        Scope scope = Scope.Multichain;
+        uint256 amount = 1e18;
+        uint256 nonce = 0;
+        uint256 expiration = block.timestamp + 1000;
+        address recipient = 0x1111111111111111111111111111111111111111;
+
+        allocator = address(new QualifiedAllocator(vm.addr(allocatorPrivateKey), address(theCompact)));
+
+        vm.prank(allocator);
+        theCompact.__registerAllocator(allocator, "");
+
+        vm.prank(swapper);
+        uint256 id = theCompact.deposit(address(token), allocator, resetPeriod, scope, amount, swapper);
+        assertEq(theCompact.balanceOf(swapper, id), amount);
+
+        bytes32 claimHash = keccak256(abi.encode(keccak256("Compact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256 id,uint256 amount)"), swapper, swapper, nonce, expiration, id, amount));
+
+        bytes32 qualificationArgument = keccak256("qualification");
+
+        bytes32 qualifiedDigest = keccak256(
+            abi.encodePacked(bytes2(0x1901), theCompact.DOMAIN_SEPARATOR(), keccak256(abi.encode(keccak256("QualifiedClaim(bytes32 claimHash,bytes32 qualificationArg)"), claimHash, qualificationArgument)))
+        );
+
+        (bytes32 r, bytes32 vs) = vm.signCompact(allocatorPrivateKey, qualifiedDigest);
+        bytes memory allocatorData = abi.encodePacked(r, vs);
+
+        BasicTransfer memory transfer = BasicTransfer({ nonce: nonce, expires: expiration, allocatorData: abi.encode(allocatorData, qualificationArgument), id: id, amount: amount, recipient: recipient });
+
+        vm.prank(swapper);
+        bool status = theCompact.allocatedTransfer(transfer);
+        vm.snapshotGasLastCall("qualified_basicTransfer");
+        assert(status);
+
+        assertEq(token.balanceOf(address(theCompact)), amount);
+        assertEq(token.balanceOf(recipient), 0);
+        assertEq(theCompact.balanceOf(swapper, id), 0);
+        assertEq(theCompact.balanceOf(recipient, id), amount);
     }
 
     function test_batchTransfer() public {
