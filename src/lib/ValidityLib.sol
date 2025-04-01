@@ -8,7 +8,7 @@ import { ConsumerLib } from "./ConsumerLib.sol";
 import { EfficiencyLib } from "./EfficiencyLib.sol";
 import { DomainLib } from "./DomainLib.sol";
 import { SignatureCheckerLib } from "solady/utils/SignatureCheckerLib.sol";
-import { SignDelegatorLib } from "./SignDelegatorLib.sol";
+import { EmissaryLib } from "./EmissaryLib.sol";
 
 /**
  * @title ValidityLib
@@ -23,7 +23,7 @@ library ValidityLib {
     using DomainLib for bytes32;
     using SignatureCheckerLib for address;
     using ValidityLib for uint256;
-    using SignDelegatorLib for address;
+    using EmissaryLib for bytes32;
 
     /**
      * @notice Internal function that retrieves an allocator's address from their ID and
@@ -101,11 +101,12 @@ library ValidityLib {
      * @param signature       The signature to verify.
      * @param domainSeparator The domain separator to combine with the message hash.
      */
-    function signedByOrDelegated(bytes32 messageHash, address expectedSigner, bytes calldata signature, bytes32 domainSeparator) internal {
+    function signedBySponsorOrEmissary(bytes32 messageHash, address expectedSigner, bytes calldata signature, bytes32 domainSeparator, uint256 allocatorId) internal view {
         // Apply domain separator to message hash and verify it was signed correctly.
         bytes32 claimHash = messageHash.withDomain(domainSeparator);
-        bool hasValidSigner = expectedSigner.isValidSignatureNowCalldata(claimHash, signature);
-        if (!hasValidSigner) hasValidSigner = expectedSigner.verifyByDelegator(claimHash, signature);
+        // first check signature with ECDSA / ERC1271
+        // if the signature validation failed, fallback to emissary
+        bool hasValidSigner = expectedSigner.isValidSignatureNowCalldata(claimHash, signature) || claimHash.verifyWithEmissary(expectedSigner, allocatorId, signature);
 
         assembly ("memory-safe") {
             // Allow signature check to be bypassed if caller is the expected signer.

@@ -14,6 +14,7 @@ import { HashLib } from "../src/lib/HashLib.sol";
 import { IdLib } from "../src/lib/IdLib.sol";
 
 import { AlwaysOKAllocator } from "../src/test/AlwaysOKAllocator.sol";
+import { AlwaysOKEmissary } from "../src/test/AlwaysOKEmissary.sol";
 import { SimpleAllocator } from "../src/examples/allocator/SimpleAllocator.sol";
 import { QualifiedAllocator } from "../src/examples/allocator/QualifiedAllocator.sol";
 
@@ -1821,6 +1822,71 @@ contract TheCompactTest is Test {
         // change back
         vm.chainId(notarizedChainId);
         assertEq(block.chainid, notarizedChainId);
+    }
+
+    function test_claimWithEmissary() public {
+        ResetPeriod resetPeriod = ResetPeriod.TenMinutes;
+        Scope scope = Scope.Multichain;
+        uint256 amount = 1e18;
+        uint256 nonce = 0;
+        uint256 expires = block.timestamp + 1000;
+        address recipientOne = 0x1111111111111111111111111111111111111111;
+        address recipientTwo = 0x3333333333333333333333333333333333333333;
+        uint256 amountOne = 4e17;
+        uint256 amountTwo = 6e17;
+        address arbiter = 0x2222222222222222222222222222222222222222;
+
+        vm.prank(allocator);
+        theCompact.__registerAllocator(allocator, "");
+
+        address emissary = address(new AlwaysOKEmissary());
+        vm.prank(swapper);
+        theCompact.assignEmissary(allocator, emissary, ResetPeriod.OneDay);
+
+        vm.prank(swapper);
+        uint256 id = theCompact.deposit{ value: amount }(allocator, resetPeriod, scope, swapper);
+        assertEq(theCompact.balanceOf(swapper, id), amount);
+
+        string memory witnessTypestring = "CompactWitness witness)CompactWitness(uint256 witnessArgument)";
+        uint256 witnessArgument = 234;
+        bytes32 witness = keccak256(abi.encode(keccak256("CompactWitness(uint256 witnessArgument)"), witnessArgument));
+
+        string memory compactTypestring = "Compact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256 id,uint256 amount,CompactWitness witness)CompactWitness(uint256 witnessArgument)";
+
+        bytes32 typehash = keccak256(bytes(compactTypestring));
+
+        bytes32 claimHash = keccak256(abi.encode(typehash, arbiter, swapper, nonce, expires, id, amount, witness));
+
+        bytes32 digest = keccak256(abi.encodePacked(bytes2(0x1901), theCompact.DOMAIN_SEPARATOR(), claimHash));
+
+        bytes32 r;
+        bytes32 vs;
+        bytes memory sponsorSignature = hex"41414141414141414141414141414141";
+
+        (r, vs) = vm.signCompact(allocatorPrivateKey, digest);
+        bytes memory allocatorData = abi.encodePacked(r, vs);
+
+        SplitComponent memory splitOne = SplitComponent({ claimant: recipientOne, amount: amountOne });
+
+        SplitComponent memory splitTwo = SplitComponent({ claimant: recipientTwo, amount: amountTwo });
+
+        SplitComponent[] memory recipients = new SplitComponent[](2);
+        recipients[0] = splitOne;
+        recipients[1] = splitTwo;
+
+        Claim memory claim = Claim(allocatorData, sponsorSignature, swapper, nonce, expires, witness, witnessTypestring, id, amount, recipients);
+
+        vm.prank(arbiter);
+        (bytes32 returnedClaimHash) = theCompact.claimAndWithdraw(claim);
+        vm.snapshotGasLastCall("claimAndWithdraw");
+        assertEq(returnedClaimHash, claimHash);
+
+        assertEq(address(theCompact).balance, 0);
+        assertEq(recipientOne.balance, amountOne);
+        assertEq(recipientTwo.balance, amountTwo);
+        assertEq(theCompact.balanceOf(swapper, id), 0);
+        assertEq(theCompact.balanceOf(recipientOne, id), 0);
+        assertEq(theCompact.balanceOf(recipientTwo, id), 0);
     }
 
     function test_standardTransfer() public {

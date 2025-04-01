@@ -2,6 +2,7 @@
 pragma solidity ^0.8.27;
 
 import { ForcedWithdrawalStatus } from "../types/ForcedWithdrawalStatus.sol";
+import { EmissaryStatus } from "../types/EmissaryStatus.sol";
 import { ResetPeriod } from "../types/ResetPeriod.sol";
 import { Scope } from "../types/Scope.sol";
 import { CompactCategory } from "../types/CompactCategory.sol";
@@ -518,6 +519,12 @@ interface ITheCompact {
      * @return expires  The timestamp at which the compact registration expires.
      */
     function getRegistrationStatus(address sponsor, bytes32 claimHash, bytes32 typehash) external view returns (bool isActive, uint256 expires);
+
+    function assignEmissary(address allocator, address emissary, ResetPeriod resetPeriod) external returns (bool);
+
+    function scheduleEmissaryAssignment(address allocator) external returns (uint256 emissaryAssignmentAvailableAt);
+
+    function getEmissaryStatus(address sponsor, address allocator) external view returns (EmissaryStatus status, uint256 emissaryAssignmentAvailableAt, address currentEmissary);
 
     /**
      * @notice External view function for retrieving the details of a resource lock. Returns the
