@@ -19,51 +19,27 @@ import { BatchMultichainClaim, ExogenousBatchMultichainClaim } from "../types/Ba
  * indicated by the respective compact.
  */
 contract ClaimProcessor is ITheCompactClaims, ClaimProcessorLogic {
-    function claim(Claim calldata claimPayload) external returns (bool) {
-        return _processClaim(claimPayload, _release);
+    function claim(Claim calldata claimPayload) external returns (bytes32 claimHash) {
+        return _processClaim(claimPayload);
     }
 
-    function claimAndWithdraw(Claim calldata claimPayload) external returns (bool) {
-        return _processClaim(claimPayload, _withdraw);
+    function claim(BatchClaim calldata claimPayload) external returns (bytes32 claimHash) {
+        return _processBatchClaim(claimPayload);
     }
 
-    function claim(BatchClaim calldata claimPayload) external returns (bool) {
-        return _processBatchClaim(claimPayload, _release);
+    function claim(MultichainClaim calldata claimPayload) external returns (bytes32 claimHash) {
+        return _processMultichainClaim(claimPayload);
     }
 
-    function claimAndWithdraw(BatchClaim calldata claimPayload) external returns (bool) {
-        return _processBatchClaim(claimPayload, _withdraw);
+    function claim(ExogenousMultichainClaim calldata claimPayload) external returns (bytes32 claimHash) {
+        return _processExogenousMultichainClaim(claimPayload);
     }
 
-    function claim(MultichainClaim calldata claimPayload) external returns (bool) {
-        return _processMultichainClaim(claimPayload, _release);
+    function claim(BatchMultichainClaim calldata claimPayload) external returns (bytes32 claimHash) {
+        return _processBatchMultichainClaim(claimPayload);
     }
 
-    function claimAndWithdraw(MultichainClaim calldata claimPayload) external returns (bool) {
-        return _processMultichainClaim(claimPayload, _withdraw);
-    }
-
-    function claim(ExogenousMultichainClaim calldata claimPayload) external returns (bool) {
-        return _processExogenousMultichainClaim(claimPayload, _release);
-    }
-
-    function claimAndWithdraw(ExogenousMultichainClaim calldata claimPayload) external returns (bool) {
-        return _processExogenousMultichainClaim(claimPayload, _withdraw);
-    }
-
-    function claim(BatchMultichainClaim calldata claimPayload) external returns (bool) {
-        return _processBatchMultichainClaim(claimPayload, _release);
-    }
-
-    function claimAndWithdraw(BatchMultichainClaim calldata claimPayload) external returns (bool) {
-        return _processBatchMultichainClaim(claimPayload, _withdraw);
-    }
-
-    function claim(ExogenousBatchMultichainClaim calldata claimPayload) external returns (bool) {
-        return _processExogenousBatchMultichainClaim(claimPayload, _release);
-    }
-
-    function claimAndWithdraw(ExogenousBatchMultichainClaim calldata claimPayload) external returns (bool) {
-        return _processExogenousBatchMultichainClaim(claimPayload, _withdraw);
+    function claim(ExogenousBatchMultichainClaim calldata claimPayload) external returns (bytes32 claimHash) {
+        return _processExogenousBatchMultichainClaim(claimPayload);
     }
 }

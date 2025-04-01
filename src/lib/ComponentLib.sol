@@ -12,6 +12,7 @@ import { HashLib } from "./HashLib.sol";
 import { IdLib } from "./IdLib.sol";
 import { RegistrationLib } from "./RegistrationLib.sol";
 import { ValidityLib } from "./ValidityLib.sol";
+import { TransferLib } from "./TransferLib.sol";
 
 /**
  * @title ComponentLib
@@ -23,6 +24,7 @@ import { ValidityLib } from "./ValidityLib.sol";
  * any changes.
  */
 library ComponentLib {
+    using TransferLib for address;
     using ComponentLib for SplitComponent[];
     using EfficiencyLib for bool;
     using EfficiencyLib for uint256;
@@ -35,17 +37,18 @@ library ComponentLib {
     using ValidityLib for bytes32;
     using RegistrationLib for address;
 
+    error Overflow();
+
     /**
      * @notice Internal function for performing a set of split transfers or withdrawals.
      * Executes the transfer or withdrawal operation targeting multiple recipients from
      * a single resource lock.
      * @param transfer  A SplitTransfer struct containing split transfer details.
-     * @param operation Function pointer to either _release or _withdraw for executing the claim.
      * @return          Whether the transfer was successfully processed.
      */
-    function processSplitTransfer(SplitTransfer calldata transfer, function(address, address, uint256, uint256) internal returns (bool) operation) internal returns (bool) {
+    function processSplitTransfer(SplitTransfer calldata transfer) internal returns (bool) {
         // Process the transfer for each split component.
-        _processSplitTransferComponents(transfer.recipients, transfer.id, operation);
+        _processSplitTransferComponents(transfer.recipients, transfer.id);
 
         return true;
     }
@@ -85,10 +88,8 @@ library ComponentLib {
      * Executes the transfer or withdrawal operation for multiple recipients from multiple
      * resource locks.
      * @param transfer  A SplitBatchTransfer struct containing split batch transfer details.
-     * @param operation Function pointer to either _release or _withdraw for executing the claim.
-     * @return          Whether the transfer was successfully processed.
      */
-    function performSplitBatchTransfer(SplitBatchTransfer calldata transfer, function(address, address, uint256, uint256) internal returns (bool) operation) internal returns (bool) {
+    function performSplitBatchTransfer(SplitBatchTransfer calldata transfer) internal {
         // Navigate to the split batch components array in calldata.
         SplitByIdComponent[] calldata transfers = transfer.transfers;
 
@@ -102,11 +103,9 @@ library ComponentLib {
                 SplitByIdComponent calldata component = transfers[i];
 
                 // Process transfer for each split component in the set.
-                _processSplitTransferComponents(component.portions, component.id, operation);
+                _processSplitTransferComponents(component.portions, component.id);
             }
         }
-
-        return true;
     }
 
     /**
@@ -115,26 +114,22 @@ library ComponentLib {
      * validates the scope, and executes either releases of ERC6909 tokens or withdrawals of
      * underlying tokens to multiple recipients.
      * @param messageHash              The EIP-712 hash of the claim message.
-     * @param qualificationMessageHash The EIP-712 hash of the allocator's qualification message.
      * @param calldataPointer          Pointer to the location of the associated struct in calldata.
      * @param offsetToId               Offset to segment of calldata where relevant claim parameters begin.
      * @param sponsorDomainSeparator   The domain separator for the sponsor's signature, or zero for non-exogenous claims.
      * @param typehash                 The EIP-712 typehash used for the claim message.
      * @param domainSeparator          The local domain separator.
-     * @param operation                Function pointer to either _release or _withdraw for executing the claim.
      * @param validation               Function pointer to the _validate function.
      * @return                         Whether the split claim was successfully processed.
      */
     function processClaimWithSplitComponents(
         bytes32 messageHash,
-        bytes32 qualificationMessageHash,
         uint256 calldataPointer,
         uint256 offsetToId,
         bytes32 sponsorDomainSeparator,
         bytes32 typehash,
         bytes32 domainSeparator,
-        function(address, address, uint256, uint256) internal returns (bool) operation,
-        function(bytes32, uint96, bytes32, uint256, bytes32, bytes32, bytes32) internal returns (address) validation
+        function(bytes32, uint96, uint256, bytes32, bytes32, bytes32, uint256[2][] memory) internal returns (address) validation
     ) internal returns (bool) {
         // Declare variables for parameters that will be extracted from calldata.
         uint256 id;
@@ -155,14 +150,18 @@ library ComponentLib {
             components.length := calldataload(componentsPtr)
         }
 
+        // Initialize idsAndAmounts array.
+        uint256[2][] memory idsAndAmounts = new uint256[2][](1);
+        idsAndAmounts[0] = [id, allocatedAmount];
+
         // Validate the claim and extract the sponsor address.
-        address sponsor = validation(messageHash, id.toAllocatorId(), qualificationMessageHash, calldataPointer, domainSeparator, sponsorDomainSeparator, typehash);
+        address sponsor = validation(messageHash, id.toAllocatorId(), calldataPointer, domainSeparator, sponsorDomainSeparator, typehash, idsAndAmounts);
 
         // Verify the resource lock scope is compatible with the provided domain separator.
         sponsorDomainSeparator.ensureValidScope(id);
 
         // Process each split component, verifying total amount and executing operations.
-        return components.verifyAndProcessSplitComponents(sponsor, id, allocatedAmount, operation);
+        return components.verifyAndProcessSplitComponents(sponsor, id, allocatedAmount);
     }
 
     /**
@@ -172,26 +171,22 @@ library ComponentLib {
      * validation of allocator consistency and scopes, with explicit validation on failure to
      * identify specific issues. Each resource lock can be split among multiple recipients.
      * @param messageHash              The EIP-712 hash of the claim message.
-     * @param qualificationMessageHash The EIP-712 hash of the allocator's qualification message.
      * @param calldataPointer          Pointer to the location of the associated struct in calldata.
      * @param offsetToId               Offset to segment of calldata where relevant claim parameters begin.
      * @param sponsorDomainSeparator   The domain separator for the sponsor's signature, or zero for non-exogenous claims.
      * @param typehash                 The EIP-712 typehash used for the claim message.
      * @param domainSeparator          The local domain separator.
-     * @param operation                Function pointer to either _release or _withdraw for executing the claim.
      * @param validation               Function pointer to the _validate function.
      * @return                         Whether the split batch claim was successfully processed.
      */
     function processClaimWithSplitBatchComponents(
         bytes32 messageHash,
-        bytes32 qualificationMessageHash,
         uint256 calldataPointer,
         uint256 offsetToId,
         bytes32 sponsorDomainSeparator,
         bytes32 typehash,
         bytes32 domainSeparator,
-        function(address, address, uint256, uint256) internal returns (bool) operation,
-        function(bytes32, uint96, bytes32, uint256, bytes32, bytes32, bytes32) internal returns (address) validation
+        function(bytes32, uint96, uint256, bytes32, bytes32, bytes32, uint256[2][] memory) internal returns (address) validation
     ) internal returns (bool) {
         // Declare variable for SplitBatchClaimComponent array that will be extracted from calldata.
         SplitBatchClaimComponent[] calldata claims;
@@ -206,27 +201,39 @@ library ComponentLib {
         // Extract allocator id from first claim for validation.
         uint96 firstAllocatorId = claims[0].id.toAllocatorId();
 
-        // Validate the claim and extract the sponsor address.
-        address sponsor = validation(messageHash, firstAllocatorId, qualificationMessageHash, calldataPointer, domainSeparator, sponsorDomainSeparator, typehash);
-
         // Initialize tracking variables.
         uint256 totalClaims = claims.length;
         uint256 errorBuffer = (totalClaims == 0).asUint256();
         uint256 id;
 
+        // Initialize idsAndAmounts array.
+        uint256[2][] memory idsAndAmounts = new uint256[2][](totalClaims);
+
         unchecked {
-            // Process each claim component while accumulating potential errors.
+            // Analyze each claim component while accumulating potential errors.
             for (uint256 i = 0; i < totalClaims; ++i) {
                 SplitBatchClaimComponent calldata claimComponent = claims[i];
                 id = claimComponent.id;
+                // TODO: can scopeNotMultichain be removed here?
                 errorBuffer |= (id.toAllocatorId() != firstAllocatorId).or(id.scopeNotMultichain(sponsorDomainSeparator)).asUint256();
 
-                // Process each split component, verifying total amount and executing operations.
-                claimComponent.portions.verifyAndProcessSplitComponents(sponsor, id, claimComponent.allocatedAmount, operation);
+                // Include the id and amount in idsAndAmounts.
+                idsAndAmounts[i] = [id, claimComponent.allocatedAmount];
             }
 
             // Revert if any errors occurred.
             _revertWithInvalidBatchAllocationIfError(errorBuffer);
+
+            // Validate the claim and extract the sponsor address.
+            address sponsor = validation(messageHash, firstAllocatorId, calldataPointer, domainSeparator, sponsorDomainSeparator, typehash, idsAndAmounts);
+
+            // Process each claim component.
+            for (uint256 i = 0; i < totalClaims; ++i) {
+                SplitBatchClaimComponent calldata claimComponent = claims[i];
+
+                // Process each split component, verifying total amount and executing operations.
+                claimComponent.portions.verifyAndProcessSplitComponents(sponsor, claimComponent.id, claimComponent.allocatedAmount);
+            }
         }
 
         return true;
@@ -241,16 +248,9 @@ library ComponentLib {
      * @param sponsor         The address of the claim sponsor.
      * @param id              The ERC6909 token identifier of the resource lock.
      * @param allocatedAmount The total amount allocated for this claim.
-     * @param operation       Function pointer to either _release or _withdraw for executing the claim.
      * @return                Whether all split components were successfully processed.
      */
-    function verifyAndProcessSplitComponents(
-        SplitComponent[] calldata claimants,
-        address sponsor,
-        uint256 id,
-        uint256 allocatedAmount,
-        function(address, address, uint256, uint256) internal returns (bool) operation
-    ) internal returns (bool) {
+    function verifyAndProcessSplitComponents(SplitComponent[] calldata claimants, address sponsor, uint256 id, uint256 allocatedAmount) internal returns (bool) {
         // Initialize tracking variables.
         uint256 totalClaims = claimants.length;
         uint256 spentAmount = 0;
@@ -267,8 +267,7 @@ library ComponentLib {
                 errorBuffer |= (updatedSpentAmount < spentAmount).asUint256();
                 spentAmount = updatedSpentAmount;
 
-                // Execute transfer or withdrawal for the split component.
-                operation(sponsor, component.claimant, id, amount);
+                sponsor.performOperation(id, component.claimant, amount);
             }
         }
 
@@ -288,14 +287,38 @@ library ComponentLib {
     }
 
     /**
+     * @notice Internal pure function for summing all amounts in a SplitComponent array.
+     * @param recipients A SplitComponent struct array containing split transfer details.
+     * @return sum Total amount across all components.
+     */
+    function aggregate(SplitComponent[] calldata recipients) internal pure returns (uint256 sum) {
+        // Retrieve the total number of components.
+        uint256 totalSplits = recipients.length;
+
+        uint256 errorBuffer;
+        uint256 amount;
+        unchecked {
+            // Iterate over each additional component in calldata.
+            for (uint256 i = 0; i < totalSplits; ++i) {
+                amount = recipients[i].amount;
+                sum += amount;
+                errorBuffer |= (sum < amount).asUint256();
+            }
+        }
+
+        if (errorBuffer.asBool()) {
+            revert Overflow();
+        }
+    }
+
+    /**
      * @notice Private function for performing a set of split transfers or withdrawals
      * given an array of split components and an ID for an associated resource lock.
      * Executes the transfer or withdrawal operation targeting multiple recipients.
      * @param recipients A SplitComponent struct array containing split transfer details.
      * @param id         The ERC6909 token identifier of the resource lock.
-     * @param operation  Function pointer to either _release or _withdraw for executing the claim.
      */
-    function _processSplitTransferComponents(SplitComponent[] calldata recipients, uint256 id, function(address, address, uint256, uint256) internal returns (bool) operation) private {
+    function _processSplitTransferComponents(SplitComponent[] calldata recipients, uint256 id) private {
         // Retrieve the total number of components.
         uint256 totalSplits = recipients.length;
 
@@ -306,7 +329,7 @@ library ComponentLib {
                 SplitComponent calldata component = recipients[i];
 
                 // Perform the transfer or withdrawal for the portion.
-                operation(msg.sender, component.claimant, id, component.amount);
+                msg.sender.performOperation(id, component.claimant, component.amount);
             }
         }
     }
