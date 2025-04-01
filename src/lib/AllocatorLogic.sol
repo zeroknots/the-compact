@@ -23,8 +23,6 @@ contract AllocatorLogic {
     using EfficiencyLib for uint256;
     using ValidityLib for address;
 
-    error InvalidAllocation(address allocator);
-
     /**
      * @notice Internal function for marking allocator nonces as consumed. Once consumed, a nonce
      * cannot be reused to claim resource locks referencing that allocator. Called by the external
@@ -98,7 +96,7 @@ contract AllocatorLogic {
      * @return scope       The scope of the resource lock (multichain or single chain).
      */
     function _getLockDetails(uint256 id) internal view returns (address token, address allocator, ResetPeriod resetPeriod, Scope scope) {
-        token = id.toToken();
+        token = id.toAddress();
         allocator = id.toAllocatorId().toRegisteredAllocator();
         resetPeriod = id.toResetPeriod();
         scope = id.toScope();

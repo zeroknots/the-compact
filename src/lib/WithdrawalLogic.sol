@@ -4,10 +4,11 @@ pragma solidity ^0.8.27;
 import { ForcedWithdrawalStatus } from "../types/ForcedWithdrawalStatus.sol";
 import { ResetPeriod } from "../types/ResetPeriod.sol";
 
-import { SharedLogic } from "./SharedLogic.sol";
+import { ConstructorLogic } from "./ConstructorLogic.sol";
 import { EfficiencyLib } from "./EfficiencyLib.sol";
 import { EventLib } from "./EventLib.sol";
 import { IdLib } from "./IdLib.sol";
+import { TransferLib } from "./TransferLib.sol";
 
 /**
  * @title WithdrawalLogic
@@ -15,11 +16,12 @@ import { IdLib } from "./IdLib.sol";
  * forced withdrawals, including initiation and the actual withdrawal, and for querying
  * for the forced withdrawal status for given resource locks.
  */
-contract WithdrawalLogic is SharedLogic {
+contract WithdrawalLogic is ConstructorLogic {
     using IdLib for uint256;
     using IdLib for ResetPeriod;
     using EfficiencyLib for uint256;
     using EventLib for uint256;
+    using TransferLib for address;
 
     // Storage scope for forced withdrawal activation times:
     // slot: keccak256(_FORCED_WITHDRAWAL_ACTIVATIONS_SCOPE ++ account ++ id) => activates.
@@ -55,9 +57,8 @@ contract WithdrawalLogic is SharedLogic {
      * is already disabled, clears the withdrawable timestamp, and emits a
      * ForcedWithdrawalStatusUpdated event.
      * @param id The ERC6909 token identifier of the resource lock.
-     * @return   Whether the forced withdrawal was successfully disabled.
      */
-    function _disableForcedWithdrawal(uint256 id) internal returns (bool) {
+    function _disableForcedWithdrawal(uint256 id) internal {
         // Derive storage slot containing time withdrawal is enabled.
         uint256 cutoffTimeSlotLocation = _getCutoffTimeSlot(msg.sender, id);
 
@@ -77,8 +78,6 @@ contract WithdrawalLogic is SharedLogic {
 
         // emit the ForcedWithdrawalStatusUpdated event.
         id.emitForcedWithdrawalStatusUpdatedEvent(uint256(0).asStubborn());
-
-        return true;
     }
 
     /**
@@ -88,9 +87,8 @@ contract WithdrawalLogic is SharedLogic {
      * @param id        The ERC6909 token identifier of the resource lock.
      * @param recipient The account that will receive the withdrawn tokens.
      * @param amount    The amount of tokens to withdraw.
-     * @return          Whether the forced withdrawal was successfully executed.
      */
-    function _processForcedWithdrawal(uint256 id, address recipient, uint256 amount) internal returns (bool) {
+    function _processForcedWithdrawal(uint256 id, address recipient, uint256 amount) internal {
         // Derive the storage slot containing the time the withdrawal is enabled.
         uint256 cutoffTimeSlotLocation = _getCutoffTimeSlot(msg.sender, id);
 
@@ -108,7 +106,7 @@ contract WithdrawalLogic is SharedLogic {
         }
 
         // Process the withdrawal.
-        return _withdraw(msg.sender, recipient, id, amount);
+        msg.sender.withdraw(recipient, id, amount);
     }
 
     /**
