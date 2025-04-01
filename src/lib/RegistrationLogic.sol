@@ -74,8 +74,7 @@ contract RegistrationLogic {
      * @param tokenId     Identifier for the associated token & lock.
      * @param amount      Claim's assocaited number of tokens.
      * @param arbiter     Account verifying and initiating the settlement of the claim.
-     * @param nonce       Nonce to register the claim at. The nonce is not checked to be
-     * unspent
+     * @param nonce       Allocator replay protection nonce.
      * @param expires     Timestamp when the claim expires. Not to be confused with the reset
      * time of the compact.
      * @param typehash    Typehash of the entire compact. Including the subtypes of the
@@ -85,9 +84,9 @@ contract RegistrationLogic {
      * withdrawals are initiated.
      */
     function _registerUsingClaimWithWitness(address sponsor, uint256 tokenId, uint256 amount, address arbiter, uint256 nonce, uint256 expires, bytes32 typehash, bytes32 witness, ResetPeriod resetPeriod)
-        internal
+        internal returns (bytes32 claimhash)
     {
-        bytes32 claimhash = HashLib.toFlatMessageHashWithWitness(sponsor, tokenId, amount, arbiter, nonce, expires, typehash, witness);
+        claimhash = HashLib.toFlatMessageHashWithWitness(sponsor, tokenId, amount, arbiter, nonce, expires, typehash, witness);
         sponsor.registerCompact(claimhash, typehash, resetPeriod);
     }
 
@@ -117,8 +116,8 @@ contract RegistrationLogic {
         bytes32 typehash,
         bytes32 witness,
         ResetPeriod resetPeriod
-    ) internal {
-        bytes32 claimhash = HashLib.toFlatBatchClaimWithWitnessMessageHash(sponsor, idsAndAmounts, arbiter, nonce, expires, typehash, witness);
+    ) internal returns (bytes32 claimhash) {
+        claimhash = HashLib.toFlatBatchClaimWithWitnessMessageHash(sponsor, idsAndAmounts, arbiter, nonce, expires, typehash, witness);
         sponsor.registerCompact(claimhash, typehash, resetPeriod);
     }
 }

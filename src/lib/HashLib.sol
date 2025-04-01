@@ -605,6 +605,11 @@ library HashLib {
         }
     }
 
+    /**
+     * @notice Internal pure function for deriving the hash of ids and amounts provided.
+     * @param idsAndAmounts      An array of ids and amounts.
+     * @return idsAndAmountsHash The hash of the ids and amounts.
+     */
     function toIdsAndAmountsHash(uint256[2][] calldata idsAndAmounts) internal pure returns (bytes32 idsAndAmountsHash) {
         assembly ("memory-safe") {
             // Retrieve the free memory pointer; memory will be left dirtied.
@@ -684,6 +689,18 @@ library HashLib {
 
     //// Registration Hashes ////
 
+    /**
+     * @notice Internal pure function for retrieving an EIP-712 claim hash.
+     * @param sponsor         The account sponsoring the claimed compact.
+     * @param tokenId         Identifier for the associated token & lock.
+     * @param amount         Claim's assocaited number of tokens.
+     * @param arbiter        Account verifying and initiating the settlement of the claim.
+     * @param nonce         Allocator replay protection nonce.
+     * @param expires         Timestamp when the claim expires.
+     * @param typehash         Typehash of the entire compact. Including the subtypes.
+     * @param witness         EIP712 structured hash of witness.
+     * @return messageHash The corresponding EIP-712 messagehash.
+     */
     function toFlatMessageHashWithWitness(address sponsor, uint256 tokenId, uint256 amount, address arbiter, uint256 nonce, uint256 expires, bytes32 typehash, bytes32 witness)
         internal
         pure
@@ -706,6 +723,17 @@ library HashLib {
         }
     }
 
+    /**
+     * @notice Internal pure function for retrieving an EIP-712 claim hash.
+     * @param sponsor       The account sponsoring the claimed compact.
+     * @param idsAndAmounts An array with IDs and aggregate transfer amounts.
+     * @param arbiter       Account verifying and initiating the settlement of the claim.
+     * @param nonce         Allocator replay protection nonce.
+     * @param expires       Timestamp when the claim expires.
+     * @param typehash      Typehash of the entire compact. Including the subtypes.
+     * @param witness       EIP712 structured hash of witness.
+     * @return messageHash  The corresponding EIP-712 messagehash.
+     */
     function toFlatBatchClaimWithWitnessMessageHash(address sponsor, uint256[2][] calldata idsAndAmounts, address arbiter, uint256 nonce, uint256 expires, bytes32 typehash, bytes32 witness)
         internal
         pure
