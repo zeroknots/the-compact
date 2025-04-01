@@ -693,7 +693,7 @@ library HashLib {
      * @notice Internal pure function for retrieving an EIP-712 claim hash.
      * @param sponsor         The account sponsoring the claimed compact.
      * @param tokenId         Identifier for the associated token & lock.
-     * @param amount         Claim's assocaited number of tokens.
+     * @param amount         Claim's associated number of tokens.
      * @param arbiter        Account verifying and initiating the settlement of the claim.
      * @param nonce         Allocator replay protection nonce.
      * @param expires         Timestamp when the claim expires.

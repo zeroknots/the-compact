@@ -874,7 +874,6 @@ contract TheCompactTest is Test {
         (uint256 id, bytes32 registeredClaimHash) = theCompact.depositAndRegisterFor(address(swapper), address(token), allocator, resetPeriod, scope, amount, arbiter, nonce, expires, typehash, witness);
         vm.snapshotGasLastCall("depositRegisterFor");
 
-
         assertEq(theCompact.balanceOf(swapper, id), amount);
         assertEq(token.balanceOf(address(theCompact)), amount);
 

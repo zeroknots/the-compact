@@ -72,7 +72,7 @@ contract RegistrationLogic {
      * arguments.
      * @param sponsor     Account that the claim should be registered for.
      * @param tokenId     Identifier for the associated token & lock.
-     * @param amount      Claim's assocaited number of tokens.
+     * @param amount      Claim's associated number of tokens.
      * @param arbiter     Account verifying and initiating the settlement of the claim.
      * @param nonce       Allocator replay protection nonce.
      * @param expires     Timestamp when the claim expires. Not to be confused with the reset
@@ -84,7 +84,8 @@ contract RegistrationLogic {
      * withdrawals are initiated.
      */
     function _registerUsingClaimWithWitness(address sponsor, uint256 tokenId, uint256 amount, address arbiter, uint256 nonce, uint256 expires, bytes32 typehash, bytes32 witness, ResetPeriod resetPeriod)
-        internal returns (bytes32 claimhash)
+        internal
+        returns (bytes32 claimhash)
     {
         claimhash = HashLib.toFlatMessageHashWithWitness(sponsor, tokenId, amount, arbiter, nonce, expires, typehash, witness);
         sponsor.registerCompact(claimhash, typehash, resetPeriod);

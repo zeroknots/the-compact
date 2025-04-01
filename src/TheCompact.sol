@@ -45,18 +45,11 @@ contract TheCompact is ITheCompact, ERC6909, TheCompactLogic {
         _registerWithDefaults(claimHash, typehash);
     }
 
-
-    function depositAndRegisterFor(
-        address recipient,
-        address allocator,
-        ResetPeriod resetPeriod,
-        Scope scope,
-        address arbiter,
-        uint256 nonce,
-        uint256 expires,
-        bytes32 typehash,
-        bytes32 witness
-    ) external payable returns (uint256 id, bytes32 claimhash) {
+    function depositAndRegisterFor(address recipient, address allocator, ResetPeriod resetPeriod, Scope scope, address arbiter, uint256 nonce, uint256 expires, bytes32 typehash, bytes32 witness)
+        external
+        payable
+        returns (uint256 id, bytes32 claimhash)
+    {
         id = _performCustomNativeTokenDeposit(allocator, resetPeriod, scope, recipient);
 
         claimhash = _registerUsingClaimWithWitness(recipient, id, msg.value, arbiter, nonce, expires, typehash, witness, resetPeriod);
@@ -101,7 +94,9 @@ contract TheCompact is ITheCompact, ERC6909, TheCompactLogic {
     }
 
     function depositAndRegisterFor(address recipient, uint256[2][] calldata idsAndAmounts, address arbiter, uint256 nonce, uint256 expires, bytes32 typehash, bytes32 witness, ResetPeriod resetPeriod)
-        external payable returns (bytes32 claimhash)
+        external
+        payable
+        returns (bytes32 claimhash)
     {
         _processBatchDeposit(idsAndAmounts, recipient);
 
