@@ -12,7 +12,7 @@ import { HashLib } from "./HashLib.sol";
 import { IdLib } from "./IdLib.sol";
 import { RegistrationLib } from "./RegistrationLib.sol";
 import { ValidityLib } from "./ValidityLib.sol";
-import { SharedLib } from "./SharedLogic.sol";
+import { TransferLib } from "./TransferLib.sol";
 
 /**
  * @title ComponentLib
@@ -24,7 +24,7 @@ import { SharedLib } from "./SharedLogic.sol";
  * any changes.
  */
 library ComponentLib {
-    using SharedLib for address;
+    using TransferLib for address;
     using ComponentLib for SplitComponent[];
     using EfficiencyLib for bool;
     using EfficiencyLib for uint256;

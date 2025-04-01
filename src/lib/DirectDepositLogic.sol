@@ -8,7 +8,7 @@ import { EfficiencyLib } from "./EfficiencyLib.sol";
 import { IdLib } from "./IdLib.sol";
 import { DepositLogic } from "./DepositLogic.sol";
 import { ValidityLib } from "./ValidityLib.sol";
-import { SharedLib } from "./SharedLogic.sol";
+import { TransferLib } from "./TransferLib.sol";
 
 import { SafeTransferLib } from "solady/utils/SafeTransferLib.sol";
 import { ISignatureTransfer } from "permit2/src/interfaces/ISignatureTransfer.sol";
@@ -20,7 +20,7 @@ import { ISignatureTransfer } from "permit2/src/interfaces/ISignatureTransfer.so
  * single-token deposits and batch token deposits.
  */
 contract DirectDepositLogic is DepositLogic {
-    using SharedLib for address;
+    using TransferLib for address;
     using IdLib for uint96;
     using IdLib for uint256;
     using IdLib for address;
@@ -125,7 +125,7 @@ contract DirectDepositLogic is DepositLogic {
                 }
 
                 // Transfer underlying tokens in and mint ERC6909 tokens to recipient.
-                _transferAndDeposit(id.toToken(), recipient, id, amount);
+                _transferAndDeposit(id.toAddress(), recipient, id, amount);
             }
         }
 

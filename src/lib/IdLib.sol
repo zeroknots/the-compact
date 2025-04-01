@@ -204,7 +204,7 @@ library IdLib {
      * @return lock A Lock struct containing token, allocator, reset period, and scope.
      */
     function toLock(uint256 id) internal view returns (Lock memory lock) {
-        lock.token = id.toToken();
+        lock.token = id.toAddress();
         lock.allocator = id.toAllocator();
         lock.resetPeriod = id.toResetPeriod();
         lock.scope = id.toScope();
@@ -236,12 +236,14 @@ library IdLib {
     }
 
     /**
-     * @notice Internal pure function for extracting the address of the
-     * underlying token from a resource lock ID.
-     * @param id The resource lock ID to extract from.
-     * @return   The underlying token address.
+     * @notice Internal pure function for extracting the last 20 bytes of an
+     * underlying uint256 as an address. This represents either the token
+     * address (for a resource lock ID) or the claimant address (for a claimant
+     * value).
+     * @param id The uint256 to extract from.
+     * @return   The address.
      */
-    function toToken(uint256 id) internal pure returns (address) {
+    function toAddress(uint256 id) internal pure returns (address) {
         return id.asSanitizedAddress();
     }
 

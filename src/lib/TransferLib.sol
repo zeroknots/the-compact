@@ -7,12 +7,12 @@ import { IdLib } from "./IdLib.sol";
 import { SafeTransferLib } from "solady/utils/SafeTransferLib.sol";
 
 /**
- * @title SharedLib
+ * @title TransferLib
  * @notice Library contract implementing logic for internal functions with
- * low-level shared logic for processing transfers and withdrawals.
+ * low-level shared logic for processing transfers, withdrawals and deposits.
  */
-library SharedLib {
-    using SharedLib for address;
+library TransferLib {
+    using TransferLib for address;
     using IdLib for uint256;
     using SafeTransferLib for address;
 
@@ -32,7 +32,7 @@ library SharedLib {
      * @param id     The ERC6909 token identifier to transfer.
      * @param amount The amount of tokens to transfer.
      */
-    function release(address from, address to, uint256 id, uint256 amount) internal returns (bool) {
+    function release(address from, address to, uint256 id, uint256 amount) internal {
         assembly ("memory-safe") {
             // Compute the sender's balance slot using the master slot seed.
             mstore(0x20, _ERC6909_MASTER_SLOT_SEED)
@@ -91,9 +91,9 @@ library SharedLib {
      * @param id     The ERC6909 token identifier to burn.
      * @param amount The amount of tokens to burn and withdraw.
      */
-    function withdraw(address from, address to, uint256 id, uint256 amount) internal returns (bool) {
+    function withdraw(address from, address to, uint256 id, uint256 amount) internal {
         // Derive the underlying token from the id of the resource lock.
-        address token = id.toToken();
+        address token = id.toAddress();
 
         // Handle native token withdrawals directly.
         if (token == address(0)) {
@@ -195,19 +195,46 @@ library SharedLib {
         }
     }
 
+    /**
+     * @notice Internal function for handling various token operation flows based on the
+     * respective lock tags. Determines whether to withdraw, release, or transfer tokens.
+     * @param from     The address from which the operation originates.
+     * @param id       The ERC6909 token identifier to operate on.
+     * @param claimant The identifier representing the claimant entity.
+     * @param amount   The amount of tokens involved in the operation.
+     */
     function performOperation(address from, uint256 id, uint256 claimant, uint256 amount) internal {
+        // Extract lock tags from both token ID and claimant.
         bytes12 lockTag = id.toLockTag();
         bytes12 claimantLockTag = claimant.toLockTag();
 
+        // Extract the recipient address referenced by the claimant.
+        address recipient = claimant.toAddress();
+
         if (claimantLockTag == bytes12(0)) {
-            from.withdraw(claimant.toToken(), id, amount);
+            // Case 1: Zero lock tag - perform a standard withdrawal operation
+            // to the recipient address referenced by the claimant.
+            from.withdraw(recipient, id, amount);
         } else if (claimantLockTag == lockTag) {
-            from.release(claimant.toToken(), id, amount);
+            // Case 2: Matching lock tags - transfer tokens to the recipient address
+            // referenced by the claimant.
+            from.release(recipient, id, amount);
         } else {
+            // Case 3: Different lock tags - convert the resource lock, burning
+            // tokens and minting the same amount with the new token ID to the
+            // recipient address referenced by the claimant.
+
+            // Create a new token ID using the original ID with claimant's lock tag.
             uint256 claimantId = id.withReplacedLockTag(claimantLockTag);
+
+            // Verify the allocator ID is registered.
             claimantId.toRegisteredAllocatorId();
+
+            // Burn tokens from the original context.
             from.burn(id, amount);
-            claimant.toToken().deposit(claimantId, amount);
+
+            // Deposit tokens to the claimant's address with the new token ID.
+            recipient.deposit(claimantId, amount);
         }
     }
 }

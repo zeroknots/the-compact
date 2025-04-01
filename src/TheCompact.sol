@@ -140,15 +140,20 @@ contract TheCompact is ITheCompact, ERC6909, TheCompactLogic {
     }
 
     function disableForcedWithdrawal(uint256 id) external returns (bool) {
-        return _disableForcedWithdrawal(id);
+        _disableForcedWithdrawal(id);
+
+        return true;
     }
 
     function forcedWithdrawal(uint256 id, address recipient, uint256 amount) external returns (bool) {
-        return _processForcedWithdrawal(id, recipient, amount);
+        _processForcedWithdrawal(id, recipient, amount);
+
+        return true;
     }
 
     function register(bytes32 claimHash, bytes32 typehash, uint256 duration) external returns (bool) {
         _register(msg.sender, claimHash, typehash, duration);
+
         return true;
     }
 

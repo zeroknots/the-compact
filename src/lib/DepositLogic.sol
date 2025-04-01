@@ -3,7 +3,7 @@ pragma solidity ^0.8.27;
 
 import { ConstructorLogic } from "./ConstructorLogic.sol";
 
-import { SharedLib } from "./SharedLogic.sol";
+import { TransferLib } from "./TransferLib.sol";
 
 import { SafeTransferLib } from "solady/utils/SafeTransferLib.sol";
 
@@ -13,7 +13,7 @@ import { SafeTransferLib } from "solady/utils/SafeTransferLib.sol";
  * processing token deposits.
  */
 contract DepositLogic is ConstructorLogic {
-    using SharedLib for address;
+    using TransferLib for address;
     using SafeTransferLib for address;
 
     /**

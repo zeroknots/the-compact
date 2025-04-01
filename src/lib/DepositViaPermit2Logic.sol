@@ -11,7 +11,7 @@ import { RegistrationLib } from "./RegistrationLib.sol";
 import { EfficiencyLib } from "./EfficiencyLib.sol";
 import { IdLib } from "./IdLib.sol";
 import { ValidityLib } from "./ValidityLib.sol";
-import { SharedLib } from "./SharedLogic.sol";
+import { TransferLib } from "./TransferLib.sol";
 
 import { SafeTransferLib } from "solady/utils/SafeTransferLib.sol";
 import { ISignatureTransfer } from "permit2/src/interfaces/ISignatureTransfer.sol";
@@ -29,7 +29,7 @@ import { ISignatureTransfer } from "permit2/src/interfaces/ISignatureTransfer.so
  * to the associated permit2 deposit function interfaces!
  */
 contract DepositViaPermit2Logic is DepositLogic {
-    using SharedLib for address;
+    using TransferLib for address;
     using DepositViaPermit2Lib for bytes32;
     using DepositViaPermit2Lib for uint256;
     using IdLib for uint256;
