@@ -95,7 +95,7 @@ library ValidityLib {
      * Returns if the signature is valid or if the caller is the expected signer, otherwise
      * reverts. The message hash is combined with the domain separator before verification.
      * If ECDSA recovery fails, an EIP-1271 isValidSignature check is performed.
-     * If EIP-1271 fails, and a ISignDelegator is set for the sponsor, an ISignDelegator.verifyClaim check is performed
+     * If EIP-1271 fails, and an IEmissary is set for the sponsor, an IEmissary.verifyClaim check is performed
      * @param messageHash     The EIP-712 hash of the message to verify.
      * @param expectedSigner  The address that should have signed the message.
      * @param signature       The signature to verify.

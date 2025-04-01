@@ -6,6 +6,27 @@ import { ResetPeriod } from "../types/ResetPeriod.sol";
 import { EmissaryConfig, EmissaryStatus } from "../types/EmissaryStatus.sol";
 import { IEmissary } from "../interfaces/IEmissary.sol";
 
+/**
+ * @title EmissaryLib
+ * @notice This library manages the assignment and verification of emissaries for sponsors
+ * within the system. An emissary is an address that can verify claims on behalf of a sponsor.
+ * The library enforces security constraints and scheduling rules to ensure proper delegation.
+ *
+ * @dev The library uses a storage-efficient design with a single storage slot for all emissary
+ * configurations, using mappings to organize data by sponsor and allocator ID. This allows for
+ * efficient storage and access while maintaining data isolation between different sponsors.
+ *
+ * Key Components:
+ * - EmissarySlot: Storage structure that maps sponsors to their allocator ID configurations
+ * - EmissaryConfig: Configuration data for each emissary assignment, including reset periods
+ * - Assignment scheduling: Enforces cooldown periods between assignments to prevent abuse
+ * - Verification: Delegates claim verification to the assigned emissary contract
+ *
+ * Security Features:
+ * - Timelock mechanism for reassignment to prevent rapid succession of emissaries
+ * - Clear state management with Disabled/Enabled/Scheduled statuses
+ * - Storage cleanup when emissaries are removed
+ */
 library EmissaryLib {
     using IdLib for uint256;
     using IdLib for ResetPeriod;
@@ -19,8 +40,7 @@ library EmissaryLib {
 
     // Storage slot for emissary configurations
     // Maps: keccak256(_EMISSARY_SCOPE) => EmissarySlot
-    // Where EmissarySlot contains mapping(address sponsor => mapping(uint256 allocatorId => EmissaryConfig))
-    uint256 private constant _EMISSARY_SCOPE = 0x51d0e04b;
+    uint256 private constant _EMISSARY_SCOPE = 0x2d5c707e1;
 
     struct EmissarySlot {
         mapping(address sponsor => mapping(uint256 allocatorId => EmissaryConfig emissaryConfig)) _emissaries;

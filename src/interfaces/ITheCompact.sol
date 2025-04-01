@@ -520,10 +520,36 @@ interface ITheCompact {
      */
     function getRegistrationStatus(address sponsor, bytes32 claimHash, bytes32 typehash) external view returns (bool isActive, uint256 expires);
 
+    /**
+     * @notice Assigns an emissary to an allocator with a reset period that blocks reassignment
+     * for the duration of the reset period. The reset period ensures that once an emissary is
+     * assigned, another assignment cannot be made until the reset period has elapsed.
+     * @param allocator The address of the allocator being mapped to an emissary
+     * @param emissary  The address of the emissary to assign
+     * @param resetPeriod The duration that blocks reassignment attempts after assignment
+     * @return Whether the assignment was successful
+     */
     function assignEmissary(address allocator, address emissary, ResetPeriod resetPeriod) external returns (bool);
 
+    /**
+     * @notice Schedules a future emissary assignment for a specific allocator. The reset period determines
+     * how long reassignment will be blocked after this scheduling. This allows for a delay before
+     * the next assignment can be made.
+     * @param allocator The address of the allocator scheduling an emissary assignment
+     * @return emissaryAssignmentAvailableAt The timestamp when the next assignment will be allowed
+     */
     function scheduleEmissaryAssignment(address allocator) external returns (uint256 emissaryAssignmentAvailableAt);
 
+    /**
+     * @notice Gets the current emissary status for an allocator. Returns the current status,
+     * the timestamp when reassignment will be allowed again (based on reset period), and
+     * the currently assigned emissary (if any).
+     * @param sponsor The address of the sponsor to check
+     * @param allocator The address of the allocator to check
+     * @return status The current emissary assignment status
+     * @return emissaryAssignmentAvailableAt The timestamp when reassignment will be allowed
+     * @return currentEmissary The currently assigned emissary address (or zero address if none)
+     */
     function getEmissaryStatus(address sponsor, address allocator) external view returns (EmissaryStatus status, uint256 emissaryAssignmentAvailableAt, address currentEmissary);
 
     /**
