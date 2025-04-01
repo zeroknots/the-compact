@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.27;
 
+import { ResetPeriod } from "../types/ResetPeriod.sol";
+
 // NOTE: Allocators with smart contract implementations should also implement EIP1271.
 interface IAllocator {
     // Called on standard transfers; must return this function selector (0x1a808f91).
@@ -16,4 +18,7 @@ interface IAllocator {
         uint256[2][] calldata idsAndAmounts, // The allocated token IDs and amounts.
         bytes calldata allocatorData // Arbitrary data provided by the arbiter.
     ) external returns (bytes4); // Must return the function selector.
+
+    // authorize an emissary implementation. called from The compact as part of emissary assignment
+    function authorizeEmissaryAssignment(address sponsor, address emissary, bytes calldata proof, ResetPeriod resetPeriod) external returns (bytes4);
 }

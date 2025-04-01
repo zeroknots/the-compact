@@ -15,8 +15,8 @@ contract MockEmissaryLogic is TheCompactLogic {
         return _scheduleEmissaryAssignment(sponsor, allocator);
     }
 
-    function assignEmissary(address sponsor, address allocator, address emissary, ResetPeriod resetPeriod) external returns (bool) {
-        return _assignEmissary(sponsor, allocator, emissary, resetPeriod);
+    function assignEmissary(address sponsor, address allocator, address emissary, bytes calldata proof, ResetPeriod resetPeriod) external returns (bool) {
+        return _assignEmissary(sponsor, allocator, emissary, proof, resetPeriod);
     }
 
     function verifyWithEmissary(address sponsor, bytes calldata signature, bytes32 messageHash, uint256 allocatorId) external view returns (bool) {

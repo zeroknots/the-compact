@@ -27,7 +27,7 @@ contract EmissaryLogicTest is Test {
     }
 
     function test_new_emissary() public {
-        bool success = logic.assignEmissary(sponsor, address(allocator), address(emissary1), ResetPeriod.TenMinutes);
+        bool success = logic.assignEmissary(sponsor, address(allocator), address(emissary1), "", ResetPeriod.TenMinutes);
         assertTrue(success);
 
         (EmissaryStatus status, uint256 assignableAt, address currentEmissary) = logic.getEmissaryStatus(sponsor, address(allocator));
@@ -40,7 +40,7 @@ contract EmissaryLogicTest is Test {
     function test_new_emissary_withoutSchedule() public {
         test_new_emissary();
         vm.expectRevert();
-        bool success = logic.assignEmissary(sponsor, address(allocator), address(emissary1), ResetPeriod.TenMinutes);
+        bool success = logic.assignEmissary(sponsor, address(allocator), address(emissary1), "", ResetPeriod.TenMinutes);
     }
 
     function test_reset_emissary() public {
@@ -61,9 +61,9 @@ contract EmissaryLogicTest is Test {
         vm.warp(block.timestamp + 1 minutes);
 
         vm.expectRevert();
-        bool success = logic.assignEmissary(sponsor, address(allocator), address(emissary1), ResetPeriod.TenMinutes);
+        bool success = logic.assignEmissary(sponsor, address(allocator), address(emissary1), "", ResetPeriod.TenMinutes);
         vm.warp(block.timestamp + 10 minutes);
-        success = logic.assignEmissary(sponsor, address(allocator), address(emissary2), ResetPeriod.TenMinutes);
+        success = logic.assignEmissary(sponsor, address(allocator), address(emissary2), "", ResetPeriod.TenMinutes);
 
         (status, assignableAt, currentEmissary) = logic.getEmissaryStatus(sponsor, address(allocator));
 
@@ -90,7 +90,7 @@ contract EmissaryLogicTest is Test {
         assertTrue(currentEmissary == address(emissary1), "addr");
 
         vm.warp(block.timestamp + 10 minutes);
-        bool success = logic.assignEmissary(sponsor, address(allocator), address(0), ResetPeriod.TenMinutes);
+        bool success = logic.assignEmissary(sponsor, address(allocator), address(0), "", ResetPeriod.TenMinutes);
 
         (status, assignableAt, currentEmissary) = logic.getEmissaryStatus(sponsor, address(allocator));
 

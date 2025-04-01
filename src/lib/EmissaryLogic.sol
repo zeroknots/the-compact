@@ -3,6 +3,7 @@ pragma solidity ^0.8.27;
 
 import { EmissaryLib } from "./EmissaryLib.sol";
 import { IdLib } from "./IdLib.sol";
+import { IAllocator } from "../interfaces/IAllocator.sol";
 import { ResetPeriod } from "../types/ResetPeriod.sol";
 import { EmissaryStatus } from "../types/EmissaryStatus.sol";
 
@@ -32,6 +33,7 @@ abstract contract EmissaryLogic {
     using EmissaryLib for address;
 
     error InvalidEmissaryAssignment();
+
     /**
      * @notice Initiates the timelock process for changing an emissary
      * @dev This function starts the timelock period that must pass before
@@ -48,7 +50,6 @@ abstract contract EmissaryLogic {
      *
      * @custom:emits EmissaryTimelockSet event through the library call, signaling the start of the timelock period
      */
-
     function _scheduleEmissaryAssignment(address sponsor, address allocator) internal returns (uint256 emissaryAssignmentAvailableAt) {
         uint96 allocatorId = allocator.toAllocatorIdIfRegistered();
         emissaryAssignmentAvailableAt = sponsor.scheduleEmissaryAssignment(allocatorId);
@@ -75,10 +76,13 @@ abstract contract EmissaryLogic {
      * @custom:emits EmissarySet event through the library call, signaling the successful assignment of a new emissary
      * @custom:throws If the timelock period has not passed or was not initiated, ensuring secure delegation practices
      */
-    function _assignEmissary(address sponsor, address allocator, address emissary, ResetPeriod resetPeriod) internal returns (bool) {
+    function _assignEmissary(address sponsor, address allocator, address emissary, bytes calldata proof, ResetPeriod resetPeriod) internal returns (bool) {
         require(allocator != emissary, InvalidEmissaryAssignment());
         uint96 allocatorId = allocator.toAllocatorIdIfRegistered();
         sponsor.assignEmissary(allocatorId, emissary, resetPeriod);
+
+        require(IAllocator(allocator).authorizeEmissaryAssignment(sponsor, emissary, proof, resetPeriod) == IAllocator.authorizeEmissaryAssignment.selector, InvalidEmissaryAssignment());
+
         return true;
     }
 

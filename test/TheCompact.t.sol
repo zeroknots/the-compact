@@ -1841,7 +1841,7 @@ contract TheCompactTest is Test {
 
         address emissary = address(new AlwaysOKEmissary());
         vm.prank(swapper);
-        theCompact.assignEmissary(allocator, emissary, ResetPeriod.OneDay);
+        theCompact.assignEmissary(allocator, emissary, "", ResetPeriod.OneDay);
 
         vm.prank(swapper);
         uint256 id = theCompact.deposit{ value: amount }(allocator, resetPeriod, scope, swapper);

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.27;
 
-import { IAllocator } from "../../interfaces/IAllocator.sol";
+import { IAllocator, ResetPeriod } from "../../interfaces/IAllocator.sol";
 import { SignatureCheckerLib } from "solady/utils/SignatureCheckerLib.sol";
 
 interface EIP712 {
@@ -48,5 +48,9 @@ contract QualifiedAllocator is IAllocator {
         require(signer.isValidSignatureNow(digest, signature), "Invalid Sig");
 
         return this.authorizeClaim.selector;
+    }
+
+    function authorizeEmissaryAssignment(address sponsor, address emissary, bytes calldata proof, ResetPeriod resetPeriod) external pure override returns (bytes4) {
+        return IAllocator.authorizeEmissaryAssignment.selector;
     }
 }
