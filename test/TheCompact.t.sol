@@ -872,9 +872,10 @@ contract TheCompactTest is Test {
 
         vm.prank(swapperSponsor);
         uint256 id = theCompact.depositAndRegisterFor(address(swapper), address(token), allocator, resetPeriod, scope, amount, arbiter, nonce, expires, typehash, witness);
+        vm.snapshotGasLastCall("depositRegisterFor");
+
         assertEq(theCompact.balanceOf(swapper, id), amount);
         assertEq(token.balanceOf(address(theCompact)), amount);
-        vm.snapshotGasLastCall("depositRegisterFor");
 
         bytes32 claimHash = keccak256(abi.encode(typehash, arbiter, swapper, nonce, expires, id, amount, witness));
 
@@ -890,14 +891,13 @@ contract TheCompactTest is Test {
         bytes memory allocatorSignature = abi.encodePacked(r, vs);
 
         SplitComponent[] memory recipients = new SplitComponent[](1);
-        recipients[0] = SplitComponent({ claimant: claimant, amount: amount });
+        recipients[0] = SplitComponent({ claimant: uint256(bytes32(abi.encodePacked(bytes12(bytes32(id)), claimant))), amount: amount });
 
         Claim memory claim = Claim(allocatorSignature, sponsorSignature, swapper, nonce, expires, witness, witnessTypestring, id, amount, recipients);
 
         vm.prank(arbiter);
-        bool status = theCompact.claim(claim);
-        vm.snapshotGasLastCall("claim");
-        assert(status);
+        bytes32 returnedClaimHash = theCompact.claim(claim);
+        assertEq(returnedClaimHash, claimHash);
 
         assertEq(token.balanceOf(address(theCompact)), amount);
         assertEq(theCompact.balanceOf(swapper, id), 0);
