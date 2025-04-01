@@ -2,7 +2,7 @@ import { Test, console } from "forge-std/Test.sol";
 import { ResetPeriod } from "src/types/ResetPeriod.sol";
 import "./MockEmissaryLogic.sol";
 import "src/test/AlwaysOKEmissary.sol";
-import "src/test/AlwaysOkAllocator.sol";
+import "src/test/AlwaysOKAllocator.sol";
 
 contract EmissaryLogicTest is Test {
     MockEmissaryLogic logic;
