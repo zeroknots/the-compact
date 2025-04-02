@@ -1,5 +1,9 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.28;
+
 import { Test, console } from "forge-std/Test.sol";
 import { ResetPeriod } from "src/types/ResetPeriod.sol";
+import { EmissaryStatus } from "src/types/EmissaryStatus.sol";
 import "./MockEmissaryLogic.sol";
 import "src/test/AlwaysOKEmissary.sol";
 import "src/test/AlwaysOKAllocator.sol";
@@ -40,7 +44,7 @@ contract EmissaryLogicTest is Test {
     function test_new_emissary_withoutSchedule() public {
         test_new_emissary();
         vm.expectRevert();
-        bool success = logic.assignEmissary(sponsor, address(allocator), address(emissary1), "", ResetPeriod.TenMinutes);
+        logic.assignEmissary(sponsor, address(allocator), address(emissary1), "", ResetPeriod.TenMinutes);
     }
 
     function test_reset_emissary() public {
@@ -90,7 +94,7 @@ contract EmissaryLogicTest is Test {
         assertTrue(currentEmissary == address(emissary1), "addr");
 
         vm.warp(block.timestamp + 10 minutes);
-        bool success = logic.assignEmissary(sponsor, address(allocator), address(0), "", ResetPeriod.TenMinutes);
+        logic.assignEmissary(sponsor, address(allocator), address(0), "", ResetPeriod.TenMinutes);
 
         (status, assignableAt, currentEmissary) = logic.getEmissaryStatus(sponsor, address(allocator));
 

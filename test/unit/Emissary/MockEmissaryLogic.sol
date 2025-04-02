@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.28;
+
 import "src/lib/TheCompactLogic.sol";
 import "src/lib/ValidityLib.sol";
 import "src/lib/EmissaryLib.sol";
