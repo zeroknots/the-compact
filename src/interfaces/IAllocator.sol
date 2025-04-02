@@ -18,7 +18,4 @@ interface IAllocator {
         uint256[2][] calldata idsAndAmounts, // The allocated token IDs and amounts.
         bytes calldata allocatorData // Arbitrary data provided by the arbiter.
     ) external returns (bytes4); // Must return the function selector.
-
-    // authorize an emissary implementation. called from The compact as part of emissary assignment
-    function authorizeEmissaryAssignment(address sponsor, address emissary, bytes calldata proof, ResetPeriod resetPeriod) external returns (bytes4);
 }

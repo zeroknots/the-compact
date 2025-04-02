@@ -46,12 +46,4 @@ contract SimpleAllocator is IAllocator {
 
         return this.authorizeClaim.selector;
     }
-
-    function authorizeEmissaryAssignment(address sponsor, address emissary, bytes calldata proof, ResetPeriod resetPeriod) external pure override returns (bytes4) {
-        sponsor;
-        emissary;
-        proof;
-        resetPeriod;
-        return IAllocator.authorizeEmissaryAssignment.selector;
-    }
 }

@@ -17,8 +17,4 @@ contract AlwaysOKAllocator is IAllocator, IERC1271 {
     function isValidSignature(bytes32, bytes calldata) external pure returns (bytes4) {
         return IERC1271.isValidSignature.selector;
     }
-
-    function authorizeEmissaryAssignment(address, address, bytes calldata, ResetPeriod) external pure override returns (bytes4) {
-        return IAllocator.authorizeEmissaryAssignment.selector;
-    }
 }

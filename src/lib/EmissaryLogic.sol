@@ -76,12 +76,10 @@ abstract contract EmissaryLogic {
      * @custom:emits EmissarySet event through the library call, signaling the successful assignment of a new emissary
      * @custom:throws If the timelock period has not passed or was not initiated, ensuring secure delegation practices
      */
-    function _assignEmissary(address sponsor, address allocator, address emissary, bytes calldata proof, ResetPeriod resetPeriod) internal returns (bool) {
+    function _assignEmissary(address sponsor, address allocator, address emissary, ResetPeriod resetPeriod) internal returns (bool) {
         require(allocator != emissary, InvalidEmissaryAssignment());
         uint96 allocatorId = allocator.toAllocatorIdIfRegistered();
         sponsor.assignEmissary(allocatorId, emissary, resetPeriod);
-
-        require(IAllocator(allocator).authorizeEmissaryAssignment(sponsor, emissary, proof, resetPeriod) == IAllocator.authorizeEmissaryAssignment.selector, InvalidEmissaryAssignment());
 
         return true;
     }

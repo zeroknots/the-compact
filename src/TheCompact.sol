@@ -183,8 +183,8 @@ contract TheCompact is ITheCompact, ERC6909, TheCompactLogic {
         return _getLockDetails(id);
     }
 
-    function assignEmissary(address allocator, address emissary, bytes calldata proof, ResetPeriod resetPeriod) external returns (bool) {
-        return _assignEmissary(msg.sender, allocator, emissary, proof, resetPeriod);
+    function assignEmissary(address allocator, address emissary, ResetPeriod resetPeriod) external returns (bool) {
+        return _assignEmissary(msg.sender, allocator, emissary, resetPeriod);
     }
 
     function scheduleEmissaryAssignment(address allocator) external returns (uint256 emissaryAssignmentAvailableAt) {
