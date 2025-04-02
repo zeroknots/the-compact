@@ -37,7 +37,7 @@ contract EmissaryLogicTest is Test {
         (EmissaryStatus status, uint256 assignableAt, address currentEmissary) = logic.getEmissaryStatus(sponsor, address(allocator));
 
         assertTrue(status == EmissaryStatus.Enabled, "Status");
-        assertTrue(assignableAt == type(uint48).max, "timestamp");
+        assertTrue(assignableAt == type(uint88).max, "timestamp");
         assertTrue(currentEmissary == address(emissary1), "addr");
     }
 
@@ -72,7 +72,7 @@ contract EmissaryLogicTest is Test {
         (status, assignableAt, currentEmissary) = logic.getEmissaryStatus(sponsor, address(allocator));
 
         assertTrue(status == EmissaryStatus.Enabled, "Status");
-        assertTrue(assignableAt == type(uint48).max, "timestamp");
+        assertTrue(assignableAt == type(uint88).max, "timestamp");
         assertTrue(currentEmissary == address(emissary2), "addr");
     }
 

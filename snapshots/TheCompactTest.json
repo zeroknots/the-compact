@@ -2,7 +2,7 @@
   "batchClaimRegisteredWithDepositWithWitness": "145746",
   "batchDepositAndRegisterWithWitnessViaPermit2": "219754",
   "claim": "86568",
-  "claimAndWithdraw": "112518",
+  "claimAndWithdraw": "112491",
   "depositAndRegisterViaPermit2": "123422",
   "depositBatchSingleERC20": "66340",
   "depositBatchSingleNative": "26825",

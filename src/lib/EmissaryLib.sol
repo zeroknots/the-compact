@@ -36,27 +36,38 @@ library EmissaryLib {
     event EmissaryAssigned(address indexed sponsor, uint256 indexed id, address indexed emissary);
     event EmissaryAssignmentScheduled(address indexed sponsor, uint256 indexed id, uint256 indexed assignableAt);
 
-    uint48 constant NOT_SCHEDULED = type(uint48).max;
+    uint88 constant NOT_SCHEDULED = type(uint88).max;
 
     // Storage slot for emissary configurations
     // Maps: keccak256(_EMISSARY_SCOPE) => EmissarySlot
-    uint256 private constant _EMISSARY_SCOPE = 0x2d5c707e1;
-
-    struct EmissarySlot {
-        mapping(address sponsor => mapping(uint256 allocatorId => EmissaryConfig emissaryConfig)) _emissaries;
-    }
+    uint256 private constant _EMISSARY_SCOPE = 0x2d5c707;
 
     /**
      * @dev Retrieves the configuration for a given emissary.
      * This ensures that emissary-specific settings (like reset period and assignment time)
      * are stored and retrieved in a consistent and isolated manner to prevent conflicts.
      */
-    function _getEmissaryConfig(address sponsor, uint256 id) private view returns (EmissaryConfig storage config) {
-        EmissarySlot storage e;
+    function _getEmissaryConfig(address sponsor, uint256 id) private pure returns (EmissaryConfig storage config) {
         assembly ("memory-safe") {
-            e.slot := _EMISSARY_SCOPE
+            // Retrieve the current free memory pointer.
+            let m := mload(0x40)
+
+            // Pack data for computing storage slot.
+            mstore(0x14, sponsor) // Offset 0x14 (20 bytes): Store 20-byte sponsor address
+            mstore(0, _EMISSARY_SCOPE) // Offset 0 (0 bytes): Store 4-byte scope value
+            mstore(0x34, id) // Offset 0x34 (52 bytes): Store 32-byte allocator id
+
+            // Compute storage slot from packed data.
+            // Start at offset 0x1c (28 bytes), which includes:
+            // - The 4 bytes of _EMISSARY_SCOPE (which is stored at position 0x00)
+            // - The entire 20-byte sponsor address (which starts at position 0x14)
+            // - The entire 32-byte allocator id (which starts at position 0x34)
+            // Hash 0x38 (56 bytes) of data in total
+            config.slot := keccak256(0x1c, 0x38)
+
+            // Restore the free memory pointer.
+            mstore(0x40, m)
         }
-        config = e._emissaries[sponsor][id];
     }
 
     /**
@@ -109,7 +120,7 @@ library EmissaryLib {
         EmissaryConfig storage emissaryConfig = _getEmissaryConfig(sponsor, allocatorId);
         uint256 resetPeriod = emissaryConfig.resetPeriod.toSeconds();
         assignableAt = block.timestamp + resetPeriod;
-        emissaryConfig.assignableAt = uint48(assignableAt);
+        emissaryConfig.assignableAt = uint88(assignableAt);
 
         emit EmissaryAssignmentScheduled(sponsor, allocatorId, assignableAt);
         return assignableAt;
