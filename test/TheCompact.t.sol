@@ -1675,7 +1675,7 @@ contract TheCompactTest is Test {
         assertEq(block.chainid, notarizedChainId);
     }
 
-    function test_claimWithEmissary() public {
+    function test_claimAndWithdraw_withEmissary() public {
         ResetPeriod resetPeriod = ResetPeriod.TenMinutes;
         Scope scope = Scope.Multichain;
         uint256 amount = 1e18;
@@ -1710,16 +1710,18 @@ contract TheCompactTest is Test {
 
         bytes32 digest = keccak256(abi.encodePacked(bytes2(0x1901), theCompact.DOMAIN_SEPARATOR(), claimHash));
 
-        bytes32 r;
-        bytes32 vs;
-        bytes memory sponsorSignature = hex"41414141414141414141414141414141";
+        (bytes32 r, bytes32 vs) = vm.signCompact(swapperPrivateKey, digest);
+        bytes memory sponsorSignature = hex"41414141414141414141";
 
         (r, vs) = vm.signCompact(allocatorPrivateKey, digest);
         bytes memory allocatorData = abi.encodePacked(r, vs);
 
-        SplitComponent memory splitOne = SplitComponent({ claimant: recipientOne, amount: amountOne });
+        uint256 claimantOne = abi.decode(abi.encodePacked(bytes12(0), recipientOne), (uint256));
+        uint256 claimantTwo = abi.decode(abi.encodePacked(bytes12(0), recipientTwo), (uint256));
 
-        SplitComponent memory splitTwo = SplitComponent({ claimant: recipientTwo, amount: amountTwo });
+        SplitComponent memory splitOne = SplitComponent({ claimant: claimantOne, amount: amountOne });
+
+        SplitComponent memory splitTwo = SplitComponent({ claimant: claimantTwo, amount: amountTwo });
 
         SplitComponent[] memory recipients = new SplitComponent[](2);
         recipients[0] = splitOne;
@@ -1728,7 +1730,7 @@ contract TheCompactTest is Test {
         Claim memory claim = Claim(allocatorData, sponsorSignature, swapper, nonce, expires, witness, witnessTypestring, id, amount, recipients);
 
         vm.prank(arbiter);
-        (bytes32 returnedClaimHash) = theCompact.claimAndWithdraw(claim);
+        (bytes32 returnedClaimHash) = theCompact.claim(claim);
         vm.snapshotGasLastCall("claimAndWithdraw");
         assertEq(returnedClaimHash, claimHash);
 
