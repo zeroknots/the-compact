@@ -100,7 +100,7 @@ library ClaimProcessorLib {
         allocator.callAuthorizeClaim(messageHash, sponsor, nonce, expires, idsAndAmounts, allocatorData);
 
         // Emit claim event.
-        sponsor.emitClaim(messageHash, allocator);
+        sponsor.emitClaim(messageHash, allocator, nonce);
     }
 
     /**

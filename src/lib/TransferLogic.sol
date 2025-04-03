@@ -179,20 +179,23 @@ contract TransferLogic is ConstructorLogic {
      * @param idsAndAmounts   An array with IDs and aggregate transfer amounts.
      */
     function _notExpiredAndAuthorizedByAllocator(bytes32 messageHash, address allocator, BasicTransfer calldata transferPayload, uint256[2][] memory idsAndAmounts) private {
+        uint256 expires = transferPayload.expires;
+        uint256 nonce = transferPayload.nonce;
+
         // Ensure that the expiration timestamp is still in the future.
-        transferPayload.expires.later();
+        expires.later();
 
         allocator.callAuthorizeClaim(
             messageHash,
             msg.sender, // sponsor
-            transferPayload.nonce,
-            transferPayload.expires,
+            nonce,
+            expires,
             idsAndAmounts,
             transferPayload.allocatorData
         );
 
         // Emit Claim event.
-        msg.sender.emitClaim(messageHash, allocator);
+        msg.sender.emitClaim(messageHash, allocator, nonce);
     }
 
     /**
