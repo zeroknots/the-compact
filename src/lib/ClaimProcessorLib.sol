@@ -92,7 +92,7 @@ library ClaimProcessorLib {
             sponsorDomainSeparator := add(sponsorDomainSeparator, mul(iszero(sponsorDomainSeparator), domainSeparator))
         }
 
-        // Validate sponsor authorization through either ECDSA, EIP-1271, or direct registration.
+        // Validate sponsor authorization through either ECDSA, EIP-1271, Emissary, or direct registration.
         if ((sponsorDomainSeparator != domainSeparator).or(sponsorSignature.length != 0) || sponsor.hasNoActiveRegistration(messageHash, typehash)) {
             messageHash.signedBySponsorOrEmissary(sponsor, sponsorSignature, sponsorDomainSeparator, idsAndAmounts);
         }

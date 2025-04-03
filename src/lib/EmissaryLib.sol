@@ -52,6 +52,8 @@ library EmissaryLib {
      * @dev Retrieves the configuration for a given emissary.
      * This ensures that emissary-specific settings (like reset period and assignment time)
      * are stored and retrieved in a consistent and isolated manner to prevent conflicts.
+     * The function uses a combination of sponsor address, lockTag, and a scope constant
+     * to compute a unique storage slot for the configuration.
      */
     function _getEmissaryConfig(address sponsor, bytes12 lockTag) private pure returns (EmissaryConfig storage config) {
         assembly ("memory-safe") {
@@ -81,6 +83,11 @@ library EmissaryLib {
      * The function ensures that the assignment process adheres to the scheduling rules
      * and prevents invalid or premature assignments. It also clears the configuration
      * when removing an emissary to keep storage clean and avoid stale data.
+     * @param sponsor The address of the sponsor
+     * @param allocator The address of the allocator
+     * @param newEmissary The address of the new emissary (use address(0) to remove)
+     * @param resetPeriod The reset period for assignment cooldown
+     * @param scope The scope of the assignment
      */
     function assignEmissary(address sponsor, address allocator, address newEmissary, ResetPeriod resetPeriod, Scope scope) internal {
         bytes12 lockTag = allocator.toAllocatorIdIfRegistered().toLockTag(scope, resetPeriod);
@@ -122,6 +129,9 @@ library EmissaryLib {
      * The scheduling mechanism ensures that emissaries cannot be reassigned arbitrarily,
      * enforcing a reset period that must elapse before a new assignment is possible.
      * This prevents abuse of the system by requiring a cooldown period between assignments.
+     * @param sponsor The address of the sponsor
+     * @param lockTag The lock tag for the assignment
+     * @return assignableAt The timestamp when the assignment becomes available
      */
     function scheduleEmissaryAssignment(address sponsor, bytes12 lockTag) internal returns (uint256 assignableAt) {
         EmissaryConfig storage emissaryConfig = _getEmissaryConfig(sponsor, lockTag);
@@ -133,10 +143,17 @@ library EmissaryLib {
         return assignableAt;
     }
 
+    /**
+     * @dev Extracts and verifies that all IDs in the array have the same lock tag.
+     * @param idsAndAmounts Array of [id, amount] pairs
+     * @return lockTag The common lock tag across all IDs
+     */
     function extractSameLockTag(uint256[2][] memory idsAndAmounts) internal pure returns (bytes12 lockTag) {
         for (uint256 i; i < idsAndAmounts.length;) {
             bytes12 _lockTag = idsAndAmounts[i][0].toLockTag();
+            // overwrite lockTag
             if (lockTag == bytes12(0)) lockTag = _lockTag;
+            // enforce that all idsAndAmounts have the same lockTag
             else require(lockTag == _lockTag, InvalidLockTag());
             unchecked {
                 i++;
@@ -150,6 +167,11 @@ library EmissaryLib {
      * ensuring that the verification process is modular and can be updated independently.
      * If no emissary is assigned, the verification fails, enforcing the requirement
      * for an active emissary to validate claims.
+     * @param claimHash The hash of the claim to verify
+     * @param sponsor The address of the sponsor
+     * @param lockTag The lock tag for the claim
+     * @param signature The signature to verify
+     * @return bool True if verification succeeds, False otherwise
      */
     function verifyWithEmissary(bytes32 claimHash, address sponsor, bytes12 lockTag, bytes calldata signature) internal view returns (bool) {
         EmissaryConfig storage emissaryConfig = _getEmissaryConfig(sponsor, lockTag);
@@ -162,10 +184,15 @@ library EmissaryLib {
     }
 
     /**
-     * @dev Retrieves the current status of an emissary for a given sponsor and allocator ID.
+     * @dev Retrieves the current status of an emissary for a given sponsor and lock tag.
      * The status provides insight into whether the emissary is active, disabled, or scheduled for reassignment.
      * This helps external contracts and users understand the state of the emissary system
      * without needing to interpret raw configuration data.
+     * @param sponsor The address of the sponsor
+     * @param lockTag The lock tag for the emissary
+     * @return status The current status of the emissary
+     * @return assignableAt The timestamp when the emissary can be reassigned
+     * @return currentEmissary The address of the currently assigned emissary
      */
     function getEmissaryStatus(address sponsor, bytes12 lockTag) internal view returns (EmissaryStatus status, uint256 assignableAt, address currentEmissary) {
         EmissaryConfig storage emissaryConfig = _getEmissaryConfig(sponsor, lockTag);
