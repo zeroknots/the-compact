@@ -32,6 +32,20 @@ contract SimpleAllocator is IAllocator {
         uint256[2][] calldata idsAndAmounts, // The allocated token IDs and amounts.
         bytes calldata allocatorData // Arbitrary data provided by the arbiter.
     ) external view returns (bytes4) {
+        require(checkAuthorizeClaim(claimHash, arbiter, sponsor, nonce, expires, idsAndAmounts, allocatorData), "Invalid Sig");
+
+        return this.authorizeClaim.selector;
+    }
+
+    function checkAuthorizeClaim(
+        bytes32 claimHash, // The message hash representing the claim.
+        address arbiter, // The account tasked with verifying and submitting the claim.
+        address sponsor, // The account to source the tokens from.
+        uint256 nonce, // A parameter to enforce replay protection, scoped to allocator.
+        uint256 expires, // The time at which the claim expires.
+        uint256[2][] calldata idsAndAmounts, // The allocated token IDs and amounts.
+        bytes calldata allocatorData // Arbitrary data provided by the arbiter.
+    ) public view returns (bool) {
         arbiter;
         sponsor;
         nonce;
@@ -42,8 +56,7 @@ contract SimpleAllocator is IAllocator {
         // this is just for test purposes, since TheCompact.t.sol is using vm.chainId().
         // @dev Consider inheriting EIP712 in the Allocator or caching the compact domain separator as an immutable
         bytes32 digest = keccak256(abi.encodePacked(bytes2(0x1901), COMPACT.DOMAIN_SEPARATOR(), claimHash));
-        require(signer.isValidSignatureNow(digest, allocatorData), "Invalid Sig");
 
-        return this.authorizeClaim.selector;
+        return signer.isValidSignatureNow(digest, allocatorData);
     }
 }
