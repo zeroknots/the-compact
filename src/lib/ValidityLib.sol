@@ -24,6 +24,7 @@ library ValidityLib {
     using SignatureCheckerLib for address;
     using ValidityLib for uint256;
     using EmissaryLib for bytes32;
+    using EmissaryLib for uint256[2][];
 
     /**
      * @notice Internal function that retrieves an allocator's address from their ID and
@@ -101,12 +102,12 @@ library ValidityLib {
      * @param signature       The signature to verify.
      * @param domainSeparator The domain separator to combine with the message hash.
      */
-    function signedBySponsorOrEmissary(bytes32 messageHash, address expectedSigner, bytes calldata signature, bytes32 domainSeparator, uint256 allocatorId) internal view {
+    function signedBySponsorOrEmissary(bytes32 messageHash, address expectedSigner, bytes calldata signature, bytes32 domainSeparator, uint256[2][] memory idsAndAmounts) internal view {
         // Apply domain separator to message hash and verify it was signed correctly.
         bytes32 claimHash = messageHash.withDomain(domainSeparator);
         // first check signature with ECDSA / ERC1271
         // if the signature validation failed, fallback to emissary
-        bool hasValidSigner = expectedSigner.isValidSignatureNowCalldata(claimHash, signature) || claimHash.verifyWithEmissary(expectedSigner, allocatorId, signature);
+        bool hasValidSigner = expectedSigner.isValidSignatureNowCalldata(claimHash, signature) || claimHash.verifyWithEmissary(expectedSigner, idsAndAmounts.extractSameLockTag(), signature);
 
         assembly ("memory-safe") {
             // Allow signature check to be bypassed if caller is the expected signer.

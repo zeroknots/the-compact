@@ -5,6 +5,7 @@ import { EmissaryLib } from "./EmissaryLib.sol";
 import { IdLib } from "./IdLib.sol";
 import { IAllocator } from "../interfaces/IAllocator.sol";
 import { ResetPeriod } from "../types/ResetPeriod.sol";
+import { Scope } from "../types/Scope.sol";
 import { EmissaryStatus } from "../types/EmissaryStatus.sol";
 
 /**
@@ -30,6 +31,7 @@ import { EmissaryStatus } from "../types/EmissaryStatus.sol";
  */
 abstract contract EmissaryLogic {
     using IdLib for address;
+    using IdLib for uint96;
     using EmissaryLib for address;
 
     error InvalidEmissaryAssignment();
@@ -50,9 +52,9 @@ abstract contract EmissaryLogic {
      *
      * @custom:emits EmissaryTimelockSet event through the library call, signaling the start of the timelock period
      */
-    function _scheduleEmissaryAssignment(address sponsor, address allocator) internal returns (uint256 emissaryAssignmentAvailableAt) {
-        uint96 allocatorId = allocator.toAllocatorIdIfRegistered();
-        emissaryAssignmentAvailableAt = sponsor.scheduleEmissaryAssignment(allocatorId);
+    function _scheduleEmissaryAssignment(address sponsor, address allocator, ResetPeriod resetPeriod, Scope scope) internal returns (uint256 emissaryAssignmentAvailableAt) {
+        bytes12 lockTag = allocator.toAllocatorIdIfRegistered().toLockTag(scope, resetPeriod);
+        emissaryAssignmentAvailableAt = sponsor.scheduleEmissaryAssignment(lockTag);
     }
 
     /**
@@ -76,10 +78,9 @@ abstract contract EmissaryLogic {
      * @custom:emits EmissarySet event through the library call, signaling the successful assignment of a new emissary
      * @custom:throws If the timelock period has not passed or was not initiated, ensuring secure delegation practices
      */
-    function _assignEmissary(address sponsor, address allocator, address emissary, bytes calldata proof, ResetPeriod resetPeriod) internal returns (bool) {
+    function _assignEmissary(address sponsor, address allocator, address emissary, bytes calldata proof, ResetPeriod resetPeriod, Scope scope) internal returns (bool) {
         require(allocator != emissary, InvalidEmissaryAssignment());
-        uint96 allocatorId = allocator.toAllocatorIdIfRegistered();
-        sponsor.assignEmissary(allocatorId, emissary, resetPeriod);
+        sponsor.assignEmissary(allocator, emissary, resetPeriod, scope);
 
         require(IAllocator(allocator).authorizeEmissaryAssignment(sponsor, emissary, proof, resetPeriod) == IAllocator.authorizeEmissaryAssignment.selector, InvalidEmissaryAssignment());
 
@@ -105,9 +106,8 @@ abstract contract EmissaryLogic {
      * @return assignableAt The timestamp when the emissary assignment will be available (if scheduled).
      * @return currentEmissary The address of the currently assigned emissary, if any.
      */
-    function _getEmissaryStatus(address sponsor, address allocator) internal view returns (EmissaryStatus status, uint256 assignableAt, address currentEmissary) {
-        // this will not revert if allocator isn't registered.
-        uint256 allocatorId = allocator.usingAllocatorId();
-        return sponsor.getEmissaryStatus(allocatorId);
+    function _getEmissaryStatus(address sponsor, address allocator, ResetPeriod resetPeriod, Scope scope) internal view returns (EmissaryStatus status, uint256 assignableAt, address currentEmissary) {
+        bytes12 lockTag = allocator.usingAllocatorId().toLockTag(scope, resetPeriod);
+        return sponsor.getEmissaryStatus(lockTag);
     }
 }

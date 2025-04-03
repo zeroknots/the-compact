@@ -16,6 +16,8 @@ contract EmissaryLogicTest is Test {
 
     address sponsor;
     AlwaysOKAllocator allocator;
+    ResetPeriod resetPeriod;
+    Scope scope;
 
     function setUp() public {
         logic = new MockEmissaryLogic();
@@ -24,6 +26,8 @@ contract EmissaryLogicTest is Test {
         emissary1 = new AlwaysOKEmissary();
         emissary2 = new AlwaysOKEmissary();
         allocator = new AlwaysOKAllocator();
+        resetPeriod = ResetPeriod.TenMinutes;
+        scope = Scope.Multichain;
 
         logic.registerAllocator(address(allocator), "");
 
@@ -31,10 +35,10 @@ contract EmissaryLogicTest is Test {
     }
 
     function test_new_emissary() public {
-        bool success = logic.assignEmissary(sponsor, address(allocator), address(emissary1), "", ResetPeriod.TenMinutes);
+        bool success = logic.assignEmissary(sponsor, address(allocator), address(emissary1), "", resetPeriod, scope);
         assertTrue(success);
 
-        (EmissaryStatus status, uint256 assignableAt, address currentEmissary) = logic.getEmissaryStatus(sponsor, address(allocator));
+        (EmissaryStatus status, uint256 assignableAt, address currentEmissary) = logic.getEmissaryStatus(sponsor, address(allocator), resetPeriod, scope);
 
         assertTrue(status == EmissaryStatus.Enabled, "Status");
         assertTrue(assignableAt == type(uint88).max, "timestamp");
@@ -44,19 +48,19 @@ contract EmissaryLogicTest is Test {
     function test_new_emissary_withoutSchedule() public {
         test_new_emissary();
         vm.expectRevert();
-        logic.assignEmissary(sponsor, address(allocator), address(emissary1), "", ResetPeriod.TenMinutes);
+        logic.assignEmissary(sponsor, address(allocator), address(emissary1), "", resetPeriod, scope);
     }
 
     function test_reset_emissary() public {
-        (EmissaryStatus status, uint256 assignableAt, address currentEmissary) = logic.getEmissaryStatus(sponsor, address(allocator));
+        (EmissaryStatus status, uint256 assignableAt, address currentEmissary) = logic.getEmissaryStatus(sponsor, address(allocator), resetPeriod, scope);
 
         assertTrue(status == EmissaryStatus.Disabled, "Status");
         assertTrue(assignableAt == 0, "timestamp");
         assertTrue(currentEmissary == address(0), "addr");
 
         test_new_emissary();
-        logic.scheduleEmissaryAssignment(sponsor, address(allocator));
-        (status, assignableAt, currentEmissary) = logic.getEmissaryStatus(sponsor, address(allocator));
+        logic.scheduleEmissaryAssignment(sponsor, address(allocator), resetPeriod, scope);
+        (status, assignableAt, currentEmissary) = logic.getEmissaryStatus(sponsor, address(allocator), resetPeriod, scope);
 
         assertTrue(status == EmissaryStatus.Scheduled, "Status");
         assertTrue(assignableAt == block.timestamp + 10 minutes, "timestamp");
@@ -65,11 +69,11 @@ contract EmissaryLogicTest is Test {
         vm.warp(block.timestamp + 1 minutes);
 
         vm.expectRevert();
-        bool success = logic.assignEmissary(sponsor, address(allocator), address(emissary1), "", ResetPeriod.TenMinutes);
+        bool success = logic.assignEmissary(sponsor, address(allocator), address(emissary1), "", resetPeriod, scope);
         vm.warp(block.timestamp + 10 minutes);
-        success = logic.assignEmissary(sponsor, address(allocator), address(emissary2), "", ResetPeriod.TenMinutes);
+        success = logic.assignEmissary(sponsor, address(allocator), address(emissary2), "", resetPeriod, scope);
 
-        (status, assignableAt, currentEmissary) = logic.getEmissaryStatus(sponsor, address(allocator));
+        (status, assignableAt, currentEmissary) = logic.getEmissaryStatus(sponsor, address(allocator), resetPeriod, scope);
 
         assertTrue(status == EmissaryStatus.Enabled, "Status");
         assertTrue(assignableAt == type(uint88).max, "timestamp");
@@ -77,7 +81,7 @@ contract EmissaryLogicTest is Test {
     }
 
     function test_disable_emissary() public {
-        (EmissaryStatus status, uint256 assignableAt, address currentEmissary) = logic.getEmissaryStatus(sponsor, address(allocator));
+        (EmissaryStatus status, uint256 assignableAt, address currentEmissary) = logic.getEmissaryStatus(sponsor, address(allocator), resetPeriod, scope);
 
         assertTrue(status == EmissaryStatus.Disabled, "Status should be disabled");
         assertTrue(assignableAt == 0, "timestamp");
@@ -86,17 +90,17 @@ contract EmissaryLogicTest is Test {
         // now we set the emissary
         test_new_emissary();
 
-        logic.scheduleEmissaryAssignment(sponsor, address(allocator));
-        (status, assignableAt, currentEmissary) = logic.getEmissaryStatus(sponsor, address(allocator));
+        logic.scheduleEmissaryAssignment(sponsor, address(allocator), resetPeriod, scope);
+        (status, assignableAt, currentEmissary) = logic.getEmissaryStatus(sponsor, address(allocator), resetPeriod, scope);
 
         assertTrue(status == EmissaryStatus.Scheduled, "Status should be scheduled");
         assertTrue(assignableAt == block.timestamp + 10 minutes, "timestamp");
         assertTrue(currentEmissary == address(emissary1), "addr");
 
         vm.warp(block.timestamp + 10 minutes);
-        logic.assignEmissary(sponsor, address(allocator), address(0), "", ResetPeriod.TenMinutes);
+        logic.assignEmissary(sponsor, address(allocator), address(0), "", resetPeriod, scope);
 
-        (status, assignableAt, currentEmissary) = logic.getEmissaryStatus(sponsor, address(allocator));
+        (status, assignableAt, currentEmissary) = logic.getEmissaryStatus(sponsor, address(allocator), resetPeriod, scope);
 
         assertTrue(status == EmissaryStatus.Disabled, "Status");
         assertTrue(assignableAt == 0, "timestamp should be 0");

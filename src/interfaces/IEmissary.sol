@@ -7,6 +7,6 @@ interface IEmissary {
         address sponsor, // the sponsor of the claim
         bytes32 claimHash, // The message hash representing the claim.
         bytes calldata signature,
-        uint256 allocatorId
+        bytes12 lockTag
     ) external view returns (bytes4); // Must return the function selector.IEmissary
 }

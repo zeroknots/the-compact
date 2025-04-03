@@ -444,7 +444,7 @@ interface ITheCompact {
      * @param resetPeriod The duration that blocks reassignment attempts after assignment
      * @return Whether the assignment was successful
      */
-    function assignEmissary(address allocator, address emissary, bytes calldata proof, ResetPeriod resetPeriod) external returns (bool);
+    function assignEmissary(address allocator, address emissary, bytes calldata proof, ResetPeriod resetPeriod, Scope scope) external returns (bool);
 
     /**
      * @notice Schedules a future emissary assignment for a specific allocator. The reset period determines
@@ -453,7 +453,7 @@ interface ITheCompact {
      * @param allocator The address of the allocator scheduling an emissary assignment
      * @return emissaryAssignmentAvailableAt The timestamp when the next assignment will be allowed
      */
-    function scheduleEmissaryAssignment(address allocator) external returns (uint256 emissaryAssignmentAvailableAt);
+    function scheduleEmissaryAssignment(address allocator, ResetPeriod resetPeriod, Scope scope) external returns (uint256 emissaryAssignmentAvailableAt);
 
     /**
      * @notice Gets the current emissary status for an allocator. Returns the current status,
@@ -465,7 +465,10 @@ interface ITheCompact {
      * @return emissaryAssignmentAvailableAt The timestamp when reassignment will be allowed
      * @return currentEmissary The currently assigned emissary address (or zero address if none)
      */
-    function getEmissaryStatus(address sponsor, address allocator) external view returns (EmissaryStatus status, uint256 emissaryAssignmentAvailableAt, address currentEmissary);
+    function getEmissaryStatus(address sponsor, address allocator, ResetPeriod resetPeriod, Scope scope)
+        external
+        view
+        returns (EmissaryStatus status, uint256 emissaryAssignmentAvailableAt, address currentEmissary);
 
     /**
      * @notice External view function for retrieving the details of a resource lock. Returns the

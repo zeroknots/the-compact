@@ -183,16 +183,20 @@ contract TheCompact is ITheCompact, ERC6909, TheCompactLogic {
         return _getLockDetails(id);
     }
 
-    function assignEmissary(address allocator, address emissary, bytes calldata proof, ResetPeriod resetPeriod) external returns (bool) {
-        return _assignEmissary(msg.sender, allocator, emissary, proof, resetPeriod);
+    function assignEmissary(address allocator, address emissary, bytes calldata proof, ResetPeriod resetPeriod, Scope scope) external returns (bool) {
+        return _assignEmissary(msg.sender, allocator, emissary, proof, resetPeriod, scope);
     }
 
-    function scheduleEmissaryAssignment(address allocator) external returns (uint256 emissaryAssignmentAvailableAt) {
-        return _scheduleEmissaryAssignment(msg.sender, allocator);
+    function scheduleEmissaryAssignment(address allocator, ResetPeriod resetPeriod, Scope scope) external returns (uint256 emissaryAssignmentAvailableAt) {
+        return _scheduleEmissaryAssignment(msg.sender, allocator, resetPeriod, scope);
     }
 
-    function getEmissaryStatus(address sponsor, address allocator) external view returns (EmissaryStatus status, uint256 emissaryAssignmentAvailableAt, address currentEmissary) {
-        return _getEmissaryStatus(sponsor, allocator);
+    function getEmissaryStatus(address sponsor, address allocator, ResetPeriod resetPeriod, Scope scope)
+        external
+        view
+        returns (EmissaryStatus status, uint256 emissaryAssignmentAvailableAt, address currentEmissary)
+    {
+        return _getEmissaryStatus(sponsor, allocator, resetPeriod, scope);
     }
 
     function hasConsumedAllocatorNonce(uint256 nonce, address allocator) external view returns (bool) {

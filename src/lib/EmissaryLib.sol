@@ -3,7 +3,9 @@ pragma solidity ^0.8.27;
 
 import { IdLib } from "./IdLib.sol";
 import { ResetPeriod } from "../types/ResetPeriod.sol";
+import { Scope } from "../types/Scope.sol";
 import { EmissaryConfig, EmissaryStatus } from "../types/EmissaryStatus.sol";
+import { EfficiencyLib } from "./EfficiencyLib.sol";
 import { IEmissary } from "../interfaces/IEmissary.sol";
 
 /**
@@ -28,13 +30,17 @@ import { IEmissary } from "../interfaces/IEmissary.sol";
  * - Storage cleanup when emissaries are removed
  */
 library EmissaryLib {
+    using IdLib for address;
     using IdLib for uint256;
     using IdLib for ResetPeriod;
+    using IdLib for uint96;
+    using EfficiencyLib for bytes12;
 
     error EmissaryAssignmentUnavailable(uint256 assignAt);
+    error InvalidLockTag();
 
-    event EmissaryAssigned(address indexed sponsor, uint256 indexed id, address indexed emissary);
-    event EmissaryAssignmentScheduled(address indexed sponsor, uint256 indexed id, uint256 indexed assignableAt);
+    event EmissaryAssigned(address indexed sponsor, bytes12 indexed lockTag, address indexed emissary);
+    event EmissaryAssignmentScheduled(address indexed sponsor, bytes12 indexed lockTag, uint256 indexed assignableAt);
 
     uint88 constant NOT_SCHEDULED = type(uint88).max;
 
@@ -47,7 +53,7 @@ library EmissaryLib {
      * This ensures that emissary-specific settings (like reset period and assignment time)
      * are stored and retrieved in a consistent and isolated manner to prevent conflicts.
      */
-    function _getEmissaryConfig(address sponsor, uint256 id) private pure returns (EmissaryConfig storage config) {
+    function _getEmissaryConfig(address sponsor, bytes12 lockTag) private pure returns (EmissaryConfig storage config) {
         assembly ("memory-safe") {
             // Retrieve the current free memory pointer.
             let m := mload(0x40)
@@ -55,15 +61,15 @@ library EmissaryLib {
             // Pack data for computing storage slot.
             mstore(0x14, sponsor) // Offset 0x14 (20 bytes): Store 20-byte sponsor address
             mstore(0, _EMISSARY_SCOPE) // Offset 0 (0 bytes): Store 4-byte scope value
-            mstore(0x34, id) // Offset 0x34 (52 bytes): Store 32-byte allocator id
+            mstore(0x20, lockTag) // Offset 0x20 (32 bytes): Store 32-byte allocator id
 
             // Compute storage slot from packed data.
             // Start at offset 0x1c (28 bytes), which includes:
             // - The 4 bytes of _EMISSARY_SCOPE (which is stored at position 0x00)
             // - The entire 20-byte sponsor address (which starts at position 0x14)
-            // - The entire 32-byte allocator id (which starts at position 0x34)
-            // Hash 0x38 (56 bytes) of data in total
-            config.slot := keccak256(0x1c, 0x38)
+            // - The entire 12-byte allocator id (which starts at position 0x34)
+            // Hash 0x24 (36 bytes) of data in total
+            config.slot := keccak256(0x1c, 0x24)
 
             // Restore the free memory pointer.
             mstore(0x40, m)
@@ -76,8 +82,9 @@ library EmissaryLib {
      * and prevents invalid or premature assignments. It also clears the configuration
      * when removing an emissary to keep storage clean and avoid stale data.
      */
-    function assignEmissary(address sponsor, uint256 id, address newEmissary, ResetPeriod resetPeriod) internal {
-        EmissaryConfig storage config = _getEmissaryConfig(sponsor, id);
+    function assignEmissary(address sponsor, address allocator, address newEmissary, ResetPeriod resetPeriod, Scope scope) internal {
+        bytes12 lockTag = allocator.toAllocatorIdIfRegistered().toLockTag(scope, resetPeriod);
+        EmissaryConfig storage config = _getEmissaryConfig(sponsor, lockTag);
         uint256 _assignableAt = config.assignableAt;
         address _emissary = config.emissary;
 
@@ -107,7 +114,7 @@ library EmissaryLib {
             config.resetPeriod = resetPeriod;
         }
 
-        emit EmissaryAssigned(sponsor, id, newEmissary);
+        emit EmissaryAssigned(sponsor, lockTag, newEmissary);
     }
 
     /**
@@ -116,14 +123,25 @@ library EmissaryLib {
      * enforcing a reset period that must elapse before a new assignment is possible.
      * This prevents abuse of the system by requiring a cooldown period between assignments.
      */
-    function scheduleEmissaryAssignment(address sponsor, uint256 allocatorId) internal returns (uint256 assignableAt) {
-        EmissaryConfig storage emissaryConfig = _getEmissaryConfig(sponsor, allocatorId);
+    function scheduleEmissaryAssignment(address sponsor, bytes12 lockTag) internal returns (uint256 assignableAt) {
+        EmissaryConfig storage emissaryConfig = _getEmissaryConfig(sponsor, lockTag);
         uint256 resetPeriod = emissaryConfig.resetPeriod.toSeconds();
         assignableAt = block.timestamp + resetPeriod;
         emissaryConfig.assignableAt = uint88(assignableAt);
 
-        emit EmissaryAssignmentScheduled(sponsor, allocatorId, assignableAt);
+        emit EmissaryAssignmentScheduled(sponsor, lockTag, assignableAt);
         return assignableAt;
+    }
+
+    function extractSameLockTag(uint256[2][] memory idsAndAmounts) internal pure returns (bytes12 lockTag) {
+        for (uint256 i; i < idsAndAmounts.length;) {
+            bytes12 _lockTag = idsAndAmounts[i][0].toLockTag();
+            if (lockTag == bytes12(0)) lockTag = _lockTag;
+            else require(lockTag == _lockTag, InvalidLockTag());
+            unchecked {
+                i++;
+            }
+        }
     }
 
     /**
@@ -133,14 +151,14 @@ library EmissaryLib {
      * If no emissary is assigned, the verification fails, enforcing the requirement
      * for an active emissary to validate claims.
      */
-    function verifyWithEmissary(bytes32 claimHash, address sponsor, uint256 id, bytes calldata signature) internal view returns (bool) {
-        EmissaryConfig storage emissaryConfig = _getEmissaryConfig(sponsor, id);
+    function verifyWithEmissary(bytes32 claimHash, address sponsor, bytes12 lockTag, bytes calldata signature) internal view returns (bool) {
+        EmissaryConfig storage emissaryConfig = _getEmissaryConfig(sponsor, lockTag);
         address emissary = emissaryConfig.emissary;
         if (emissary == address(0)) return false;
         // Delegate the verification process to the assigned emissary contract.
         // This modular approach allows the verification logic to be updated independently,
         // ensuring flexibility and separation of concerns in the emissary system.
-        return IEmissary(emissary).verifyClaim(sponsor, claimHash, signature, id) == IEmissary.verifyClaim.selector;
+        return IEmissary(emissary).verifyClaim(sponsor, claimHash, signature, lockTag) == IEmissary.verifyClaim.selector;
     }
 
     /**
@@ -149,8 +167,8 @@ library EmissaryLib {
      * This helps external contracts and users understand the state of the emissary system
      * without needing to interpret raw configuration data.
      */
-    function getEmissaryStatus(address sponsor, uint256 id) internal view returns (EmissaryStatus status, uint256 assignableAt, address currentEmissary) {
-        EmissaryConfig storage emissaryConfig = _getEmissaryConfig(sponsor, id);
+    function getEmissaryStatus(address sponsor, bytes12 lockTag) internal view returns (EmissaryStatus status, uint256 assignableAt, address currentEmissary) {
+        EmissaryConfig storage emissaryConfig = _getEmissaryConfig(sponsor, lockTag);
         assignableAt = emissaryConfig.assignableAt;
         currentEmissary = emissaryConfig.emissary;
 
