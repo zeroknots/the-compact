@@ -17,8 +17,8 @@ contract MockEmissaryLogic is TheCompactLogic {
         return _registerAllocator(allocator, proof);
     }
 
-    function scheduleEmissaryAssignment(address allocator, ResetPeriod resetPeriod, Scope scope) external returns (uint256) {
-        return _scheduleEmissaryAssignment(allocator, resetPeriod, scope);
+    function scheduleEmissaryAssignment(bytes12 lockTag) external returns (uint256) {
+        return _scheduleEmissaryAssignment(lockTag);
     }
 
     function assignEmissary(bytes12 lockTag, address emissary) external returns (bool) {
@@ -33,7 +33,7 @@ contract MockEmissaryLogic is TheCompactLogic {
         return claimHash.verifyWithEmissary(sponsor, lockTag, signature);
     }
 
-    function getEmissaryStatus(address sponsor, address allocator, ResetPeriod resetPeriod, Scope scope) external view returns (EmissaryStatus status, uint256 assignableAt, address currentEmissary) {
-        return _getEmissaryStatus(sponsor, allocator, resetPeriod, scope);
+    function getEmissaryStatus(address sponsor, bytes12 lockTag) external view returns (EmissaryStatus status, uint256 assignableAt, address currentEmissary) {
+        return _getEmissaryStatus(sponsor, lockTag);
     }
 }

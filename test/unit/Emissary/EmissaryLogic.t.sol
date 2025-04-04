@@ -48,7 +48,7 @@ contract EmissaryLogicTest is Test {
         bool success = logic.assignEmissary(lockTag, address(emissary1));
         assertTrue(success);
 
-        (EmissaryStatus status, uint256 assignableAt, address currentEmissary) = logic.getEmissaryStatus(sponsor, address(allocator), resetPeriod, scope);
+        (EmissaryStatus status, uint256 assignableAt, address currentEmissary) = logic.getEmissaryStatus(sponsor, lockTag);
 
         assertTrue(status == EmissaryStatus.Enabled, "Status");
         assertTrue(assignableAt == type(uint96).max, "timestamp");
@@ -63,7 +63,7 @@ contract EmissaryLogicTest is Test {
     }
 
     function test_reset_emissary() public {
-        (EmissaryStatus status, uint256 assignableAt, address currentEmissary) = logic.getEmissaryStatus(sponsor, address(allocator), resetPeriod, scope);
+        (EmissaryStatus status, uint256 assignableAt, address currentEmissary) = logic.getEmissaryStatus(sponsor, lockTag);
 
         assertTrue(status == EmissaryStatus.Disabled, "Status");
         assertTrue(assignableAt == 0, "timestamp");
@@ -71,8 +71,8 @@ contract EmissaryLogicTest is Test {
 
         test_new_emissary();
         vm.prank(sponsor);
-        logic.scheduleEmissaryAssignment(address(allocator), resetPeriod, scope);
-        (status, assignableAt, currentEmissary) = logic.getEmissaryStatus(sponsor, address(allocator), resetPeriod, scope);
+        logic.scheduleEmissaryAssignment(lockTag);
+        (status, assignableAt, currentEmissary) = logic.getEmissaryStatus(sponsor, lockTag);
 
         assertTrue(status == EmissaryStatus.Scheduled, "Status");
         assertTrue(assignableAt == block.timestamp + 10 minutes, "timestamp");
@@ -87,7 +87,7 @@ contract EmissaryLogicTest is Test {
         vm.prank(sponsor);
         success = logic.assignEmissary(lockTag, address(emissary2));
 
-        (status, assignableAt, currentEmissary) = logic.getEmissaryStatus(sponsor, address(allocator), resetPeriod, scope);
+        (status, assignableAt, currentEmissary) = logic.getEmissaryStatus(sponsor, lockTag);
 
         assertTrue(status == EmissaryStatus.Enabled, "Status");
         assertTrue(assignableAt == type(uint96).max, "timestamp");
@@ -95,7 +95,7 @@ contract EmissaryLogicTest is Test {
     }
 
     function test_disable_emissary() public {
-        (EmissaryStatus status, uint256 assignableAt, address currentEmissary) = logic.getEmissaryStatus(sponsor, address(allocator), resetPeriod, scope);
+        (EmissaryStatus status, uint256 assignableAt, address currentEmissary) = logic.getEmissaryStatus(sponsor, lockTag);
 
         assertTrue(status == EmissaryStatus.Disabled, "Status should be disabled");
         assertTrue(assignableAt == 0, "timestamp");
@@ -105,8 +105,8 @@ contract EmissaryLogicTest is Test {
         test_new_emissary();
 
         vm.prank(sponsor);
-        logic.scheduleEmissaryAssignment(address(allocator), resetPeriod, scope);
-        (status, assignableAt, currentEmissary) = logic.getEmissaryStatus(sponsor, address(allocator), resetPeriod, scope);
+        logic.scheduleEmissaryAssignment(lockTag);
+        (status, assignableAt, currentEmissary) = logic.getEmissaryStatus(sponsor, lockTag);
 
         assertTrue(status == EmissaryStatus.Scheduled, "Status should be scheduled");
         assertTrue(assignableAt == block.timestamp + 10 minutes, "timestamp");
@@ -116,26 +116,26 @@ contract EmissaryLogicTest is Test {
         vm.prank(sponsor);
         logic.assignEmissary(lockTag, address(0));
 
-        (status, assignableAt, currentEmissary) = logic.getEmissaryStatus(sponsor, address(allocator), resetPeriod, scope);
+        (status, assignableAt, currentEmissary) = logic.getEmissaryStatus(sponsor, lockTag);
 
         assertTrue(status == EmissaryStatus.Disabled, "Status");
         assertTrue(assignableAt == 0, "timestamp should be 0");
         assertTrue(currentEmissary == address(0), "addr");
     }
 
-    function test_lockTag() public {
-        address allocator = 0xFFfFfFffFFfffFFfFFfFFFFFffFFFffffFfFFFfF;
-        uint96 allocatorId = allocator.usingAllocatorId();
-        bytes12 tag = toLockTag(allocatorId, Scope.Multichain, ResetPeriod.OneHourAndFiveMinutes);
+    function test_lockTag() public view {
+        address allocatorOne = 0xFFfFfFffFFfffFFfFFfFFFFFffFFFffffFfFFFfF;
+        uint96 allocatorOneId = allocatorOne.usingAllocatorId();
+        bytes12 tag = toLockTag(allocatorOneId, Scope.Multichain, ResetPeriod.OneHourAndFiveMinutes);
         (uint96 _allocatorId, Scope _scope, ResetPeriod _resetPeriod) = fromLockTag(tag);
-        assertEq(allocatorId, _allocatorId);
+        assertEq(allocatorOneId, _allocatorId);
         assertTrue(scope == _scope, "scope");
         assertTrue(ResetPeriod.OneHourAndFiveMinutes == _resetPeriod, "ResetPeriod");
     }
 
-    function toLockTag(uint96 allocatorId, Scope scope, ResetPeriod resetPeriod) internal pure returns (bytes12) {
+    function toLockTag(uint96 _allocatorId, Scope _scope, ResetPeriod _resetPeriod) internal pure returns (bytes12) {
         // Derive lock tag (pack scope, reset period, & allocator ID).
-        return ((scope.asUint256() << 255) | (resetPeriod.asUint256() << 252) | (allocatorId.asUint256() << 160)).asBytes12();
+        return ((_scope.asUint256() << 255) | (_resetPeriod.asUint256() << 252) | (_allocatorId.asUint256() << 160)).asBytes12();
     }
 
     function fromLockTag(bytes12 tag) internal pure returns (uint96 _allocatorId, Scope _scope, ResetPeriod _resetPeriod) {

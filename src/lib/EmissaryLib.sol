@@ -30,6 +30,7 @@ import { IEmissary } from "../interfaces/IEmissary.sol";
  * - Storage cleanup when emissaries are removed
  */
 library EmissaryLib {
+    using IdLib for bytes12;
     using IdLib for address;
     using IdLib for uint256;
     using IdLib for ResetPeriod;
@@ -126,17 +127,24 @@ library EmissaryLib {
      * @return assignableAt The timestamp when the assignment becomes available
      */
     function scheduleEmissaryAssignment(bytes12 lockTag) internal returns (uint256 assignableAt) {
+        // Get the current emissary config from storage.
         EmissaryConfig storage emissaryConfig = _getEmissaryConfig(msg.sender, lockTag);
+
         unchecked {
-            // extract five bit resetPeriod from lockTag
-            assignableAt = block.timestamp + ResetPeriod(uint8((lockTag.asUint256() >> 252) & 0xF)).toSeconds();
-            // to ensure safety, this enforces: assignableAt MUST be in the future and smaller than uin96.max
-            if ((assignableAt < block.timestamp).or(assignableAt > type(uint96).max)) revert InvalidLockTag();
+            // Extract five bit resetPeriod from lockTag, convert to seconds, & add to current time.
+            assignableAt = block.timestamp + lockTag.toResetPeriod().toSeconds();
+
+            // Ensure that assignableAt is in the future and is not greater than type(uint96.max).
+            if ((assignableAt < block.timestamp).or(assignableAt > type(uint96).max)) {
+                revert InvalidLockTag();
+            }
         }
+
+        // Write the resultant value to storage.
         emissaryConfig.assignableAt = uint96(assignableAt);
 
+        // Emit an EmissaryAssignmentScheduled event.
         emit EmissaryAssignmentScheduled(msg.sender, lockTag, assignableAt);
-        return assignableAt;
     }
 
     /**
@@ -145,19 +153,31 @@ library EmissaryLib {
      * @return lockTag The common lock tag across all IDs
      */
     function extractSameLockTag(uint256[2][] memory idsAndAmounts) internal pure returns (bytes12 lockTag) {
-        // cache length
+        // Retrieve the length of the array.
         uint256 idsAndAmountsLength = idsAndAmounts.length;
-        //ensure length is at least 1
-        require(idsAndAmountsLength != 0, InvalidLockTag());
-        // store the first lockTag for the first id
+
+        // Ensure length is at least 1.
+        if (idsAndAmountsLength == 0) {
+            revert InvalidLockTag();
+        }
+
+        // Store the first lockTag for the first id.
         lockTag = idsAndAmounts[0][0].toLockTag();
-        for (uint256 i; i < idsAndAmountsLength;) {
-            // revert if first lockTag for idsAndAmounts(i) is different to first lockTag
-            require(idsAndAmounts[i][0].toLockTag() == lockTag, InvalidLockTag());
-            // iterate
-            unchecked {
-                i++;
+
+        // Initialize an error buffer.
+        uint256 errorBuffer;
+
+        // Iterate over remaining array elements.
+        unchecked {
+            for (uint256 i = 1; i < idsAndAmountsLength; ++i) {
+                // Set the error buffer if lockTag does not match initial lockTag.
+                errorBuffer |= (idsAndAmounts[i][0].toLockTag() != lockTag).asUint256();
             }
+        }
+
+        // Ensure that no lockTag values differ.
+        if (errorBuffer.asBool()) {
+            revert InvalidLockTag();
         }
     }
 

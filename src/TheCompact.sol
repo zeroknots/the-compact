@@ -179,7 +179,7 @@ contract TheCompact is ITheCompact, ERC6909, TheCompactLogic {
         return _getForcedWithdrawalStatus(account, id);
     }
 
-    function getLockDetails(uint256 id) external view returns (address, address, ResetPeriod, Scope) {
+    function getLockDetails(uint256 id) external view returns (address, address, ResetPeriod, Scope, bytes12) {
         return _getLockDetails(id);
     }
 
@@ -187,16 +187,12 @@ contract TheCompact is ITheCompact, ERC6909, TheCompactLogic {
         return _assignEmissary(lockTag, emissary);
     }
 
-    function scheduleEmissaryAssignment(address allocator, ResetPeriod resetPeriod, Scope scope) external returns (uint256 emissaryAssignmentAvailableAt) {
-        return _scheduleEmissaryAssignment(allocator, resetPeriod, scope);
+    function scheduleEmissaryAssignment(bytes12 lockTag) external returns (uint256 emissaryAssignmentAvailableAt) {
+        return _scheduleEmissaryAssignment(lockTag);
     }
 
-    function getEmissaryStatus(address sponsor, address allocator, ResetPeriod resetPeriod, Scope scope)
-        external
-        view
-        returns (EmissaryStatus status, uint256 emissaryAssignmentAvailableAt, address currentEmissary)
-    {
-        return _getEmissaryStatus(sponsor, allocator, resetPeriod, scope);
+    function getEmissaryStatus(address sponsor, bytes12 lockTag) external view returns (EmissaryStatus status, uint256 emissaryAssignmentAvailableAt, address currentEmissary) {
+        return _getEmissaryStatus(sponsor, lockTag);
     }
 
     function hasConsumedAllocatorNonce(uint256 nonce, address allocator) external view returns (bool) {

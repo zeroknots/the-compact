@@ -40,6 +40,8 @@ abstract contract EmissaryLogic {
 
     /**
      * @notice Initiates the timelock process for changing an emissary
+     * @param lockTag The lock tag to schedule emissary assignment for.
+     * @return emissaryAssignmentAvailableAt The time at which assigment can be performed.
      * @dev This function starts the timelock period that must pass before
      *      a new emissary can be set. The timelock is specific to the caller (msg.sender).
      *      After calling this function, the caller must wait for the timelock period to expire
@@ -52,10 +54,10 @@ abstract contract EmissaryLogic {
      *      The function utilizes `toAllocatorIdIfRegistered` to validate and convert the allocator
      *      address to its corresponding ID, ensuring that only registered allocators can proceed.
      *
-     * @custom:emits EmissaryTimelockSet event through the library call, signaling the start of the timelock period
+     * @custom:emits EmissaryTimelockSet event through the library call, signaling the start of the timelock period.
      */
-    function _scheduleEmissaryAssignment(address allocator, ResetPeriod resetPeriod, Scope scope) internal returns (uint256 emissaryAssignmentAvailableAt) {
-        bytes12 lockTag = allocator.toAllocatorIdIfRegistered().toLockTag(scope, resetPeriod);
+    function _scheduleEmissaryAssignment(bytes12 lockTag) internal returns (uint256 emissaryAssignmentAvailableAt) {
+        lockTag.hasRegisteredAllocatorId();
         emissaryAssignmentAvailableAt = lockTag.scheduleEmissaryAssignment();
     }
 
@@ -81,10 +83,13 @@ abstract contract EmissaryLogic {
      * @custom:throws If the timelock period has not passed or was not initiated, ensuring secure delegation practices
      */
     function _assignEmissary(bytes12 lockTag, address emissary) internal returns (bool) {
-        // extract allocatorId from locktag and ensure that the allocator is registered
+        // Extract allocatorId from locktag and ensure that the allocator is registered.
         address allocator = lockTag.toAllocatorId().toRegisteredAllocator();
-        // setting an allocator as the emissary is dangerous, as the signer could withdraw funds from the resource lock
+
+        // Ensure allocator is not the emissary, which would grant them unilateral control.
         require(allocator != emissary, InvalidEmissaryAssignment());
+
+        // Assign the emissary of the lock tag for the caller.
         lockTag.assignEmissary(emissary);
 
         return true;
@@ -104,13 +109,14 @@ abstract contract EmissaryLogic {
      *      and accurate status retrieval.
      *
      * @param sponsor The address of the sponsor who has delegated signature verification.
-     * @param allocator The address of the allocator associated with the emissary assignment.
+     * @param lockTag The lock tag associated with the emissary assignment.
      * @return status The current status of the emissary assignment (Disabled, Enabled, or Scheduled).
      * @return assignableAt The timestamp when the emissary assignment will be available (if scheduled).
      * @return currentEmissary The address of the currently assigned emissary, if any.
      */
-    function _getEmissaryStatus(address sponsor, address allocator, ResetPeriod resetPeriod, Scope scope) internal view returns (EmissaryStatus status, uint256 assignableAt, address currentEmissary) {
-        bytes12 lockTag = allocator.usingAllocatorId().toLockTag(scope, resetPeriod);
+    function _getEmissaryStatus(address sponsor, bytes12 lockTag) internal view returns (EmissaryStatus status, uint256 assignableAt, address currentEmissary) {
+        lockTag.hasRegisteredAllocatorId();
+
         return sponsor.getEmissaryStatus(lockTag);
     }
 }

@@ -138,12 +138,13 @@ contract TheCompactTest is Test {
         uint256 id = theCompact.deposit{ value: amount }(allocator);
         vm.snapshotGasLastCall("depositETHBasic");
 
-        (address derivedToken, address derivedAllocator, ResetPeriod derivedResetPeriod, Scope derivedScope) = theCompact.getLockDetails(id);
+        (address derivedToken, address derivedAllocator, ResetPeriod derivedResetPeriod, Scope derivedScope, bytes12 lockTag) = theCompact.getLockDetails(id);
         assertEq(derivedToken, address(0));
         assertEq(derivedAllocator, allocator);
         assertEq(uint256(derivedResetPeriod), uint256(resetPeriod));
         assertEq(uint256(derivedScope), uint256(scope));
         assertEq(id, (uint256(scope) << 255) | (uint256(resetPeriod) << 252) | (uint256(allocatorId) << 160) | uint256(uint160(address(0))));
+        assertEq(lockTag, bytes12(bytes32((uint256(scope) << 255) | (uint256(resetPeriod) << 252) | (uint256(allocatorId) << 160))));
 
         assertEq(address(theCompact).balance, amount);
         assertEq(theCompact.balanceOf(recipient, id), amount);
@@ -163,12 +164,13 @@ contract TheCompactTest is Test {
         uint256 id = theCompact.deposit{ value: amount }(allocator, resetPeriod, scope, recipient);
         vm.snapshotGasLastCall("depositETHAndURI");
 
-        (address derivedToken, address derivedAllocator, ResetPeriod derivedResetPeriod, Scope derivedScope) = theCompact.getLockDetails(id);
+        (address derivedToken, address derivedAllocator, ResetPeriod derivedResetPeriod, Scope derivedScope, bytes12 lockTag) = theCompact.getLockDetails(id);
         assertEq(derivedToken, address(0));
         assertEq(derivedAllocator, allocator);
         assertEq(uint256(derivedResetPeriod), uint256(resetPeriod));
         assertEq(uint256(derivedScope), uint256(scope));
         assertEq(id, (uint256(scope) << 255) | (uint256(resetPeriod) << 252) | (uint256(allocatorId) << 160) | uint256(uint160(address(0))));
+        assertEq(lockTag, bytes12(bytes32((uint256(scope) << 255) | (uint256(resetPeriod) << 252) | (uint256(allocatorId) << 160))));
 
         assertEq(address(theCompact).balance, amount);
         assertEq(theCompact.balanceOf(recipient, id), amount);
@@ -188,12 +190,13 @@ contract TheCompactTest is Test {
         uint256 id = theCompact.deposit(address(token), allocator, amount);
         vm.snapshotGasLastCall("depositERC20Basic");
 
-        (address derivedToken, address derivedAllocator, ResetPeriod derivedResetPeriod, Scope derivedScope) = theCompact.getLockDetails(id);
+        (address derivedToken, address derivedAllocator, ResetPeriod derivedResetPeriod, Scope derivedScope, bytes12 lockTag) = theCompact.getLockDetails(id);
         assertEq(derivedToken, address(token));
         assertEq(derivedAllocator, allocator);
         assertEq(uint256(derivedResetPeriod), uint256(resetPeriod));
         assertEq(uint256(derivedScope), uint256(scope));
         assertEq(id, (uint256(scope) << 255) | (uint256(resetPeriod) << 252) | (uint256(allocatorId) << 160) | uint256(uint160(address(token))));
+        assertEq(lockTag, bytes12(bytes32((uint256(scope) << 255) | (uint256(resetPeriod) << 252) | (uint256(allocatorId) << 160))));
 
         assertEq(token.balanceOf(address(theCompact)), amount);
         assertEq(theCompact.balanceOf(recipient, id), amount);
@@ -213,12 +216,13 @@ contract TheCompactTest is Test {
         uint256 id = theCompact.deposit(address(token), allocator, resetPeriod, scope, amount, recipient);
         vm.snapshotGasLastCall("depositERC20AndURI");
 
-        (address derivedToken, address derivedAllocator, ResetPeriod derivedResetPeriod, Scope derivedScope) = theCompact.getLockDetails(id);
+        (address derivedToken, address derivedAllocator, ResetPeriod derivedResetPeriod, Scope derivedScope, bytes12 lockTag) = theCompact.getLockDetails(id);
         assertEq(derivedToken, address(token));
         assertEq(derivedAllocator, allocator);
         assertEq(uint256(derivedResetPeriod), uint256(resetPeriod));
         assertEq(uint256(derivedScope), uint256(scope));
         assertEq(id, (uint256(scope) << 255) | (uint256(resetPeriod) << 252) | (uint256(allocatorId) << 160) | uint256(uint160(address(token))));
+        assertEq(lockTag, bytes12(bytes32((uint256(scope) << 255) | (uint256(resetPeriod) << 252) | (uint256(allocatorId) << 160))));
 
         assertEq(token.balanceOf(address(theCompact)), amount);
         assertEq(theCompact.balanceOf(recipient, id), amount);
@@ -244,13 +248,14 @@ contract TheCompactTest is Test {
         vm.snapshotGasLastCall("depositBatchSingleNative");
         assert(ok);
 
-        (address derivedToken, address derivedAllocator, ResetPeriod derivedResetPeriod, Scope derivedScope) = theCompact.getLockDetails(id);
+        (address derivedToken, address derivedAllocator, ResetPeriod derivedResetPeriod, Scope derivedScope, bytes12 lockTag) = theCompact.getLockDetails(id);
         assertEq(derivedToken, address(0));
         assertEq(derivedAllocator, allocator);
         assertEq(uint256(derivedResetPeriod), uint256(resetPeriod));
         assertEq(uint256(derivedScope), uint256(scope));
 
         assertEq(id, (uint256(scope) << 255) | (uint256(resetPeriod) << 252) | (uint256(allocatorId) << 160) | uint256(uint160(address(0))));
+        assertEq(lockTag, bytes12(bytes32((uint256(scope) << 255) | (uint256(resetPeriod) << 252) | (uint256(allocatorId) << 160))));
 
         assertEq(address(theCompact).balance, amount);
         assertEq(theCompact.balanceOf(recipient, id), amount);
@@ -276,13 +281,14 @@ contract TheCompactTest is Test {
         vm.snapshotGasLastCall("depositBatchSingleERC20");
         assert(ok);
 
-        (address derivedToken, address derivedAllocator, ResetPeriod derivedResetPeriod, Scope derivedScope) = theCompact.getLockDetails(id);
+        (address derivedToken, address derivedAllocator, ResetPeriod derivedResetPeriod, Scope derivedScope, bytes12 lockTag) = theCompact.getLockDetails(id);
         assertEq(derivedToken, address(token));
         assertEq(derivedAllocator, allocator);
         assertEq(uint256(derivedResetPeriod), uint256(resetPeriod));
         assertEq(uint256(derivedScope), uint256(scope));
 
         assertEq(id, (uint256(scope) << 255) | (uint256(resetPeriod) << 252) | (uint256(allocatorId) << 160) | uint256(uint160(address(token))));
+        assertEq(lockTag, bytes12(bytes32((uint256(scope) << 255) | (uint256(resetPeriod) << 252) | (uint256(allocatorId) << 160))));
 
         assertEq(token.balanceOf(address(theCompact)), amount);
         assertEq(theCompact.balanceOf(recipient, id), amount);
@@ -329,12 +335,13 @@ contract TheCompactTest is Test {
         uint256 id = theCompact.deposit(address(token), amount, nonce, deadline, swapper, allocator, resetPeriod, scope, recipient, signature);
         vm.snapshotGasLastCall("depositERC20ViaPermit2AndURI");
 
-        (address derivedToken, address derivedAllocator, ResetPeriod derivedResetPeriod, Scope derivedScope) = theCompact.getLockDetails(id);
+        (address derivedToken, address derivedAllocator, ResetPeriod derivedResetPeriod, Scope derivedScope, bytes12 lockTag) = theCompact.getLockDetails(id);
         assertEq(derivedToken, address(token));
         assertEq(derivedAllocator, allocator);
         assertEq(uint256(derivedResetPeriod), uint256(resetPeriod));
         assertEq(uint256(derivedScope), uint256(scope));
         assertEq(id, (uint256(scope) << 255) | (uint256(resetPeriod) << 252) | (uint256(allocatorId) << 160) | uint256(uint160(address(token))));
+        assertEq(lockTag, bytes12(bytes32((uint256(scope) << 255) | (uint256(resetPeriod) << 252) | (uint256(allocatorId) << 160))));
 
         assertEq(token.balanceOf(address(theCompact)), amount);
         assertEq(theCompact.balanceOf(recipient, id), amount);
@@ -386,12 +393,13 @@ contract TheCompactTest is Test {
 
         assertEq(ids.length, 1);
 
-        (address derivedToken, address derivedAllocator, ResetPeriod derivedResetPeriod, Scope derivedScope) = theCompact.getLockDetails(ids[0]);
+        (address derivedToken, address derivedAllocator, ResetPeriod derivedResetPeriod, Scope derivedScope, bytes12 lockTag) = theCompact.getLockDetails(ids[0]);
         assertEq(derivedToken, address(token));
         assertEq(derivedAllocator, allocator);
         assertEq(uint256(derivedResetPeriod), uint256(resetPeriod));
         assertEq(uint256(derivedScope), uint256(scope));
         assertEq(ids[0], (uint256(scope) << 255) | (uint256(resetPeriod) << 252) | (uint256(allocatorId) << 160) | uint256(uint160(address(token))));
+        assertEq(lockTag, bytes12(bytes32((uint256(scope) << 255) | (uint256(resetPeriod) << 252) | (uint256(allocatorId) << 160))));
 
         assertEq(token.balanceOf(address(theCompact)), amount);
         assertEq(theCompact.balanceOf(recipient, ids[0]), amount);
@@ -444,13 +452,14 @@ contract TheCompactTest is Test {
 
         assertEq(ids.length, 2);
 
-        (address derivedToken, address derivedAllocator, ResetPeriod derivedResetPeriod, Scope derivedScope) = theCompact.getLockDetails(ids[0]);
+        (address derivedToken, address derivedAllocator, ResetPeriod derivedResetPeriod, Scope derivedScope, bytes12 lockTag) = theCompact.getLockDetails(ids[0]);
         assertEq(derivedToken, address(0));
         assertEq(derivedAllocator, allocator);
         assertEq(uint256(derivedResetPeriod), uint256(resetPeriod));
         assertEq(uint256(derivedScope), uint256(scope));
         assertEq(ids[0], (uint256(scope) << 255) | (uint256(resetPeriod) << 252) | (uint256(allocatorId) << 160) | uint256(uint160(address(0))));
         assertEq(ids[1], (uint256(scope) << 255) | (uint256(resetPeriod) << 252) | (uint256(allocatorId) << 160) | uint256(uint160(address(token))));
+        assertEq(lockTag, bytes12(bytes32((uint256(scope) << 255) | (uint256(resetPeriod) << 252) | (uint256(allocatorId) << 160))));
 
         assertEq(token.balanceOf(address(theCompact)), amount);
         assertEq(address(theCompact).balance, amount);
@@ -972,11 +981,12 @@ contract TheCompactTest is Test {
         assert(isActive);
         assertEq(expiresAt, 0x258 + block.timestamp);
 
-        (address derivedToken, address derivedAllocator, ResetPeriod derivedResetPeriod, Scope derivedScope) = theCompact.getLockDetails(id);
+        (address derivedToken, address derivedAllocator, ResetPeriod derivedResetPeriod, Scope derivedScope, bytes12 lockTag) = theCompact.getLockDetails(id);
         assertEq(derivedToken, address(token));
         assertEq(derivedAllocator, allocator);
         assertEq(uint256(derivedResetPeriod), uint256(resetPeriod));
         assertEq(uint256(derivedScope), uint256(scope));
+        assertEq(lockTag, bytes12(bytes32((uint256(scope) << 255) | (uint256(resetPeriod) << 252) | (uint256(allocatorId) << 160))));
 
         assertEq(token.balanceOf(address(theCompact)), amount);
         assertEq(theCompact.balanceOf(swapper, id), amount);
