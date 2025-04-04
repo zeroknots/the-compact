@@ -1383,6 +1383,16 @@ contract TheCompactTest is Test {
             )
         );
 
+        bytes32 allocationHashThree = keccak256(
+            abi.encode(
+                keccak256("Segment(address arbiter,uint256 chainId,uint256[2][] idsAndAmounts,Witness witness)Witness(uint256 witnessArgument)"),
+                arbiter,
+                41414141,
+                keccak256(abi.encodePacked(idsAndAmountsTwo)),
+                witness
+            )
+        );
+
         bytes32 claimHash = keccak256(
             abi.encode(
                 keccak256(
@@ -1391,7 +1401,7 @@ contract TheCompactTest is Test {
                 swapper,
                 nonce,
                 expires,
-                keccak256(abi.encodePacked(allocationHashOne, allocationHashTwo))
+                keccak256(abi.encodePacked(allocationHashOne, allocationHashTwo, allocationHashThree))
             )
         );
 
@@ -1405,8 +1415,9 @@ contract TheCompactTest is Test {
         (r, vs) = vm.signCompact(allocatorPrivateKey, digest);
         bytes memory allocatorData = abi.encodePacked(r, vs);
 
-        bytes32[] memory additionalChains = new bytes32[](1);
+        bytes32[] memory additionalChains = new bytes32[](2);
         additionalChains[0] = allocationHashTwo;
+        additionalChains[1] = allocationHashThree;
 
         uint256 claimantOne = abi.decode(abi.encodePacked(bytes12(bytes32(id)), recipientOne), (uint256));
         uint256 claimantTwo = abi.decode(abi.encodePacked(bytes12(bytes32(id)), recipientTwo), (uint256));
@@ -1451,6 +1462,7 @@ contract TheCompactTest is Test {
         bytes memory exogenousallocatorData = abi.encodePacked(r, vs);
 
         additionalChains[0] = allocationHashOne;
+        additionalChains[1] = allocationHashThree;
         uint256 chainIndex = 0;
 
         ExogenousMultichainClaim memory anotherClaim = ExogenousMultichainClaim(
