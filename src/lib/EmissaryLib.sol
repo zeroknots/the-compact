@@ -122,12 +122,11 @@ library EmissaryLib {
      * The scheduling mechanism ensures that emissaries cannot be reassigned arbitrarily,
      * enforcing a reset period that must elapse before a new assignment is possible.
      * This prevents abuse of the system by requiring a cooldown period between assignments.
-     * @param sponsor The address of the sponsor
      * @param lockTag The lock tag for the assignment
      * @return assignableAt The timestamp when the assignment becomes available
      */
-    function scheduleEmissaryAssignment(address sponsor, bytes12 lockTag) internal returns (uint256 assignableAt) {
-        EmissaryConfig storage emissaryConfig = _getEmissaryConfig(sponsor, lockTag);
+    function scheduleEmissaryAssignment(bytes12 lockTag) internal returns (uint256 assignableAt) {
+        EmissaryConfig storage emissaryConfig = _getEmissaryConfig(msg.sender, lockTag);
         unchecked {
             // extract five bit resetPeriod from lockTag
             assignableAt = block.timestamp + ResetPeriod(uint8((lockTag.asUint256() >> 252) & 0xF)).toSeconds();
@@ -136,7 +135,7 @@ library EmissaryLib {
         }
         emissaryConfig.assignableAt = uint96(assignableAt);
 
-        emit EmissaryAssignmentScheduled(sponsor, lockTag, assignableAt);
+        emit EmissaryAssignmentScheduled(msg.sender, lockTag, assignableAt);
         return assignableAt;
     }
 

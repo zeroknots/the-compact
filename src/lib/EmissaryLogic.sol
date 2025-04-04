@@ -54,9 +54,9 @@ abstract contract EmissaryLogic {
      *
      * @custom:emits EmissaryTimelockSet event through the library call, signaling the start of the timelock period
      */
-    function _scheduleEmissaryAssignment(address sponsor, address allocator, ResetPeriod resetPeriod, Scope scope) internal returns (uint256 emissaryAssignmentAvailableAt) {
+    function _scheduleEmissaryAssignment(address allocator, ResetPeriod resetPeriod, Scope scope) internal returns (uint256 emissaryAssignmentAvailableAt) {
         bytes12 lockTag = allocator.toAllocatorIdIfRegistered().toLockTag(scope, resetPeriod);
-        emissaryAssignmentAvailableAt = sponsor.scheduleEmissaryAssignment(lockTag);
+        emissaryAssignmentAvailableAt = lockTag.scheduleEmissaryAssignment();
     }
 
     /**
@@ -80,14 +80,12 @@ abstract contract EmissaryLogic {
      * @custom:emits EmissarySet event through the library call, signaling the successful assignment of a new emissary
      * @custom:throws If the timelock period has not passed or was not initiated, ensuring secure delegation practices
      */
-    function _assignEmissary(bytes12 lockTag, address emissary, bytes calldata proof) internal returns (bool) {
+    function _assignEmissary(bytes12 lockTag, address emissary) internal returns (bool) {
         // extract allocatorId from locktag and ensure that the allocator is registered
         address allocator = lockTag.toAllocatorId().toRegisteredAllocator();
         // setting an allocator as the emissary is dangerous, as the signer could withdraw funds from the resource lock
         require(allocator != emissary, InvalidEmissaryAssignment());
         lockTag.assignEmissary(emissary);
-
-        require(IAllocator(allocator).authorizeEmissaryAssignment(msg.sender, emissary, proof, lockTag) == IAllocator.authorizeEmissaryAssignment.selector, InvalidEmissaryAssignment());
 
         return true;
     }

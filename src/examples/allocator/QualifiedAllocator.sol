@@ -49,8 +49,4 @@ contract QualifiedAllocator is IAllocator {
 
         return this.authorizeClaim.selector;
     }
-
-    function authorizeEmissaryAssignment(address, /* sponsor */ address, /* emissary */ bytes calldata, /* proof */ bytes12 /* lockTag */ ) external pure override returns (bytes4) {
-        return IAllocator.authorizeEmissaryAssignment.selector;
-    }
 }

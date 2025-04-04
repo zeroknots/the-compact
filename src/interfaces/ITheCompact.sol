@@ -439,10 +439,9 @@ interface ITheCompact {
      * for the duration of the reset period. The reset period ensures that once an emissary is
      * assigned, another assignment cannot be made until the reset period has elapsed.
      * @param lockTag The lockTag the emissary is will be assigned for
-     * @param proof additional data that will be provided to allocator
      * @return Whether the assignment was successful
      */
-    function assignEmissary(bytes12 lockTag, address emissary, bytes calldata proof) external returns (bool);
+    function assignEmissary(bytes12 lockTag, address emissary) external returns (bool);
 
     /**
      * @notice Schedules a future emissary assignment for a specific allocator. The reset period determines
