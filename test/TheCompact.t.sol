@@ -36,6 +36,8 @@ interface ImmutableCreate2Factory {
 }
 
 contract TheCompactTest is Test {
+    using IdLib for uint96;
+
     TheCompact public theCompact;
     MockERC20 public token;
     MockERC20 public anotherToken;
@@ -1688,11 +1690,12 @@ contract TheCompactTest is Test {
         address arbiter = 0x2222222222222222222222222222222222222222;
 
         vm.prank(allocator);
-        theCompact.__registerAllocator(allocator, "");
+        uint96 allocatorId = theCompact.__registerAllocator(allocator, "");
 
         address emissary = address(new AlwaysOKEmissary());
+        bytes12 lockTag = allocatorId.toLockTag(scope, resetPeriod);
         vm.prank(swapper);
-        theCompact.assignEmissary(allocator, emissary, "", resetPeriod, scope);
+        theCompact.assignEmissary(lockTag, emissary, "");
 
         vm.prank(swapper);
         uint256 id = theCompact.deposit{ value: amount }(allocator, resetPeriod, scope, swapper);

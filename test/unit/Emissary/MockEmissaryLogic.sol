@@ -13,16 +13,16 @@ contract MockEmissaryLogic is TheCompactLogic {
     using IdLib for address;
     using IdLib for uint96;
 
-    function registerAllocator(address allocator, bytes calldata proof) external {
-        _registerAllocator(allocator, proof);
+    function registerAllocator(address allocator, bytes calldata proof) external returns (uint96) {
+        return _registerAllocator(allocator, proof);
     }
 
     function scheduleEmissaryAssignment(address sponsor, address allocator, ResetPeriod resetPeriod, Scope scope) external returns (uint256) {
         return _scheduleEmissaryAssignment(sponsor, allocator, resetPeriod, scope);
     }
 
-    function assignEmissary(address sponsor, address allocator, address emissary, bytes calldata proof, ResetPeriod resetPeriod, Scope scope) external returns (bool) {
-        return _assignEmissary(sponsor, allocator, emissary, proof, resetPeriod, scope);
+    function assignEmissary(bytes12 lockTag, address emissary, bytes calldata proof) external returns (bool) {
+        return _assignEmissary(lockTag, emissary, proof);
     }
 
     function verifyWithEmissary(address sponsor, bytes calldata signature, bytes32 messageHash, address allocator, ResetPeriod resetPeriod, Scope scope) external view returns (bool) {

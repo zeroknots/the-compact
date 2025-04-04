@@ -35,6 +35,8 @@ library EmissaryLib {
     using IdLib for ResetPeriod;
     using IdLib for uint96;
     using EfficiencyLib for bytes12;
+    using EfficiencyLib for bool;
+    using EfficiencyLib for uint256;
 
     error EmissaryAssignmentUnavailable(uint256 assignAt);
     error InvalidLockTag();
@@ -42,7 +44,7 @@ library EmissaryLib {
     event EmissaryAssigned(address indexed sponsor, bytes12 indexed lockTag, address indexed emissary);
     event EmissaryAssignmentScheduled(address indexed sponsor, bytes12 indexed lockTag, uint256 indexed assignableAt);
 
-    uint88 constant NOT_SCHEDULED = type(uint88).max;
+    uint96 constant NOT_SCHEDULED = type(uint96).max;
 
     // Storage slot for emissary configurations
     // Maps: keccak256(_EMISSARY_SCOPE) => EmissarySlot
@@ -72,9 +74,6 @@ library EmissaryLib {
             // - The entire 12-byte allocator id (which starts at position 0x34)
             // Hash 0x24 (36 bytes) of data in total
             config.slot := keccak256(0x1c, 0x24)
-
-            // Restore the free memory pointer.
-            mstore(0x40, m)
         }
     }
 
@@ -83,15 +82,11 @@ library EmissaryLib {
      * The function ensures that the assignment process adheres to the scheduling rules
      * and prevents invalid or premature assignments. It also clears the configuration
      * when removing an emissary to keep storage clean and avoid stale data.
-     * @param sponsor The address of the sponsor
-     * @param allocator The address of the allocator
+     * @param lockTag The lockTag of the emissary
      * @param newEmissary The address of the new emissary (use address(0) to remove)
-     * @param resetPeriod The reset period for assignment cooldown
-     * @param scope The scope of the assignment
      */
-    function assignEmissary(address sponsor, address allocator, address newEmissary, ResetPeriod resetPeriod, Scope scope) internal {
-        bytes12 lockTag = allocator.toAllocatorIdIfRegistered().toLockTag(scope, resetPeriod);
-        EmissaryConfig storage config = _getEmissaryConfig(sponsor, lockTag);
+    function assignEmissary(bytes12 lockTag, address newEmissary) internal {
+        EmissaryConfig storage config = _getEmissaryConfig(msg.sender, lockTag);
         uint256 _assignableAt = config.assignableAt;
         address _emissary = config.emissary;
 
@@ -112,16 +107,14 @@ library EmissaryLib {
             // We clear all related storage fields to maintain a clean state and avoid stale data.
             delete config.emissary;
             delete config.assignableAt;
-            delete config.resetPeriod;
         }
         // otherwise we set the provided resetPeriod
         else {
             config.emissary = newEmissary;
             config.assignableAt = NOT_SCHEDULED;
-            config.resetPeriod = resetPeriod;
         }
 
-        emit EmissaryAssigned(sponsor, lockTag, newEmissary);
+        emit EmissaryAssigned(msg.sender, lockTag, newEmissary);
     }
 
     /**
@@ -135,9 +128,13 @@ library EmissaryLib {
      */
     function scheduleEmissaryAssignment(address sponsor, bytes12 lockTag) internal returns (uint256 assignableAt) {
         EmissaryConfig storage emissaryConfig = _getEmissaryConfig(sponsor, lockTag);
-        uint256 resetPeriod = emissaryConfig.resetPeriod.toSeconds();
-        assignableAt = block.timestamp + resetPeriod;
-        emissaryConfig.assignableAt = uint88(assignableAt);
+        unchecked {
+            // extract five bit resetPeriod from lockTag
+            assignableAt = block.timestamp + ResetPeriod(uint8((lockTag.asUint256() >> 252) & 0xF)).toSeconds();
+            // to ensure safety, this enforces: assignableAt MUST be in the future and smaller than uin96.max
+            if ((assignableAt < block.timestamp).or(assignableAt > type(uint96).max)) revert InvalidLockTag();
+        }
+        emissaryConfig.assignableAt = uint96(assignableAt);
 
         emit EmissaryAssignmentScheduled(sponsor, lockTag, assignableAt);
         return assignableAt;
@@ -149,16 +146,23 @@ library EmissaryLib {
      * @return lockTag The common lock tag across all IDs
      */
     function extractSameLockTag(uint256[2][] memory idsAndAmounts) internal pure returns (bytes12 lockTag) {
-        for (uint256 i; i < idsAndAmounts.length;) {
-            bytes12 _lockTag = idsAndAmounts[i][0].toLockTag();
+        // cache length
+        uint256 idsAndAmountsLength = idsAndAmounts.length;
+        //ensure length is at least 1
+        require(idsAndAmountsLength != 0, InvalidLockTag());
+        // store the first lockTag for the first id
+        lockTag = idsAndAmounts[0][0].toLockTag();
+        uint256 errorBuffer;
+        for (uint256 i; i < idsAndAmountsLength;) {
+            // set error buffer if iterated id lockTag is not the same as the first lockTag
+            errorBuffer |= (idsAndAmounts[i][0].toLockTag() != lockTag).asUint256();
             // overwrite lockTag
-            if (lockTag == bytes12(0)) lockTag = _lockTag;
-            // enforce that all idsAndAmounts have the same lockTag
-            else require(lockTag == _lockTag, InvalidLockTag());
             unchecked {
                 i++;
             }
         }
+        // revert if errorBuffer is not empty
+        if (errorBuffer.asBool()) revert InvalidLockTag();
     }
 
     /**

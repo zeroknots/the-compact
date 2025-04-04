@@ -20,5 +20,5 @@ interface IAllocator {
     ) external returns (bytes4); // Must return the function selector.
 
     // authorize an emissary implementation. called from The compact as part of emissary assignment
-    function authorizeEmissaryAssignment(address sponsor, address emissary, bytes calldata proof, ResetPeriod resetPeriod) external returns (bytes4);
+    function authorizeEmissaryAssignment(address sponsor, address emissary, bytes calldata proof, bytes12 lockTag) external returns (bytes4);
 }

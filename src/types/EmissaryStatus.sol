@@ -13,8 +13,6 @@ enum EmissaryStatus {
 struct EmissaryConfig {
     // 20 bytes
     address emissary; // address of the sponsor's emissary
-    // 1 byte
-    ResetPeriod resetPeriod; // period after which a set emissary can be re-assigned
-    // 11 bytes
-    uint88 assignableAt; // timestamp after which an emissary can be re-assigned
+    // 12 bytes
+    uint96 assignableAt; // timestamp after which an emissary can be re-assigned
 }

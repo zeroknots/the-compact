@@ -438,13 +438,11 @@ interface ITheCompact {
      * @notice Assigns an emissary to an allocator with a reset period that blocks reassignment
      * for the duration of the reset period. The reset period ensures that once an emissary is
      * assigned, another assignment cannot be made until the reset period has elapsed.
-     * @param allocator The address of the allocator being mapped to an emissary
-     * @param emissary  The address of the emissary to assign
+     * @param lockTag The lockTag the emissary is will be assigned for
      * @param proof additional data that will be provided to allocator
-     * @param resetPeriod The duration that blocks reassignment attempts after assignment
      * @return Whether the assignment was successful
      */
-    function assignEmissary(address allocator, address emissary, bytes calldata proof, ResetPeriod resetPeriod, Scope scope) external returns (bool);
+    function assignEmissary(bytes12 lockTag, address emissary, bytes calldata proof) external returns (bool);
 
     /**
      * @notice Schedules a future emissary assignment for a specific allocator. The reset period determines

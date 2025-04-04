@@ -103,6 +103,7 @@ library ValidityLib {
      * @param domainSeparator The domain separator to combine with the message hash.
      */
     function signedBySponsorOrEmissary(bytes32 messageHash, address expectedSigner, bytes calldata signature, bytes32 domainSeparator, uint256[2][] memory idsAndAmounts) internal view {
+        if (expectedSigner == msg.sender) return;
         // Apply domain separator to message hash and verify it was signed correctly.
         bytes32 claimHash = messageHash.withDomain(domainSeparator);
         // first check signature with ECDSA / ERC1271
@@ -111,7 +112,7 @@ library ValidityLib {
 
         assembly ("memory-safe") {
             // Allow signature check to be bypassed if caller is the expected signer.
-            if iszero(or(hasValidSigner, eq(expectedSigner, caller()))) {
+            if iszero(hasValidSigner) {
                 // revert InvalidSignature();
                 mstore(0, 0x8baa579f)
                 revert(0x1c, 0x04)

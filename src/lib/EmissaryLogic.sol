@@ -32,6 +32,8 @@ import { EmissaryStatus } from "../types/EmissaryStatus.sol";
 abstract contract EmissaryLogic {
     using IdLib for address;
     using IdLib for uint96;
+    using IdLib for bytes12;
+    using EmissaryLib for bytes12;
     using EmissaryLib for address;
 
     error InvalidEmissaryAssignment();
@@ -78,11 +80,14 @@ abstract contract EmissaryLogic {
      * @custom:emits EmissarySet event through the library call, signaling the successful assignment of a new emissary
      * @custom:throws If the timelock period has not passed or was not initiated, ensuring secure delegation practices
      */
-    function _assignEmissary(address sponsor, address allocator, address emissary, bytes calldata proof, ResetPeriod resetPeriod, Scope scope) internal returns (bool) {
+    function _assignEmissary(bytes12 lockTag, address emissary, bytes calldata proof) internal returns (bool) {
+        // extract allocatorId from locktag and ensure that the allocator is registered
+        address allocator = lockTag.toAllocatorId().toRegisteredAllocator();
+        // setting an allocator as the emissary is dangerous, as the signer could withdraw funds from the resource lock
         require(allocator != emissary, InvalidEmissaryAssignment());
-        sponsor.assignEmissary(allocator, emissary, resetPeriod, scope);
+        lockTag.assignEmissary(emissary);
 
-        require(IAllocator(allocator).authorizeEmissaryAssignment(sponsor, emissary, proof, resetPeriod) == IAllocator.authorizeEmissaryAssignment.selector, InvalidEmissaryAssignment());
+        require(IAllocator(allocator).authorizeEmissaryAssignment(msg.sender, emissary, proof, lockTag) == IAllocator.authorizeEmissaryAssignment.selector, InvalidEmissaryAssignment());
 
         return true;
     }

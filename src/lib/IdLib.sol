@@ -402,6 +402,10 @@ library IdLib {
         }
     }
 
+    function toAllocatorId(bytes12 lockTag) internal pure returns (uint96 allocatorId) {
+        allocatorId = uint96((lockTag.asUint256() >> 160) & ((1 << 91) - 1));
+    }
+
     /**
      * @notice Internal pure function for deriving a resource lock ID from a Lock struct.
      * The ID consists of:

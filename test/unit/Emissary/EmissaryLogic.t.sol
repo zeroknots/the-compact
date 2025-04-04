@@ -7,8 +7,13 @@ import { EmissaryStatus } from "src/types/EmissaryStatus.sol";
 import "./MockEmissaryLogic.sol";
 import "src/test/AlwaysOKEmissary.sol";
 import "src/test/AlwaysOKAllocator.sol";
+import "src/lib/EfficiencyLib.sol";
+import { console2 } from "forge-std/console2.sol";
 
 contract EmissaryLogicTest is Test {
+    using IdLib for *;
+    using EfficiencyLib for *;
+
     MockEmissaryLogic logic;
 
     AlwaysOKEmissary emissary1;
@@ -18,6 +23,8 @@ contract EmissaryLogicTest is Test {
     AlwaysOKAllocator allocator;
     ResetPeriod resetPeriod;
     Scope scope;
+    uint96 allocatorId;
+    bytes12 lockTag;
 
     function setUp() public {
         logic = new MockEmissaryLogic();
@@ -29,26 +36,30 @@ contract EmissaryLogicTest is Test {
         resetPeriod = ResetPeriod.TenMinutes;
         scope = Scope.Multichain;
 
-        logic.registerAllocator(address(allocator), "");
+        allocatorId = logic.registerAllocator(address(allocator), "");
+        console2.log("Allocator ID: ", allocatorId);
+        lockTag = allocatorId.toLockTag(scope, resetPeriod);
 
         vm.warp(1743479729);
     }
 
     function test_new_emissary() public {
-        bool success = logic.assignEmissary(sponsor, address(allocator), address(emissary1), "", resetPeriod, scope);
+        vm.prank(sponsor);
+        bool success = logic.assignEmissary(lockTag, address(emissary1), "");
         assertTrue(success);
 
         (EmissaryStatus status, uint256 assignableAt, address currentEmissary) = logic.getEmissaryStatus(sponsor, address(allocator), resetPeriod, scope);
 
         assertTrue(status == EmissaryStatus.Enabled, "Status");
-        assertTrue(assignableAt == type(uint88).max, "timestamp");
+        assertTrue(assignableAt == type(uint96).max, "timestamp");
         assertTrue(currentEmissary == address(emissary1), "addr");
     }
 
     function test_new_emissary_withoutSchedule() public {
         test_new_emissary();
         vm.expectRevert();
-        logic.assignEmissary(sponsor, address(allocator), address(emissary1), "", resetPeriod, scope);
+        vm.prank(sponsor);
+        logic.assignEmissary(lockTag, address(emissary1), "");
     }
 
     function test_reset_emissary() public {
@@ -69,14 +80,16 @@ contract EmissaryLogicTest is Test {
         vm.warp(block.timestamp + 1 minutes);
 
         vm.expectRevert();
-        bool success = logic.assignEmissary(sponsor, address(allocator), address(emissary1), "", resetPeriod, scope);
+        vm.prank(sponsor);
+        bool success = logic.assignEmissary(lockTag, address(emissary1), "");
         vm.warp(block.timestamp + 10 minutes);
-        success = logic.assignEmissary(sponsor, address(allocator), address(emissary2), "", resetPeriod, scope);
+        vm.prank(sponsor);
+        success = logic.assignEmissary(lockTag, address(emissary2), "");
 
         (status, assignableAt, currentEmissary) = logic.getEmissaryStatus(sponsor, address(allocator), resetPeriod, scope);
 
         assertTrue(status == EmissaryStatus.Enabled, "Status");
-        assertTrue(assignableAt == type(uint88).max, "timestamp");
+        assertTrue(assignableAt == type(uint96).max, "timestamp");
         assertTrue(currentEmissary == address(emissary2), "addr");
     }
 
@@ -98,12 +111,40 @@ contract EmissaryLogicTest is Test {
         assertTrue(currentEmissary == address(emissary1), "addr");
 
         vm.warp(block.timestamp + 10 minutes);
-        logic.assignEmissary(sponsor, address(allocator), address(0), "", resetPeriod, scope);
+        vm.prank(sponsor);
+        logic.assignEmissary(lockTag, address(0), "");
 
         (status, assignableAt, currentEmissary) = logic.getEmissaryStatus(sponsor, address(allocator), resetPeriod, scope);
 
         assertTrue(status == EmissaryStatus.Disabled, "Status");
         assertTrue(assignableAt == 0, "timestamp should be 0");
         assertTrue(currentEmissary == address(0), "addr");
+    }
+
+    function test_lockTag() public {
+        address allocator = 0xFFfFfFffFFfffFFfFFfFFFFFffFFFffffFfFFFfF;
+        uint96 allocatorId = allocator.usingAllocatorId();
+        bytes12 tag = toLockTag(allocatorId, Scope.Multichain, ResetPeriod.OneHourAndFiveMinutes);
+        (uint96 _allocatorId, Scope _scope, ResetPeriod _resetPeriod) = fromLockTag(tag);
+        assertEq(allocatorId, _allocatorId);
+        assertTrue(scope == _scope, "scope");
+        assertTrue(ResetPeriod.OneHourAndFiveMinutes == _resetPeriod, "ResetPeriod");
+    }
+
+    function toLockTag(uint96 allocatorId, Scope scope, ResetPeriod resetPeriod) internal pure returns (bytes12) {
+        // Derive lock tag (pack scope, reset period, & allocator ID).
+        return ((scope.asUint256() << 255) | (resetPeriod.asUint256() << 252) | (allocatorId.asUint256() << 160)).asBytes12();
+    }
+
+    function fromLockTag(bytes12 tag) internal pure returns (uint96 _allocatorId, Scope _scope, ResetPeriod _resetPeriod) {
+        uint256 value = tag.asUint256();
+
+        // Extract scope (bits 255 to 253)
+        _scope = Scope(uint8((value >> 255) & 0x1)); // 0x7 = 0b111 (3 bits)
+
+        _resetPeriod = ResetPeriod(uint8((value >> 252) & 0xF)); // FIXED: mask with 0xF for 4 bits
+
+        // Extract allocatorId (bits 160 to 250, which is 91 bits)
+        _allocatorId = uint96((value >> 160) & ((1 << 91) - 1));
     }
 }
