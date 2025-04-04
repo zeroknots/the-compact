@@ -152,17 +152,14 @@ library EmissaryLib {
         require(idsAndAmountsLength != 0, InvalidLockTag());
         // store the first lockTag for the first id
         lockTag = idsAndAmounts[0][0].toLockTag();
-        uint256 errorBuffer;
         for (uint256 i; i < idsAndAmountsLength;) {
-            // set error buffer if iterated id lockTag is not the same as the first lockTag
-            errorBuffer |= (idsAndAmounts[i][0].toLockTag() != lockTag).asUint256();
-            // overwrite lockTag
+            // revert if first lockTag for idsAndAmounts(i) is different to first lockTag
+            require(idsAndAmounts[i][0].toLockTag() == lockTag, InvalidLockTag());
+            // iterate
             unchecked {
                 i++;
             }
         }
-        // revert if errorBuffer is not empty
-        if (errorBuffer.asBool()) revert InvalidLockTag();
     }
 
     /**
