@@ -17,12 +17,12 @@ contract MockEmissaryLogic is TheCompactLogic {
         return _registerAllocator(allocator, proof);
     }
 
-    function scheduleEmissaryAssignment(address sponsor, address allocator, ResetPeriod resetPeriod, Scope scope) external returns (uint256) {
-        return _scheduleEmissaryAssignment(sponsor, allocator, resetPeriod, scope);
+    function scheduleEmissaryAssignment(address allocator, ResetPeriod resetPeriod, Scope scope) external returns (uint256) {
+        return _scheduleEmissaryAssignment(allocator, resetPeriod, scope);
     }
 
-    function assignEmissary(bytes12 lockTag, address emissary, bytes calldata proof) external returns (bool) {
-        return _assignEmissary(lockTag, emissary, proof);
+    function assignEmissary(bytes12 lockTag, address emissary) external returns (bool) {
+        return _assignEmissary(lockTag, emissary);
     }
 
     function verifyWithEmissary(address sponsor, bytes calldata signature, bytes32 messageHash, address allocator, ResetPeriod resetPeriod, Scope scope) external view returns (bool) {

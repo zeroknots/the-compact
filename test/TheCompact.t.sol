@@ -1695,7 +1695,7 @@ contract TheCompactTest is Test {
         address emissary = address(new AlwaysOKEmissary());
         bytes12 lockTag = allocatorId.toLockTag(scope, resetPeriod);
         vm.prank(swapper);
-        theCompact.assignEmissary(lockTag, emissary, "");
+        theCompact.assignEmissary(lockTag, emissary);
 
         vm.prank(swapper);
         uint256 id = theCompact.deposit{ value: amount }(allocator, resetPeriod, scope, swapper);
