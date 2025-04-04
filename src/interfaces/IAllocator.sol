@@ -16,4 +16,15 @@ interface IAllocator {
         uint256[2][] calldata idsAndAmounts, // The allocated token IDs and amounts.
         bytes calldata allocatorData // Arbitrary data provided by the arbiter.
     ) external returns (bytes4); // Must return the function selector.
+
+    // Check if given allocatorData authorizes a claim. Intented to be called offchain.
+    function isClaimAuthorized(
+        bytes32 claimHash, // The message hash representing the claim.
+        address arbiter, // The account tasked with verifying and submitting the claim.
+        address sponsor, // The account to source the tokens from.
+        uint256 nonce, // A parameter to enforce replay protection, scoped to allocator.
+        uint256 expires, // The time at which the claim expires.
+        uint256[2][] calldata idsAndAmounts, // The allocated token IDs and amounts.
+        bytes calldata allocatorData // Arbitrary data provided by the arbiter.
+    ) external view returns (bool);
 }
