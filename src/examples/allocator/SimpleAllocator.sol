@@ -32,12 +32,12 @@ contract SimpleAllocator is IAllocator {
         uint256[2][] calldata idsAndAmounts, // The allocated token IDs and amounts.
         bytes calldata allocatorData // Arbitrary data provided by the arbiter.
     ) external view returns (bytes4) {
-        require(checkAuthorizeClaim(claimHash, arbiter, sponsor, nonce, expires, idsAndAmounts, allocatorData), "Invalid Sig");
+        require(isClaimAuthorized(claimHash, arbiter, sponsor, nonce, expires, idsAndAmounts, allocatorData), "Invalid Sig");
 
         return this.authorizeClaim.selector;
     }
 
-    function checkAuthorizeClaim(
+    function isClaimAuthorized(
         bytes32 claimHash, // The message hash representing the claim.
         address arbiter, // The account tasked with verifying and submitting the claim.
         address sponsor, // The account to source the tokens from.

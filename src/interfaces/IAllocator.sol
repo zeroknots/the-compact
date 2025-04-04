@@ -17,8 +17,8 @@ interface IAllocator {
         bytes calldata allocatorData // Arbitrary data provided by the arbiter.
     ) external returns (bytes4); // Must return the function selector.
 
-    // Check if some allocatorData will result in an authorized claim if called.
-    function checkAuthorizeClaim(
+    // Check if given allocatorData authorizes a claim. Intented to be called offchain.
+    function isClaimAuthorized(
         bytes32 claimHash, // The message hash representing the claim.
         address arbiter, // The account tasked with verifying and submitting the claim.
         address sponsor, // The account to source the tokens from.
