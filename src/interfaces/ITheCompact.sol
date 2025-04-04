@@ -29,8 +29,16 @@ interface ITheCompact {
      * @param allocator  The account mediating the resource locks utilized by the claim.
      * @param arbiter    The account verifying and initiating the settlement of the claim.
      * @param claimHash  A bytes32 hash derived from the details of the claimed compact.
+     * @param nonce      The nonce (scoped to the allocator) on the claimed compact.
      */
-    event Claim(address indexed sponsor, address indexed allocator, address indexed arbiter, bytes32 claimHash);
+    event Claim(address indexed sponsor, address indexed allocator, address indexed arbiter, bytes32 claimHash, uint256 nonce);
+
+    /**
+     * @notice Event indicating that a nonce has been consumed directly.
+     * @param allocator  The account mediating the nonces.
+     * @param nonce      The nonce (scoped to the allocator) in question.
+     */
+    event NonceConsumedDirectly(address indexed allocator, uint256 nonce);
 
     /**
      * @notice Event indicating a change in forced withdrawal status.

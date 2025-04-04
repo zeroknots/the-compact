@@ -9,6 +9,8 @@ import { EfficiencyLib } from "./EfficiencyLib.sol";
 import { IdLib } from "./IdLib.sol";
 import { ValidityLib } from "./ValidityLib.sol";
 
+import { ITheCompact } from "../interfaces/ITheCompact.sol";
+
 /**
  * @title AllocatorLogic
  * @notice Inherited contract implementing internal functions with logic for registering
@@ -48,6 +50,8 @@ contract AllocatorLogic {
                     nonce := calldataload(i)
                 }
                 nonce.consumeNonceAsAllocator(msg.sender);
+
+                emit ITheCompact.NonceConsumedDirectly(msg.sender, nonce);
             }
         }
 
