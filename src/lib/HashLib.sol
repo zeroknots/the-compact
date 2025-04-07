@@ -609,16 +609,22 @@ library HashLib {
      * @notice Internal pure function for deriving the hash of ids and amounts provided.
      * @param idsAndAmounts      An array of ids and amounts.
      * @return idsAndAmountsHash The hash of the ids and amounts.
+     * @dev This function expects that the calldata of idsAndAmounts will have bounds
+     * checked elsewhere; using it without this check occurring elsewhere can result in
+     * erroneous hash values.
      */
     function toIdsAndAmountsHash(uint256[2][] calldata idsAndAmounts) internal pure returns (bytes32 idsAndAmountsHash) {
         assembly ("memory-safe") {
             // Retrieve the free memory pointer; memory will be left dirtied.
             let ptr := mload(0x40)
+
             // Get the total length of the calldata slice.
-            // For every 1 instance of uint256[], it takes up 2 words.
+            // Each element of the array consists of 2 words.
             let len := mul(idsAndAmounts.length, 0x40)
+
             // Copy calldata into memory at the free memory pointer.
             calldatacopy(ptr, idsAndAmounts.offset, len)
+
             // Compute the hash of the calldata that has been copied into memory.
             idsAndAmountsHash := keccak256(ptr, len)
         }
