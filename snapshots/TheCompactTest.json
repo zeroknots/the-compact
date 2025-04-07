@@ -13,7 +13,7 @@
   "depositERC20ViaPermit2AndURI": "98323",
   "depositETHAndURI": "26094",
   "depositETHBasic": "26565",
-  "depositRegisterFor": "79122",
+  "depositRegisterFor": "79106",
   "exogenousSplitBatchMultichainClaimWithWitness": "121807",
   "exogenousSplitMultichainClaimWithWitness": "92831",
   "qualified_basicTransfer": "60821",
