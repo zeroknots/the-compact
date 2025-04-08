@@ -15,6 +15,13 @@ library DomainLib {
     /// @dev `keccak256("1")`.
     bytes32 internal constant _VERSION_HASH = 0xc89efdaa54c0f20c7adf612882df0950f5a951637e0307cdcb4c672f298b8bc6;
 
+    /**
+     * @notice Internal view function that returns the current domain separator, deriving a new one
+     * if the chain ID has changed from the initial chain ID.
+     * @param initialDomainSeparator The domain separator derived at deployment time.
+     * @param initialChainId         The chain ID at the time of deployment.
+     * @return domainSeparator       The current domain separator.
+     */
     function toLatest(bytes32 initialDomainSeparator, uint256 initialChainId) internal view returns (bytes32 domainSeparator) {
         // Set the initial domain separator as the default domain separator.
         domainSeparator = initialDomainSeparator;
@@ -38,6 +45,12 @@ library DomainLib {
         }
     }
 
+    /**
+     * @notice Internal view function that derives a domain separator for a specific chain ID.
+     * Used for notarizing multichain claims with segments that will be executed on a different chain.
+     * @param notarizedChainId          The chain ID to derive the domain separator for.
+     * @return notarizedDomainSeparator The domain separator for the specified chain ID.
+     */
     function toNotarizedDomainSeparator(uint256 notarizedChainId) internal view returns (bytes32 notarizedDomainSeparator) {
         assembly ("memory-safe") {
             // Retrieve the free memory pointer.
@@ -55,6 +68,13 @@ library DomainLib {
         }
     }
 
+    /**
+     * @notice Internal pure function that combines a message hash with a domain separator
+     * to create a domain-specific hash according to EIP-712.
+     * @param messageHash     The EIP-712 hash of the message data.
+     * @param domainSeparator The domain separator to combine with the message hash.
+     * @return domainHash     The domain-specific hash.
+     */
     function withDomain(bytes32 messageHash, bytes32 domainSeparator) internal pure returns (bytes32 domainHash) {
         assembly ("memory-safe") {
             // Retrieve and cache the free memory pointer.

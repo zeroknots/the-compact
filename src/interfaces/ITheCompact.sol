@@ -13,7 +13,7 @@ import { BatchTransfer, SplitBatchTransfer } from "../types/BatchClaims.sol";
 
 /**
  * @title The Compact — Core Interface
- * @custom:version 0 (early-stage proof-of-concept)
+ * @custom:version 1
  * @author 0age (0age.eth)
  * @notice The Compact is an ownerless ERC6909 contract that facilitates the voluntary
  * formation and mediation of reusable "resource locks." This interface contract specifies
@@ -517,6 +517,54 @@ interface ITheCompact {
      * @return registrationTimestamp The timestamp at which the compact was registered.
      */
     function getRegistrationStatus(address sponsor, bytes32 claimHash, bytes32 typehash) external view returns (bool isActive, uint256 registrationTimestamp);
+
+    /**
+     * @notice Register a batch claim on behalf of a sponsor with their signature.
+     * @param sponsor          The address of the sponsor for whom the claim is being registered.
+     * @param idsAndAmounts    Array of [id, amount] pairs with each pair indicating the resource lock and amount.
+     * @param arbiter          The account tasked with verifying and submitting the claim.
+     * @param nonce            A parameter to enforce replay protection, scoped to allocator.
+     * @param expires          The time at which the claim expires.
+     * @param typehash         The EIP-712 typehash associated with the registered compact.
+     * @param witness          Hash of the witness data.
+     * @param sponsorSignature The signature from the sponsor authorizing the registration.
+     * @return claimHash       The hash of the registered claim.
+     */
+    function registerFor(address sponsor, uint256[2][] calldata idsAndAmounts, address arbiter, uint256 nonce, uint256 expires, bytes32 typehash, bytes32 witness, bytes calldata sponsorSignature)
+        external
+        returns (bytes32 claimHash);
+
+    /**
+     * @notice Register a claim on behalf of a sponsor with their signature.
+     * @param sponsor          The address of the sponsor for whom the claim is being registered.
+     * @param token            The address of the token associated with the resource lock.
+     * @param allocator        The address of the allocator mediating the resource lock.
+     * @param resetPeriod      The duration after which the resource lock can be reset once a forced withdrawal is initiated.
+     * @param scope            The scope of the resource lock (multichain or single chain).
+     * @param amount           The amount of tokens associated with the claim.
+     * @param arbiter          The account tasked with verifying and submitting the claim.
+     * @param nonce            A parameter to enforce replay protection, scoped to allocator.
+     * @param expires          The time at which the claim expires.
+     * @param typehash         The EIP-712 typehash associated with the registered compact.
+     * @param witness          Hash of the witness data.
+     * @param sponsorSignature The signature from the sponsor authorizing the registration.
+     * @return id              The ERC6909 token identifier of the associated resource lock.
+     * @return claimHash       The hash of the registered claim.
+     */
+    function registerFor(
+        address sponsor,
+        address token,
+        address allocator,
+        ResetPeriod resetPeriod,
+        Scope scope,
+        uint256 amount,
+        address arbiter,
+        uint256 nonce,
+        uint256 expires,
+        bytes32 typehash,
+        bytes32 witness,
+        bytes calldata sponsorSignature
+    ) external returns (uint256 id, bytes32 claimHash);
 
     /**
      * @notice Assigns an emissary for the caller that has authority to authorize claims where that
