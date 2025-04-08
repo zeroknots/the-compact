@@ -835,13 +835,13 @@ contract TheCompactTest is Test {
         Claim memory claim = Claim(allocatorData, sponsorSignature, swapper, nonce, expires, witness, witnessTypestring, id, amount, recipients);
 
         vm.prank(swapper);
-        (bool status) = theCompact.register(claimHash, typehash, 1000);
+        (bool status) = theCompact.register(claimHash, typehash);
         vm.snapshotGasLastCall("register");
         assert(status);
 
-        (bool isActive, uint256 expiresAt) = theCompact.getRegistrationStatus(swapper, claimHash, typehash);
+        (bool isActive, uint256 registeredAt) = theCompact.getRegistrationStatus(swapper, claimHash, typehash);
         assert(isActive);
-        assertEq(expiresAt, block.timestamp + 1000);
+        assertEq(registeredAt, block.timestamp);
 
         vm.prank(arbiter);
         (bytes32 returnedClaimHash) = theCompact.claim(claim);
@@ -894,9 +894,9 @@ contract TheCompactTest is Test {
 
         bytes32 digest = keccak256(abi.encodePacked(bytes2(0x1901), theCompact.DOMAIN_SEPARATOR(), claimHash));
 
-        (bool isActive, uint256 expiresAt) = theCompact.getRegistrationStatus(swapper, claimHash, typehash);
+        (bool isActive, uint256 registeredAt) = theCompact.getRegistrationStatus(swapper, claimHash, typehash);
         assert(isActive);
-        assertEq(expiresAt, block.timestamp + 10 * 60);
+        assertEq(registeredAt, block.timestamp);
 
         bytes memory sponsorSignature = "";
 
@@ -1040,9 +1040,9 @@ contract TheCompactTest is Test {
         vm.snapshotGasLastCall("depositAndRegisterViaPermit2");
         assertEq(returnedId, id);
 
-        (bool isActive, uint256 expiresAt) = theCompact.getRegistrationStatus(swapper, claimHash, typehash);
+        (bool isActive, uint256 registeredAt) = theCompact.getRegistrationStatus(swapper, claimHash, typehash);
         assert(isActive);
-        assertEq(expiresAt, 0x258 + block.timestamp);
+        assertEq(registeredAt, block.timestamp);
 
         (address derivedToken, address derivedAllocator, ResetPeriod derivedResetPeriod, Scope derivedScope, bytes12 lockTag) = theCompact.getLockDetails(id);
         assertEq(derivedToken, address(token));
@@ -1251,9 +1251,9 @@ contract TheCompactTest is Test {
         assertEq(theCompact.balanceOf(swapper, anotherId), anotherAmount);
         assertEq(theCompact.balanceOf(swapper, aThirdId), aThirdAmount);
 
-        (bool isActive, uint256 expiresAt) = theCompact.getRegistrationStatus(swapper, claimHash, typehash);
+        (bool isActive, uint256 registeredAt) = theCompact.getRegistrationStatus(swapper, claimHash, typehash);
         assert(isActive);
-        assertEq(expiresAt, 0x258 + block.timestamp);
+        assertEq(registeredAt, block.timestamp);
 
         claimHash = keccak256(
             abi.encode(

@@ -28,6 +28,8 @@ contract DirectDepositLogic is DepositLogic {
     using ValidityLib for address;
     using SafeTransferLib for address;
 
+    error InconsistentAllocators();
+
     /**
      * @notice Internal function for depositing native tokens into a resource lock and
      * receiving back ERC6909 tokens representing the underlying locked balance controlled
@@ -56,8 +58,9 @@ contract DirectDepositLogic is DepositLogic {
      * on the implementation details of the respective tokens.
      * @param idsAndAmounts Array of [id, amount] pairs with each pair indicating the resource lock and amount to deposit.
      * @param recipient     The address that will receive the corresponding ERC6909 tokens.
+     * @param enforceConsistentAllocator Boolean to indicate whether the allocatorId should be consistent across deposits.
      */
-    function _processBatchDeposit(uint256[2][] calldata idsAndAmounts, address recipient) internal {
+    function _processBatchDeposit(uint256[2][] calldata idsAndAmounts, address recipient, bool enforceConsistentAllocator) internal {
         // Set reentrancy guard.
         _setReentrancyGuard();
 
@@ -117,6 +120,10 @@ contract DirectDepositLogic is DepositLogic {
 
                 // Determine if new allocator ID differs from current allocator ID.
                 if (newAllocatorId != currentAllocatorId) {
+                    if (enforceConsistentAllocator) {
+                        revert InconsistentAllocators();
+                    }
+
                     // Ensure new allocator ID is registered.
                     newAllocatorId.mustHaveARegisteredAllocator();
 

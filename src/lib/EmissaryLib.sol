@@ -41,6 +41,7 @@ library EmissaryLib {
 
     error EmissaryAssignmentUnavailable(uint256 assignAt);
     error InvalidLockTag();
+    error InvalidEmissaryStatus();
 
     event EmissaryAssigned(address indexed sponsor, bytes12 indexed lockTag, address indexed emissary);
     event EmissaryAssignmentScheduled(address indexed sponsor, bytes12 indexed lockTag, uint256 indexed assignableAt);
@@ -194,12 +195,14 @@ library EmissaryLib {
      * @return bool True if verification succeeds, False otherwise
      */
     function verifyWithEmissary(bytes32 claimHash, address sponsor, bytes12 lockTag, bytes calldata signature) internal view returns (bool) {
+        // Retrieve the emissary for the sponsor and lock tag from storage.
         EmissaryConfig storage emissaryConfig = _getEmissaryConfig(sponsor, lockTag);
         address emissary = emissaryConfig.emissary;
+
+        // Do not verify if no emissary is set.
         if (emissary == address(0)) return false;
+
         // Delegate the verification process to the assigned emissary contract.
-        // This modular approach allows the verification logic to be updated independently,
-        // ensuring flexibility and separation of concerns in the emissary system.
         return IEmissary(emissary).verifyClaim(sponsor, claimHash, signature, lockTag) == IEmissary.verifyClaim.selector;
     }
 
@@ -223,8 +226,14 @@ library EmissaryLib {
         // - If there is no current emissary, the status is Disabled.
         // - If assignableAt is NOT_SCHEDULED, the emissary is Enabled and active.
         // - If assignableAt is set to a future timestamp, the emissary is Scheduled for reassignment.
-        if (currentEmissary == address(0)) status = EmissaryStatus.Disabled;
-        else if (assignableAt == NOT_SCHEDULED) status = EmissaryStatus.Enabled;
-        else if (assignableAt != 0) status = EmissaryStatus.Scheduled;
+        if (currentEmissary == address(0)) {
+            status = EmissaryStatus.Disabled;
+        } else if (assignableAt == NOT_SCHEDULED) {
+            status = EmissaryStatus.Enabled;
+        } else if (assignableAt != 0) {
+            status = EmissaryStatus.Scheduled;
+        } else {
+            revert InvalidEmissaryStatus();
+        }
     }
 }

@@ -55,9 +55,8 @@ interface ITheCompact {
      * @param sponsor   The address registering the compact in question.
      * @param claimHash A bytes32 hash derived from the details of the compact.
      * @param typehash  The EIP-712 typehash associated with the registered compact.
-     * @param expires   The timestamp at which the compact can no longer be claimed.
      */
-    event CompactRegistered(address indexed sponsor, bytes32 claimHash, bytes32 typehash, uint256 expires);
+    event CompactRegistered(address indexed sponsor, bytes32 claimHash, bytes32 typehash);
 
     /**
      * @notice Event indicating an allocator has been registered.
@@ -231,10 +230,9 @@ interface ITheCompact {
      * respective tokens. Note that resource lock ids must be supplied in alphanumeric order.
      * @param idsAndAmounts           Array of [id, amount] pairs with each pair indicating the resource lock and amount to deposit.
      * @param claimHashesAndTypehashes Array of [claimHash, typehash] pairs for registration.
-     * @param duration                The duration for which the claim hashes remain valid.
      * @return                        Whether the batch deposit and claim hash registration was successfully completed.
      */
-    function depositAndRegister(uint256[2][] calldata idsAndAmounts, bytes32[2][] calldata claimHashesAndTypehashes, uint256 duration) external payable returns (bool);
+    function depositAndRegister(uint256[2][] calldata idsAndAmounts, bytes32[2][] calldata claimHashesAndTypehashes) external payable returns (bool);
 
     /**
      * @notice External function for depositing ERC20 tokens and simultaneously registering a
@@ -250,10 +248,9 @@ interface ITheCompact {
      * @param expires       The time at which the claim expires.
      * @param typehash      The EIP-712 typehash associated with the registered compact.
      * @param witness       Hash of the witness data.
-     * @param resetPeriod   The duration after which the resource lock can be reset once a forced withdrawal is initiated.
      * @return claimhash  Hash of the claim. Can be used to verify the expected claim was registered.
      */
-    function depositAndRegisterFor(address recipient, uint256[2][] calldata idsAndAmounts, address arbiter, uint256 nonce, uint256 expires, bytes32 typehash, bytes32 witness, ResetPeriod resetPeriod)
+    function depositAndRegisterFor(address recipient, uint256[2][] calldata idsAndAmounts, address arbiter, uint256 nonce, uint256 expires, bytes32 typehash, bytes32 witness)
         external
         payable
         returns (bytes32 claimhash);
@@ -458,25 +455,24 @@ interface ITheCompact {
 
     /**
      * @notice External function to register a claim hash and its associated EIP-712 typehash.
-     * The registered claim hash will remain valid for the specified duration. Once expired, the
-     * claim hash can no longer be used to initiate claims.
+     * The registered claim hash will remain valid for the duration of the shortest reset period
+     * across all locks on the compact. Once expired, the claim hash can no longer be used to
+     * initiate claims.
      * @param claimHash A bytes32 hash derived from the details of the compact.
      * @param typehash  The EIP-712 typehash associated with the registered claim hash.
-     * @param duration  The duration for which the claim hash remains valid.
      * @return          Whether the claim hash was successfully registered.
      */
-    function register(bytes32 claimHash, bytes32 typehash, uint256 duration) external returns (bool);
+    function register(bytes32 claimHash, bytes32 typehash) external returns (bool);
 
     /**
      * @notice External function to register multiple claim hashes and their associated EIP-712
-     * typehashes in a single call. All registered claim hashes will remain valid for the
-     * specified duration. Once expired, the claim hashes can no longer be used to initiate
-     * claims.
+     * typehashes in a single call. Each registered claim hash will remain valid the duration of
+     * the shortest reset period on each respective lock. Once expired, the claim hashes can no
+     * longer be used to initiate claims.
      * @param claimHashesAndTypehashes Array of [claimHash, typehash] pairs for registration.
-     * @param duration                 The duration for which the claim hashes remain valid.
      * @return                         Whether all claim hashes were successfully registered.
      */
-    function register(bytes32[2][] calldata claimHashesAndTypehashes, uint256 duration) external returns (bool);
+    function register(bytes32[2][] calldata claimHashesAndTypehashes) external returns (bool);
 
     /**
      * @notice External function for consuming allocator nonces. Only callable by a registered
@@ -511,14 +507,16 @@ interface ITheCompact {
 
     /**
      * @notice External view function for checking the registration status of a compact. Returns
-     * both whether the claim hash is currently active and when it expires (if it is active).
+     * both whether the claim hash is currently active and when it was registered (if relevant).
+     * Note that an "active" compact may in fact not be claimable, (e.g. it has expired, the
+     * nonce has been consumed, etc).
      * @param sponsor   The account that registered the compact.
      * @param claimHash A bytes32 hash derived from the details of the compact.
      * @param typehash  The EIP-712 typehash associated with the registered claim hash.
-     * @return isActive Whether the compact registration is currently active.
-     * @return expires  The timestamp at which the compact registration expires.
+     * @return isActive              Whether the compact registration is currently active.
+     * @return registrationTimestamp The timestamp at which the compact was registered.
      */
-    function getRegistrationStatus(address sponsor, bytes32 claimHash, bytes32 typehash) external view returns (bool isActive, uint256 expires);
+    function getRegistrationStatus(address sponsor, bytes32 claimHash, bytes32 typehash) external view returns (bool isActive, uint256 registrationTimestamp);
 
     /**
      * @notice Assigns an emissary for the caller that has authority to authorize claims where that
@@ -600,6 +598,5 @@ interface ITheCompact {
     error InvalidDepositTokenOrdering();
     error InvalidDepositBalanceChange();
     error Permit2CallFailed();
-    error InvalidRegistrationDuration(uint256 duration);
     error ReentrantCall(address existingCaller);
 }

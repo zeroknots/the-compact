@@ -92,11 +92,10 @@ library ClaimProcessorLib {
             sponsorDomainSeparator := add(sponsorDomainSeparator, mul(iszero(sponsorDomainSeparator), domainSeparator))
         }
 
-        // Validate sponsor authorization through either ECDSA, EIP-1271, Emissary, or direct registration.
-        if ((sponsorDomainSeparator != domainSeparator).or(sponsorSignature.length != 0) || sponsor.hasNoActiveRegistration(messageHash, typehash)) {
-            messageHash.signedBySponsorOrEmissary(sponsor, sponsorSignature, sponsorDomainSeparator, idsAndAmounts);
-        }
+        // Validate sponsor authorization through either ECDSA, direct registration, EIP1271, or emissary.
+        messageHash.hasValidSponsorOrRegistration(sponsor, sponsorSignature, sponsorDomainSeparator, idsAndAmounts, typehash);
 
+        // Validate allocator authorization through the allocator interface.
         allocator.callAuthorizeClaim(messageHash, sponsor, nonce, expires, idsAndAmounts, allocatorData);
 
         // Emit claim event.
