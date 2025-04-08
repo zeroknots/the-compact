@@ -11,13 +11,11 @@ import { BatchMultichainClaim, ExogenousBatchMultichainClaim } from "../types/Ba
 
 /**
  * @title The Compact — Claims Interface
- * @custom:version 1 (early-stage proof-of-concept)
+ * @custom:version 1
  * @author 0age (0age.eth)
  * @notice Claim endpoints can only be called by the arbiter indicated on the associated
- * compact, and are used to settle the compact in question. There are 12 endpoints in total,
- * based on all the various possible combinations of a number of factors:
- *  - transfer vs. withdrawal: whether to transfer the claimed ERC6909 tokens directly, or to
- *    withdraw the underlying claimed tokens (e.g. calling `claim` or `claimAndWithdraw`)
+ * compact, and are used to settle the compact in question. There are 6 endpoints in total,
+ * based on the following factors:
  *  - whether or not to utilize a "batch" of resource locks on a specific chain: When the
  *    sponsor is utilizing multiple resource locks on a specific chain, they will sign or
  *    register a `BatchCompact` EIP-712 payload. (Single-chain claims sign or register a
@@ -38,15 +36,45 @@ import { BatchMultichainClaim, ExogenousBatchMultichainClaim } from "../types/Ba
  *    for the domain that the multichain claim was signed against.
  */
 interface ITheCompactClaims {
+    /**
+     * @notice Process a standard single-chain claim.
+     * @param claimPayload The claim data containing signature, allocator data, and compact details.
+     * @return claimHash   The hash of the processed claim.
+     */
     function claim(Claim calldata claimPayload) external returns (bytes32 claimHash);
 
+    /**
+     * @notice Process a batch claim for multiple resource locks on a single chain.
+     * @param claimPayload The batch claim data containing signature, allocator data, and compact details.
+     * @return claimHash   The hash of the processed batch claim.
+     */
     function claim(BatchClaim calldata claimPayload) external returns (bytes32 claimHash);
 
+    /**
+     * @notice Process a multichain claim for the notarized chain (where domain matches the one signed for).
+     * @param claimPayload The multichain claim data containing signature, allocator data, compact details, and chain segments.
+     * @return claimHash   The hash of the processed multichain claim.
+     */
     function claim(MultichainClaim calldata claimPayload) external returns (bytes32 claimHash);
 
+    /**
+     * @notice Process a multichain claim for an exogenous chain (not the notarized chain).
+     * @param claimPayload The exogenous multichain claim data containing signature, allocator data, compact details, chain index, and notarized chain ID.
+     * @return claimHash   The hash of the processed exogenous multichain claim.
+     */
     function claim(ExogenousMultichainClaim calldata claimPayload) external returns (bytes32 claimHash);
 
+    /**
+     * @notice Process a batch multichain claim for multiple resource locks on the notarized chain.
+     * @param claimPayload The batch multichain claim data containing signature, allocator data, compact details, and chain segments.
+     * @return claimHash   The hash of the processed batch multichain claim.
+     */
     function claim(BatchMultichainClaim calldata claimPayload) external returns (bytes32 claimHash);
 
+    /**
+     * @notice Process a batch multichain claim for multiple resource locks on an exogenous chain.
+     * @param claimPayload The exogenous batch multichain claim data containing signature, allocator data, compact details, chain index, and notarized chain ID.
+     * @return claimHash   The hash of the processed exogenous batch multichain claim.
+     */
     function claim(ExogenousBatchMultichainClaim calldata claimPayload) external returns (bytes32 claimHash);
 }
