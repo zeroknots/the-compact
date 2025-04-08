@@ -165,6 +165,19 @@ library EfficiencyLib {
     }
 
     /**
+     * @notice Internal pure function that converts a uint256 to a ResetPeriod enum without
+     * performing any bounds checks. Do not use in cases where the reset period may be
+     * outside the acceptable bounds.
+     * @param a  The uint256 to convert.
+     * @return b The resulting ResetPeriod enum.
+     */
+    function asResetPeriod(uint256 a) internal pure returns (ResetPeriod b) {
+        assembly ("memory-safe") {
+            b := a
+        }
+    }
+
+    /**
      * @notice Internal pure function that prevents the function specializer from
      * optimizing uint256 arguments. XORs the value with calldatasize(), which
      * will always be non-zero in a real call.

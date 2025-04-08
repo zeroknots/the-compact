@@ -101,7 +101,6 @@ contract DepositViaPermit2Logic is DepositLogic {
      * specified compact category.
      * @param token           The address of the ERC20 token to deposit.
      * @param depositor       The account signing the permit2 authorization and depositing the tokens.
-     * @param resetPeriod     The duration after which the resource lock can be reset once a forced withdrawal is initiated.
      * @param claimHash       A bytes32 hash derived from the details of the compact.
      * @param compactCategory The category of the compact being registered (Compact, BatchCompact, or MultichainCompact).
      * @param witness         Additional data used in generating the claim hash.
@@ -111,7 +110,6 @@ contract DepositViaPermit2Logic is DepositLogic {
     function _depositAndRegisterViaPermit2(
         address token,
         address depositor, // also recipient
-        ResetPeriod resetPeriod,
         bytes32 claimHash,
         CompactCategory compactCategory,
         string calldata witness,
@@ -139,7 +137,7 @@ contract DepositViaPermit2Logic is DepositLogic {
         _checkBalanceAndDeposit(token, depositor, id, initialBalance);
 
         // Register the compact.
-        depositor.registerCompact(claimHash, compactTypehash, resetPeriod);
+        depositor.registerCompact(claimHash, compactTypehash);
 
         // Clear reentrancy lock.
         _clearReentrancyGuard();
@@ -210,7 +208,6 @@ contract DepositViaPermit2Logic is DepositLogic {
      * Compact, BatchCompact, or MultichainCompact payload matching the specified compact category.
      * @param depositor       The account signing the permit2 authorization and depositing the tokens.
      * @param permitted       Array of token permissions specifying the deposited tokens and amounts.
-     * @param resetPeriod     The duration after which the resource locks can be reset once forced withdrawals are initiated.
      * @param claimHash       A bytes32 hash derived from the details of the compact.
      * @param compactCategory The category of the compact being registered (Compact, BatchCompact, or MultichainCompact).
      * @param witness         Additional data used in generating the claim hash.
@@ -220,7 +217,6 @@ contract DepositViaPermit2Logic is DepositLogic {
     function _depositBatchAndRegisterViaPermit2(
         address depositor,
         ISignatureTransfer.TokenPermissions[] calldata permitted,
-        ResetPeriod resetPeriod,
         bytes32 claimHash,
         CompactCategory compactCategory,
         string calldata witness,
@@ -264,7 +260,7 @@ contract DepositViaPermit2Logic is DepositLogic {
         _verifyBalancesAndPerformDeposits(ids, permitted, initialTokenBalances, depositor, firstUnderlyingTokenIsNative);
 
         // Register the compact.
-        depositor.registerCompact(claimHash, compactTypehash, resetPeriod);
+        depositor.registerCompact(claimHash, compactTypehash);
 
         // Return the ERC6909 token identifiers of the associated resource locks.
         return ids;
