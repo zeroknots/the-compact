@@ -40,7 +40,8 @@ library IdLib {
     uint256 private constant _ALLOCATOR_BY_ALLOCATOR_ID_SLOT_SEED = 0x000044036fc77deaed2300000000000000000000000;
 
     // keccak256(bytes("AllocatorRegistered(uint96,address)")).
-    uint256 private constant _ALLOCATOR_REGISTERED_EVENT_SIGNATURE = 0xc54dcaa67a8fd7b4a9aa6fd57351934c792613d5ec1acbd65274270e6de8f7e4;
+    uint256 private constant _ALLOCATOR_REGISTERED_EVENT_SIGNATURE =
+        0xc54dcaa67a8fd7b4a9aa6fd57351934c792613d5ec1acbd65274270e6de8f7e4;
 
     // Error selectors for NoAllocatorRegistered and AllocatorAlreadyRegistered.
     uint256 private constant _NO_ALLOCATOR_REGISTERED_ERROR_SIGNATURE = 0xcf90c3a8;
@@ -94,7 +95,11 @@ library IdLib {
      * @param allocator   The address of the allocator mediating the resource lock.
      * @return id         The derived resource lock ID.
      */
-    function toIdIfRegistered(address token, Scope scope, ResetPeriod resetPeriod, address allocator) internal view returns (uint256 id) {
+    function toIdIfRegistered(address token, Scope scope, ResetPeriod resetPeriod, address allocator)
+        internal
+        view
+        returns (uint256 id)
+    {
         // Derive the allocator ID for the provided allocator address.
         uint96 allocatorId = allocator.toAllocatorIdIfRegistered();
 
@@ -182,7 +187,9 @@ library IdLib {
      * @return          Whether the allocator can be registered.
      */
     function canBeRegistered(address allocator, bytes calldata proof) internal view returns (bool) {
-        return (msg.sender == allocator).or(allocator.code.length > 0).or(proof.length == 85 && (proof[0] == 0xff).and(allocator == address(uint160(uint256(proof.hashCalldata())))));
+        return (msg.sender == allocator).or(allocator.code.length > 0).or(
+            proof.length == 85 && (proof[0] == 0xff).and(allocator == address(uint160(uint256(proof.hashCalldata()))))
+        );
     }
 
     /**
@@ -218,7 +225,8 @@ library IdLib {
      */
     function toLockTag(uint96 allocatorId, Scope scope, ResetPeriod resetPeriod) internal pure returns (bytes12) {
         // Derive lock tag (pack scope, reset period, & allocator ID).
-        return ((scope.asUint256() << 255) | (resetPeriod.asUint256() << 252) | (allocatorId.asUint256() << 160)).asBytes12();
+        return ((scope.asUint256() << 255) | (resetPeriod.asUint256() << 252) | (allocatorId.asUint256() << 160))
+            .asBytes12();
     }
 
     /**
@@ -450,6 +458,9 @@ library IdLib {
      * @return id  The derived resource lock ID.
      */
     function toId(Lock memory lock) internal pure returns (uint256 id) {
-        id = ((lock.scope.asUint256() << 255) | (lock.resetPeriod.asUint256() << 252) | (lock.allocator.usingAllocatorId().asUint256() << 160) | lock.token.asUint256());
+        id = (
+            (lock.scope.asUint256() << 255) | (lock.resetPeriod.asUint256() << 252)
+                | (lock.allocator.usingAllocatorId().asUint256() << 160) | lock.token.asUint256()
+        );
     }
 }

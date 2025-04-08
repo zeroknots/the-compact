@@ -43,7 +43,10 @@ library ValidityLib {
      * @param nonce       The nonce to consume in the allocator's scope.
      * @return allocator  The address of the registered allocator.
      */
-    function fromRegisteredAllocatorIdWithConsumed(uint96 allocatorId, uint256 nonce) internal returns (address allocator) {
+    function fromRegisteredAllocatorIdWithConsumed(uint96 allocatorId, uint256 nonce)
+        internal
+        returns (address allocator)
+    {
         allocator = allocatorId.toRegisteredAllocator();
         nonce.consumeNonceAsAllocator(allocator);
     }
@@ -89,7 +92,13 @@ library ValidityLib {
      * @param signature       The signature to verify.
      * @param domainSeparator The domain separator to combine with the message hash.
      */
-    function hasValidSponsor(bytes32 messageHash, address expectedSigner, bytes calldata signature, bytes32 domainSeparator, uint256[2][] memory idsAndAmounts) internal view {
+    function hasValidSponsor(
+        bytes32 messageHash,
+        address expectedSigner,
+        bytes calldata signature,
+        bytes32 domainSeparator,
+        uint256[2][] memory idsAndAmounts
+    ) internal view {
         // Apply domain separator to message hash to derive the digest.
         bytes32 digest = messageHash.withDomain(domainSeparator);
 
@@ -104,7 +113,8 @@ library ValidityLib {
         }
 
         // Finally, fallback to emissary using the message hash.
-        bool hasValidSigner = (messageHash.verifyWithEmissary(expectedSigner, idsAndAmounts.extractSameLockTag(), signature));
+        bytes12 lockTag = idsAndAmounts.extractSameLockTag();
+        bool hasValidSigner = messageHash.verifyWithEmissary(expectedSigner, lockTag, signature);
 
         assembly ("memory-safe") {
             // Revert if no valid signer was found.
@@ -130,7 +140,14 @@ library ValidityLib {
      * @param domainSeparator The domain separator to combine with the message hash.
      * @param typehash        The EIP-712 typehash used for the claim message.
      */
-    function hasValidSponsorOrRegistration(bytes32 messageHash, address expectedSigner, bytes calldata signature, bytes32 domainSeparator, uint256[2][] memory idsAndAmounts, bytes32 typehash) internal view {
+    function hasValidSponsorOrRegistration(
+        bytes32 messageHash,
+        address expectedSigner,
+        bytes calldata signature,
+        bytes32 domainSeparator,
+        uint256[2][] memory idsAndAmounts,
+        bytes32 typehash
+    ) internal view {
         // Get registration status early if no signature is supplied.
         uint256 shortestResetPeriod;
         if (signature.length == 0) {
@@ -155,7 +172,11 @@ library ValidityLib {
         if (shortestResetPeriod == 0) {
             uint256 registrationTimestamp = expectedSigner.toRegistrationTimestamp(messageHash, typehash);
 
-            if ((registrationTimestamp != 0).and(registrationTimestamp + _getShortestResetPeriod(idsAndAmounts) > block.timestamp)) {
+            if (
+                (registrationTimestamp != 0).and(
+                    registrationTimestamp + _getShortestResetPeriod(idsAndAmounts) > block.timestamp
+                )
+            ) {
                 return;
             }
         }
@@ -166,7 +187,8 @@ library ValidityLib {
         }
 
         // Finally, fallback to emissary using the message hash.
-        bool hasValidSigner = (messageHash.verifyWithEmissary(expectedSigner, idsAndAmounts.extractSameLockTag(), signature));
+        bool hasValidSigner =
+            (messageHash.verifyWithEmissary(expectedSigner, idsAndAmounts.extractSameLockTag(), signature));
 
         assembly ("memory-safe") {
             // Revert if no valid signer was found.
@@ -287,13 +309,22 @@ library ValidityLib {
      * @param sponsorDomainSeparator  The domain separator for the sponsor's signature, or zero for non-exogenous claims.
      * @return                        Whether either validation fails.
      */
-    function allocationExceededOrScopeNotMultichain(uint256 allocatedAmount, uint256 amount, uint256 id, bytes32 sponsorDomainSeparator) internal pure returns (bool) {
+    function allocationExceededOrScopeNotMultichain(
+        uint256 allocatedAmount,
+        uint256 amount,
+        uint256 id,
+        bytes32 sponsorDomainSeparator
+    ) internal pure returns (bool) {
         return (allocatedAmount < amount).or(id.scopeNotMultichain(sponsorDomainSeparator));
     }
 
     /// @dev Returns whether `signature` is valid for `signer` and `hash`.
     /// using `ecrecover`.
-    function isValidECDSASignatureCalldata(address signer, bytes32 hash, bytes calldata signature) internal view returns (bool isValid) {
+    function isValidECDSASignatureCalldata(address signer, bytes32 hash, bytes calldata signature)
+        internal
+        view
+        returns (bool isValid)
+    {
         if (signer == address(0)) return isValid;
         assembly ("memory-safe") {
             let m := mload(0x40)
@@ -322,7 +353,11 @@ library ValidityLib {
 
     /// @dev Returns whether `signature` is valid for `hash` for an ERC1271 `signer` contract.
     /// Sourced from Solady with a modification to only supply half of available gas.
-    function isValidERC1271SignatureNowCalldataHalfGas(address signer, bytes32 hash, bytes calldata signature) internal view returns (bool isValid) {
+    function isValidERC1271SignatureNowCalldataHalfGas(address signer, bytes32 hash, bytes calldata signature)
+        internal
+        view
+        returns (bool isValid)
+    {
         assembly ("memory-safe") {
             let m := mload(0x40)
             let f := shl(224, 0x1626ba7e)

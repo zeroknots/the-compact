@@ -46,7 +46,11 @@ contract TheCompact is ITheCompact, ERC6909, TheCompactLogic {
         return _performBasicNativeTokenDeposit(allocator);
     }
 
-    function depositAndRegister(address allocator, bytes32 claimHash, bytes32 typehash) external payable returns (uint256 id) {
+    function depositAndRegister(address allocator, bytes32 claimHash, bytes32 typehash)
+        external
+        payable
+        returns (uint256 id)
+    {
         id = _performBasicNativeTokenDeposit(allocator);
 
         _register(msg.sender, claimHash, typehash);
@@ -56,17 +60,26 @@ contract TheCompact is ITheCompact, ERC6909, TheCompactLogic {
         return _performBasicERC20Deposit(token, allocator, amount);
     }
 
-    function depositAndRegister(address token, address allocator, uint256 amount, bytes32 claimHash, bytes32 typehash) external returns (uint256 id) {
+    function depositAndRegister(address token, address allocator, uint256 amount, bytes32 claimHash, bytes32 typehash)
+        external
+        returns (uint256 id)
+    {
         id = _performBasicERC20Deposit(token, allocator, amount);
 
         _register(msg.sender, claimHash, typehash);
     }
 
-    function depositAndRegisterFor(address recipient, address allocator, ResetPeriod resetPeriod, Scope scope, address arbiter, uint256 nonce, uint256 expires, bytes32 typehash, bytes32 witness)
-        external
-        payable
-        returns (uint256 id, bytes32 claimhash)
-    {
+    function depositAndRegisterFor(
+        address recipient,
+        address allocator,
+        ResetPeriod resetPeriod,
+        Scope scope,
+        address arbiter,
+        uint256 nonce,
+        uint256 expires,
+        bytes32 typehash,
+        bytes32 witness
+    ) external payable returns (uint256 id, bytes32 claimhash) {
         id = _performCustomNativeTokenDeposit(allocator, resetPeriod, scope, recipient);
 
         claimhash = _registerUsingClaimWithWitness(recipient, id, msg.value, arbiter, nonce, expires, typehash, witness);
@@ -90,11 +103,22 @@ contract TheCompact is ITheCompact, ERC6909, TheCompactLogic {
         claimhash = _registerUsingClaimWithWitness(recipient, id, amount, arbiter, nonce, expires, typehash, witness);
     }
 
-    function deposit(address allocator, ResetPeriod resetPeriod, Scope scope, address recipient) external payable returns (uint256) {
+    function deposit(address allocator, ResetPeriod resetPeriod, Scope scope, address recipient)
+        external
+        payable
+        returns (uint256)
+    {
         return _performCustomNativeTokenDeposit(allocator, resetPeriod, scope, recipient);
     }
 
-    function deposit(address token, address allocator, ResetPeriod resetPeriod, Scope scope, uint256 amount, address recipient) external returns (uint256) {
+    function deposit(
+        address token,
+        address allocator,
+        ResetPeriod resetPeriod,
+        Scope scope,
+        uint256 amount,
+        address recipient
+    ) external returns (uint256) {
         return _performCustomERC20Deposit(token, allocator, resetPeriod, scope, amount, recipient);
     }
 
@@ -104,26 +128,41 @@ contract TheCompact is ITheCompact, ERC6909, TheCompactLogic {
         return true;
     }
 
-    function depositAndRegister(uint256[2][] calldata idsAndAmounts, bytes32[2][] calldata claimHashesAndTypehashes) external payable returns (bool) {
+    function depositAndRegister(uint256[2][] calldata idsAndAmounts, bytes32[2][] calldata claimHashesAndTypehashes)
+        external
+        payable
+        returns (bool)
+    {
         _processBatchDeposit(idsAndAmounts, msg.sender, false);
 
         return _registerBatch(claimHashesAndTypehashes);
     }
 
-    function depositAndRegisterFor(address recipient, uint256[2][] calldata idsAndAmounts, address arbiter, uint256 nonce, uint256 expires, bytes32 typehash, bytes32 witness)
-        external
-        payable
-        returns (bytes32 claimhash)
-    {
+    function depositAndRegisterFor(
+        address recipient,
+        uint256[2][] calldata idsAndAmounts,
+        address arbiter,
+        uint256 nonce,
+        uint256 expires,
+        bytes32 typehash,
+        bytes32 witness
+    ) external payable returns (bytes32 claimhash) {
         _processBatchDeposit(idsAndAmounts, recipient, true);
 
-        claimhash = _registerUsingBatchClaimWithWitness(recipient, idsAndAmounts, arbiter, nonce, expires, typehash, witness);
+        claimhash =
+            _registerUsingBatchClaimWithWitness(recipient, idsAndAmounts, arbiter, nonce, expires, typehash, witness);
     }
 
-    function registerFor(address sponsor, uint256[2][] calldata idsAndAmounts, address arbiter, uint256 nonce, uint256 expires, bytes32 typehash, bytes32 witness, bytes calldata sponsorSignature)
-        external
-        returns (bytes32 claimHash)
-    {
+    function registerFor(
+        address sponsor,
+        uint256[2][] calldata idsAndAmounts,
+        address arbiter,
+        uint256 nonce,
+        uint256 expires,
+        bytes32 typehash,
+        bytes32 witness,
+        bytes calldata sponsorSignature
+    ) external returns (bytes32 claimHash) {
         // Retrieve the total number of IDs and amounts in the batch.
         uint256 totalIds = idsAndAmounts.length;
 
@@ -149,7 +188,9 @@ contract TheCompact is ITheCompact, ERC6909, TheCompactLogic {
             revert InconsistentAllocators();
         }
 
-        claimHash = HashLib.toFlatBatchClaimWithWitnessMessageHash(sponsor, idsAndAmounts, arbiter, nonce, expires, typehash, witness);
+        claimHash = HashLib.toFlatBatchClaimWithWitnessMessageHash(
+            sponsor, idsAndAmounts, arbiter, nonce, expires, typehash, witness
+        );
 
         // TOOD: support registering exogenous domain separators by passing notarized chainId
         claimHash.hasValidSponsor(sponsor, sponsorSignature, _domainSeparator(), idsAndAmounts);
@@ -266,7 +307,8 @@ contract TheCompact is ITheCompact, ERC6909, TheCompactLogic {
         // Derive resource lock ID using provided token, parameters, and allocator.
         id = token.excludingNative().toIdIfRegistered(scope, resetPeriod, allocator);
 
-        claimHash = HashLib.toFlatMessageHashWithWitness(sponsor, id, amount, arbiter, nonce, expires, typehash, witness);
+        claimHash =
+            HashLib.toFlatMessageHashWithWitness(sponsor, id, amount, arbiter, nonce, expires, typehash, witness);
 
         // Initialize idsAndAmounts array.
         uint256[2][] memory idsAndAmounts = new uint256[2][](1);
@@ -278,7 +320,11 @@ contract TheCompact is ITheCompact, ERC6909, TheCompactLogic {
         sponsor.registerCompact(claimHash, typehash);
     }
 
-    function getRegistrationStatus(address sponsor, bytes32 claimHash, bytes32 typehash) external view returns (bool isActive, uint256 registrationTimestamp) {
+    function getRegistrationStatus(address sponsor, bytes32 claimHash, bytes32 typehash)
+        external
+        view
+        returns (bool isActive, uint256 registrationTimestamp)
+    {
         registrationTimestamp = _getRegistrationStatus(sponsor, claimHash, typehash);
         isActive = registrationTimestamp != 0;
     }
@@ -295,7 +341,11 @@ contract TheCompact is ITheCompact, ERC6909, TheCompactLogic {
         return _registerAllocator(allocator, proof);
     }
 
-    function getForcedWithdrawalStatus(address account, uint256 id) external view returns (ForcedWithdrawalStatus, uint256) {
+    function getForcedWithdrawalStatus(address account, uint256 id)
+        external
+        view
+        returns (ForcedWithdrawalStatus, uint256)
+    {
         return _getForcedWithdrawalStatus(account, id);
     }
 
@@ -311,7 +361,11 @@ contract TheCompact is ITheCompact, ERC6909, TheCompactLogic {
         return _scheduleEmissaryAssignment(lockTag);
     }
 
-    function getEmissaryStatus(address sponsor, bytes12 lockTag) external view returns (EmissaryStatus status, uint256 emissaryAssignmentAvailableAt, address currentEmissary) {
+    function getEmissaryStatus(address sponsor, bytes12 lockTag)
+        external
+        view
+        returns (EmissaryStatus status, uint256 emissaryAssignmentAvailableAt, address currentEmissary)
+    {
         return _getEmissaryStatus(sponsor, lockTag);
     }
 

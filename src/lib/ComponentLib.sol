@@ -4,7 +4,9 @@ pragma solidity ^0.8.27;
 import { SplitTransfer } from "../types/Claims.sol";
 import { BatchTransfer, SplitBatchTransfer } from "../types/BatchClaims.sol";
 
-import { TransferComponent, SplitComponent, SplitByIdComponent, SplitBatchClaimComponent } from "../types/Components.sol";
+import {
+    TransferComponent, SplitComponent, SplitByIdComponent, SplitBatchClaimComponent
+} from "../types/Components.sol";
 
 import { EfficiencyLib } from "./EfficiencyLib.sol";
 import { EventLib } from "./EventLib.sol";
@@ -61,7 +63,10 @@ library ComponentLib {
      * @param operation Function pointer to either _release or _withdraw for executing the claim.
      * @return          Whether the transfer was successfully processed.
      */
-    function performBatchTransfer(BatchTransfer calldata transfer, function(address, address, uint256, uint256) internal returns (bool) operation) internal returns (bool) {
+    function performBatchTransfer(
+        BatchTransfer calldata transfer,
+        function(address, address, uint256, uint256) internal returns (bool) operation
+    ) internal returns (bool) {
         // Navigate to the transfer components in calldata.
         TransferComponent[] calldata transfers = transfer.transfers;
 
@@ -129,7 +134,8 @@ library ComponentLib {
         bytes32 sponsorDomainSeparator,
         bytes32 typehash,
         bytes32 domainSeparator,
-        function(bytes32, uint96, uint256, bytes32, bytes32, bytes32, uint256[2][] memory) internal returns (address) validation
+        function(bytes32, uint96, uint256, bytes32, bytes32, bytes32, uint256[2][] memory) internal returns (address)
+            validation
     ) internal returns (bool) {
         // Declare variables for parameters that will be extracted from calldata.
         uint256 id;
@@ -155,7 +161,15 @@ library ComponentLib {
         idsAndAmounts[0] = [id, allocatedAmount];
 
         // Validate the claim and extract the sponsor address.
-        address sponsor = validation(messageHash, id.toAllocatorId(), calldataPointer, domainSeparator, sponsorDomainSeparator, typehash, idsAndAmounts);
+        address sponsor = validation(
+            messageHash,
+            id.toAllocatorId(),
+            calldataPointer,
+            domainSeparator,
+            sponsorDomainSeparator,
+            typehash,
+            idsAndAmounts
+        );
 
         // Verify the resource lock scope is compatible with the provided domain separator.
         sponsorDomainSeparator.ensureValidScope(id);
@@ -186,7 +200,8 @@ library ComponentLib {
         bytes32 sponsorDomainSeparator,
         bytes32 typehash,
         bytes32 domainSeparator,
-        function(bytes32, uint96, uint256, bytes32, bytes32, bytes32, uint256[2][] memory) internal returns (address) validation
+        function(bytes32, uint96, uint256, bytes32, bytes32, bytes32, uint256[2][] memory) internal returns (address)
+            validation
     ) internal returns (bool) {
         // Declare variable for SplitBatchClaimComponent array that will be extracted from calldata.
         SplitBatchClaimComponent[] calldata claims;
@@ -215,7 +230,9 @@ library ComponentLib {
                 SplitBatchClaimComponent calldata claimComponent = claims[i];
                 id = claimComponent.id;
                 // TODO: can scopeNotMultichain be removed here?
-                errorBuffer |= (id.toAllocatorId() != firstAllocatorId).or(id.scopeNotMultichain(sponsorDomainSeparator)).asUint256();
+                errorBuffer |= (id.toAllocatorId() != firstAllocatorId).or(
+                    id.scopeNotMultichain(sponsorDomainSeparator)
+                ).asUint256();
 
                 // Include the id and amount in idsAndAmounts.
                 idsAndAmounts[i] = [id, claimComponent.allocatedAmount];
@@ -225,14 +242,24 @@ library ComponentLib {
             _revertWithInvalidBatchAllocationIfError(errorBuffer);
 
             // Validate the claim and extract the sponsor address.
-            address sponsor = validation(messageHash, firstAllocatorId, calldataPointer, domainSeparator, sponsorDomainSeparator, typehash, idsAndAmounts);
+            address sponsor = validation(
+                messageHash,
+                firstAllocatorId,
+                calldataPointer,
+                domainSeparator,
+                sponsorDomainSeparator,
+                typehash,
+                idsAndAmounts
+            );
 
             // Process each claim component.
             for (uint256 i = 0; i < totalClaims; ++i) {
                 SplitBatchClaimComponent calldata claimComponent = claims[i];
 
                 // Process each split component, verifying total amount and executing operations.
-                claimComponent.portions.verifyAndProcessSplitComponents(sponsor, claimComponent.id, claimComponent.allocatedAmount);
+                claimComponent.portions.verifyAndProcessSplitComponents(
+                    sponsor, claimComponent.id, claimComponent.allocatedAmount
+                );
             }
         }
 
@@ -250,7 +277,12 @@ library ComponentLib {
      * @param allocatedAmount The total amount allocated for this claim.
      * @return                Whether all split components were successfully processed.
      */
-    function verifyAndProcessSplitComponents(SplitComponent[] calldata claimants, address sponsor, uint256 id, uint256 allocatedAmount) internal returns (bool) {
+    function verifyAndProcessSplitComponents(
+        SplitComponent[] calldata claimants,
+        address sponsor,
+        uint256 id,
+        uint256 allocatedAmount
+    ) internal returns (bool) {
         // Initialize tracking variables.
         uint256 totalClaims = claimants.length;
         uint256 spentAmount = 0;

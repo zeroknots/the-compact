@@ -15,4 +15,14 @@ import { EmissaryLogic } from "./EmissaryLogic.sol";
  * @title TheCompactLogic
  * @notice Inherited contract that aggregates a number of other inherited contracts.
  */
-contract TheCompactLogic is AllocatorLogic, ClaimProcessor, DepositViaPermit2Logic, DirectDepositLogic, Extsload, RegistrationLogic, TransferLogic, WithdrawalLogic, EmissaryLogic { }
+contract TheCompactLogic is
+    AllocatorLogic,
+    ClaimProcessor,
+    DepositViaPermit2Logic,
+    DirectDepositLogic,
+    Extsload,
+    RegistrationLogic,
+    TransferLogic,
+    WithdrawalLogic,
+    EmissaryLogic
+{ }

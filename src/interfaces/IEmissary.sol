@@ -10,5 +10,8 @@ interface IEmissary {
      * @param lockTag    The lock tag containing allocator ID, reset period, and scope.
      * @return           Must return the function selector.
      */
-    function verifyClaim(address sponsor, bytes32 claimHash, bytes calldata signature, bytes12 lockTag) external view returns (bytes4);
+    function verifyClaim(address sponsor, bytes32 claimHash, bytes calldata signature, bytes12 lockTag)
+        external
+        view
+        returns (bytes4);
 }

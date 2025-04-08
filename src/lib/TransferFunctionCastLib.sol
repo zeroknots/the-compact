@@ -54,7 +54,9 @@ library TransferFunctionCastLib {
      * @param fnIn   Function pointer to `TransferLogic._notExpiredAndAuthorizedByAllocator`.
      * @return fnOut Modified function used in `TransferLogic._processSplitBatchTransfer`.
      */
-    function usingSplitBatchTransfer(function (bytes32, address, BasicTransfer calldata, uint256[2][] memory) internal fnIn)
+    function usingSplitBatchTransfer(
+        function (bytes32, address, BasicTransfer calldata, uint256[2][] memory) internal fnIn
+    )
         internal
         pure
         returns (function (bytes32, address, SplitBatchTransfer calldata, uint256[2][] memory) internal fnOut)
@@ -70,10 +72,16 @@ library TransferFunctionCastLib {
      * @param fnIn   Function pointer to `TransferLogic._deriveConsistentAllocatorAndConsumeNonce`.
      * @return fnOut Modified function used in `TransferLogic._processSplitBatchTransfer`.
      */
-    function usingSplitByIdComponent(function(TransferComponent[] calldata, uint256, function (TransferComponent[] calldata, uint256) internal pure returns (uint96)) internal returns (address) fnIn)
+    function usingSplitByIdComponent(
+        function(TransferComponent[] calldata, uint256, function (TransferComponent[] calldata, uint256) internal pure returns (uint96)) internal returns (address)
+            fnIn
+    )
         internal
         pure
-        returns (function(SplitByIdComponent[] calldata, uint256, function (SplitByIdComponent[] calldata, uint256) internal pure returns (uint96)) internal returns (address) fnOut)
+        returns (
+            function(SplitByIdComponent[] calldata, uint256, function (SplitByIdComponent[] calldata, uint256) internal pure returns (uint96)) internal returns (address)
+            fnOut
+        )
     {
         assembly ("memory-safe") {
             fnOut := fnIn

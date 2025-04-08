@@ -20,7 +20,8 @@ library TransferLib {
     uint256 private constant _ERC6909_MASTER_SLOT_SEED = 0xedcaa89a82293940;
 
     // keccak256(bytes("Transfer(address,address,address,uint256,uint256)")).
-    uint256 private constant _TRANSFER_EVENT_SIGNATURE = 0x1b3d7edb2e9c0b0e7c525b20aaaef0f5940d2ed71663c7d39266ecafac728859;
+    uint256 private constant _TRANSFER_EVENT_SIGNATURE =
+        0x1b3d7edb2e9c0b0e7c525b20aaaef0f5940d2ed71663c7d39266ecafac728859;
 
     /**
      * @notice Internal function for transferring ERC6909 tokens between accounts. Updates
