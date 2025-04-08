@@ -168,7 +168,7 @@ contract TheCompactTest is Test {
             bytes12(bytes32((uint256(scope) << 255) | (uint256(resetPeriod) << 252) | (uint256(allocatorId) << 160)));
 
         vm.prank(swapper);
-        uint256 id = theCompact.deposit{ value: amount }(lockTag, swapper);
+        uint256 id = theCompact.deposit{ value: amount }(lockTag);
         vm.snapshotGasLastCall("depositETHBasic");
 
         (
@@ -176,7 +176,7 @@ contract TheCompactTest is Test {
             address derivedAllocator,
             ResetPeriod derivedResetPeriod,
             Scope derivedScope,
-            bytes12 retrivedLockTag
+            bytes12 derivedLockTag
         ) = theCompact.getLockDetails(id);
         assertEq(derivedToken, address(0));
         assertEq(derivedAllocator, allocator);
@@ -188,7 +188,7 @@ contract TheCompactTest is Test {
                 | uint256(uint160(address(0)))
         );
         assertEq(
-            retrivedLockTag,
+            derivedLockTag,
             bytes12(bytes32((uint256(scope) << 255) | (uint256(resetPeriod) << 252) | (uint256(allocatorId) << 160)))
         );
 
@@ -218,7 +218,7 @@ contract TheCompactTest is Test {
             address derivedAllocator,
             ResetPeriod derivedResetPeriod,
             Scope derivedScope,
-            bytes12 retrivedLockTag
+            bytes12 derivedLockTag
         ) = theCompact.getLockDetails(id);
         assertEq(derivedToken, address(0));
         assertEq(derivedAllocator, allocator);
@@ -230,7 +230,7 @@ contract TheCompactTest is Test {
                 | uint256(uint160(address(0)))
         );
         assertEq(
-            retrivedLockTag,
+            derivedLockTag,
             bytes12(bytes32((uint256(scope) << 255) | (uint256(resetPeriod) << 252) | (uint256(allocatorId) << 160)))
         );
 
@@ -260,7 +260,7 @@ contract TheCompactTest is Test {
             address derivedAllocator,
             ResetPeriod derivedResetPeriod,
             Scope derivedScope,
-            bytes12 retrivedLockTag
+            bytes12 derivedLockTag
         ) = theCompact.getLockDetails(id);
         assertEq(derivedToken, address(token));
         assertEq(derivedAllocator, allocator);
@@ -272,7 +272,7 @@ contract TheCompactTest is Test {
                 | uint256(uint160(address(token)))
         );
         assertEq(
-            retrivedLockTag,
+            derivedLockTag,
             bytes12(bytes32((uint256(scope) << 255) | (uint256(resetPeriod) << 252) | (uint256(allocatorId) << 160)))
         );
 
@@ -302,7 +302,7 @@ contract TheCompactTest is Test {
             address derivedAllocator,
             ResetPeriod derivedResetPeriod,
             Scope derivedScope,
-            bytes12 retrivedLockTag
+            bytes12 derivedLockTag
         ) = theCompact.getLockDetails(id);
         assertEq(derivedToken, address(token));
         assertEq(derivedAllocator, allocator);
@@ -314,7 +314,7 @@ contract TheCompactTest is Test {
                 | uint256(uint160(address(token)))
         );
         assertEq(
-            retrivedLockTag,
+            derivedLockTag,
             bytes12(bytes32((uint256(scope) << 255) | (uint256(resetPeriod) << 252) | (uint256(allocatorId) << 160)))
         );
 
@@ -2327,7 +2327,7 @@ contract TheCompactTest is Test {
         );
 
         vm.prank(swapper);
-        uint256 id = theCompact.deposit{ value: amount }(lockTag, swapper);
+        uint256 id = theCompact.deposit{ value: amount }(lockTag);
 
         assertEq(address(theCompact).balance, amount);
         assertEq(theCompact.balanceOf(swapper, id), amount);

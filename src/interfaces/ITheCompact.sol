@@ -70,6 +70,16 @@ interface ITheCompact {
     event AllocatorRegistered(uint96 allocatorId, address allocator);
 
     /**
+     * @notice External payable function for depositing native tokens into a resource lock
+     * and receiving back ERC6909 tokens representing the underlying locked balance controlled
+     * by the depositor. The ERC6909 token amount received by the caller will match the amount
+     * of native tokens sent with the transaction.
+     * @param lockTag  The lock tag containing allocator ID, reset period, and scope.
+     * @return id      The ERC6909 token identifier of the associated resource lock.
+     */
+    function deposit(bytes12 lockTag) external payable returns (uint256 id);
+
+    /**
      * @notice External payable function for depositing native tokens into a resource lock with
      * custom reset period and scope parameters. The ERC6909 token amount received by the recipient
      * will match the amount of native tokens sent with the transaction.
@@ -118,6 +128,20 @@ interface ITheCompact {
         bytes32 typehash,
         bytes32 witness
     ) external payable returns (uint256 id, bytes32 claimhash);
+
+    /**
+     * @notice External function for depositing ERC20 tokens into a resource lock. The default
+     * reset period (ten minutes) and scope (multichain) will be used. The caller must directly
+     * approve The Compact to transfer a sufficient amount of the ERC20 token on its behalf. The
+     * ERC6909 token amount received back by the caller is derived from the difference between
+     * the starting and ending balance held in the resource lock, which may differ from the amount
+     * transferred depending on the implementation details of the respective token.
+     * @param token    The address of the ERC20 token to deposit.
+     * @param lockTag  The address of the allocator mediating the resource lock.
+     * @param amount   The amount of tokens to deposit.
+     * @return id      The ERC6909 token identifier of the associated resource lock.
+     */
+    function deposit(address token, bytes12 lockTag, uint256 amount) external returns (uint256 id);
 
     /**
      * @notice External function for depositing ERC20 tokens into a resource lock with custom reset
