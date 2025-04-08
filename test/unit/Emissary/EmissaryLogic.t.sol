@@ -48,7 +48,8 @@ contract EmissaryLogicTest is Test {
         bool success = logic.assignEmissary(lockTag, address(emissary1));
         assertTrue(success);
 
-        (EmissaryStatus status, uint256 assignableAt, address currentEmissary) = logic.getEmissaryStatus(sponsor, lockTag);
+        (EmissaryStatus status, uint256 assignableAt, address currentEmissary) =
+            logic.getEmissaryStatus(sponsor, lockTag);
 
         assertTrue(status == EmissaryStatus.Enabled, "Status");
         assertTrue(assignableAt == type(uint96).max, "timestamp");
@@ -63,7 +64,8 @@ contract EmissaryLogicTest is Test {
     }
 
     function test_reset_emissary() public {
-        (EmissaryStatus status, uint256 assignableAt, address currentEmissary) = logic.getEmissaryStatus(sponsor, lockTag);
+        (EmissaryStatus status, uint256 assignableAt, address currentEmissary) =
+            logic.getEmissaryStatus(sponsor, lockTag);
 
         assertTrue(status == EmissaryStatus.Disabled, "Status");
         assertTrue(assignableAt == 0, "timestamp");
@@ -95,7 +97,8 @@ contract EmissaryLogicTest is Test {
     }
 
     function test_disable_emissary() public {
-        (EmissaryStatus status, uint256 assignableAt, address currentEmissary) = logic.getEmissaryStatus(sponsor, lockTag);
+        (EmissaryStatus status, uint256 assignableAt, address currentEmissary) =
+            logic.getEmissaryStatus(sponsor, lockTag);
 
         assertTrue(status == EmissaryStatus.Disabled, "Status should be disabled");
         assertTrue(assignableAt == 0, "timestamp");
@@ -135,10 +138,15 @@ contract EmissaryLogicTest is Test {
 
     function toLockTag(uint96 _allocatorId, Scope _scope, ResetPeriod _resetPeriod) internal pure returns (bytes12) {
         // Derive lock tag (pack scope, reset period, & allocator ID).
-        return ((_scope.asUint256() << 255) | (_resetPeriod.asUint256() << 252) | (_allocatorId.asUint256() << 160)).asBytes12();
+        return ((_scope.asUint256() << 255) | (_resetPeriod.asUint256() << 252) | (_allocatorId.asUint256() << 160))
+            .asBytes12();
     }
 
-    function fromLockTag(bytes12 tag) internal pure returns (uint96 _allocatorId, Scope _scope, ResetPeriod _resetPeriod) {
+    function fromLockTag(bytes12 tag)
+        internal
+        pure
+        returns (uint96 _allocatorId, Scope _scope, ResetPeriod _resetPeriod)
+    {
         uint256 value = tag.asUint256();
 
         // Extract scope (bits 255 to 253)

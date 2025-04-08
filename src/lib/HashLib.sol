@@ -3,7 +3,9 @@ pragma solidity ^0.8.27;
 
 import { BatchTransfer, SplitBatchTransfer } from "../types/BatchClaims.sol";
 import { BasicTransfer, SplitTransfer } from "../types/Claims.sol";
-import { TransferComponent, SplitComponent, SplitByIdComponent, SplitBatchClaimComponent } from "../types/Components.sol";
+import {
+    TransferComponent, SplitComponent, SplitByIdComponent, SplitBatchClaimComponent
+} from "../types/Components.sol";
 import {
     COMPACT_TYPEHASH,
     COMPACT_TYPESTRING_FRAGMENT_ONE,
@@ -276,7 +278,11 @@ library HashLib {
      * @return messageHash        The EIP-712 compliant message hash.
      * @return typehash           The EIP-712 typehash.
      */
-    function toMessageHashWithWitness(uint256 claim, uint256 qualificationOffset) internal view returns (bytes32 messageHash, bytes32 typehash) {
+    function toMessageHashWithWitness(uint256 claim, uint256 qualificationOffset)
+        internal
+        view
+        returns (bytes32 messageHash, bytes32 typehash)
+    {
         assembly ("memory-safe") {
             // Retrieve the free memory pointer; memory will be left dirtied.
             let m := mload(0x40)
@@ -322,7 +328,10 @@ library HashLib {
      * @param idsAndAmountsHash A hash of the ids and amounts.
      * @return messageHash      The EIP-712 compliant message hash.
      */
-    function toBatchTransferMessageHashUsingIdsAndAmountsHash(BatchTransfer calldata transfer, uint256 idsAndAmountsHash) internal view returns (bytes32 messageHash) {
+    function toBatchTransferMessageHashUsingIdsAndAmountsHash(
+        BatchTransfer calldata transfer,
+        uint256 idsAndAmountsHash
+    ) internal view returns (bytes32 messageHash) {
         assembly ("memory-safe") {
             // Retrieve the free memory pointer; memory will be left dirtied.
             let m := mload(0x40)
@@ -379,7 +388,11 @@ library HashLib {
      * @return messageHash      The EIP-712 compliant message hash.
      * @return typehash         The EIP-712 typehash.
      */
-    function toBatchClaimWithWitnessMessageHash(uint256 claim, uint256 idsAndAmountsHash) internal view returns (bytes32 messageHash, bytes32 typehash) {
+    function toBatchClaimWithWitnessMessageHash(uint256 claim, uint256 idsAndAmountsHash)
+        internal
+        view
+        returns (bytes32 messageHash, bytes32 typehash)
+    {
         assembly ("memory-safe") {
             // Retrieve the free memory pointer; memory will be left dirtied.
             let m := mload(0x40)
@@ -428,11 +441,13 @@ library HashLib {
      * @param idsAndAmountsHash         A hash of the ids and amounts.
      * @return messageHash              The EIP-712 compliant message hash.
      */
-    function toMultichainClaimMessageHash(uint256 claim, uint256 additionalOffset, bytes32 segmentTypehash, bytes32 multichainCompactTypehash, uint256 idsAndAmountsHash)
-        internal
-        view
-        returns (bytes32 messageHash)
-    {
+    function toMultichainClaimMessageHash(
+        uint256 claim,
+        uint256 additionalOffset,
+        bytes32 segmentTypehash,
+        bytes32 multichainCompactTypehash,
+        uint256 idsAndAmountsHash
+    ) internal view returns (bytes32 messageHash) {
         assembly ("memory-safe") {
             // Retrieve the free memory pointer; memory will be left dirtied.
             let m := mload(0x40)
@@ -485,11 +500,13 @@ library HashLib {
      * @param idsAndAmountsHash         A hash of the ids and amounts.
      * @return messageHash              The EIP-712 compliant message hash.
      */
-    function toExogenousMultichainClaimMessageHash(uint256 claim, uint256 additionalOffset, bytes32 segmentTypehash, bytes32 multichainCompactTypehash, uint256 idsAndAmountsHash)
-        internal
-        view
-        returns (bytes32 messageHash)
-    {
+    function toExogenousMultichainClaimMessageHash(
+        uint256 claim,
+        uint256 additionalOffset,
+        bytes32 segmentTypehash,
+        bytes32 multichainCompactTypehash,
+        uint256 idsAndAmountsHash
+    ) internal view returns (bytes32 messageHash) {
         assembly ("memory-safe") {
             // Retrieve the free memory pointer; memory will be left dirtied.
             let m := mload(0x40)
@@ -559,7 +576,11 @@ library HashLib {
      * @return segmentTypehash           The segment typehash.
      * @return multichainCompactTypehash The multichain compact typehash.
      */
-    function toMultichainTypehashes(uint256 claim) internal pure returns (bytes32 segmentTypehash, bytes32 multichainCompactTypehash) {
+    function toMultichainTypehashes(uint256 claim)
+        internal
+        pure
+        returns (bytes32 segmentTypehash, bytes32 multichainCompactTypehash)
+    {
         assembly ("memory-safe") {
             // Retrieve the free memory pointer; memory will be left dirtied.
             let m := mload(0x40)
@@ -591,7 +612,11 @@ library HashLib {
      * @param additionalOffset   Additional offset from claim pointer to ID from most compact case.
      * @return idsAndAmountsHash The hash of the id and amount.
      */
-    function toSingleIdAndAmountHash(uint256 claim, uint256 additionalOffset) internal pure returns (uint256 idsAndAmountsHash) {
+    function toSingleIdAndAmountHash(uint256 claim, uint256 additionalOffset)
+        internal
+        pure
+        returns (uint256 idsAndAmountsHash)
+    {
         assembly ("memory-safe") {
             // Derive the pointer to the claim with additional offset.
             let claimWithAdditionalOffset := add(claim, additionalOffset)
@@ -613,7 +638,11 @@ library HashLib {
      * checked elsewhere; using it without this check occurring elsewhere can result in
      * erroneous hash values.
      */
-    function toIdsAndAmountsHash(uint256[2][] calldata idsAndAmounts) internal pure returns (bytes32 idsAndAmountsHash) {
+    function toIdsAndAmountsHash(uint256[2][] calldata idsAndAmounts)
+        internal
+        pure
+        returns (bytes32 idsAndAmountsHash)
+    {
         assembly ("memory-safe") {
             // Retrieve the free memory pointer; memory will be left dirtied.
             let ptr := mload(0x40)
@@ -635,7 +664,11 @@ library HashLib {
      * @param claims             An array of SplitBatchClaimComponent structs.
      * @return idsAndAmountsHash The hash of the ids and amounts.
      */
-    function toSplitIdsAndAmountsHash(SplitBatchClaimComponent[] calldata claims) internal pure returns (uint256 idsAndAmountsHash) {
+    function toSplitIdsAndAmountsHash(SplitBatchClaimComponent[] calldata claims)
+        internal
+        pure
+        returns (uint256 idsAndAmountsHash)
+    {
         // Retrieve the total number of ids in the claims array.
         uint256 totalIds = claims.length;
 
@@ -707,11 +740,16 @@ library HashLib {
      * @param witness         EIP712 structured hash of witness.
      * @return messageHash The corresponding EIP-712 messagehash.
      */
-    function toFlatMessageHashWithWitness(address sponsor, uint256 tokenId, uint256 amount, address arbiter, uint256 nonce, uint256 expires, bytes32 typehash, bytes32 witness)
-        internal
-        pure
-        returns (bytes32 messageHash)
-    {
+    function toFlatMessageHashWithWitness(
+        address sponsor,
+        uint256 tokenId,
+        uint256 amount,
+        address arbiter,
+        uint256 nonce,
+        uint256 expires,
+        bytes32 typehash,
+        bytes32 witness
+    ) internal pure returns (bytes32 messageHash) {
         assembly ("memory-safe") {
             // Retrieve the free memory pointer; memory will be left dirtied.
             let m := mload(0x40)
@@ -740,11 +778,15 @@ library HashLib {
      * @param witness       EIP712 structured hash of witness.
      * @return messageHash  The corresponding EIP-712 messagehash.
      */
-    function toFlatBatchClaimWithWitnessMessageHash(address sponsor, uint256[2][] calldata idsAndAmounts, address arbiter, uint256 nonce, uint256 expires, bytes32 typehash, bytes32 witness)
-        internal
-        pure
-        returns (bytes32 messageHash)
-    {
+    function toFlatBatchClaimWithWitnessMessageHash(
+        address sponsor,
+        uint256[2][] calldata idsAndAmounts,
+        address arbiter,
+        uint256 nonce,
+        uint256 expires,
+        bytes32 typehash,
+        bytes32 witness
+    ) internal pure returns (bytes32 messageHash) {
         bytes32 idsAndAmountsHash = idsAndAmounts.toIdsAndAmountsHash();
         assembly ("memory-safe") {
             // Retrieve the free memory pointer; memory will be left dirtied.

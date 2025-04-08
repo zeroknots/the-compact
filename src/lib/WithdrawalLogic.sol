@@ -124,7 +124,11 @@ contract WithdrawalLogic is ConstructorLogic {
      * @return status    The current ForcedWithdrawalStatus (disabled, pending, or enabled).
      * @return enabledAt The timestamp when forced withdrawal becomes possible.
      */
-    function _getForcedWithdrawalStatus(address account, uint256 id) internal view returns (ForcedWithdrawalStatus status, uint256 enabledAt) {
+    function _getForcedWithdrawalStatus(address account, uint256 id)
+        internal
+        view
+        returns (ForcedWithdrawalStatus status, uint256 enabledAt)
+    {
         // Derive the storage slot containing the time the withdrawal is enabled.
         uint256 cutoffTimeSlotLocation = _getCutoffTimeSlot(account, id);
 

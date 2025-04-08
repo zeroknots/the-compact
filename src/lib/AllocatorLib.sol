@@ -6,7 +6,15 @@ import { IAllocator } from "../interfaces/IAllocator.sol";
 library AllocatorLib {
     error InvalidAllocation(address allocator);
 
-    function callAuthorizeClaim(address allocator, bytes32 claimHash, address sponsor, uint256 nonce, uint256 expires, uint256[2][] memory idsAndAmounts, bytes calldata allocatorData) internal {
+    function callAuthorizeClaim(
+        address allocator,
+        bytes32 claimHash,
+        address sponsor,
+        uint256 nonce,
+        uint256 expires,
+        uint256[2][] memory idsAndAmounts,
+        bytes calldata allocatorData
+    ) internal {
         // TODO: optimize this
         bytes4 magicValue = IAllocator(allocator).authorizeClaim(
             claimHash,

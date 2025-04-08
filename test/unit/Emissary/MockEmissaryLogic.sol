@@ -25,7 +25,14 @@ contract MockEmissaryLogic is TheCompactLogic {
         return _assignEmissary(lockTag, emissary);
     }
 
-    function verifyWithEmissary(address sponsor, bytes calldata signature, bytes32 messageHash, address allocator, ResetPeriod resetPeriod, Scope scope) external view returns (bool) {
+    function verifyWithEmissary(
+        address sponsor,
+        bytes calldata signature,
+        bytes32 messageHash,
+        address allocator,
+        ResetPeriod resetPeriod,
+        Scope scope
+    ) external view returns (bool) {
         bytes32 domainSeparator = _domainSeparator();
         bytes32 claimHash = messageHash.withDomain(domainSeparator);
 
@@ -33,7 +40,11 @@ contract MockEmissaryLogic is TheCompactLogic {
         return claimHash.verifyWithEmissary(sponsor, lockTag, signature);
     }
 
-    function getEmissaryStatus(address sponsor, bytes12 lockTag) external view returns (EmissaryStatus status, uint256 assignableAt, address currentEmissary) {
+    function getEmissaryStatus(address sponsor, bytes12 lockTag)
+        external
+        view
+        returns (EmissaryStatus status, uint256 assignableAt, address currentEmissary)
+    {
         return _getEmissaryStatus(sponsor, lockTag);
     }
 }

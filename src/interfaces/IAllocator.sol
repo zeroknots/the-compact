@@ -24,7 +24,15 @@ interface IAllocator {
      * @param allocatorData  Arbitrary data provided by the arbiter.
      * @return               Must return the function selector.
      */
-    function authorizeClaim(bytes32 claimHash, address arbiter, address sponsor, uint256 nonce, uint256 expires, uint256[2][] calldata idsAndAmounts, bytes calldata allocatorData) external returns (bytes4);
+    function authorizeClaim(
+        bytes32 claimHash,
+        address arbiter,
+        address sponsor,
+        uint256 nonce,
+        uint256 expires,
+        uint256[2][] calldata idsAndAmounts,
+        bytes calldata allocatorData
+    ) external returns (bytes4);
 
     /**
      * @notice Check if given allocatorData authorizes a claim. Intended to be called offchain.
@@ -37,8 +45,13 @@ interface IAllocator {
      * @param allocatorData  Arbitrary data provided by the arbiter.
      * @return               A boolean indicating whether the claim is authorized.
      */
-    function isClaimAuthorized(bytes32 claimHash, address arbiter, address sponsor, uint256 nonce, uint256 expires, uint256[2][] calldata idsAndAmounts, bytes calldata allocatorData)
-        external
-        view
-        returns (bool);
+    function isClaimAuthorized(
+        bytes32 claimHash,
+        address arbiter,
+        address sponsor,
+        uint256 nonce,
+        uint256 expires,
+        uint256[2][] calldata idsAndAmounts,
+        bytes calldata allocatorData
+    ) external view returns (bool);
 }

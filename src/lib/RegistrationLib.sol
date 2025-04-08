@@ -18,7 +18,8 @@ library RegistrationLib {
     using IdLib for ResetPeriod;
 
     // keccak256(bytes("CompactRegistered(address,bytes32,bytes32)")).
-    uint256 private constant _COMPACT_REGISTERED_SIGNATURE = 0x52dd3aeaf9d70bfcfdd63526e155ba1eea436e7851acf5c950299321c671b927;
+    uint256 private constant _COMPACT_REGISTERED_SIGNATURE =
+        0x52dd3aeaf9d70bfcfdd63526e155ba1eea436e7851acf5c950299321c671b927;
 
     // Storage scope for active registrations:
     // slot: keccak256(_ACTIVE_REGISTRATIONS_SCOPE ++ sponsor ++ claimHash ++ typehash) => expires.
@@ -87,7 +88,11 @@ library RegistrationLib {
      * @param typehash  The EIP-712 typehash associated with the claim hash.
      * @return registrationTimestamp The timestamp at which the registration occurred.
      */
-    function toRegistrationTimestamp(address sponsor, bytes32 claimHash, bytes32 typehash) internal view returns (uint256 registrationTimestamp) {
+    function toRegistrationTimestamp(address sponsor, bytes32 claimHash, bytes32 typehash)
+        internal
+        view
+        returns (uint256 registrationTimestamp)
+    {
         assembly ("memory-safe") {
             // Retrieve the current free memory pointer.
             let m := mload(0x40)

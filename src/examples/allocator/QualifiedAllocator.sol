@@ -32,7 +32,9 @@ contract QualifiedAllocator is IAllocator {
         uint256[2][] calldata idsAndAmounts, // The allocated token IDs and amounts.
         bytes calldata allocatorData // Arbitrary data provided by the arbiter.
     ) external view returns (bytes4) {
-        require(isClaimAuthorized(claimHash, arbiter, sponsor, nonce, expires, idsAndAmounts, allocatorData), "Invalid Sig");
+        require(
+            isClaimAuthorized(claimHash, arbiter, sponsor, nonce, expires, idsAndAmounts, allocatorData), "Invalid Sig"
+        );
 
         return this.authorizeClaim.selector;
     }
@@ -54,7 +56,11 @@ contract QualifiedAllocator is IAllocator {
 
         (bytes memory signature, bytes32 qualificationArg) = abi.decode(allocatorData, (bytes, bytes32));
 
-        bytes32 qualifiedHash = keccak256(abi.encode(keccak256("QualifiedClaim(bytes32 claimHash,bytes32 qualificationArg)"), claimHash, qualificationArg));
+        bytes32 qualifiedHash = keccak256(
+            abi.encode(
+                keccak256("QualifiedClaim(bytes32 claimHash,bytes32 qualificationArg)"), claimHash, qualificationArg
+            )
+        );
         // pulling the domain separator for every authorizeClaim call is inefficient, and should not be used in prod.
         // this is just for test purposes, since TheCompact.t.sol is using vm.chainId().
         // @dev Consider inheriting EIP712 in the Allocator or caching the compact domain separator as an immutable

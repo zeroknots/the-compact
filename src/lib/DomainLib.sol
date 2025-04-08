@@ -22,7 +22,11 @@ library DomainLib {
      * @param initialChainId         The chain ID at the time of deployment.
      * @return domainSeparator       The current domain separator.
      */
-    function toLatest(bytes32 initialDomainSeparator, uint256 initialChainId) internal view returns (bytes32 domainSeparator) {
+    function toLatest(bytes32 initialDomainSeparator, uint256 initialChainId)
+        internal
+        view
+        returns (bytes32 domainSeparator)
+    {
         // Set the initial domain separator as the default domain separator.
         domainSeparator = initialDomainSeparator;
 
@@ -51,7 +55,11 @@ library DomainLib {
      * @param notarizedChainId          The chain ID to derive the domain separator for.
      * @return notarizedDomainSeparator The domain separator for the specified chain ID.
      */
-    function toNotarizedDomainSeparator(uint256 notarizedChainId) internal view returns (bytes32 notarizedDomainSeparator) {
+    function toNotarizedDomainSeparator(uint256 notarizedChainId)
+        internal
+        view
+        returns (bytes32 notarizedDomainSeparator)
+    {
         assembly ("memory-safe") {
             // Retrieve the free memory pointer.
             let m := mload(0x40)

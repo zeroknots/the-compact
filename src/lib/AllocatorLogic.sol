@@ -100,7 +100,11 @@ contract AllocatorLogic {
      * @return scope       The scope of the resource lock (multichain or single chain).
      * @return lockTag     The lock tag containing the allocator ID, the reset period, and the scope.
      */
-    function _getLockDetails(uint256 id) internal view returns (address token, address allocator, ResetPeriod resetPeriod, Scope scope, bytes12 lockTag) {
+    function _getLockDetails(uint256 id)
+        internal
+        view
+        returns (address token, address allocator, ResetPeriod resetPeriod, Scope scope, bytes12 lockTag)
+    {
         token = id.toAddress();
         allocator = id.toAllocatorId().toRegisteredAllocator();
         resetPeriod = id.toResetPeriod();

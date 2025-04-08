@@ -114,7 +114,11 @@ abstract contract EmissaryLogic {
      * @return assignableAt The timestamp when the emissary assignment will be available (if scheduled).
      * @return currentEmissary The address of the currently assigned emissary, if any.
      */
-    function _getEmissaryStatus(address sponsor, bytes12 lockTag) internal view returns (EmissaryStatus status, uint256 assignableAt, address currentEmissary) {
+    function _getEmissaryStatus(address sponsor, bytes12 lockTag)
+        internal
+        view
+        returns (EmissaryStatus status, uint256 assignableAt, address currentEmissary)
+    {
         lockTag.hasRegisteredAllocatorId();
 
         return sponsor.getEmissaryStatus(lockTag);

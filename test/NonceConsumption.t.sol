@@ -38,7 +38,9 @@ contract NonceConsumptionTest is Test {
         // Check that each nonce was consumed
         for (uint256 i = 0; i < noncesToConsume.length; i++) {
             bool consumed = theCompact.hasConsumedAllocatorNonce(noncesToConsume[i], allocator);
-            assertTrue(consumed, string(abi.encodePacked("Nonce ", vm.toString(noncesToConsume[i]), " should be consumed")));
+            assertTrue(
+                consumed, string(abi.encodePacked("Nonce ", vm.toString(noncesToConsume[i]), " should be consumed"))
+            );
         }
 
         // Verify that a nonce we didn't consume is still valid
@@ -105,7 +107,9 @@ contract NonceConsumptionTest is Test {
         // Check that each nonce was consumed
         for (uint256 i = 0; i < noncesToConsume.length; i++) {
             bool consumed = theCompact.hasConsumedAllocatorNonce(noncesToConsume[i], allocator);
-            assertTrue(consumed, string(abi.encodePacked("Nonce ", vm.toString(noncesToConsume[i]), " should be consumed")));
+            assertTrue(
+                consumed, string(abi.encodePacked("Nonce ", vm.toString(noncesToConsume[i]), " should be consumed"))
+            );
         }
     }
 }

@@ -48,7 +48,11 @@ contract RegistrationLogic {
      * @param typehash  The EIP-712 typehash associated with the claim hash.
      * @return registrationTimestamp The timestamp at which the registration was made.
      */
-    function _getRegistrationStatus(address sponsor, bytes32 claimHash, bytes32 typehash) internal view returns (uint256 registrationTimestamp) {
+    function _getRegistrationStatus(address sponsor, bytes32 claimHash, bytes32 typehash)
+        internal
+        view
+        returns (uint256 registrationTimestamp)
+    {
         registrationTimestamp = sponsor.toRegistrationTimestamp(claimHash, typehash);
     }
 
@@ -69,11 +73,18 @@ contract RegistrationLogic {
      * witness
      * @param witness     EIP712 structured hash of witness.
      */
-    function _registerUsingClaimWithWitness(address sponsor, uint256 tokenId, uint256 amount, address arbiter, uint256 nonce, uint256 expires, bytes32 typehash, bytes32 witness)
-        internal
-        returns (bytes32 claimhash)
-    {
-        claimhash = HashLib.toFlatMessageHashWithWitness(sponsor, tokenId, amount, arbiter, nonce, expires, typehash, witness);
+    function _registerUsingClaimWithWitness(
+        address sponsor,
+        uint256 tokenId,
+        uint256 amount,
+        address arbiter,
+        uint256 nonce,
+        uint256 expires,
+        bytes32 typehash,
+        bytes32 witness
+    ) internal returns (bytes32 claimhash) {
+        claimhash =
+            HashLib.toFlatMessageHashWithWitness(sponsor, tokenId, amount, arbiter, nonce, expires, typehash, witness);
         sponsor.registerCompact(claimhash, typehash);
     }
 
@@ -92,11 +103,18 @@ contract RegistrationLogic {
      * witness
      * @param witness       EIP712 structured hash of witness.
      */
-    function _registerUsingBatchClaimWithWitness(address sponsor, uint256[2][] calldata idsAndAmounts, address arbiter, uint256 nonce, uint256 expires, bytes32 typehash, bytes32 witness)
-        internal
-        returns (bytes32 claimhash)
-    {
-        claimhash = HashLib.toFlatBatchClaimWithWitnessMessageHash(sponsor, idsAndAmounts, arbiter, nonce, expires, typehash, witness);
+    function _registerUsingBatchClaimWithWitness(
+        address sponsor,
+        uint256[2][] calldata idsAndAmounts,
+        address arbiter,
+        uint256 nonce,
+        uint256 expires,
+        bytes32 typehash,
+        bytes32 witness
+    ) internal returns (bytes32 claimhash) {
+        claimhash = HashLib.toFlatBatchClaimWithWitnessMessageHash(
+            sponsor, idsAndAmounts, arbiter, nonce, expires, typehash, witness
+        );
         sponsor.registerCompact(claimhash, typehash);
     }
 }

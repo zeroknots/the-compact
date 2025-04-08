@@ -60,7 +60,11 @@ contract DirectDepositLogic is DepositLogic {
      * @param recipient     The address that will receive the corresponding ERC6909 tokens.
      * @param enforceConsistentAllocator Boolean to indicate whether the allocatorId should be consistent across deposits.
      */
-    function _processBatchDeposit(uint256[2][] calldata idsAndAmounts, address recipient, bool enforceConsistentAllocator) internal {
+    function _processBatchDeposit(
+        uint256[2][] calldata idsAndAmounts,
+        address recipient,
+        bool enforceConsistentAllocator
+    ) internal {
         // Set reentrancy guard.
         _setReentrancyGuard();
 
@@ -87,7 +91,16 @@ contract DirectDepositLogic is DepositLogic {
             //  * the callvalue is zero but the first token is native
             //  * the callvalue is nonzero but the first token is non-native
             //  * the first token is non-native and the callvalue doesn't equal the first amount
-            if or(iszero(totalIds), or(eq(firstUnderlyingTokenIsNative, iszero(callvalue())), and(firstUnderlyingTokenIsNative, iszero(eq(callvalue(), calldataload(add(idsAndAmountsOffset, 0x20))))))) {
+            if or(
+                iszero(totalIds),
+                or(
+                    eq(firstUnderlyingTokenIsNative, iszero(callvalue())),
+                    and(
+                        firstUnderlyingTokenIsNative,
+                        iszero(eq(callvalue(), calldataload(add(idsAndAmountsOffset, 0x20))))
+                    )
+                )
+            ) {
                 // revert InvalidBatchDepositStructure()
                 mstore(0, 0xca0fc08e)
                 revert(0x1c, 0x04)
@@ -150,7 +163,10 @@ contract DirectDepositLogic is DepositLogic {
      * @param allocator The address of the allocator.
      * @return id The ERC6909 token identifier of the associated resource lock.
      */
-    function _performBasicERC20Deposit(address token, address allocator, uint256 amount) internal returns (uint256 id) {
+    function _performBasicERC20Deposit(address token, address allocator, uint256 amount)
+        internal
+        returns (uint256 id)
+    {
         // Derive resource lock ID using provided token, default parameters, and allocator.
         id = token.excludingNative().toIdIfRegistered(Scope.Multichain, ResetPeriod.TenMinutes, allocator);
 
@@ -168,7 +184,12 @@ contract DirectDepositLogic is DepositLogic {
      * @param recipient   The address that will receive the corresponding ERC6909 tokens.
      * @return id         The ERC6909 token identifier of the associated resource lock.
      */
-    function _performCustomNativeTokenDeposit(address allocator, ResetPeriod resetPeriod, Scope scope, address recipient) internal returns (uint256 id) {
+    function _performCustomNativeTokenDeposit(
+        address allocator,
+        ResetPeriod resetPeriod,
+        Scope scope,
+        address recipient
+    ) internal returns (uint256 id) {
         // Derive resource lock ID using null address, provided parameters, and allocator.
         id = address(0).toIdIfRegistered(scope, resetPeriod, allocator);
 
@@ -191,7 +212,14 @@ contract DirectDepositLogic is DepositLogic {
      * @param recipient   The address that will receive the corresponding ERC6909 tokens.
      * @return id         The ERC6909 token identifier of the associated resource lock.
      */
-    function _performCustomERC20Deposit(address token, address allocator, ResetPeriod resetPeriod, Scope scope, uint256 amount, address recipient) internal returns (uint256 id) {
+    function _performCustomERC20Deposit(
+        address token,
+        address allocator,
+        ResetPeriod resetPeriod,
+        Scope scope,
+        uint256 amount,
+        address recipient
+    ) internal returns (uint256 id) {
         // Derive resource lock ID using provided token, parameters, and allocator.
         id = token.excludingNative().toIdIfRegistered(scope, resetPeriod, allocator);
 

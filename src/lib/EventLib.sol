@@ -13,7 +13,8 @@ library EventLib {
     uint256 private constant _CLAIM_EVENT_SIGNATURE = 0x770c32a2314b700d6239ee35ba23a9690f2fceb93a55d8c753e953059b3b18d4;
 
     // keccak256(bytes("ForcedWithdrawalStatusUpdated(address,uint256,bool,uint256)")).
-    uint256 private constant _FORCED_WITHDRAWAL_STATUS_UPDATED_SIGNATURE = 0xe27f5e0382cf5347965fc81d5c81cd141897fe9ce402d22c496b7c2ddc84e5fd;
+    uint256 private constant _FORCED_WITHDRAWAL_STATUS_UPDATED_SIGNATURE =
+        0xe27f5e0382cf5347965fc81d5c81cd141897fe9ce402d22c496b7c2ddc84e5fd;
 
     /**
      * @notice Internal function for emitting claim events. The sponsor and allocator
@@ -33,7 +34,14 @@ library EventLib {
             //  - data: messageHash, nonce
             mstore(0, claimHash)
             mstore(0x20, nonce)
-            log4(0, 0x40, _CLAIM_EVENT_SIGNATURE, shr(0x60, shl(0x60, sponsor)), shr(0x60, shl(0x60, allocator)), caller())
+            log4(
+                0,
+                0x40,
+                _CLAIM_EVENT_SIGNATURE,
+                shr(0x60, shl(0x60, sponsor)),
+                shr(0x60, shl(0x60, allocator)),
+                caller()
+            )
         }
     }
 

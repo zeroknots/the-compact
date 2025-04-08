@@ -59,7 +59,11 @@ library EmissaryLib {
      * The function uses a combination of sponsor address, lockTag, and a scope constant
      * to compute a unique storage slot for the configuration.
      */
-    function _getEmissaryConfig(address sponsor, bytes12 lockTag) private pure returns (EmissaryConfig storage config) {
+    function _getEmissaryConfig(address sponsor, bytes12 lockTag)
+        private
+        pure
+        returns (EmissaryConfig storage config)
+    {
         assembly ("memory-safe") {
             // Retrieve the current free memory pointer.
             let m := mload(0x40)
@@ -100,7 +104,10 @@ library EmissaryLib {
         // The second check ensures that either there is no current emissary,
         // or the reset period has elapsed before allowing a new assignment.
         // This enforces the cooldown period between assignments to prevent abuse.
-        require(_emissary == address(0) || config.assignableAt <= block.timestamp, EmissaryAssignmentUnavailable(config.assignableAt));
+        require(
+            _emissary == address(0) || config.assignableAt <= block.timestamp,
+            EmissaryAssignmentUnavailable(config.assignableAt)
+        );
 
         // if new Emissary is address(0), that means that the sponsor wants to remove the emissary feature.
         // we wipe all storage
@@ -194,13 +201,20 @@ library EmissaryLib {
      * @param signature The signature to verify
      * @return bool True if verification succeeds, False otherwise
      */
-    function verifyWithEmissary(bytes32 claimHash, address sponsor, bytes12 lockTag, bytes calldata signature) internal view returns (bool) {
+    function verifyWithEmissary(bytes32 claimHash, address sponsor, bytes12 lockTag, bytes calldata signature)
+        internal
+        view
+        returns (bool)
+    {
         // Retrieve the emissary for the sponsor and lock tag from storage.
         EmissaryConfig storage emissaryConfig = _getEmissaryConfig(sponsor, lockTag);
         address emissary = emissaryConfig.emissary;
 
-        // Do not verify if no emissary is set.
-        if (emissary == address(0)) return false;
+        // If emissary is caller, verify; if no emissary is set, do not verify.
+        bool emissaryIsCaller = emissary == msg.sender;
+        if (emissaryIsCaller.or(emissary == address(0))) {
+            return emissaryIsCaller;
+        }
 
         // Delegate the verification process to the assigned emissary contract.
         return IEmissary(emissary).verifyClaim(sponsor, claimHash, signature, lockTag) == IEmissary.verifyClaim.selector;
@@ -217,7 +231,11 @@ library EmissaryLib {
      * @return assignableAt The timestamp when the emissary can be reassigned
      * @return currentEmissary The address of the currently assigned emissary
      */
-    function getEmissaryStatus(address sponsor, bytes12 lockTag) internal view returns (EmissaryStatus status, uint256 assignableAt, address currentEmissary) {
+    function getEmissaryStatus(address sponsor, bytes12 lockTag)
+        internal
+        view
+        returns (EmissaryStatus status, uint256 assignableAt, address currentEmissary)
+    {
         EmissaryConfig storage emissaryConfig = _getEmissaryConfig(sponsor, lockTag);
         assignableAt = emissaryConfig.assignableAt;
         currentEmissary = emissaryConfig.emissary;

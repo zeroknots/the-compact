@@ -27,10 +27,16 @@ library ClaimHashFunctionCastLib {
      * @param fnIn   Function pointer to `ClaimHashLib._toGenericMultichainClaimWithWitnessMessageHash`.
      * @return fnOut Modified function used in `ClaimHashLib.toMessageHashes(BatchMultichainClaim calldata)`.
      */
-    function usingBatchMultichainClaim(function (uint256, uint256, function (uint256, uint256, bytes32, bytes32, uint256) internal view returns (bytes32)) internal view returns (bytes32, bytes32) fnIn)
+    function usingBatchMultichainClaim(
+        function (uint256, uint256, function (uint256, uint256, bytes32, bytes32, uint256) internal view returns (bytes32)) internal view returns (bytes32, bytes32)
+            fnIn
+    )
         internal
         pure
-        returns (function (BatchMultichainClaim calldata, uint256, function (uint256, uint256, bytes32, bytes32, uint256) internal view returns (bytes32)) internal view returns (bytes32, bytes32) fnOut)
+        returns (
+            function (BatchMultichainClaim calldata, uint256, function (uint256, uint256, bytes32, bytes32, uint256) internal view returns (bytes32)) internal view returns (bytes32, bytes32)
+                fnOut
+        )
     {
         assembly ("memory-safe") {
             fnOut := fnIn
@@ -43,11 +49,15 @@ library ClaimHashFunctionCastLib {
      * @param fnIn   Function pointer to `ClaimHashLib._toGenericMultichainClaimWithWitnessMessageHash`.
      * @return fnOut Modified function used in `ClaimHashLib.toMessageHashes(ExogenousBatchMultichainClaim calldata)`.
      */
-    function usingExogenousBatchMultichainClaim(function (uint256, uint256, function (uint256, uint256, bytes32, bytes32, uint256) internal view returns (bytes32)) internal view returns (bytes32, bytes32) fnIn)
+    function usingExogenousBatchMultichainClaim(
+        function (uint256, uint256, function (uint256, uint256, bytes32, bytes32, uint256) internal view returns (bytes32)) internal view returns (bytes32, bytes32)
+            fnIn
+    )
         internal
         pure
         returns (
-            function (ExogenousBatchMultichainClaim calldata, uint256, function (uint256, uint256, bytes32, bytes32, uint256) internal view returns (bytes32)) internal view returns (bytes32, bytes32) fnOut
+            function (ExogenousBatchMultichainClaim calldata, uint256, function (uint256, uint256, bytes32, bytes32, uint256) internal view returns (bytes32)) internal view returns (bytes32, bytes32)
+                fnOut
         )
     {
         assembly ("memory-safe") {
@@ -61,7 +71,11 @@ library ClaimHashFunctionCastLib {
      * @param fnIn   Function pointer to `HashLib.toMessageHashWithWitness(uint256, uint256)`.
      * @return fnOut Modified function used in `ClaimHashLib.toMessageHashes(Claim calldata)`.
      */
-    function usingClaim(function (uint256, uint256) internal view returns (bytes32, bytes32) fnIn) internal pure returns (function (Claim calldata, uint256) internal view returns (bytes32, bytes32) fnOut) {
+    function usingClaim(function (uint256, uint256) internal view returns (bytes32, bytes32) fnIn)
+        internal
+        pure
+        returns (function (Claim calldata, uint256) internal view returns (bytes32, bytes32) fnOut)
+    {
         assembly ("memory-safe") {
             fnOut := fnIn
         }
@@ -89,10 +103,16 @@ library ClaimHashFunctionCastLib {
      * @param fnIn   Function pointer to `ClaimHashLib._toGenericMultichainClaimWithWitnessMessageHash`.
      * @return fnOut Modified function used in `ClaimHashLib.toMessageHashes(MultichainClaimWithWitness calldata)`.
      */
-    function usingMultichainClaimWithWitness(function (uint256, uint256, function (uint256, uint256, bytes32, bytes32, uint256) internal view returns (bytes32)) internal view returns (bytes32, bytes32) fnIn)
+    function usingMultichainClaimWithWitness(
+        function (uint256, uint256, function (uint256, uint256, bytes32, bytes32, uint256) internal view returns (bytes32)) internal view returns (bytes32, bytes32)
+            fnIn
+    )
         internal
         pure
-        returns (function (MultichainClaim calldata, uint256, function (uint256, uint256, bytes32, bytes32, uint256) internal view returns (bytes32)) internal view returns (bytes32, bytes32) fnOut)
+        returns (
+            function (MultichainClaim calldata, uint256, function (uint256, uint256, bytes32, bytes32, uint256) internal view returns (bytes32)) internal view returns (bytes32, bytes32)
+                fnOut
+        )
     {
         assembly ("memory-safe") {
             fnOut := fnIn
@@ -106,11 +126,15 @@ library ClaimHashFunctionCastLib {
      * @return fnOut Modified function used in `ClaimHashLib.toMessageHashes(MultichainClaimWithWitness calldata)`.
      */
     function usingExogenousMultichainClaimWithWitness(
-        function (uint256, uint256, function (uint256, uint256, bytes32, bytes32, uint256) internal view returns (bytes32)) internal view returns (bytes32, bytes32) fnIn
+        function (uint256, uint256, function (uint256, uint256, bytes32, bytes32, uint256) internal view returns (bytes32)) internal view returns (bytes32, bytes32)
+            fnIn
     )
         internal
         pure
-        returns (function (ExogenousMultichainClaim calldata, uint256, function (uint256, uint256, bytes32, bytes32, uint256) internal view returns (bytes32)) internal view returns (bytes32, bytes32) fnOut)
+        returns (
+            function (ExogenousMultichainClaim calldata, uint256, function (uint256, uint256, bytes32, bytes32, uint256) internal view returns (bytes32)) internal view returns (bytes32, bytes32)
+                fnOut
+        )
     {
         assembly ("memory-safe") {
             fnOut := fnIn

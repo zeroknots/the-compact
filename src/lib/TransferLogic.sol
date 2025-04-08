@@ -39,7 +39,10 @@ contract TransferLogic is ConstructorLogic {
     using ValidityLib for uint256;
     using ValidityLib for bytes32;
     using TransferFunctionCastLib for function(bytes32, address, BasicTransfer calldata, uint256[2][] memory) internal;
-    using TransferFunctionCastLib for function(TransferComponent[] calldata, uint256, function (TransferComponent[] calldata, uint256) internal pure returns (uint96)) internal returns (address);
+    using
+    TransferFunctionCastLib
+    for
+        function(TransferComponent[] calldata, uint256, function (TransferComponent[] calldata, uint256) internal pure returns (uint96)) internal returns (address);
     using AllocatorLib for address;
 
     // bytes4(keccak256("attest(address,address,address,uint256,uint256)")).
@@ -60,7 +63,12 @@ contract TransferLogic is ConstructorLogic {
         idsAndAmounts[0] = [transfer.id, transfer.recipients.aggregate()];
 
         // Derive hash, validate expiry, consume nonce, and check allocator signature.
-        _notExpiredAndAuthorizedByAllocator.usingSplitTransfer()(transfer.toClaimHash(), transfer.id.toRegisteredAllocatorWithConsumed(transfer.nonce), transfer, idsAndAmounts);
+        _notExpiredAndAuthorizedByAllocator.usingSplitTransfer()(
+            transfer.toClaimHash(),
+            transfer.id.toRegisteredAllocatorWithConsumed(transfer.nonce),
+            transfer,
+            idsAndAmounts
+        );
 
         // Perform the split transfers or withdrawals.
         transfer.processSplitTransfer();
@@ -103,7 +111,12 @@ contract TransferLogic is ConstructorLogic {
 
         // Derive hash, validate expiry, consume nonce, and check allocator signature.
         _notExpiredAndAuthorizedByAllocator.usingSplitBatchTransfer()(
-            transfer.toClaimHash(), _deriveConsistentAllocatorAndConsumeNonce.usingSplitByIdComponent()(transfer.transfers, transfer.nonce, _allocatorIdOfSplitByIdComponent), transfer, idsAndAmounts
+            transfer.toClaimHash(),
+            _deriveConsistentAllocatorAndConsumeNonce.usingSplitByIdComponent()(
+                transfer.transfers, transfer.nonce, _allocatorIdOfSplitByIdComponent
+            ),
+            transfer,
+            idsAndAmounts
         );
 
         // Perform the split batch transfers or withdrawals.
@@ -178,7 +191,12 @@ contract TransferLogic is ConstructorLogic {
      * @param transferPayload The BasicTransfer struct containing signature and expiry.
      * @param idsAndAmounts   An array with IDs and aggregate transfer amounts.
      */
-    function _notExpiredAndAuthorizedByAllocator(bytes32 messageHash, address allocator, BasicTransfer calldata transferPayload, uint256[2][] memory idsAndAmounts) private {
+    function _notExpiredAndAuthorizedByAllocator(
+        bytes32 messageHash,
+        address allocator,
+        BasicTransfer calldata transferPayload,
+        uint256[2][] memory idsAndAmounts
+    ) private {
         uint256 expires = transferPayload.expires;
         uint256 nonce = transferPayload.nonce;
 
@@ -249,7 +267,11 @@ contract TransferLogic is ConstructorLogic {
      * @param index        The index of the batch transfer component to retrieve.
      * @return allocatorId The allocator ID derived from the transfer component at the given index.
      */
-    function _allocatorIdOfTransferComponentId(TransferComponent[] calldata components, uint256 index) private pure returns (uint96) {
+    function _allocatorIdOfTransferComponentId(TransferComponent[] calldata components, uint256 index)
+        private
+        pure
+        returns (uint96)
+    {
         // Retrieve ID from the component and derive corresponding allocator ID.
         return components[index].id.toAllocatorId();
     }
@@ -261,7 +283,11 @@ contract TransferLogic is ConstructorLogic {
      * @param index        The index of the split batch transfer component to retrieve.
      * @return allocatorId The allocator ID derived from the transfer component at the given index.
      */
-    function _allocatorIdOfSplitByIdComponent(SplitByIdComponent[] calldata components, uint256 index) private pure returns (uint96) {
+    function _allocatorIdOfSplitByIdComponent(SplitByIdComponent[] calldata components, uint256 index)
+        private
+        pure
+        returns (uint96)
+    {
         // Retrieve ID from the component and derive corresponding allocator ID.
         return components[index].id.toAllocatorId();
     }
