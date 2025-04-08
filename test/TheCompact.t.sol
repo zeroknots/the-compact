@@ -1931,7 +1931,7 @@ contract TheCompactTest is Test {
             recipients
         );
 
-        uint256 snapshotId = vm.snapshot();
+        uint256 snapshotId = vm.snapshotState();
         vm.prank(arbiter);
         (bytes32 returnedClaimHash) = theCompact.claim(claim);
         vm.snapshotGasLastCall("splitMultichainClaimWithWitness");
@@ -2114,7 +2114,7 @@ contract TheCompactTest is Test {
         claim.sponsorSignature = sponsorSignature;
 
         {
-            uint256 snapshotId = vm.snapshot();
+            uint256 snapshotId = vm.snapshotState();
 
             claim.allocatorData = abi.encodePacked(r, vs);
             claim.sponsor = swapper;
@@ -2136,7 +2136,7 @@ contract TheCompactTest is Test {
             assertEq(theCompact.balanceOf(swapper, id), 0);
             assertEq(theCompact.balanceOf(recipientOne, id), amountOne);
             assertEq(theCompact.balanceOf(recipientTwo, id), amountTwo);
-            vm.revertToAndDelete(snapshotId);
+            vm.revertToStateAndDelete(snapshotId);
         }
 
         // change to "new chain" (this hack is so the original one gets stored)
