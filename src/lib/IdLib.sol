@@ -89,22 +89,16 @@ library IdLib {
      * provided allocator has been registered. Derives the allocator ID from the registered
      * allocator, and combines it with the provided scope, reset period, and token address
      * to form a single ID value. Reverts if the allocator is not registered.
-     * @param token       The address of the underlying token.
-     * @param scope       The scope of the resource lock (multichain or single chain).
-     * @param resetPeriod The duration after which the resource lock can be reset.
-     * @param allocator   The address of the allocator mediating the resource lock.
-     * @return id         The derived resource lock ID.
+     * @param token   The address of the underlying token.
+     * @param lockTag The lock tag containing allocator ID, reset period, and scope.
+     * @return id     The derived resource lock ID.
      */
-    function toIdIfRegistered(address token, Scope scope, ResetPeriod resetPeriod, address allocator)
-        internal
-        view
-        returns (uint256 id)
-    {
+    function toIdIfRegistered(address token, bytes12 lockTag) internal view returns (uint256 id) {
         // Derive the allocator ID for the provided allocator address.
-        uint96 allocatorId = allocator.toAllocatorIdIfRegistered();
+        lockTag.toAllocatorId().mustHaveARegisteredAllocator();
 
         // Derive resource lock ID (pack scope, reset period, allocator ID, & token).
-        id = (allocatorId.toLockTag(scope, resetPeriod).asUint256() | token.asUint256());
+        id = lockTag.asUint256() | token.asUint256();
     }
 
     /**
