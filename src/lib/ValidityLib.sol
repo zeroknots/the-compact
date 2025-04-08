@@ -8,7 +8,6 @@ import { IdLib } from "./IdLib.sol";
 import { ConsumerLib } from "./ConsumerLib.sol";
 import { EfficiencyLib } from "./EfficiencyLib.sol";
 import { DomainLib } from "./DomainLib.sol";
-import { SignatureCheckerLib } from "solady/utils/SignatureCheckerLib.sol";
 import { EmissaryLib } from "./EmissaryLib.sol";
 import { RegistrationLib } from "./RegistrationLib.sol";
 
@@ -30,7 +29,6 @@ library ValidityLib {
     using EfficiencyLib for uint256;
     using EfficiencyLib for ResetPeriod;
     using DomainLib for bytes32;
-    using SignatureCheckerLib for address;
     using ValidityLib for uint256;
     using EmissaryLib for bytes32;
     using EmissaryLib for uint256[2][];
