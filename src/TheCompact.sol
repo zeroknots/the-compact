@@ -42,64 +42,52 @@ contract TheCompact is ITheCompact, ERC6909, TheCompactLogic {
     using EfficiencyLib for bool;
     using EfficiencyLib for uint256;
 
-    function deposit(address allocator) external payable returns (uint256) {
-        return _performBasicNativeTokenDeposit(allocator);
-    }
-
-    function deposit(address allocator, ResetPeriod resetPeriod, Scope scope, address recipient)
+    function deposit(bytes12 lockTag, address recipient)
         external
         payable
         returns (uint256)
     {
-        return _performCustomNativeTokenDeposit(allocator, resetPeriod, scope, recipient);
+        return _performCustomNativeTokenDeposit(lockTag, recipient);
     }
 
-    function depositAndRegister(address allocator, bytes32 claimHash, bytes32 typehash)
+    function depositAndRegister(bytes12 lockTag, bytes32 claimHash, bytes32 typehash)
         external
         payable
         returns (uint256 id)
     {
-        id = _performBasicNativeTokenDeposit(allocator);
+        id = _performCustomNativeTokenDeposit(lockTag, msg.sender);
 
         _register(msg.sender, claimHash, typehash);
     }
 
     function depositAndRegisterFor(
         address recipient,
-        address allocator,
-        ResetPeriod resetPeriod,
-        Scope scope,
+        bytes12 lockTag,
         address arbiter,
         uint256 nonce,
         uint256 expires,
         bytes32 typehash,
         bytes32 witness
     ) external payable returns (uint256 id, bytes32 claimhash) {
-        id = _performCustomNativeTokenDeposit(allocator, resetPeriod, scope, recipient);
+        id = _performCustomNativeTokenDeposit(lockTag, recipient);
 
         claimhash = _registerUsingClaimWithWitness(recipient, id, msg.value, arbiter, nonce, expires, typehash, witness);
     }
 
-    function deposit(address token, address allocator, uint256 amount) external returns (uint256) {
-        return _performBasicERC20Deposit(token, allocator, amount);
-    }
-
     function deposit(
         address token,
-        address allocator,
-        ResetPeriod resetPeriod,
-        Scope scope,
+        bytes12 lockTag,
         uint256 amount,
         address recipient
     ) external returns (uint256) {
-        return _performCustomERC20Deposit(token, allocator, resetPeriod, scope, amount, recipient);
+        return _performCustomERC20Deposit(token, lockTag, amount, recipient);
     }
 
-    function depositAndRegister(address token, address allocator, uint256 amount, bytes32 claimHash, bytes32 typehash)
+    function depositAndRegister(address token, bytes12 lockTag, uint256 amount, bytes32 claimHash, bytes32 typehash)
         external
         returns (uint256 id)
     {
-        id = _performBasicERC20Deposit(token, allocator, amount);
+        id = _performCustomERC20Deposit(token, lockTag, amount, msg.sender);
 
         _register(msg.sender, claimHash, typehash);
     }
@@ -107,9 +95,7 @@ contract TheCompact is ITheCompact, ERC6909, TheCompactLogic {
     function depositAndRegisterFor(
         address recipient,
         address token,
-        address allocator,
-        ResetPeriod resetPeriod,
-        Scope scope,
+        bytes12 lockTag,
         uint256 amount,
         address arbiter,
         uint256 nonce,
@@ -117,7 +103,7 @@ contract TheCompact is ITheCompact, ERC6909, TheCompactLogic {
         bytes32 typehash,
         bytes32 witness
     ) external returns (uint256 id, bytes32 claimhash) {
-        id = _performCustomERC20Deposit(token, allocator, resetPeriod, scope, amount, recipient);
+        id = _performCustomERC20Deposit(token, lockTag, amount, recipient);
 
         claimhash = _registerUsingClaimWithWitness(recipient, id, amount, arbiter, nonce, expires, typehash, witness);
     }
@@ -252,9 +238,7 @@ contract TheCompact is ITheCompact, ERC6909, TheCompactLogic {
     function registerFor(
         address sponsor,
         address token,
-        address allocator,
-        ResetPeriod resetPeriod,
-        Scope scope,
+        bytes12 lockTag,
         uint256 amount,
         address arbiter,
         uint256 nonce,
@@ -264,7 +248,7 @@ contract TheCompact is ITheCompact, ERC6909, TheCompactLogic {
         bytes calldata sponsorSignature
     ) external returns (uint256 id, bytes32 claimHash) {
         // Derive resource lock ID using provided token, parameters, and allocator.
-        id = token.excludingNative().toIdIfRegistered(scope, resetPeriod, allocator);
+        id = token.excludingNative().toIdIfRegistered(lockTag);
 
         claimHash =
             HashLib.toFlatMessageHashWithWitness(sponsor, id, amount, arbiter, nonce, expires, typehash, witness);

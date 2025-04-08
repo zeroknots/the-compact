@@ -70,28 +70,14 @@ interface ITheCompact {
     event AllocatorRegistered(uint96 allocatorId, address allocator);
 
     /**
-     * @notice External payable function for depositing native tokens into a resource lock
-     * and receiving back ERC6909 tokens representing the underlying locked balance controlled
-     * by the depositor. The allocator mediating the lock is provided as an argument, and the
-     * default reset period (ten minutes) and scope (multichain) will be used for the resource
-     * lock. The ERC6909 token amount received by the caller will match the amount of native
-     * tokens sent with the transaction.
-     * @param allocator The address of the allocator.
-     * @return id The ERC6909 token identifier of the associated resource lock.
-     */
-    function deposit(address allocator) external payable returns (uint256 id);
-
-    /**
      * @notice External payable function for depositing native tokens into a resource lock with
      * custom reset period and scope parameters. The ERC6909 token amount received by the recipient
      * will match the amount of native tokens sent with the transaction.
-     * @param allocator   The address of the allocator mediating the resource lock.
-     * @param resetPeriod The duration after which the resource lock can be reset once a forced withdrawal is initiated.
-     * @param scope       The scope of the resource lock (multichain or single chain).
-     * @param recipient   The address that will receive the corresponding ERC6909 tokens.
-     * @return id         The ERC6909 token identifier of the associated resource lock.
+     * @param lockTag   The lock tag containing allocator ID, reset period, and scope.
+     * @param recipient The address that will receive the corresponding ERC6909 tokens.
+     * @return id       The ERC6909 token identifier of the associated resource lock.
      */
-    function deposit(address allocator, ResetPeriod resetPeriod, Scope scope, address recipient)
+    function deposit(bytes12 lockTag, address recipient)
         external
         payable
         returns (uint256 id);
@@ -102,12 +88,12 @@ interface ITheCompact {
      * used for the claim hash are provided as additional arguments, and the default reset period
      * (ten minutes) and scope (multichain) will be used for the resource lock. The ERC6909 token
      * amount received by the caller will match the amount of native tokens sent with the transaction.
-     * @param allocator The address of the allocator.
+     * @param lockTag   The lock tag containing allocator ID, reset period, and scope.
      * @param claimHash A bytes32 hash derived from the details of the compact.
      * @param typehash  The EIP-712 typehash associated with the registered compact.
      * @return id       The ERC6909 token identifier of the associated resource lock.
      */
-    function depositAndRegister(address allocator, bytes32 claimHash, bytes32 typehash)
+    function depositAndRegister(bytes12 lockTag, bytes32 claimHash, bytes32 typehash)
         external
         payable
         returns (uint256 id);
@@ -117,9 +103,7 @@ interface ITheCompact {
      * compact on behalf of someone else. The amount of the claim must be explicitly provided otherwise
      * a wrong claimhash may be derived.
      * @param recipient   The recipient of the ERC6909 token.
-     * @param allocator   The address of the allocator mediating the resource lock.
-     * @param resetPeriod The duration after which the resource lock can be reset once a forced withdrawal is initiated.
-     * @param scope       The scope of the resource lock (multichain or single chain).
+     * @param lockTag     The lock tag containing allocator ID, reset period, and scope.
      * @param arbiter     The account tasked with verifying and submitting the claim.
      * @param nonce       A parameter to enforce replay protection, scoped to allocator.
      * @param expires     The time at which the claim expires.
@@ -130,9 +114,7 @@ interface ITheCompact {
      */
     function depositAndRegisterFor(
         address recipient,
-        address allocator,
-        ResetPeriod resetPeriod,
-        Scope scope,
+        bytes12 lockTag,
         address arbiter,
         uint256 nonce,
         uint256 expires,
@@ -141,39 +123,21 @@ interface ITheCompact {
     ) external payable returns (uint256 id, bytes32 claimhash);
 
     /**
-     * @notice External function for depositing ERC20 tokens into a resource lock. The default
-     * reset period (ten minutes) and scope (multichain) will be used. The caller must directly
-     * approve The Compact to transfer a sufficient amount of the ERC20 token on its behalf. The
-     * ERC6909 token amount received back by the caller is derived from the difference between
-     * the starting and ending balance held in the resource lock, which may differ from the amount
-     * transferred depending on the implementation details of the respective token.
-     * @param token     The address of the ERC20 token to deposit.
-     * @param allocator The address of the allocator mediating the resource lock.
-     * @param amount    The amount of tokens to deposit.
-     * @return id       The ERC6909 token identifier of the associated resource lock.
-     */
-    function deposit(address token, address allocator, uint256 amount) external returns (uint256 id);
-
-    /**
      * @notice External function for depositing ERC20 tokens into a resource lock with custom reset
      * period and scope parameters. The caller must directly approve The Compact to transfer a
      * sufficient amount of the ERC20 token on its behalf. The ERC6909 token amount received by
      * the recipient is derived from the difference between the starting and ending balance held
      * in the resource lock, which may differ from the amount transferred depending on the
      * implementation details of the respective token.
-     * @param token       The address of the ERC20 token to deposit.
-     * @param allocator   The address of the allocator mediating the resource lock.
-     * @param resetPeriod The duration after which the resource lock can be reset once a forced withdrawal is initiated.
-     * @param scope       The scope of the resource lock (multichain or single chain).
-     * @param amount      The amount of tokens to deposit.
-     * @param recipient   The address that will receive the corresponding ERC6909 tokens.
-     * @return id         The ERC6909 token identifier of the associated resource lock.
+     * @param token     The address of the ERC20 token to deposit.
+     * @param lockTag   The lock tag containing allocator ID, reset period, and scope.
+     * @param amount    The amount of tokens to deposit.
+     * @param recipient The address that will receive the corresponding ERC6909 tokens.
+     * @return id       The ERC6909 token identifier of the associated resource lock.
      */
     function deposit(
         address token,
-        address allocator,
-        ResetPeriod resetPeriod,
-        Scope scope,
+        bytes12 lockTag,
         uint256 amount,
         address recipient
     ) external returns (uint256 id);
@@ -186,13 +150,13 @@ interface ITheCompact {
      * difference between the starting and ending balance held in the resource lock, which may differ
      * from the amount transferred depending on the implementation details of the respective token.
      * @param token     The address of the ERC20 token to deposit.
-     * @param allocator The address of the allocator mediating the resource lock.
+     * @param lockTag   The lock tag containing allocator ID, reset period, and scope.
      * @param amount    The amount of tokens to deposit.
      * @param claimHash A bytes32 hash derived from the details of the compact.
      * @param typehash  The EIP-712 typehash associated with the registered compact.
      * @return id       The ERC6909 token identifier of the associated resource lock.
      */
-    function depositAndRegister(address token, address allocator, uint256 amount, bytes32 claimHash, bytes32 typehash)
+    function depositAndRegister(address token, bytes12 lockTag, uint256 amount, bytes32 claimHash, bytes32 typehash)
         external
         returns (uint256 id);
 
@@ -205,9 +169,7 @@ interface ITheCompact {
      * the implementation details of the respective token.
      * @param recipient   The recipient of the ERC6909 token.
      * @param token       The address of the ERC20 token to deposit.
-     * @param allocator   The address of the allocator mediating the resource lock.
-     * @param resetPeriod The duration after which the resource lock can be reset once a forced withdrawal is initiated.
-     * @param scope       The scope of the resource lock (multichain or single chain).
+     * @param lockTag     The lock tag containing allocator ID, reset period, and scope.
      * @param amount      The amount of tokens to deposit.
      * @param arbiter     The account tasked with verifying and submitting the claim.
      * @param nonce       A parameter to enforce replay protection, scoped to allocator.
@@ -220,9 +182,7 @@ interface ITheCompact {
     function depositAndRegisterFor(
         address recipient,
         address token,
-        address allocator,
-        ResetPeriod resetPeriod,
-        Scope scope,
+        bytes12 lockTag,
         uint256 amount,
         address arbiter,
         uint256 nonce,
@@ -521,9 +481,7 @@ interface ITheCompact {
      * @notice Register a claim on behalf of a sponsor with their signature.
      * @param sponsor          The address of the sponsor for whom the claim is being registered.
      * @param token            The address of the token associated with the resource lock.
-     * @param allocator        The address of the allocator mediating the resource lock.
-     * @param resetPeriod      The duration after which the resource lock can be reset once a forced withdrawal is initiated.
-     * @param scope            The scope of the resource lock (multichain or single chain).
+     * @param lockTag          The lock tag containing allocator ID, reset period, and scope.
      * @param amount           The amount of tokens associated with the claim.
      * @param arbiter          The account tasked with verifying and submitting the claim.
      * @param nonce            A parameter to enforce replay protection, scoped to allocator.
@@ -537,9 +495,7 @@ interface ITheCompact {
     function registerFor(
         address sponsor,
         address token,
-        address allocator,
-        ResetPeriod resetPeriod,
-        Scope scope,
+        bytes12 lockTag,
         uint256 amount,
         address arbiter,
         uint256 nonce,

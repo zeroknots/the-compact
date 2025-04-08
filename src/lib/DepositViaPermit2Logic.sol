@@ -32,6 +32,7 @@ contract DepositViaPermit2Logic is DepositLogic {
     using TransferLib for address;
     using DepositViaPermit2Lib for bytes32;
     using DepositViaPermit2Lib for uint256;
+    using IdLib for uint96;
     using IdLib for uint256;
     using IdLib for address;
     using IdLib for ResetPeriod;
@@ -359,7 +360,7 @@ contract DepositViaPermit2Logic is DepositLogic {
         }
 
         // Get the initial resource lock id.
-        uint256 initialId = address(0).toIdIfRegistered(scope, resetPeriod, allocator);
+        uint256 initialId = address(0).toIdIfRegistered(allocator.usingAllocatorId().toLockTag(scope, resetPeriod));
 
         // Allocate ids array.
         ids = new uint256[](totalTokens);
@@ -412,7 +413,7 @@ contract DepositViaPermit2Logic is DepositLogic {
         }
 
         // Get the ERC6909 token identifier of the associated resource lock.
-        id = token.excludingNative().toIdIfRegistered(scope, resetPeriod, allocator);
+        id = token.excludingNative().toIdIfRegistered(allocator.usingAllocatorId().toLockTag(scope, resetPeriod));
 
         // Get the initial balance of the token in the contract.
         initialBalance = token.balanceOf(address(this));
