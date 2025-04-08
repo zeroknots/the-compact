@@ -93,11 +93,7 @@ library IdLib {
      * @param lockTag The lock tag containing allocator ID, reset period, and scope.
      * @return id     The derived resource lock ID.
      */
-    function toIdIfRegistered(address token, bytes12 lockTag)
-        internal
-        view
-        returns (uint256 id)
-    {
+    function toIdIfRegistered(address token, bytes12 lockTag) internal view returns (uint256 id) {
         // Derive the allocator ID for the provided allocator address.
         lockTag.toAllocatorId().mustHaveARegisteredAllocator();
 

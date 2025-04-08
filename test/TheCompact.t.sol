@@ -164,7 +164,8 @@ contract TheCompactTest is Test {
         vm.prank(allocator);
         uint96 allocatorId = theCompact.__registerAllocator(allocator, "");
 
-        bytes12 lockTag = bytes12(bytes32((uint256(scope) << 255) | (uint256(resetPeriod) << 252) | (uint256(allocatorId) << 160)));
+        bytes12 lockTag =
+            bytes12(bytes32((uint256(scope) << 255) | (uint256(resetPeriod) << 252) | (uint256(allocatorId) << 160)));
 
         vm.prank(swapper);
         uint256 id = theCompact.deposit{ value: amount }(lockTag, swapper);
@@ -205,7 +206,8 @@ contract TheCompactTest is Test {
         vm.prank(allocator);
         uint96 allocatorId = theCompact.__registerAllocator(allocator, "");
 
-        bytes12 lockTag = bytes12(bytes32((uint256(scope) << 255) | (uint256(resetPeriod) << 252) | (uint256(allocatorId) << 160)));
+        bytes12 lockTag =
+            bytes12(bytes32((uint256(scope) << 255) | (uint256(resetPeriod) << 252) | (uint256(allocatorId) << 160)));
 
         vm.prank(swapper);
         uint256 id = theCompact.deposit{ value: amount }(lockTag, recipient);
@@ -246,7 +248,8 @@ contract TheCompactTest is Test {
         vm.prank(allocator);
         uint96 allocatorId = theCompact.__registerAllocator(allocator, "");
 
-        bytes12 lockTag = bytes12(bytes32((uint256(scope) << 255) | (uint256(resetPeriod) << 252) | (uint256(allocatorId) << 160)));
+        bytes12 lockTag =
+            bytes12(bytes32((uint256(scope) << 255) | (uint256(resetPeriod) << 252) | (uint256(allocatorId) << 160)));
 
         vm.prank(swapper);
         uint256 id = theCompact.deposit(address(token), lockTag, amount, swapper);
@@ -287,7 +290,8 @@ contract TheCompactTest is Test {
         vm.prank(allocator);
         uint96 allocatorId = theCompact.__registerAllocator(allocator, "");
 
-        bytes12 lockTag = bytes12(bytes32((uint256(scope) << 255) | (uint256(resetPeriod) << 252) | (uint256(allocatorId) << 160)));
+        bytes12 lockTag =
+            bytes12(bytes32((uint256(scope) << 255) | (uint256(resetPeriod) << 252) | (uint256(allocatorId) << 160)));
 
         vm.prank(swapper);
         uint256 id = theCompact.deposit(address(token), lockTag, amount, recipient);
@@ -710,7 +714,8 @@ contract TheCompactTest is Test {
         vm.prank(allocator);
         uint96 allocatorId = theCompact.__registerAllocator(allocator, "");
 
-        bytes12 lockTag = bytes12(bytes32((uint256(scope) << 255) | (uint256(resetPeriod) << 252) | (uint256(allocatorId) << 160)));
+        bytes12 lockTag =
+            bytes12(bytes32((uint256(scope) << 255) | (uint256(resetPeriod) << 252) | (uint256(allocatorId) << 160)));
 
         vm.prank(swapper);
         uint256 id = theCompact.deposit(address(token), lockTag, amount, swapper);
@@ -783,7 +788,8 @@ contract TheCompactTest is Test {
         vm.prank(allocator);
         uint96 allocatorId = theCompact.__registerAllocator(allocator, "");
 
-        bytes12 lockTag = bytes12(bytes32((uint256(scope) << 255) | (uint256(resetPeriod) << 252) | (uint256(allocatorId) << 160)));
+        bytes12 lockTag =
+            bytes12(bytes32((uint256(scope) << 255) | (uint256(resetPeriod) << 252) | (uint256(allocatorId) << 160)));
 
         vm.prank(swapper);
         uint256 id = theCompact.deposit(address(token), lockTag, amount, swapper);
@@ -862,7 +868,8 @@ contract TheCompactTest is Test {
         vm.prank(allocator);
         uint96 allocatorId = theCompact.__registerAllocator(allocator, "");
 
-        bytes12 lockTag = bytes12(bytes32((uint256(scope) << 255) | (uint256(resetPeriod) << 252) | (uint256(allocatorId) << 160)));
+        bytes12 lockTag =
+            bytes12(bytes32((uint256(scope) << 255) | (uint256(resetPeriod) << 252) | (uint256(allocatorId) << 160)));
 
         vm.prank(swapper);
         uint256 id = theCompact.deposit(address(token), lockTag, amount, swapper);
@@ -937,7 +944,8 @@ contract TheCompactTest is Test {
         vm.prank(allocator);
         uint96 allocatorId = theCompact.__registerAllocator(allocator, "");
 
-        bytes12 lockTag = bytes12(bytes32((uint256(scope) << 255) | (uint256(resetPeriod) << 252) | (uint256(allocatorId) << 160)));
+        bytes12 lockTag =
+            bytes12(bytes32((uint256(scope) << 255) | (uint256(resetPeriod) << 252) | (uint256(allocatorId) << 160)));
 
         vm.startPrank(swapper);
         uint256 idOne = theCompact.deposit(address(token), lockTag, amountOne, swapper);
@@ -1024,7 +1032,8 @@ contract TheCompactTest is Test {
         vm.prank(allocator);
         uint96 allocatorId = theCompact.__registerAllocator(allocator, "");
 
-        bytes12 lockTag = bytes12(bytes32((uint256(scope) << 255) | (uint256(resetPeriod) << 252) | (uint256(allocatorId) << 160)));
+        bytes12 lockTag =
+            bytes12(bytes32((uint256(scope) << 255) | (uint256(resetPeriod) << 252) | (uint256(allocatorId) << 160)));
 
         vm.startPrank(swapper);
         uint256 idOne = theCompact.deposit(address(token), lockTag, amountOne, swapper);
@@ -1114,7 +1123,8 @@ contract TheCompactTest is Test {
         vm.prank(allocator);
         uint96 allocatorId = theCompact.__registerAllocator(allocator, "");
 
-        bytes12 lockTag = bytes12(bytes32((uint256(scope) << 255) | (uint256(resetPeriod) << 252) | (uint256(allocatorId) << 160)));
+        bytes12 lockTag =
+            bytes12(bytes32((uint256(scope) << 255) | (uint256(resetPeriod) << 252) | (uint256(allocatorId) << 160)));
 
         vm.prank(swapper);
         uint256 id = theCompact.deposit{ value: amount }(lockTag, swapper);
@@ -1189,7 +1199,8 @@ contract TheCompactTest is Test {
         vm.prank(allocator);
         uint96 allocatorId = theCompact.__registerAllocator(allocator, "");
 
-        bytes12 lockTag = bytes12(bytes32((uint256(scope) << 255) | (uint256(resetPeriod) << 252) | (uint256(allocatorId) << 160)));
+        bytes12 lockTag =
+            bytes12(bytes32((uint256(scope) << 255) | (uint256(resetPeriod) << 252) | (uint256(allocatorId) << 160)));
 
         vm.prank(swapper);
         token.transfer(swapperSponsor, amount);
@@ -1207,15 +1218,7 @@ contract TheCompactTest is Test {
 
         vm.prank(swapperSponsor);
         (uint256 id, bytes32 registeredClaimHash) = theCompact.depositAndRegisterFor(
-            address(swapper),
-            address(token),
-            lockTag,
-            amount,
-            arbiter,
-            nonce,
-            expires,
-            typehash,
-            witness
+            address(swapper), address(token), lockTag, amount, arbiter, nonce, expires, typehash, witness
         );
         vm.snapshotGasLastCall("depositRegisterFor");
 
@@ -1279,7 +1282,8 @@ contract TheCompactTest is Test {
         vm.prank(allocator);
         uint96 allocatorId = theCompact.__registerAllocator(allocator, "");
 
-        bytes12 lockTag = bytes12(bytes32((uint256(scope) << 255) | (uint256(resetPeriod) << 252) | (uint256(allocatorId) << 160)));
+        bytes12 lockTag =
+            bytes12(bytes32((uint256(scope) << 255) | (uint256(resetPeriod) << 252) | (uint256(allocatorId) << 160)));
 
         vm.prank(swapper);
         uint256 id = theCompact.deposit{ value: amount }(lockTag, swapper);
@@ -1485,7 +1489,8 @@ contract TheCompactTest is Test {
         vm.prank(allocator);
         uint96 allocatorId = theCompact.__registerAllocator(allocator, "");
 
-        bytes12 lockTag = bytes12(bytes32((uint256(scope) << 255) | (uint256(resetPeriod) << 252) | (uint256(allocatorId) << 160)));
+        bytes12 lockTag =
+            bytes12(bytes32((uint256(scope) << 255) | (uint256(resetPeriod) << 252) | (uint256(allocatorId) << 160)));
 
         vm.prank(swapper);
         uint256 id = theCompact.deposit{ value: amount }(lockTag, swapper);
@@ -1744,19 +1749,20 @@ contract TheCompactTest is Test {
         vm.prank(allocator);
         uint96 allocatorId = theCompact.__registerAllocator(allocator, "");
 
-        bytes12 lockTag = bytes12(bytes32((uint256(Scope.Multichain) << 255) | (uint256(ResetPeriod.TenMinutes) << 252) | (uint256(allocatorId) << 160)));
+        bytes12 lockTag = bytes12(
+            bytes32(
+                (uint256(Scope.Multichain) << 255) | (uint256(ResetPeriod.TenMinutes) << 252)
+                    | (uint256(allocatorId) << 160)
+            )
+        );
 
         vm.startPrank(swapper);
         uint256 id = theCompact.deposit{ value: amount }(lockTag, swapper);
 
-        uint256 anotherId = theCompact.deposit(
-            address(token), lockTag, anotherAmount, swapper
-        );
+        uint256 anotherId = theCompact.deposit(address(token), lockTag, anotherAmount, swapper);
         assertEq(theCompact.balanceOf(swapper, anotherId), anotherAmount);
 
-        uint256 aThirdId = theCompact.deposit(
-            address(anotherToken), lockTag, aThirdAmount, swapper
-        );
+        uint256 aThirdId = theCompact.deposit(address(anotherToken), lockTag, aThirdAmount, swapper);
         assertEq(theCompact.balanceOf(swapper, aThirdId), aThirdAmount);
 
         vm.stopPrank();
@@ -1850,13 +1856,12 @@ contract TheCompactTest is Test {
         vm.prank(allocator);
         uint96 allocatorId = theCompact.__registerAllocator(allocator, "");
 
-        bytes12 lockTag = bytes12(bytes32((uint256(scope) << 255) | (uint256(resetPeriod) << 252) | (uint256(allocatorId) << 160)));
+        bytes12 lockTag =
+            bytes12(bytes32((uint256(scope) << 255) | (uint256(resetPeriod) << 252) | (uint256(allocatorId) << 160)));
 
         vm.startPrank(swapper);
         uint256 id = theCompact.deposit{ value: amount }(lockTag, swapper);
-        uint256 anotherId = theCompact.deposit(
-            address(token), lockTag, anotherAmount, swapper
-        );
+        uint256 anotherId = theCompact.deposit(address(token), lockTag, anotherAmount, swapper);
         vm.stopPrank();
 
         assertEq(theCompact.balanceOf(swapper, id), amount);
@@ -2037,19 +2042,20 @@ contract TheCompactTest is Test {
         vm.prank(allocator);
         uint96 allocatorId = theCompact.__registerAllocator(allocator, "");
 
-        bytes12 lockTag = bytes12(bytes32((uint256(Scope.Multichain) << 255) | (uint256(ResetPeriod.TenMinutes) << 252) | (uint256(allocatorId) << 160)));
+        bytes12 lockTag = bytes12(
+            bytes32(
+                (uint256(Scope.Multichain) << 255) | (uint256(ResetPeriod.TenMinutes) << 252)
+                    | (uint256(allocatorId) << 160)
+            )
+        );
 
         vm.startPrank(swapper);
         uint256 id = theCompact.deposit{ value: amount }(lockTag, swapper);
 
-        uint256 anotherId = theCompact.deposit(
-            address(token), lockTag, anotherAmount, swapper
-        );
+        uint256 anotherId = theCompact.deposit(address(token), lockTag, anotherAmount, swapper);
         assertEq(theCompact.balanceOf(swapper, anotherId), anotherAmount);
 
-        uint256 aThirdId = theCompact.deposit(
-            address(anotherToken), lockTag, aThirdAmount, swapper
-        );
+        uint256 aThirdId = theCompact.deposit(address(anotherToken), lockTag, aThirdAmount, swapper);
         assertEq(theCompact.balanceOf(swapper, aThirdId), aThirdAmount);
 
         vm.stopPrank();
@@ -2313,7 +2319,12 @@ contract TheCompactTest is Test {
 
         uint96 allocatorId = theCompact.__registerAllocator(alwaysOKAllocator, "");
 
-        bytes12 lockTag = bytes12(bytes32((uint256(Scope.Multichain) << 255) | (uint256(ResetPeriod.TenMinutes) << 252) | (uint256(allocatorId) << 160)));
+        bytes12 lockTag = bytes12(
+            bytes32(
+                (uint256(Scope.Multichain) << 255) | (uint256(ResetPeriod.TenMinutes) << 252)
+                    | (uint256(allocatorId) << 160)
+            )
+        );
 
         vm.prank(swapper);
         uint256 id = theCompact.deposit{ value: amount }(lockTag, swapper);

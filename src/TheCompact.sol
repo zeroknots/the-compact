@@ -42,11 +42,7 @@ contract TheCompact is ITheCompact, ERC6909, TheCompactLogic {
     using EfficiencyLib for bool;
     using EfficiencyLib for uint256;
 
-    function deposit(bytes12 lockTag, address recipient)
-        external
-        payable
-        returns (uint256)
-    {
+    function deposit(bytes12 lockTag, address recipient) external payable returns (uint256) {
         return _performCustomNativeTokenDeposit(lockTag, recipient);
     }
 
@@ -74,12 +70,7 @@ contract TheCompact is ITheCompact, ERC6909, TheCompactLogic {
         claimhash = _registerUsingClaimWithWitness(recipient, id, msg.value, arbiter, nonce, expires, typehash, witness);
     }
 
-    function deposit(
-        address token,
-        bytes12 lockTag,
-        uint256 amount,
-        address recipient
-    ) external returns (uint256) {
+    function deposit(address token, bytes12 lockTag, uint256 amount, address recipient) external returns (uint256) {
         return _performCustomERC20Deposit(token, lockTag, amount, recipient);
     }
 

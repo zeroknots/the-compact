@@ -143,10 +143,7 @@ contract DirectDepositLogic is DepositLogic {
      * @param recipient   The address that will receive the corresponding ERC6909 tokens.
      * @return id         The ERC6909 token identifier of the associated resource lock.
      */
-    function _performCustomNativeTokenDeposit(
-        bytes12 lockTag,
-        address recipient
-    ) internal returns (uint256 id) {
+    function _performCustomNativeTokenDeposit(bytes12 lockTag, address recipient) internal returns (uint256 id) {
         // Derive resource lock ID using null address, provided parameters, and allocator.
         id = address(0).toIdIfRegistered(lockTag);
 
@@ -167,12 +164,10 @@ contract DirectDepositLogic is DepositLogic {
      * @param recipient   The address that will receive the corresponding ERC6909 tokens.
      * @return id         The ERC6909 token identifier of the associated resource lock.
      */
-    function _performCustomERC20Deposit(
-        address token,
-        bytes12 lockTag,
-        uint256 amount,
-        address recipient
-    ) internal returns (uint256 id) {
+    function _performCustomERC20Deposit(address token, bytes12 lockTag, uint256 amount, address recipient)
+        internal
+        returns (uint256 id)
+    {
         // Derive resource lock ID using provided token, parameters, and allocator.
         id = token.excludingNative().toIdIfRegistered(lockTag);
 

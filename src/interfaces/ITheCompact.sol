@@ -77,10 +77,7 @@ interface ITheCompact {
      * @param recipient The address that will receive the corresponding ERC6909 tokens.
      * @return id       The ERC6909 token identifier of the associated resource lock.
      */
-    function deposit(bytes12 lockTag, address recipient)
-        external
-        payable
-        returns (uint256 id);
+    function deposit(bytes12 lockTag, address recipient) external payable returns (uint256 id);
 
     /**
      * @notice External payable function for depositing native tokens into a resource lock
@@ -135,12 +132,7 @@ interface ITheCompact {
      * @param recipient The address that will receive the corresponding ERC6909 tokens.
      * @return id       The ERC6909 token identifier of the associated resource lock.
      */
-    function deposit(
-        address token,
-        bytes12 lockTag,
-        uint256 amount,
-        address recipient
-    ) external returns (uint256 id);
+    function deposit(address token, bytes12 lockTag, uint256 amount, address recipient) external returns (uint256 id);
 
     /**
      * @notice External function for depositing ERC20 tokens and simultaneously registering a
