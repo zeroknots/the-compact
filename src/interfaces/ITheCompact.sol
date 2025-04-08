@@ -13,7 +13,7 @@ import { BatchTransfer, SplitBatchTransfer } from "../types/BatchClaims.sol";
 
 /**
  * @title The Compact — Core Interface
- * @custom:version 0 (early-stage proof-of-concept)
+ * @custom:version 1
  * @author 0age (0age.eth)
  * @notice The Compact is an ownerless ERC6909 contract that facilitates the voluntary
  * formation and mediation of reusable "resource locks." This interface contract specifies
