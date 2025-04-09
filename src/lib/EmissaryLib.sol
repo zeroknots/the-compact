@@ -65,9 +65,6 @@ library EmissaryLib {
         returns (EmissaryConfig storage config)
     {
         assembly ("memory-safe") {
-            // Retrieve the current free memory pointer.
-            let m := mload(0x40)
-
             // Pack data for computing storage slot.
             mstore(0x14, sponsor) // Offset 0x14 (20 bytes): Store 20-byte sponsor address
             mstore(0, _EMISSARY_SCOPE) // Offset 0 (0 bytes): Store 4-byte scope value
