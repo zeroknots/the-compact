@@ -22,7 +22,7 @@ interface IAllocator {
      * @param expires        The time at which the claim expires.
      * @param idsAndAmounts  The allocated token IDs and amounts.
      * @param allocatorData  Arbitrary data provided by the arbiter.
-     * @return               Must return the function selector.
+     * @return               Must return the function selector (0x7bb023f7).
      */
     function authorizeClaim(
         bytes32 claimHash,
