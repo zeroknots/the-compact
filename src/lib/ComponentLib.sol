@@ -3,6 +3,7 @@ pragma solidity ^0.8.27;
 
 import { SplitTransfer } from "../types/Claims.sol";
 import { BatchTransfer, SplitBatchTransfer } from "../types/BatchClaims.sol";
+import { ResetPeriod } from "../types/ResetPeriod.sol";
 
 import {
     TransferComponent, SplitComponent, SplitByIdComponent, SplitBatchClaimComponent
@@ -15,6 +16,8 @@ import { IdLib } from "./IdLib.sol";
 import { RegistrationLib } from "./RegistrationLib.sol";
 import { ValidityLib } from "./ValidityLib.sol";
 import { TransferLib } from "./TransferLib.sol";
+
+import { FixedPointMathLib } from "solady/utils/FixedPointMathLib.sol";
 
 /**
  * @title ComponentLib
@@ -29,17 +32,21 @@ library ComponentLib {
     using TransferLib for address;
     using ComponentLib for SplitComponent[];
     using EfficiencyLib for bool;
+    using EfficiencyLib for ResetPeriod;
     using EfficiencyLib for uint256;
     using EfficiencyLib for bytes32;
     using EventLib for address;
     using HashLib for uint256;
     using IdLib for uint256;
+    using IdLib for ResetPeriod;
     using ValidityLib for uint256;
     using ValidityLib for uint96;
     using ValidityLib for bytes32;
     using RegistrationLib for address;
+    using FixedPointMathLib for uint256;
 
     error Overflow();
+    error NoIdsAndAmountsProvided();
 
     /**
      * @notice Internal function for performing a set of split transfers or withdrawals.
@@ -134,7 +141,7 @@ library ComponentLib {
         bytes32 sponsorDomainSeparator,
         bytes32 typehash,
         bytes32 domainSeparator,
-        function(bytes32, uint96, uint256, bytes32, bytes32, bytes32, uint256[2][] memory) internal returns (address)
+        function(bytes32, uint96, uint256, bytes32, bytes32, bytes32, uint256[2][] memory, uint256) internal returns (address)
             validation
     ) internal returns (bool) {
         // Declare variables for parameters that will be extracted from calldata.
@@ -168,7 +175,8 @@ library ComponentLib {
             domainSeparator,
             sponsorDomainSeparator,
             typehash,
-            idsAndAmounts
+            idsAndAmounts,
+            id.toResetPeriod().toSeconds()
         );
 
         // Verify the resource lock scope is compatible with the provided domain separator.
@@ -200,7 +208,7 @@ library ComponentLib {
         bytes32 sponsorDomainSeparator,
         bytes32 typehash,
         bytes32 domainSeparator,
-        function(bytes32, uint96, uint256, bytes32, bytes32, bytes32, uint256[2][] memory) internal returns (address)
+        function(bytes32, uint96, uint256, bytes32, bytes32, bytes32, uint256[2][] memory, uint256) internal returns (address)
             validation
     ) internal returns (bool) {
         // Declare variable for SplitBatchClaimComponent array that will be extracted from calldata.
@@ -213,13 +221,18 @@ library ComponentLib {
             claims.length := calldataload(claimsPtr)
         }
 
-        // Extract allocator id from first claim for validation.
-        uint96 firstAllocatorId = claims[0].id.toAllocatorId();
-
-        // Initialize tracking variables.
         uint256 totalClaims = claims.length;
-        uint256 errorBuffer = (totalClaims == 0).asUint256();
-        uint256 id;
+        if (totalClaims == 0) {
+            revert NoIdsAndAmountsProvided();
+        }
+
+        // Extract allocator id from first claim for validation.
+        uint256 id = claims[0].id;
+        uint96 firstAllocatorId = id.toAllocatorId();
+        uint256 shortestResetPeriod = id.toResetPeriod().asUint256();
+
+        // Initialize error tracking variable.
+        uint256 errorBuffer;
 
         // Initialize idsAndAmounts array.
         uint256[2][] memory idsAndAmounts = new uint256[2][](totalClaims);
@@ -229,6 +242,9 @@ library ComponentLib {
             for (uint256 i = 0; i < totalClaims; ++i) {
                 SplitBatchClaimComponent calldata claimComponent = claims[i];
                 id = claimComponent.id;
+
+                shortestResetPeriod = shortestResetPeriod.min(id.toResetPeriod().asUint256());
+
                 // TODO: can scopeNotMultichain be removed here?
                 errorBuffer |= (id.toAllocatorId() != firstAllocatorId).or(
                     id.scopeNotMultichain(sponsorDomainSeparator)
@@ -249,7 +265,8 @@ library ComponentLib {
                 domainSeparator,
                 sponsorDomainSeparator,
                 typehash,
-                idsAndAmounts
+                idsAndAmounts,
+                shortestResetPeriod.asResetPeriod().toSeconds()
             );
 
             // Process each claim component.
