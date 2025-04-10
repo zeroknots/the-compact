@@ -121,7 +121,6 @@ library ClaimProcessorLib {
      * @param offsetToId       Offset to segment of calldata where relevant claim parameters begin.
      * @param typehash         The EIP-712 typehash used for the claim message.
      * @param domainSeparator  The local domain separator.
-     * @return                 Whether the split claim was successfully processed.
      */
     function processSimpleSplitClaim(
         bytes32 messageHash,
@@ -129,8 +128,8 @@ library ClaimProcessorLib {
         uint256 offsetToId,
         bytes32 typehash,
         bytes32 domainSeparator
-    ) internal returns (bool) {
-        return messageHash.processClaimWithSplitComponents(
+    ) internal {
+        messageHash.processClaimWithSplitComponents(
             calldataPointer, offsetToId, bytes32(0).asStubborn(), typehash, domainSeparator, validate
         );
     }
@@ -145,7 +144,6 @@ library ClaimProcessorLib {
      * @param offsetToId       Offset to segment of calldata where relevant claim parameters begin.
      * @param typehash         The EIP-712 typehash used for the claim message.
      * @param domainSeparator  The local domain separator.
-     * @return                 Whether the split batch claim was successfully processed.
      */
     function processSimpleSplitBatchClaim(
         bytes32 messageHash,
@@ -153,8 +151,8 @@ library ClaimProcessorLib {
         uint256 offsetToId,
         bytes32 typehash,
         bytes32 domainSeparator
-    ) internal returns (bool) {
-        return messageHash.processClaimWithSplitBatchComponents(
+    ) internal {
+        messageHash.processClaimWithSplitBatchComponents(
             calldataPointer, offsetToId, bytes32(0).asStubborn(), typehash, domainSeparator, validate
         );
     }
@@ -170,7 +168,6 @@ library ClaimProcessorLib {
      * @param sponsorDomain    The domain separator for the sponsor's signature.
      * @param typehash         The EIP-712 typehash used for the claim message.
      * @param domainSeparator  The local domain separator.
-     * @return                 Whether the split claim was successfully processed.
      */
     function processSplitClaimWithSponsorDomain(
         bytes32 messageHash,
@@ -179,8 +176,8 @@ library ClaimProcessorLib {
         bytes32 sponsorDomain,
         bytes32 typehash,
         bytes32 domainSeparator
-    ) internal returns (bool) {
-        return messageHash.processClaimWithSplitComponents(
+    ) internal {
+        messageHash.processClaimWithSplitComponents(
             calldataPointer, offsetToId, sponsorDomain, typehash, domainSeparator, validate
         );
     }
@@ -197,7 +194,6 @@ library ClaimProcessorLib {
      * @param sponsorDomain    The domain separator for the sponsor's signature.
      * @param typehash         The EIP-712 typehash used for the claim message.
      * @param domainSeparator  The local domain separator.
-     * @return                 Whether the split batch claim was successfully processed.
      */
     function processSplitBatchClaimWithSponsorDomain(
         bytes32 messageHash,
@@ -206,8 +202,8 @@ library ClaimProcessorLib {
         bytes32 sponsorDomain,
         bytes32 typehash,
         bytes32 domainSeparator
-    ) internal returns (bool) {
-        return messageHash.processClaimWithSplitBatchComponents(
+    ) internal {
+        messageHash.processClaimWithSplitBatchComponents(
             calldataPointer, offsetToId, sponsorDomain, typehash, domainSeparator, validate
         );
     }

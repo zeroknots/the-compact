@@ -132,7 +132,6 @@ library ComponentLib {
      * @param typehash                 The EIP-712 typehash used for the claim message.
      * @param domainSeparator          The local domain separator.
      * @param validation               Function pointer to the _validate function.
-     * @return                         Whether the split claim was successfully processed.
      */
     function processClaimWithSplitComponents(
         bytes32 messageHash,
@@ -143,7 +142,7 @@ library ComponentLib {
         bytes32 domainSeparator,
         function(bytes32, uint96, uint256, bytes32, bytes32, bytes32, uint256[2][] memory, uint256) internal returns (address)
             validation
-    ) internal returns (bool) {
+    ) internal {
         // Declare variables for parameters that will be extracted from calldata.
         uint256 id;
         uint256 allocatedAmount;
@@ -183,7 +182,7 @@ library ComponentLib {
         sponsorDomainSeparator.ensureValidScope(id);
 
         // Process each split component, verifying total amount and executing operations.
-        return components.verifyAndProcessSplitComponents(sponsor, id, allocatedAmount);
+        components.verifyAndProcessSplitComponents(sponsor, id, allocatedAmount);
     }
 
     /**
@@ -199,7 +198,6 @@ library ComponentLib {
      * @param typehash                 The EIP-712 typehash used for the claim message.
      * @param domainSeparator          The local domain separator.
      * @param validation               Function pointer to the _validate function.
-     * @return                         Whether the split batch claim was successfully processed.
      */
     function processClaimWithSplitBatchComponents(
         bytes32 messageHash,
@@ -210,7 +208,7 @@ library ComponentLib {
         bytes32 domainSeparator,
         function(bytes32, uint96, uint256, bytes32, bytes32, bytes32, uint256[2][] memory, uint256) internal returns (address)
             validation
-    ) internal returns (bool) {
+    ) internal {
         // Declare variable for SplitBatchClaimComponent array that will be extracted from calldata.
         SplitBatchClaimComponent[] calldata claims;
 
@@ -226,26 +224,27 @@ library ComponentLib {
             revert NoIdsAndAmountsProvided();
         }
 
-        // Extract allocator id from first claim for validation.
-        uint256 id = claims[0].id;
+        // Extract allocator id and amount from first claim for validation.
+        SplitBatchClaimComponent calldata claimComponent = claims[0];
+        uint256 id = claimComponent.id;
         uint96 firstAllocatorId = id.toAllocatorId();
         uint256 shortestResetPeriod = id.toResetPeriod().asUint256();
 
-        // Initialize error tracking variable.
-        uint256 errorBuffer;
-
-        // Initialize idsAndAmounts array.
+        // Initialize idsAndAmounts array and register the first element.
         uint256[2][] memory idsAndAmounts = new uint256[2][](totalClaims);
+        idsAndAmounts[0] = [id, claimComponent.allocatedAmount];
+
+        // Initialize error tracking variable.
+        uint256 errorBuffer = id.scopeNotMultichain(sponsorDomainSeparator).asUint256();
 
         unchecked {
-            // Analyze each claim component while accumulating potential errors.
-            for (uint256 i = 0; i < totalClaims; ++i) {
-                SplitBatchClaimComponent calldata claimComponent = claims[i];
+            // Register each additional element & accumulate potential errors.
+            for (uint256 i = 1; i < totalClaims; ++i) {
+                claimComponent = claims[i];
                 id = claimComponent.id;
 
                 shortestResetPeriod = shortestResetPeriod.min(id.toResetPeriod().asUint256());
 
-                // TODO: can scopeNotMultichain be removed here?
                 errorBuffer |= (id.toAllocatorId() != firstAllocatorId).or(
                     id.scopeNotMultichain(sponsorDomainSeparator)
                 ).asUint256();
@@ -271,7 +270,7 @@ library ComponentLib {
 
             // Process each claim component.
             for (uint256 i = 0; i < totalClaims; ++i) {
-                SplitBatchClaimComponent calldata claimComponent = claims[i];
+                claimComponent = claims[i];
 
                 // Process each split component, verifying total amount and executing operations.
                 claimComponent.portions.verifyAndProcessSplitComponents(
@@ -279,8 +278,6 @@ library ComponentLib {
                 );
             }
         }
-
-        return true;
     }
 
     /**
@@ -292,14 +289,13 @@ library ComponentLib {
      * @param sponsor         The address of the claim sponsor.
      * @param id              The ERC6909 token identifier of the resource lock.
      * @param allocatedAmount The total amount allocated for this claim.
-     * @return                Whether all split components were successfully processed.
      */
     function verifyAndProcessSplitComponents(
         SplitComponent[] calldata claimants,
         address sponsor,
         uint256 id,
         uint256 allocatedAmount
-    ) internal returns (bool) {
+    ) internal {
         // Initialize tracking variables.
         uint256 totalClaims = claimants.length;
         uint256 spentAmount = 0;
@@ -331,8 +327,6 @@ library ComponentLib {
                 revert(0x1c, 0x44)
             }
         }
-
-        return true;
     }
 
     /**
