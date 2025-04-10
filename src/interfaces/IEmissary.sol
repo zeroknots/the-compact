@@ -8,7 +8,7 @@ interface IEmissary {
      * @param claimHash  The message hash representing the claim.
      * @param signature  The signature to verify.
      * @param lockTag    The lock tag containing allocator ID, reset period, and scope.
-     * @return           Must return the function selector.
+     * @return           Must return the function selector (0xcd4d6588).
      */
     function verifyClaim(address sponsor, bytes32 claimHash, bytes calldata signature, bytes12 lockTag)
         external

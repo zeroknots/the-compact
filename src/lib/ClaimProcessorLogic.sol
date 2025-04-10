@@ -32,24 +32,15 @@ contract ClaimProcessorLogic is ConstructorLogic {
     using ClaimHashLib for BatchMultichainClaim;
     using ClaimHashLib for ExogenousBatchMultichainClaim;
     using ClaimProcessorLib for uint256;
+    using ClaimProcessorFunctionCastLib for function(bytes32, uint256, uint256, bytes32, bytes32) internal;
+    using ClaimProcessorFunctionCastLib for function(bytes32, uint256, uint256, bytes32, bytes32, bytes32) internal;
+    using ClaimProcessorFunctionCastLib for function(bytes32, bytes32, uint256, uint256, bytes32, bytes32) internal;
     using
     ClaimProcessorFunctionCastLib
-    for function(bytes32, uint256, uint256, bytes32, bytes32) internal returns (bool);
-    using
-    ClaimProcessorFunctionCastLib
-    for function(bytes32, uint256, uint256, bytes32, bytes32, bytes32) internal returns (bool);
-    using
-    ClaimProcessorFunctionCastLib
-    for function(bytes32, bytes32, uint256, uint256, bytes32, bytes32) internal returns (bool);
-    using
-    ClaimProcessorFunctionCastLib
-    for function(bytes32, bytes32, uint256, uint256, bytes32, bytes32, bytes32) internal returns (bool);
+    for function(bytes32, bytes32, uint256, uint256, bytes32, bytes32, bytes32) internal;
     using DomainLib for uint256;
     using HashLib for uint256;
     using EfficiencyLib for uint256;
-    using ValidityLib for uint96;
-    using ValidityLib for uint256;
-    using ValidityLib for bytes32;
 
     ///// 1. Claims /////
     function _processClaim(Claim calldata claimPayload) internal returns (bytes32 claimHash) {
@@ -74,7 +65,7 @@ contract ClaimProcessorLogic is ConstructorLogic {
         bytes32 typehash;
         (claimHash, typehash) = claimPayload.toMessageHashes();
         ClaimProcessorLib.processSimpleSplitBatchClaim.usingBatchClaim()(
-            claimHash, claimPayload, 0xe0, typehash, _domainSeparator()
+            claimHash, claimPayload, uint256(0xe0).asStubborn(), typehash, _domainSeparator()
         );
 
         // Clear the reentrancy guard.
@@ -107,7 +98,7 @@ contract ClaimProcessorLogic is ConstructorLogic {
         bytes32 typehash;
         (claimHash, typehash) = claimPayload.toMessageHashes();
         ClaimProcessorLib.processSimpleSplitBatchClaim.usingBatchMultichainClaim()(
-            claimHash, claimPayload, 0x100, typehash, _domainSeparator()
+            claimHash, claimPayload, uint256(0x100).asStubborn(), typehash, _domainSeparator()
         );
 
         // Clear the reentrancy guard.
