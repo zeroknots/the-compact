@@ -459,11 +459,7 @@ contract TheCompactTest is Test {
                         deadline,
                         keccak256(
                             abi.encode(
-                                keccak256(
-                                    "CompactDeposit(bytes12 lockTag,address recipient)"
-                                ),
-                                lockTag,
-                                recipient
+                                keccak256("CompactDeposit(bytes12 lockTag,address recipient)"), lockTag, recipient
                             )
                         )
                     )
@@ -479,35 +475,21 @@ contract TheCompactTest is Test {
             abi.encodeWithSelector(
                 0x137c29fe, // TODO: derive selector manually
                 ISignatureTransfer.PermitTransferFrom({
-                    permitted: ISignatureTransfer.TokenPermissions({
-                        token: address(token),
-                        amount: amount
-                    }),
+                    permitted: ISignatureTransfer.TokenPermissions({ token: address(token), amount: amount }),
                     nonce: nonce,
                     deadline: deadline
                 }),
-                ISignatureTransfer.SignatureTransferDetails({
-                    to: address(theCompact),
-                    requestedAmount: amount
-                }),
+                ISignatureTransfer.SignatureTransferDetails({ to: address(theCompact), requestedAmount: amount }),
                 swapper,
                 keccak256(
-                    abi.encode(
-                        keccak256(
-                            "CompactDeposit(bytes12 lockTag,address recipient)"
-                        ),
-                        lockTag,
-                        recipient
-                    )
+                    abi.encode(keccak256("CompactDeposit(bytes12 lockTag,address recipient)"), lockTag, recipient)
                 ),
-                "CompactDeposit witness)CompactDeposit(bytes12 lockTag,address recipient)TokenPermissions(address token,uint256 amount)", 
+                "CompactDeposit witness)CompactDeposit(bytes12 lockTag,address recipient)TokenPermissions(address token,uint256 amount)",
                 signature
             )
         );
 
-        uint256 id = theCompact.deposit(
-            address(token), amount, nonce, deadline, swapper, lockTag, recipient, signature
-        );
+        uint256 id = theCompact.deposit(address(token), amount, nonce, deadline, swapper, lockTag, recipient, signature);
         vm.snapshotGasLastCall("depositERC20ViaPermit2AndURI");
 
         (
@@ -526,10 +508,7 @@ contract TheCompactTest is Test {
             (uint256(scope) << 255) | (uint256(resetPeriod) << 252) | (uint256(allocatorId) << 160)
                 | uint256(uint160(address(token)))
         );
-        assertEq(
-            derivedLockTag,
-            lockTag
-        );
+        assertEq(derivedLockTag, lockTag);
 
         assertEq(token.balanceOf(address(theCompact)), amount);
         assertEq(theCompact.balanceOf(recipient, id), amount);
@@ -580,11 +559,7 @@ contract TheCompactTest is Test {
                         deadline,
                         keccak256(
                             abi.encode(
-                                keccak256(
-                                    "CompactDeposit(bytes12 lockTag,address recipient)"
-                                ),
-                                lockTag,
-                                recipient
+                                keccak256("CompactDeposit(bytes12 lockTag,address recipient)"), lockTag, recipient
                             )
                         )
                     )
@@ -598,11 +573,10 @@ contract TheCompactTest is Test {
         ISignatureTransfer.TokenPermissions[] memory tokenPermissions = new ISignatureTransfer.TokenPermissions[](1);
         tokenPermissions[0] = ISignatureTransfer.TokenPermissions({ token: address(token), amount: amount });
 
-        ISignatureTransfer.SignatureTransferDetails[] memory signatureTransferDetails = new ISignatureTransfer.SignatureTransferDetails[](1);
-        signatureTransferDetails[0] = ISignatureTransfer.SignatureTransferDetails({
-            to: address(theCompact),
-            requestedAmount: amount
-        });
+        ISignatureTransfer.SignatureTransferDetails[] memory signatureTransferDetails =
+            new ISignatureTransfer.SignatureTransferDetails[](1);
+        signatureTransferDetails[0] =
+            ISignatureTransfer.SignatureTransferDetails({ to: address(theCompact), requestedAmount: amount });
 
         vm.expectCall(
             address(permit2),
@@ -616,22 +590,15 @@ contract TheCompactTest is Test {
                 signatureTransferDetails,
                 swapper,
                 keccak256(
-                    abi.encode(
-                        keccak256(
-                            "CompactDeposit(bytes12 lockTag,address recipient)"
-                        ),
-                        lockTag,
-                        recipient
-                    )
+                    abi.encode(keccak256("CompactDeposit(bytes12 lockTag,address recipient)"), lockTag, recipient)
                 ),
-                "CompactDeposit witness)CompactDeposit(bytes12 lockTag,address recipient)TokenPermissions(address token,uint256 amount)", 
+                "CompactDeposit witness)CompactDeposit(bytes12 lockTag,address recipient)TokenPermissions(address token,uint256 amount)",
                 signature
             )
         );
 
-        uint256[] memory ids = theCompact.deposit(
-            swapper, tokenPermissions, nonce, deadline, lockTag, recipient, signature
-        );
+        uint256[] memory ids =
+            theCompact.deposit(swapper, tokenPermissions, nonce, deadline, lockTag, recipient, signature);
         vm.snapshotGasLastCall("depositBatchViaPermit2SingleERC20");
 
         assertEq(ids.length, 1);
@@ -652,10 +619,7 @@ contract TheCompactTest is Test {
             (uint256(scope) << 255) | (uint256(resetPeriod) << 252) | (uint256(allocatorId) << 160)
                 | uint256(uint160(address(token)))
         );
-        assertEq(
-            derivedLockTag,
-            lockTag
-        );
+        assertEq(derivedLockTag, lockTag);
 
         assertEq(token.balanceOf(address(theCompact)), amount);
         assertEq(theCompact.balanceOf(recipient, ids[0]), amount);
@@ -706,11 +670,7 @@ contract TheCompactTest is Test {
                         deadline,
                         keccak256(
                             abi.encode(
-                                keccak256(
-                                    "CompactDeposit(bytes12 lockTag,address recipient)"
-                                ),
-                                lockTag,
-                                recipient
+                                keccak256("CompactDeposit(bytes12 lockTag,address recipient)"), lockTag, recipient
                             )
                         )
                     )
@@ -725,14 +685,14 @@ contract TheCompactTest is Test {
         tokenPermissions[0] = ISignatureTransfer.TokenPermissions({ token: address(0), amount: amount });
         tokenPermissions[1] = ISignatureTransfer.TokenPermissions({ token: address(token), amount: amount });
 
-        ISignatureTransfer.TokenPermissions[] memory tokenPermissionsOnCall = new ISignatureTransfer.TokenPermissions[](1);
+        ISignatureTransfer.TokenPermissions[] memory tokenPermissionsOnCall =
+            new ISignatureTransfer.TokenPermissions[](1);
         tokenPermissionsOnCall[0] = ISignatureTransfer.TokenPermissions({ token: address(token), amount: amount });
 
-        ISignatureTransfer.SignatureTransferDetails[] memory signatureTransferDetails = new ISignatureTransfer.SignatureTransferDetails[](1);
-        signatureTransferDetails[0] = ISignatureTransfer.SignatureTransferDetails({
-            to: address(theCompact),
-            requestedAmount: amount
-        });
+        ISignatureTransfer.SignatureTransferDetails[] memory signatureTransferDetails =
+            new ISignatureTransfer.SignatureTransferDetails[](1);
+        signatureTransferDetails[0] =
+            ISignatureTransfer.SignatureTransferDetails({ to: address(theCompact), requestedAmount: amount });
 
         vm.expectCall(
             address(permit2),
@@ -746,15 +706,9 @@ contract TheCompactTest is Test {
                 signatureTransferDetails,
                 swapper,
                 keccak256(
-                    abi.encode(
-                        keccak256(
-                            "CompactDeposit(bytes12 lockTag,address recipient)"
-                        ),
-                        lockTag,
-                        recipient
-                    )
+                    abi.encode(keccak256("CompactDeposit(bytes12 lockTag,address recipient)"), lockTag, recipient)
                 ),
-                "CompactDeposit witness)CompactDeposit(bytes12 lockTag,address recipient)TokenPermissions(address token,uint256 amount)", 
+                "CompactDeposit witness)CompactDeposit(bytes12 lockTag,address recipient)TokenPermissions(address token,uint256 amount)",
                 signature
             )
         );
@@ -787,10 +741,7 @@ contract TheCompactTest is Test {
             (uint256(scope) << 255) | (uint256(resetPeriod) << 252) | (uint256(allocatorId) << 160)
                 | uint256(uint160(address(token)))
         );
-        assertEq(
-            deriviedLockTag,
-            lockTag
-        );
+        assertEq(deriviedLockTag, lockTag);
 
         assertEq(token.balanceOf(address(theCompact)), amount);
         assertEq(address(theCompact).balance, amount);
@@ -1508,20 +1459,14 @@ contract TheCompactTest is Test {
             abi.encodeWithSelector(
                 0x137c29fe, // TODO: derive selector manually
                 ISignatureTransfer.PermitTransferFrom({
-                    permitted: ISignatureTransfer.TokenPermissions({
-                        token: address(token),
-                        amount: amount
-                    }),
+                    permitted: ISignatureTransfer.TokenPermissions({ token: address(token), amount: amount }),
                     nonce: nonce,
                     deadline: deadline
                 }),
-                ISignatureTransfer.SignatureTransferDetails({
-                    to: address(theCompact),
-                    requestedAmount: amount
-                }),
+                ISignatureTransfer.SignatureTransferDetails({ to: address(theCompact), requestedAmount: amount }),
                 swapper,
                 keccak256(abi.encode(activationTypehash, id, claimHash)),
-                "Activation witness)Activation(uint256 id,Compact compact)Compact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256 id,uint256 amount,CompactWitness witness)CompactWitness(uint256 witnessArgument)TokenPermissions(address token,uint256 amount)", 
+                "Activation witness)Activation(uint256 id,Compact compact)Compact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256 id,uint256 amount,CompactWitness witness)CompactWitness(uint256 witnessArgument)TokenPermissions(address token,uint256 amount)",
                 signature
             )
         );
@@ -1556,10 +1501,7 @@ contract TheCompactTest is Test {
         assertEq(derivedAllocator, allocator);
         assertEq(uint256(derivedResetPeriod), uint256(resetPeriod));
         assertEq(uint256(derivedScope), uint256(scope));
-        assertEq(
-            derivedLockTag,
-            lockTag
-        );
+        assertEq(derivedLockTag, lockTag);
 
         assertEq(token.balanceOf(address(theCompact)), amount);
         assertEq(theCompact.balanceOf(swapper, id), amount);
@@ -1774,20 +1716,18 @@ contract TheCompactTest is Test {
         (bytes32 r, bytes32 vs) = vm.signCompact(swapperPrivateKey, digest);
         bytes memory signature = abi.encodePacked(r, vs);
 
-
-        ISignatureTransfer.TokenPermissions[] memory tokenPermissionsOnCall = new ISignatureTransfer.TokenPermissions[](2);
+        ISignatureTransfer.TokenPermissions[] memory tokenPermissionsOnCall =
+            new ISignatureTransfer.TokenPermissions[](2);
         tokenPermissionsOnCall[0] = ISignatureTransfer.TokenPermissions({ token: address(token), amount: amount });
-        tokenPermissionsOnCall[1] = ISignatureTransfer.TokenPermissions({ token: address(anotherToken), amount: amount });
+        tokenPermissionsOnCall[1] =
+            ISignatureTransfer.TokenPermissions({ token: address(anotherToken), amount: amount });
 
-        ISignatureTransfer.SignatureTransferDetails[] memory signatureTransferDetails = new ISignatureTransfer.SignatureTransferDetails[](2);
-        signatureTransferDetails[0] = ISignatureTransfer.SignatureTransferDetails({
-            to: address(theCompact),
-            requestedAmount: anotherAmount
-        });
-        signatureTransferDetails[1] = ISignatureTransfer.SignatureTransferDetails({
-            to: address(theCompact),
-            requestedAmount: aThirdAmount
-        });
+        ISignatureTransfer.SignatureTransferDetails[] memory signatureTransferDetails =
+            new ISignatureTransfer.SignatureTransferDetails[](2);
+        signatureTransferDetails[0] =
+            ISignatureTransfer.SignatureTransferDetails({ to: address(theCompact), requestedAmount: anotherAmount });
+        signatureTransferDetails[1] =
+            ISignatureTransfer.SignatureTransferDetails({ to: address(theCompact), requestedAmount: aThirdAmount });
 
         vm.expectCall(
             address(permit2),
@@ -1801,7 +1741,7 @@ contract TheCompactTest is Test {
                 signatureTransferDetails,
                 swapper,
                 keccak256(abi.encode(activationTypehash, keccak256(abi.encodePacked(ids)), claimHash)),
-                "BatchActivation witness)BatchActivation(uint256[] ids,BatchCompact compact)BatchCompact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256[2][] idsAndAmounts,CompactWitness witness)CompactWitness(uint256 witnessArgument)TokenPermissions(address token,uint256 amount)", 
+                "BatchActivation witness)BatchActivation(uint256[] ids,BatchCompact compact)BatchCompact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256[2][] idsAndAmounts,CompactWitness witness)CompactWitness(uint256 witnessArgument)TokenPermissions(address token,uint256 amount)",
                 signature
             )
         );
