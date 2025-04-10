@@ -113,55 +113,47 @@ library ValidityLib {
         }
 
         // Finally, fallback to emissary using the message hash.
-        bytes12 lockTag = idsAndAmounts.extractSameLockTag();
-        bool hasValidSigner = messageHash.verifyWithEmissary(expectedSigner, lockTag, signature);
-
-        assembly ("memory-safe") {
-            // Revert if no valid signer was found.
-            if iszero(hasValidSigner) {
-                // revert InvalidSignature();
-                mstore(0, 0x8baa579f)
-                revert(0x1c, 0x04)
-            }
-        }
+        messageHash.verifyWithEmissary(expectedSigner, idsAndAmounts.extractSameLockTag(), signature);
     }
 
     /**
      * @notice Internal function that validates a signature or registration against an expected
      * signer. If the initial verification fails, the emissary is used to valdiate the claim.
      * Returns if the signature is valid or if the caller is the expected signer, otherwise
-     * reverts. The message hash is combined with the domain separator before verification.
+     * reverts. The claim hash is combined with the domain separator before verification.
      * If ECDSA recovery fails, an EIP-1271 isValidSignature check is performed with half of
      * available gas. If EIP-1271 fails, and an IEmissary is set for the sponsor, an
      * IEmissary.verifyClaim check is performed.
-     * @param messageHash     The EIP-712 hash of the message to verify.
-     * @param expectedSigner  The address that should have signed the message.
-     * @param signature       The signature to verify.
-     * @param domainSeparator The domain separator to combine with the message hash.
-     * @param typehash        The EIP-712 typehash used for the claim message.
+     * @param claimHash           The EIP-712 hash of the claim to verify.
+     * @param expectedSigner      The address that should have signed the message.
+     * @param signature           The signature to verify.
+     * @param domainSeparator     The domain separator to combine with the message hash.
+     * @param typehash            The EIP-712 typehash used for the claim message.
+     * @param shortestResetPeriod The shortest reset period across all resource locks on the compact.
      */
     function hasValidSponsorOrRegistration(
-        bytes32 messageHash,
+        bytes32 claimHash,
         address expectedSigner,
         bytes calldata signature,
         bytes32 domainSeparator,
         uint256[2][] memory idsAndAmounts,
-        bytes32 typehash
+        bytes32 typehash,
+        uint256 shortestResetPeriod
     ) internal view {
         // Get registration status early if no signature is supplied.
-        uint256 shortestResetPeriod;
+        bool checkedRegistrationPeriod;
         if (signature.length == 0) {
-            uint256 registrationTimestamp = expectedSigner.toRegistrationTimestamp(messageHash, typehash);
-
-            shortestResetPeriod = _getShortestResetPeriod(idsAndAmounts);
+            uint256 registrationTimestamp = expectedSigner.toRegistrationTimestamp(claimHash, typehash);
 
             if ((registrationTimestamp != 0).and(registrationTimestamp + shortestResetPeriod > block.timestamp)) {
                 return;
             }
+
+            checkedRegistrationPeriod = true;
         }
 
         // Apply domain separator to message hash to derive the digest.
-        bytes32 digest = messageHash.withDomain(domainSeparator);
+        bytes32 digest = claimHash.withDomain(domainSeparator);
 
         // First, check signature against digest with ECDSA (or ensure sponsor is caller).
         if (expectedSigner.isValidECDSASignatureCalldata(digest, signature)) {
@@ -169,14 +161,10 @@ library ValidityLib {
         }
 
         // Next, check for an active registration if not yet checked.
-        if (shortestResetPeriod == 0) {
-            uint256 registrationTimestamp = expectedSigner.toRegistrationTimestamp(messageHash, typehash);
+        if (!checkedRegistrationPeriod) {
+            uint256 registrationTimestamp = expectedSigner.toRegistrationTimestamp(claimHash, typehash);
 
-            if (
-                (registrationTimestamp != 0).and(
-                    registrationTimestamp + _getShortestResetPeriod(idsAndAmounts) > block.timestamp
-                )
-            ) {
+            if ((registrationTimestamp != 0).and(registrationTimestamp + shortestResetPeriod > block.timestamp)) {
                 return;
             }
         }
@@ -186,37 +174,8 @@ library ValidityLib {
             return;
         }
 
-        // Finally, fallback to emissary using the message hash.
-        bool hasValidSigner =
-            (messageHash.verifyWithEmissary(expectedSigner, idsAndAmounts.extractSameLockTag(), signature));
-
-        assembly ("memory-safe") {
-            // Revert if no valid signer was found.
-            if iszero(hasValidSigner) {
-                // revert InvalidSignature();
-                mstore(0, 0x8baa579f)
-                revert(0x1c, 0x04)
-            }
-        }
-    }
-
-    function _getShortestResetPeriod(uint256[2][] memory idsAndAmounts) private pure returns (uint256) {
-        // Determine the length of the idsAndAmounts array and ensure it is nonzero.
-        uint256 totalIdsAndAmounts = idsAndAmounts.length;
-        if (totalIdsAndAmounts == 0) {
-            revert NoIdsAndAmountsProvided();
-        }
-
-        // Iterate over the array and extract the minimum reset period.
-        uint256 shortestResetPeriodRaw = idsAndAmounts[0][0].toResetPeriod().asUint256();
-        unchecked {
-            for (uint256 i = 1; i < totalIdsAndAmounts; ++i) {
-                shortestResetPeriodRaw = shortestResetPeriodRaw.min(idsAndAmounts[i][0].toResetPeriod().asUint256());
-            }
-        }
-
-        // Return the reset period represented in seconds.
-        return shortestResetPeriodRaw.asResetPeriod().toSeconds();
+        // Finally, fallback to emissary using the claim hash.
+        claimHash.verifyWithEmissary(expectedSigner, idsAndAmounts.extractSameLockTag(), signature);
     }
 
     /**
