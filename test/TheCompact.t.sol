@@ -472,8 +472,8 @@ contract TheCompactTest is Test {
 
         vm.expectCall(
             address(permit2),
-            abi.encodeWithSelector(
-                0x137c29fe, // TODO: derive selector manually
+            abi.encodeWithSignature(
+                "permitWitnessTransferFrom(((address,uint256),uint256,uint256),(address,uint256),address,bytes32,string,bytes)",
                 ISignatureTransfer.PermitTransferFrom({
                     permitted: ISignatureTransfer.TokenPermissions({ token: address(token), amount: amount }),
                     nonce: nonce,
@@ -580,8 +580,8 @@ contract TheCompactTest is Test {
 
         vm.expectCall(
             address(permit2),
-            abi.encodeWithSelector(
-                0xfe8ec1a7, // TODO: derive selector manually
+            abi.encodeWithSignature(
+                "permitWitnessTransferFrom(((address,uint256)[],uint256,uint256),(address,uint256)[],address,bytes32,string,bytes)",
                 ISignatureTransfer.PermitBatchTransferFrom({
                     permitted: tokenPermissions,
                     nonce: nonce,
@@ -696,8 +696,8 @@ contract TheCompactTest is Test {
 
         vm.expectCall(
             address(permit2),
-            abi.encodeWithSelector(
-                0xfe8ec1a7, // TODO: derive selector manually
+            abi.encodeWithSignature(
+                "permitWitnessTransferFrom(((address,uint256)[],uint256,uint256),(address,uint256)[],address,bytes32,string,bytes)",
                 ISignatureTransfer.PermitBatchTransferFrom({
                     permitted: tokenPermissionsOnCall,
                     nonce: nonce,
@@ -1456,8 +1456,8 @@ contract TheCompactTest is Test {
 
         vm.expectCall(
             address(permit2),
-            abi.encodeWithSelector(
-                0x137c29fe, // TODO: derive selector manually
+            abi.encodeWithSignature(
+                "permitWitnessTransferFrom(((address,uint256),uint256,uint256),(address,uint256),address,bytes32,string,bytes)",
                 ISignatureTransfer.PermitTransferFrom({
                     permitted: ISignatureTransfer.TokenPermissions({ token: address(token), amount: amount }),
                     nonce: nonce,
@@ -1731,8 +1731,8 @@ contract TheCompactTest is Test {
 
         vm.expectCall(
             address(permit2),
-            abi.encodeWithSelector(
-                0xfe8ec1a7, // TODO: derive selector manually
+            abi.encodeWithSignature(
+                "permitWitnessTransferFrom(((address,uint256)[],uint256,uint256),(address,uint256)[],address,bytes32,string,bytes)",
                 ISignatureTransfer.PermitBatchTransferFrom({
                     permitted: tokenPermissionsOnCall,
                     nonce: nonce,
