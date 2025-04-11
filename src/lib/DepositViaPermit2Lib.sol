@@ -358,7 +358,7 @@ library DepositViaPermit2Lib {
             // Prepare the initial fragment of the witness typestring.
             mstore(m, PERMIT2_DEPOSIT_WITNESS_FRAGMENT_HASH)
 
-            // Copy lockTag directly from calldata.
+            // Copy lockTag & recipient directly from calldata.
             // NOTE: none of these arguments are sanitized; the assumption is that they have to
             // match the signed values anyway, so *should* be fine not to sanitize them but could
             // optionally check that there are no dirty upper bits on any of them.
