@@ -284,7 +284,7 @@ library ValidityLib {
         view
         returns (bool isValid)
     {
-        if (signer == address(0)) return isValid;
+        if (signer == address(0)) return false;
         assembly ("memory-safe") {
             let m := mload(0x40)
             for { } 1 { } {
