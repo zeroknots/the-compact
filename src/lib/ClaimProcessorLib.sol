@@ -63,29 +63,19 @@ library ClaimProcessorLib {
         uint256[2][] memory idsAndAmounts,
         uint256 shortestResetPeriod
     ) internal returns (address sponsor) {
-        // Declare variables for signatures and parameters that will be extracted from calldata.
-        bytes calldata allocatorData;
-        bytes calldata sponsorSignature;
+        // Extract sponsor, nonce, and expires from calldata.
         uint256 nonce;
         uint256 expires;
-
         assembly ("memory-safe") {
-            // Extract allocator signature from calldata using offset stored at calldataPointer.
-            let allocatorDataPtr := add(calldataPointer, calldataload(calldataPointer))
-            allocatorData.offset := add(0x20, allocatorDataPtr)
-            allocatorData.length := calldataload(allocatorDataPtr)
-
-            // Extract sponsor signature from calldata using offset stored at calldataPointer + 0x20.
-            let sponsorSignaturePtr := add(calldataPointer, calldataload(add(calldataPointer, 0x20)))
-            sponsorSignature.offset := add(0x20, sponsorSignaturePtr)
-            sponsorSignature.length := calldataload(sponsorSignaturePtr)
-
-            // Extract sponsor address, sanitizing upper 96 bits.
+            // Extract sponsor address from calldata, sanitizing upper 96 bits.
             sponsor := shr(0x60, shl(0x60, calldataload(add(calldataPointer, 0x40))))
 
-            // Extract nonce and expiration timestamp.
+            // Extract nonce and expiration timestamp from calldata.
             nonce := calldataload(add(calldataPointer, 0x60))
             expires := calldataload(add(calldataPointer, 0x80))
+
+            // Swap domain separator for provided sponsorDomainSeparator if a nonzero value was supplied.
+            sponsorDomainSeparator := add(sponsorDomainSeparator, mul(iszero(sponsorDomainSeparator), domainSeparator))
         }
 
         // Ensure that the claim hasn't expired.
@@ -94,21 +84,72 @@ library ClaimProcessorLib {
         // Retrieve allocator address and consume nonce, ensuring it has not already been consumed.
         address allocator = allocatorId.fromRegisteredAllocatorIdWithConsumed(nonce);
 
+        // Validate that the sponsor has authorized the claim.
+        _validateSponsor(
+            sponsor, messageHash, calldataPointer, sponsorDomainSeparator, typehash, idsAndAmounts, shortestResetPeriod
+        );
+
+        // Validate that the allocator has authorized the claim.
+        _validateAllocator(allocator, sponsor, messageHash, calldataPointer, idsAndAmounts, nonce, expires);
+
+        // Emit claim event.
+        sponsor.emitClaim(messageHash, allocator, nonce);
+    }
+
+    function _validateSponsor(
+        address sponsor,
+        bytes32 messageHash,
+        uint256 calldataPointer,
+        bytes32 sponsorDomainSeparator,
+        bytes32 typehash,
+        uint256[2][] memory idsAndAmounts,
+        uint256 shortestResetPeriod
+    ) internal view {
+        bytes calldata sponsorSignature;
         assembly ("memory-safe") {
-            // Swap domain separator for provided sponsorDomainSeparator if a nonzero value was supplied.
-            sponsorDomainSeparator := add(sponsorDomainSeparator, mul(iszero(sponsorDomainSeparator), domainSeparator))
+            // Extract sponsor signature from calldata using offset stored at calldataPointer + 0x20.
+            let sponsorSignaturePtr := add(calldataPointer, calldataload(add(calldataPointer, 0x20)))
+            sponsorSignature.offset := add(0x20, sponsorSignaturePtr)
+            sponsorSignature.length := calldataload(sponsorSignaturePtr)
         }
 
         // Validate sponsor authorization through either ECDSA, direct registration, EIP1271, or emissary.
         messageHash.hasValidSponsorOrRegistration(
             sponsor, sponsorSignature, sponsorDomainSeparator, idsAndAmounts, typehash, shortestResetPeriod
         );
+    }
 
+    function _validateAllocator(
+        address allocator,
+        address sponsor,
+        bytes32 messageHash,
+        bytes calldata allocatorData,
+        uint256[2][] memory idsAndAmounts,
+        uint256 nonce,
+        uint256 expires
+    ) internal {
         // Validate allocator authorization through the allocator interface.
         allocator.callAuthorizeClaim(messageHash, sponsor, nonce, expires, idsAndAmounts, allocatorData);
+    }
 
-        // Emit claim event.
-        sponsor.emitClaim(messageHash, allocator, nonce);
+    function _validateAllocator(
+        address allocator,
+        address sponsor,
+        bytes32 messageHash,
+        uint256 calldataPointer,
+        uint256[2][] memory idsAndAmounts,
+        uint256 nonce,
+        uint256 expires
+    ) internal {
+        // Extract allocator signature from calldata using offset stored at calldataPointer.
+        bytes calldata allocatorData;
+        assembly ("memory-safe") {
+            let allocatorDataPtr := add(calldataPointer, calldataload(calldataPointer))
+            allocatorData.offset := add(0x20, allocatorDataPtr)
+            allocatorData.length := calldataload(allocatorDataPtr)
+        }
+
+        _validateAllocator(allocator, sponsor, messageHash, allocatorData, idsAndAmounts, nonce, expires);
     }
 
     /**

@@ -26,9 +26,6 @@ library AllocatorLib {
             // Retrieve the free memory pointer; memory will be left dirtieed.
             let m := mload(0x40)
 
-            // Derive offset to start of data for the call from memory pointer.
-            let dataStart := add(m, 0x1c)
-
             // Get length of idsAndAmounts array, both in elements and as data.
             let totalIdsAndAmounts := mload(idsAndAmounts)
             let totalIdsAndAmountsDataLength := shl(6, totalIdsAndAmounts)
@@ -44,20 +41,22 @@ library AllocatorLib {
             mstore(add(m, 0xe0), add(totalIdsAndAmountsDataLength, 0x100))
             mstore(add(m, 0x100), totalIdsAndAmounts)
 
-            // Copy each element from idsAndAmounts array in memory.
-            let dstStart := add(m, 0x120)
-            let totalIdsAndAmountsTimesOneWord := shl(5, totalIdsAndAmounts)
-            for { let i := 0 } lt(i, totalIdsAndAmountsTimesOneWord) { i := add(i, 0x20) } {
-                let dstPos := add(dstStart, shl(1, i))
-                let srcPos := mload(add(idsAndAmounts, add(i, 0x20)))
-                mstore(dstPos, mload(srcPos))
-                mstore(add(dstPos, 0x20), mload(add(srcPos, 0x20)))
-            }
+            {
+                // Copy each element from idsAndAmounts array in memory.
+                let dstStart := add(m, 0x120)
+                let totalIdsAndAmountsTimesOneWord := shl(5, totalIdsAndAmounts)
+                for { let i := 0 } lt(i, totalIdsAndAmountsTimesOneWord) { i := add(i, 0x20) } {
+                    let dstPos := add(dstStart, shl(1, i))
+                    let srcPos := mload(add(idsAndAmounts, add(i, 0x20)))
+                    mstore(dstPos, mload(srcPos))
+                    mstore(add(dstPos, 0x20), mload(add(srcPos, 0x20)))
+                }
 
-            // Copy allocator data from calldata.
-            let allocatorDataMemoryOffset := add(dstStart, totalIdsAndAmountsDataLength)
-            mstore(allocatorDataMemoryOffset, allocatorData.length)
-            calldatacopy(add(allocatorDataMemoryOffset, 0x20), allocatorData.offset, allocatorData.length)
+                // Copy allocator data from calldata.
+                let allocatorDataMemoryOffset := add(dstStart, totalIdsAndAmountsDataLength)
+                mstore(allocatorDataMemoryOffset, allocatorData.length)
+                calldatacopy(add(allocatorDataMemoryOffset, 0x20), allocatorData.offset, allocatorData.length)
+            }
 
             // Ensure sure initial scratch space is cleared as an added precaution.
             mstore(0, 0)
@@ -68,7 +67,7 @@ library AllocatorLib {
                     gas(),
                     allocator,
                     0,
-                    dataStart,
+                    add(m, 0x1c),
                     add(0x124, add(totalIdsAndAmountsDataLength, allocatorData.length)),
                     0,
                     0x20

@@ -108,7 +108,6 @@ contract DepositViaPermit2Logic is DepositLogic {
      * @param token           The address of the ERC20 token to deposit.
      * @param depositor       The account signing the permit2 authorization and depositing the tokens.
      * @param claimHash       A bytes32 hash derived from the details of the compact.
-     * @param compactCategory The category of the compact being registered (Compact, BatchCompact, or MultichainCompact).
      * @param witness         Additional data used in generating the claim hash.
      * @param signature       The Permit2 signature from the depositor authorizing the deposit.
      * @return                The ERC6909 token identifier of the associated resource lock.
@@ -117,29 +116,46 @@ contract DepositViaPermit2Logic is DepositLogic {
         address token,
         address depositor, // also recipient
         bytes32 claimHash,
-        CompactCategory compactCategory,
         string calldata witness,
         bytes calldata signature
     ) internal returns (uint256) {
-        // Set reentrancy lock, get initial balance, and begin preparing Permit2 call data.
-        (uint256 id, uint256 initialBalance, uint256 m, uint256 typestringMemoryLocation) =
-            _setReentrancyLockAndStartPreparingPermit2Call(token);
+        uint256 id;
+        uint256 initialBalance;
+        bytes32 compactTypehash;
+        {
+            uint256 m;
+            {
+                uint256 typestringMemoryLocation;
 
-        // Continue preparing Permit2 call data and get activation and compact typehashes.
-        (bytes32 activationTypehash, bytes32 compactTypehash) =
-            typestringMemoryLocation.writeWitnessAndGetTypehashes(compactCategory, witness, bool(false).asStubborn());
+                // Set reentrancy lock, get initial balance, and begin preparing Permit2 call data.
+                (id, initialBalance, m, typestringMemoryLocation) =
+                    _setReentrancyLockAndStartPreparingPermit2Call(token);
 
-        // Derive the activation witness hash and store it.
-        activationTypehash.deriveAndWriteWitnessHash(id, claimHash, m, 0x100);
+                CompactCategory compactCategory;
+                bytes32 activationTypehash;
+                assembly ("memory-safe") {
+                    compactCategory := calldataload(0xe4)
+                    if gt(compactCategory, 2) { revert(0, 0) }
+                }
 
-        // Derive signature offset value.
-        uint256 signatureOffsetValue;
-        assembly ("memory-safe") {
-            signatureOffsetValue := and(add(mload(add(m, 0x160)), 0x17f), not(0x1f))
+                // Continue preparing Permit2 call data and get activation and compact typehashes.
+                (activationTypehash, compactTypehash) = typestringMemoryLocation.writeWitnessAndGetTypehashes(
+                    compactCategory, witness, bool(false).asStubborn()
+                );
+
+                // Derive the activation witness hash and store it.
+                activationTypehash.deriveAndWriteWitnessHash(id, claimHash, m, 0x100);
+            }
+
+            // Derive signature offset value.
+            uint256 signatureOffsetValue;
+            assembly ("memory-safe") {
+                signatureOffsetValue := and(add(mload(add(m, 0x160)), 0x17f), not(0x1f))
+            }
+
+            // Write the signature and perform the Permit2 call.
+            _writeSignatureAndPerformPermit2Call(m, uint256(0x140).asStubborn(), signatureOffsetValue, signature);
         }
-
-        // Write the signature and perform the Permit2 call.
-        _writeSignatureAndPerformPermit2Call(m, uint256(0x140).asStubborn(), signatureOffsetValue, signature);
 
         // Deposit tokens based on the balance change from the Permit2 call.
         _checkBalanceAndDeposit(token, depositor, id, initialBalance);
@@ -183,28 +199,30 @@ contract DepositViaPermit2Logic is DepositLogic {
             uint256[] memory initialTokenBalances
         ) = _preprocessAndPerformInitialNativeDeposit(permitted, recipient);
 
-        // Derive the CompactDeposit witness hash.
-        bytes32 witness = uint256(0x84).asStubborn().deriveCompactDepositWitnessHash();
+        {
+            // Derive the CompactDeposit witness hash.
+            bytes32 witness = uint256(0x84).asStubborn().deriveCompactDepositWitnessHash();
 
-        // Begin preparing Permit2 call data.
-        (uint256 m, uint256 typestringMemoryLocation) =
-            totalTokensLessInitialNative.beginPreparingBatchDepositPermit2Calldata(firstUnderlyingTokenIsNative);
+            // Begin preparing Permit2 call data.
+            (uint256 m, uint256 typestringMemoryLocation) =
+                totalTokensLessInitialNative.beginPreparingBatchDepositPermit2Calldata(firstUnderlyingTokenIsNative);
 
-        // Insert the CompactDeposit typestring fragment.
-        typestringMemoryLocation.insertCompactDepositTypestring();
+            // Insert the CompactDeposit typestring fragment.
+            typestringMemoryLocation.insertCompactDepositTypestring();
 
-        // Declare variable for signature offset value.
-        uint256 signatureOffsetValue;
-        assembly ("memory-safe") {
-            // Store the CompactDeposit witness hash.
-            mstore(add(m, 0x80), witness)
+            // Declare variable for signature offset value.
+            uint256 signatureOffsetValue;
+            assembly ("memory-safe") {
+                // Store the CompactDeposit witness hash.
+                mstore(add(m, 0x80), witness)
 
-            // Derive signature offset value.
-            signatureOffsetValue := add(0x200, shl(7, totalTokensLessInitialNative))
+                // Derive signature offset value.
+                signatureOffsetValue := add(0x200, shl(7, totalTokensLessInitialNative))
+            }
+
+            // Write the signature and perform the Permit2 call.
+            _writeSignatureAndPerformPermit2Call(m, uint256(0xc0).asStubborn(), signatureOffsetValue, signature);
         }
-
-        // Write the signature and perform the Permit2 call.
-        _writeSignatureAndPerformPermit2Call(m, uint256(0xc0).asStubborn(), signatureOffsetValue, signature);
 
         // Deposit tokens based on balance changes from Permit2 call and clear reentrancy lock.
         _verifyBalancesAndPerformDeposits(ids, permitted, initialTokenBalances, recipient, firstUnderlyingTokenIsNative);
@@ -226,74 +244,97 @@ contract DepositViaPermit2Logic is DepositLogic {
      * Compact, BatchCompact, or MultichainCompact payload matching the specified compact category.
      * @param depositor       The account signing the permit2 authorization and depositing the tokens.
      * @param permitted       Array of token permissions specifying the deposited tokens and amounts.
-     * @param claimHash       A bytes32 hash derived from the details of the compact.
-     * @param compactCategory The category of the compact being registered (Compact, BatchCompact, or MultichainCompact).
      * @param witness         Additional data used in generating the claim hash.
      * @param signature       The Permit2 signature from the depositor authorizing the deposits.
-     * @return                Array of ERC6909 token identifiers for the associated resource locks.
+     * @return ids            Array of ERC6909 token identifiers for the associated resource locks.
      */
     function _depositBatchAndRegisterViaPermit2(
         address depositor,
         ISignatureTransfer.TokenPermissions[] calldata permitted,
-        bytes32 claimHash,
-        CompactCategory compactCategory,
         string calldata witness,
         bytes calldata signature
-    ) internal returns (uint256[] memory) {
-        // Set reentrancy guard, perform initial native deposit if present, and get initial token balances.
-        (
-            uint256 totalTokensLessInitialNative,
-            bool firstUnderlyingTokenIsNative,
-            uint256[] memory ids,
-            uint256[] memory initialTokenBalances
-        ) = _preprocessAndPerformInitialNativeDeposit(permitted, depositor);
+    ) internal returns (uint256[] memory ids) {
+        bool firstUnderlyingTokenIsNative;
+        uint256[] memory initialTokenBalances;
+        bytes32 compactTypehash;
 
-        // Derive the hash of the resource lock ids.
-        uint256 idsHash;
-        assembly ("memory-safe") {
-            idsHash :=
-                keccak256(add(ids, 0x20), shl(5, add(totalTokensLessInitialNative, firstUnderlyingTokenIsNative)))
+        {
+            uint256 totalTokensLessInitialNative;
+
+            // Set reentrancy guard, perform initial native deposit if present, and get initial token balances.
+            (totalTokensLessInitialNative, firstUnderlyingTokenIsNative, ids, initialTokenBalances) =
+                _preprocessAndPerformInitialNativeDeposit(permitted, depositor);
+
+            {
+                uint256 m;
+                CompactCategory compactCategory;
+                {
+                    // Derive the hash of the resource lock ids.
+                    uint256 idsHash;
+                    bytes32 activationTypehash;
+                    uint256 typestringMemoryLocation;
+
+                    assembly ("memory-safe") {
+                        idsHash :=
+                            keccak256(
+                                add(ids, 0x20), shl(5, add(totalTokensLessInitialNative, firstUnderlyingTokenIsNative))
+                            )
+
+                        compactCategory := calldataload(0xc4)
+                        if gt(compactCategory, 2) { revert(0, 0) }
+                    }
+
+                    // Begin preparing Permit2 call data.
+                    (m, typestringMemoryLocation) = totalTokensLessInitialNative
+                        .beginPreparingBatchDepositPermit2Calldata(firstUnderlyingTokenIsNative);
+
+                    // Prepare the typestring fragment and get batch activation and compact typehashes.
+                    (activationTypehash, compactTypehash) = typestringMemoryLocation.writeWitnessAndGetTypehashes(
+                        compactCategory, witness, bool(true).asStubborn()
+                    );
+
+                    bytes32 claimHash;
+                    assembly {
+                        claimHash := calldataload(0xa4)
+                    }
+
+                    // Derive the batch activation witness hash and store it.
+                    activationTypehash.deriveAndWriteWitnessHash(idsHash, claimHash, m, 0x80);
+                }
+
+                // Declare variable for signature offset value.
+                uint256 signatureOffsetValue;
+                assembly ("memory-safe") {
+                    // Derive the total memory offset for the witness.
+                    let totalWitnessMemoryOffset :=
+                        and(
+                            add(
+                                add(0xf3, add(witness.length, iszero(iszero(witness.length)))),
+                                add(mul(eq(compactCategory, 1), 0x0b), shl(6, eq(compactCategory, 2)))
+                            ),
+                            not(0x1f)
+                        )
+
+                    // Derive the signature offset value.
+                    signatureOffsetValue :=
+                        add(add(0x180, shl(7, totalTokensLessInitialNative)), totalWitnessMemoryOffset)
+                }
+
+                // Write the signature and perform the Permit2 call.
+                _writeSignatureAndPerformPermit2Call(m, uint256(0xc0).asStubborn(), signatureOffsetValue, signature);
+            }
         }
-
-        // Begin preparing Permit2 call data.
-        (uint256 m, uint256 typestringMemoryLocation) =
-            totalTokensLessInitialNative.beginPreparingBatchDepositPermit2Calldata(firstUnderlyingTokenIsNative);
-
-        // Prepare the typestring fragment and get batch activation and compact typehashes.
-        (bytes32 activationTypehash, bytes32 compactTypehash) =
-            typestringMemoryLocation.writeWitnessAndGetTypehashes(compactCategory, witness, bool(true).asStubborn());
-
-        // Derive the batch activation witness hash and store it.
-        activationTypehash.deriveAndWriteWitnessHash(idsHash, claimHash, m, 0x80);
-
-        // Declare variable for signature offset value.
-        uint256 signatureOffsetValue;
-        assembly ("memory-safe") {
-            // Get the length of the witness.
-            let witnessLength := witness.length
-
-            // Derive the total memory offset for the witness.
-            let totalWitnessMemoryOffset :=
-                and(
-                    add(
-                        add(0xf3, add(witnessLength, iszero(iszero(witnessLength)))),
-                        add(mul(eq(compactCategory, 1), 0x0b), shl(6, eq(compactCategory, 2)))
-                    ),
-                    not(0x1f)
-                )
-
-            // Derive the signature offset value.
-            signatureOffsetValue := add(add(0x180, shl(7, totalTokensLessInitialNative)), totalWitnessMemoryOffset)
-        }
-
-        // Write the signature and perform the Permit2 call.
-        _writeSignatureAndPerformPermit2Call(m, uint256(0xc0).asStubborn(), signatureOffsetValue, signature);
 
         // Deposit tokens based on balance changes from Permit2 call and clear reentrancy lock.
         _verifyBalancesAndPerformDeposits(ids, permitted, initialTokenBalances, depositor, firstUnderlyingTokenIsNative);
 
+        bytes32 registeredClaimHash;
+        assembly {
+            registeredClaimHash := calldataload(0xa4)
+        }
+
         // Register the compact.
-        depositor.registerCompact(claimHash, compactTypehash);
+        depositor.registerCompact(registeredClaimHash, compactTypehash);
 
         // Return the ERC6909 token identifiers of the associated resource locks.
         return ids;

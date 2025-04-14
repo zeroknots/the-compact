@@ -68,13 +68,13 @@ library ClaimHashFunctionCastLib {
     /**
      * @notice Function cast to provide a Claim calldata struct while
      * treating it as a uint256 representing a calldata pointer location.
-     * @param fnIn   Function pointer to `HashLib.toMessageHashWithWitness(uint256, uint256)`.
+     * @param fnIn   Function pointer to `HashLib.toMessageHashWithWitness(uint256)`.
      * @return fnOut Modified function used in `ClaimHashLib.toMessageHashes(Claim calldata)`.
      */
-    function usingClaim(function (uint256, uint256) internal view returns (bytes32, bytes32) fnIn)
+    function usingClaim(function (uint256) internal view returns (bytes32, bytes32) fnIn)
         internal
         pure
-        returns (function (Claim calldata, uint256) internal view returns (bytes32, bytes32) fnOut)
+        returns (function (Claim calldata) internal view returns (bytes32, bytes32) fnOut)
     {
         assembly ("memory-safe") {
             fnOut := fnIn

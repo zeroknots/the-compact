@@ -211,7 +211,6 @@ library ComponentLib {
     ) internal {
         // Declare variable for SplitBatchClaimComponent array that will be extracted from calldata.
         SplitBatchClaimComponent[] calldata claims;
-
         assembly ("memory-safe") {
             // Extract array of split batch claim components.
             let claimsPtr := add(calldataPointer, calldataload(add(calldataPointer, offsetToId)))
@@ -219,6 +218,40 @@ library ComponentLib {
             claims.length := calldataload(claimsPtr)
         }
 
+        // Parse into idsAndAmounts & extract shortest reset period & first allocatorId.
+        (uint256[2][] memory idsAndAmounts, uint96 firstAllocatorId, uint256 shortestResetPeriod) =
+            _buildIdsAndAmounts(claims, sponsorDomainSeparator);
+
+        // Validate the claim and extract the sponsor address.
+        address sponsor = validation(
+            messageHash,
+            firstAllocatorId,
+            calldataPointer,
+            domainSeparator,
+            sponsorDomainSeparator,
+            typehash,
+            idsAndAmounts,
+            shortestResetPeriod.asResetPeriod().toSeconds()
+        );
+
+        unchecked {
+            // Process each claim component.
+            for (uint256 i = 0; i < idsAndAmounts.length; ++i) {
+                SplitBatchClaimComponent calldata claimComponent = claims[i];
+
+                // Process each split component, verifying total amount and executing operations.
+                claimComponent.portions.verifyAndProcessSplitComponents(
+                    sponsor, claimComponent.id, claimComponent.allocatedAmount
+                );
+            }
+        }
+    }
+
+    function _buildIdsAndAmounts(SplitBatchClaimComponent[] calldata claims, bytes32 sponsorDomainSeparator)
+        internal
+        pure
+        returns (uint256[2][] memory idsAndAmounts, uint96 firstAllocatorId, uint256 shortestResetPeriod)
+    {
         uint256 totalClaims = claims.length;
         if (totalClaims == 0) {
             revert NoIdsAndAmountsProvided();
@@ -227,11 +260,11 @@ library ComponentLib {
         // Extract allocator id and amount from first claim for validation.
         SplitBatchClaimComponent calldata claimComponent = claims[0];
         uint256 id = claimComponent.id;
-        uint96 firstAllocatorId = id.toAllocatorId();
-        uint256 shortestResetPeriod = id.toResetPeriod().asUint256();
+        firstAllocatorId = id.toAllocatorId();
+        shortestResetPeriod = id.toResetPeriod().asUint256();
 
         // Initialize idsAndAmounts array and register the first element.
-        uint256[2][] memory idsAndAmounts = new uint256[2][](totalClaims);
+        idsAndAmounts = new uint256[2][](totalClaims);
         idsAndAmounts[0] = [id, claimComponent.allocatedAmount];
 
         // Initialize error tracking variable.
@@ -255,28 +288,6 @@ library ComponentLib {
 
             // Revert if any errors occurred.
             _revertWithInvalidBatchAllocationIfError(errorBuffer);
-
-            // Validate the claim and extract the sponsor address.
-            address sponsor = validation(
-                messageHash,
-                firstAllocatorId,
-                calldataPointer,
-                domainSeparator,
-                sponsorDomainSeparator,
-                typehash,
-                idsAndAmounts,
-                shortestResetPeriod.asResetPeriod().toSeconds()
-            );
-
-            // Process each claim component.
-            for (uint256 i = 0; i < totalClaims; ++i) {
-                claimComponent = claims[i];
-
-                // Process each split component, verifying total amount and executing operations.
-                claimComponent.portions.verifyAndProcessSplitComponents(
-                    sponsor, claimComponent.id, claimComponent.allocatedAmount
-                );
-            }
         }
     }
 

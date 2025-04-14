@@ -25,6 +25,7 @@ import { HashLib } from "./HashLib.sol";
  */
 library ClaimHashLib {
     using ClaimHashFunctionCastLib for function(uint256, uint256) internal pure returns (uint256);
+    using ClaimHashFunctionCastLib for function(uint256) internal view returns (bytes32, bytes32);
     using ClaimHashFunctionCastLib for function(uint256, uint256) internal view returns (bytes32, bytes32);
     using
     ClaimHashFunctionCastLib
@@ -73,7 +74,7 @@ library ClaimHashLib {
 
     ///// CATEGORY 2: Claim with witness message & type hashes /////
     function toMessageHashes(Claim calldata claim) internal view returns (bytes32 claimHash, bytes32 typehash) {
-        return HashLib.toMessageHashWithWitness.usingClaim()(claim, 0);
+        return HashLib.toMessageHashWithWitness.usingClaim()(claim);
     }
 
     function toMessageHashes(BatchClaim calldata claim) internal view returns (bytes32 claimHash, bytes32 typehash) {
