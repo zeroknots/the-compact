@@ -174,9 +174,9 @@ contract TheCompact is ITheCompact, ERC6909, TheCompactLogic {
     function depositAndRegister(
         address depositor,
         ISignatureTransfer.TokenPermissions[] calldata permitted,
-        DepositDetails calldata details,
-        bytes32 claimHash,
-        CompactCategory compactCategory,
+        DepositDetails calldata,
+        bytes32, // claimHash
+        CompactCategory, // compactCategory
         string calldata witness,
         bytes calldata signature
     ) external payable returns (uint256[] memory) {
