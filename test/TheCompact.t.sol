@@ -723,7 +723,8 @@ contract TheCompactTest is Test {
             )
         );
 
-        uint256[] memory ids = theCompact.deposit{ value: amount }(swapper, tokenPermissions, details, recipient, signature);
+        uint256[] memory ids =
+            theCompact.deposit{ value: amount }(swapper, tokenPermissions, details, recipient, signature);
         vm.snapshotGasLastCall("depositBatchViaPermit2NativeAndERC20");
 
         assertEq(ids.length, 2);
@@ -1486,13 +1487,7 @@ contract TheCompactTest is Test {
         );
 
         uint256 returnedId = theCompact.depositAndRegister(
-            permit,
-            swapper,
-            lockTag,
-            claimHash,
-            CompactCategory.Compact,
-            witnessTypestring,
-            signature
+            permit, swapper, lockTag, claimHash, CompactCategory.Compact, witnessTypestring, signature
         );
         vm.snapshotGasLastCall("depositAndRegisterViaPermit2");
         assertEq(returnedId, id);
