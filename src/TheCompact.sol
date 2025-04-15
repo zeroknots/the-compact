@@ -11,6 +11,7 @@ import { Scope } from "./types/Scope.sol";
 import { ResetPeriod } from "./types/ResetPeriod.sol";
 import { ForcedWithdrawalStatus } from "./types/ForcedWithdrawalStatus.sol";
 import { EmissaryStatus } from "./types/EmissaryStatus.sol";
+import { DepositDetails } from "./types/DepositDetails.sol";
 
 import { TheCompactLogic } from "./lib/TheCompactLogic.sol";
 
@@ -139,23 +140,17 @@ contract TheCompact is ITheCompact, ERC6909, TheCompactLogic {
     }
 
     function deposit(
-        address token,
-        uint256, // amount
-        uint256, // nonce
-        uint256, // deadline
+        ISignatureTransfer.PermitTransferFrom calldata permit,
         address, // depositor
         bytes12, // lockTag
         address recipient,
         bytes calldata signature
     ) external returns (uint256) {
-        return _depositViaPermit2(token, recipient, signature);
+        return _depositViaPermit2(permit.permitted.token, recipient, signature);
     }
 
     function depositAndRegister(
-        address token,
-        uint256, // amount
-        uint256, // nonce
-        uint256, // deadline
+        ISignatureTransfer.PermitTransferFrom calldata permit,
         address depositor, // also recipient
         bytes12, // lockTag
         bytes32 claimHash,
@@ -163,15 +158,13 @@ contract TheCompact is ITheCompact, ERC6909, TheCompactLogic {
         string calldata witness,
         bytes calldata signature
     ) external returns (uint256) {
-        return _depositAndRegisterViaPermit2(token, depositor, claimHash, witness, signature);
+        return _depositAndRegisterViaPermit2(permit.permitted.token, depositor, claimHash, witness, signature);
     }
 
     function deposit(
         address, // depositor
         ISignatureTransfer.TokenPermissions[] calldata permitted,
-        uint256, // nonce
-        uint256, // deadline
-        bytes12, // lockTag
+        DepositDetails calldata,
         address recipient,
         bytes calldata signature
     ) external payable returns (uint256[] memory) {
@@ -181,11 +174,9 @@ contract TheCompact is ITheCompact, ERC6909, TheCompactLogic {
     function depositAndRegister(
         address depositor,
         ISignatureTransfer.TokenPermissions[] calldata permitted,
-        uint256, // nonce
-        uint256, // deadline
-        bytes12, // lockTag
-        bytes32, // claimHash
-        CompactCategory, // compactCategory
+        DepositDetails calldata details,
+        bytes32 claimHash,
+        CompactCategory compactCategory,
         string calldata witness,
         bytes calldata signature
     ) external payable returns (uint256[] memory) {

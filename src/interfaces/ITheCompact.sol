@@ -8,6 +8,7 @@ import { Scope } from "../types/Scope.sol";
 import { CompactCategory } from "../types/CompactCategory.sol";
 import { ISignatureTransfer } from "permit2/src/interfaces/ISignatureTransfer.sol";
 import { BasicTransfer, SplitTransfer } from "../types/Claims.sol";
+import { DepositDetails } from "../types/DepositDetails.sol";
 
 import { BatchTransfer, SplitBatchTransfer } from "../types/BatchClaims.sol";
 
@@ -274,21 +275,14 @@ interface ITheCompact {
      * implementation details of the respective token. The Permit2 authorization signed by the
      * depositor must contain a CompactDeposit witness containing the allocator, the reset period,
      * the scope, and the intended recipient of the deposit.
-     * @param token       The address of the ERC20 token to deposit.
-     * @param amount      The amount of tokens to deposit.
-     * @param nonce       The Permit2 nonce for the signature.
-     * @param deadline    The timestamp until which the signature is valid.
-     * @param depositor   The account signing the permit2 authorization and depositing the tokens.
+     * @param permit      The permit data signed by the depositor.
      * @param lockTag     The lock tag containing allocator ID, reset period, and scope.
      * @param recipient   The address that will receive the corresponding the ERC6909 tokens.
      * @param signature   The Permit2 signature from the depositor authorizing the deposit.
      * @return id         The ERC6909 token identifier of the associated resource lock.
      */
     function deposit(
-        address token,
-        uint256 amount,
-        uint256 nonce,
-        uint256 deadline,
+        ISignatureTransfer.PermitTransferFrom calldata permit,
         address depositor,
         bytes12 lockTag,
         address recipient,
@@ -305,12 +299,9 @@ interface ITheCompact {
      * signed by the depositor must contain an Activation witness containing the id of the resource
      * lock and an associated Compact, BatchCompact, or MultichainCompact payload matching the
      * specified compact category.
-     * @param token           The address of the ERC20 token to deposit.
-     * @param amount          The amount of tokens to deposit.
-     * @param nonce           The Permit2 nonce for the signature.
-     * @param deadline        The timestamp until which the signature is valid.
+     * @param permit          The permit data signed by the depositor.
      * @param depositor       The account signing the permit2 authorization and depositing the tokens.
-     * @param lockTag     The lock tag containing allocator ID, reset period, and scope.
+     * @param lockTag         The lock tag containing allocator ID, reset period, and scope.
      * @param claimHash       A bytes32 hash derived from the details of the compact.
      * @param compactCategory The category of the compact being registered (Compact, BatchCompact, or MultichainCompact).
      * @param witness         Additional data used in generating the claim hash.
@@ -318,10 +309,7 @@ interface ITheCompact {
      * @return id             The ERC6909 token identifier of the associated resource lock.
      */
     function depositAndRegister(
-        address token,
-        uint256 amount,
-        uint256 nonce,
-        uint256 deadline,
+        ISignatureTransfer.PermitTransferFrom calldata permit,
         address depositor,
         bytes12 lockTag,
         bytes32 claimHash,
@@ -342,10 +330,8 @@ interface ITheCompact {
      * CompactDeposit witness containing the allocator, the reset period, the scope, and the
      * intended recipient of the deposits.
      * @param depositor   The account signing the permit2 authorization and depositing the tokens.
-     * @param permitted   Array of token permissions specifying the deposited tokens and amounts.
-     * @param nonce       The Permit2 nonce for the signature.
-     * @param deadline    The timestamp until which the signature is valid.
-     * @param lockTag     The lock tag containing allocator ID, reset period, and scope.
+     * @param permitted   The permit data signed by the depositor.
+     * @param details     The details of the deposit.
      * @param recipient   The address that will receive the corresponding ERC6909 tokens.
      * @param signature   The Permit2 signature from the depositor authorizing the deposits.
      * @return ids        Array of ERC6909 token identifiers for the associated resource locks.
@@ -353,9 +339,7 @@ interface ITheCompact {
     function deposit(
         address depositor,
         ISignatureTransfer.TokenPermissions[] calldata permitted,
-        uint256 nonce,
-        uint256 deadline,
-        bytes12 lockTag,
+        DepositDetails calldata details,
         address recipient,
         bytes calldata signature
     ) external payable returns (uint256[] memory ids);
@@ -374,9 +358,7 @@ interface ITheCompact {
      * specified compact category.
      * @param depositor       The account signing the permit2 authorization and depositing the tokens.
      * @param permitted       Array of token permissions specifying the deposited tokens and amounts.
-     * @param nonce           The Permit2 nonce for the signature.
-     * @param deadline        The timestamp until which the signature is valid.
-     * @param lockTag     The lock tag containing allocator ID, reset period, and scope.
+     * @param details         The details of the deposit.
      * @param claimHash       A bytes32 hash derived from the details of the compact.
      * @param compactCategory The category of the compact being registered (Compact, BatchCompact, or MultichainCompact).
      * @param witness         Additional data used in generating the claim hash.
@@ -386,9 +368,7 @@ interface ITheCompact {
     function depositAndRegister(
         address depositor,
         ISignatureTransfer.TokenPermissions[] calldata permitted,
-        uint256 nonce,
-        uint256 deadline,
-        bytes12 lockTag,
+        DepositDetails calldata details,
         bytes32 claimHash,
         CompactCategory compactCategory,
         string calldata witness,

@@ -8,6 +8,7 @@ import { Compact, BatchCompact, Segment } from "../src/types/EIP712Types.sol";
 import { ResetPeriod } from "../src/types/ResetPeriod.sol";
 import { Scope } from "../src/types/Scope.sol";
 import { CompactCategory } from "../src/types/CompactCategory.sol";
+import { DepositDetails } from "../src/types/DepositDetails.sol";
 import { ISignatureTransfer } from "permit2/src/interfaces/ISignatureTransfer.sol";
 
 import { HashLib } from "../src/lib/HashLib.sol";
@@ -470,15 +471,19 @@ contract TheCompactTest is Test {
         (bytes32 r, bytes32 vs) = vm.signCompact(swapperPrivateKey, digest);
         bytes memory signature = abi.encodePacked(r, vs);
 
+        ISignatureTransfer.PermitTransferFrom memory permit = ISignatureTransfer.PermitTransferFrom({
+            permitted: ISignatureTransfer.TokenPermissions({ token: address(token), amount: amount }),
+            nonce: nonce,
+            deadline: deadline
+        });
+
+        DepositDetails memory details = DepositDetails({ nonce: nonce, deadline: deadline, lockTag: lockTag });
+
         vm.expectCall(
             address(permit2),
             abi.encodeWithSignature(
                 "permitWitnessTransferFrom(((address,uint256),uint256,uint256),(address,uint256),address,bytes32,string,bytes)",
-                ISignatureTransfer.PermitTransferFrom({
-                    permitted: ISignatureTransfer.TokenPermissions({ token: address(token), amount: amount }),
-                    nonce: nonce,
-                    deadline: deadline
-                }),
+                permit,
                 ISignatureTransfer.SignatureTransferDetails({ to: address(theCompact), requestedAmount: amount }),
                 swapper,
                 keccak256(
@@ -489,7 +494,7 @@ contract TheCompactTest is Test {
             )
         );
 
-        uint256 id = theCompact.deposit(address(token), amount, nonce, deadline, swapper, lockTag, recipient, signature);
+        uint256 id = theCompact.deposit(permit, swapper, lockTag, recipient, signature);
         vm.snapshotGasLastCall("depositERC20ViaPermit2AndURI");
 
         (
@@ -578,15 +583,19 @@ contract TheCompactTest is Test {
         signatureTransferDetails[0] =
             ISignatureTransfer.SignatureTransferDetails({ to: address(theCompact), requestedAmount: amount });
 
+        ISignatureTransfer.PermitBatchTransferFrom memory permit = ISignatureTransfer.PermitBatchTransferFrom({
+            permitted: tokenPermissions,
+            nonce: nonce,
+            deadline: deadline
+        });
+
+        DepositDetails memory details = DepositDetails({ nonce: nonce, deadline: deadline, lockTag: lockTag });
+
         vm.expectCall(
             address(permit2),
             abi.encodeWithSignature(
                 "permitWitnessTransferFrom(((address,uint256)[],uint256,uint256),(address,uint256)[],address,bytes32,string,bytes)",
-                ISignatureTransfer.PermitBatchTransferFrom({
-                    permitted: tokenPermissions,
-                    nonce: nonce,
-                    deadline: deadline
-                }),
+                permit,
                 signatureTransferDetails,
                 swapper,
                 keccak256(
@@ -597,8 +606,7 @@ contract TheCompactTest is Test {
             )
         );
 
-        uint256[] memory ids =
-            theCompact.deposit(swapper, tokenPermissions, nonce, deadline, lockTag, recipient, signature);
+        uint256[] memory ids = theCompact.deposit(swapper, permit.permitted, details, recipient, signature);
         vm.snapshotGasLastCall("depositBatchViaPermit2SingleERC20");
 
         assertEq(ids.length, 1);
@@ -694,6 +702,8 @@ contract TheCompactTest is Test {
         signatureTransferDetails[0] =
             ISignatureTransfer.SignatureTransferDetails({ to: address(theCompact), requestedAmount: amount });
 
+        DepositDetails memory details = DepositDetails({ nonce: nonce, deadline: deadline, lockTag: lockTag });
+
         vm.expectCall(
             address(permit2),
             abi.encodeWithSignature(
@@ -713,9 +723,7 @@ contract TheCompactTest is Test {
             )
         );
 
-        uint256[] memory ids = theCompact.deposit{ value: amount }(
-            swapper, tokenPermissions, nonce, deadline, lockTag, recipient, signature
-        );
+        uint256[] memory ids = theCompact.deposit{ value: amount }(swapper, tokenPermissions, details, recipient, signature);
         vm.snapshotGasLastCall("depositBatchViaPermit2NativeAndERC20");
 
         assertEq(ids.length, 2);
@@ -1454,6 +1462,12 @@ contract TheCompactTest is Test {
         (bytes32 r, bytes32 vs) = vm.signCompact(swapperPrivateKey, digest);
         bytes memory signature = abi.encodePacked(r, vs);
 
+        ISignatureTransfer.PermitTransferFrom memory permit = ISignatureTransfer.PermitTransferFrom({
+            permitted: ISignatureTransfer.TokenPermissions({ token: address(token), amount: amount }),
+            nonce: nonce,
+            deadline: deadline
+        });
+
         vm.expectCall(
             address(permit2),
             abi.encodeWithSignature(
@@ -1472,10 +1486,7 @@ contract TheCompactTest is Test {
         );
 
         uint256 returnedId = theCompact.depositAndRegister(
-            address(token),
-            amount,
-            nonce,
-            deadline,
+            permit,
             swapper,
             lockTag,
             claimHash,
@@ -1749,9 +1760,7 @@ contract TheCompactTest is Test {
         uint256[] memory returnedIds = theCompact.depositAndRegister{ value: amount }(
             swapper,
             tokenPermissions,
-            nonce,
-            deadline,
-            lockTag,
+            DepositDetails({ nonce: nonce, deadline: deadline, lockTag: lockTag }),
             claimHash,
             CompactCategory.BatchCompact,
             witnessTypestring,
