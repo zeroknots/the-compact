@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.27;
 
-import {SplitTransfer, Claim } from "../types/Claims.sol";
+import { SplitTransfer, Claim } from "../types/Claims.sol";
 
 import { SplitBatchTransfer, BatchClaim } from "../types/BatchClaims.sol";
 
