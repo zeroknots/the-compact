@@ -5,6 +5,8 @@
 
 > :warning: This is an early-stage contract under active development; it has not yet been properly tested, reviewed, or audited.
 
+> NOTE: this README is based on Version 0 of The Compact; it still needs to be updated for Version 1, which is currently under active development.
+
 ## Summary
 The Compact is an ownerless ERC6909 contract that facilitates the voluntary formation (and, if necessary, eventual dissolution) of reusable resource locks.
 
@@ -35,8 +37,11 @@ $ git clone git@github.com:Uniswap/the-compact.git && cd the-compact
 # install dependencies & libraries
 $ forge install
 
-# run basic tests
+# run basic tests & gas snapshots
 $ forge test
+
+# run coverage & generate report
+$ forge coverage --report lcov
 ```
 
 ## Usage

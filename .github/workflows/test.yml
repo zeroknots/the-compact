@@ -45,3 +45,8 @@ jobs:
         id: test
         env:
           FORGE_SNAPSHOT_CHECK: true
+
+      - name: Run Forge coverage
+        run: |
+          forge coverage
+        id: coverage
