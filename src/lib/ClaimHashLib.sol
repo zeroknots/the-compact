@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.27;
 
-import { BasicTransfer, SplitTransfer, Claim } from "../types/Claims.sol";
+import {SplitTransfer, Claim } from "../types/Claims.sol";
 
-import { BatchTransfer, SplitBatchTransfer, BatchClaim } from "../types/BatchClaims.sol";
+import { SplitBatchTransfer, BatchClaim } from "../types/BatchClaims.sol";
 
 import { MultichainClaim, ExogenousMultichainClaim } from "../types/MultichainClaims.sol";
 
@@ -50,22 +50,12 @@ library ClaimHashLib {
     using EfficiencyLib for uint256;
     using HashLib for uint256;
     using HashLib for SplitBatchClaimComponent[];
-    using HashLib for BasicTransfer;
     using HashLib for SplitTransfer;
-    using HashLib for BatchTransfer;
     using HashLib for SplitBatchTransfer;
 
     ///// CATEGORY 1: Transfer claim hashes /////
-    function toClaimHash(BasicTransfer calldata transfer) internal view returns (bytes32 claimHash) {
-        return transfer.toBasicTransferMessageHash();
-    }
-
     function toClaimHash(SplitTransfer calldata transfer) internal view returns (bytes32 claimHash) {
         return transfer.toSplitTransferMessageHash();
-    }
-
-    function toClaimHash(BatchTransfer calldata transfer) internal view returns (bytes32 claimHash) {
-        return transfer.toBatchTransferMessageHash();
     }
 
     function toClaimHash(SplitBatchTransfer calldata transfer) internal view returns (bytes32 claimHash) {

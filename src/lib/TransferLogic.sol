@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.27;
 
-import { BatchTransfer, SplitBatchTransfer } from "../types/BatchClaims.sol";
-import { BasicTransfer, SplitTransfer } from "../types/Claims.sol";
+import { SplitBatchTransfer } from "../types/BatchClaims.sol";
+import { SplitTransfer } from "../types/Claims.sol";
 import { TransferComponent, SplitComponent, SplitByIdComponent } from "../types/Components.sol";
 
 import { ClaimHashLib } from "./ClaimHashLib.sol";
@@ -24,12 +24,9 @@ import { AllocatorLib } from "./AllocatorLib.sol";
  * sponsor.
  */
 contract TransferLogic is ConstructorLogic {
-    using ClaimHashLib for BasicTransfer;
     using ClaimHashLib for SplitTransfer;
-    using ClaimHashLib for BatchTransfer;
     using ClaimHashLib for SplitBatchTransfer;
     using ComponentLib for SplitTransfer;
-    using ComponentLib for BatchTransfer;
     using ComponentLib for SplitBatchTransfer;
     using ComponentLib for SplitComponent[];
     using IdLib for uint256;
@@ -38,7 +35,7 @@ contract TransferLogic is ConstructorLogic {
     using ValidityLib for uint96;
     using ValidityLib for uint256;
     using ValidityLib for bytes32;
-    using TransferFunctionCastLib for function(bytes32, address, BasicTransfer calldata, uint256[2][] memory) internal;
+    using TransferFunctionCastLib for function(bytes32, address, SplitTransfer calldata, uint256[2][] memory) internal;
     using
     TransferFunctionCastLib
     for
@@ -63,7 +60,7 @@ contract TransferLogic is ConstructorLogic {
         idsAndAmounts[0] = [transfer.id, transfer.recipients.aggregate()];
 
         // Derive hash, validate expiry, consume nonce, and check allocator signature.
-        _notExpiredAndAuthorizedByAllocator.usingSplitTransfer()(
+        _notExpiredAndAuthorizedByAllocator(
             transfer.toClaimHash(),
             transfer.id.toRegisteredAllocatorWithConsumed(transfer.nonce),
             transfer,
@@ -194,7 +191,7 @@ contract TransferLogic is ConstructorLogic {
     function _notExpiredAndAuthorizedByAllocator(
         bytes32 messageHash,
         address allocator,
-        BasicTransfer calldata transferPayload,
+        SplitTransfer calldata transferPayload,
         uint256[2][] memory idsAndAmounts
     ) private {
         uint256 expires = transferPayload.expires;

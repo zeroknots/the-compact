@@ -2,7 +2,7 @@
 pragma solidity ^0.8.27;
 
 import { SplitTransfer } from "../types/Claims.sol";
-import { BatchTransfer, SplitBatchTransfer } from "../types/BatchClaims.sol";
+import { SplitBatchTransfer } from "../types/BatchClaims.sol";
 import { ResetPeriod } from "../types/ResetPeriod.sol";
 
 import {
@@ -58,39 +58,6 @@ library ComponentLib {
     function processSplitTransfer(SplitTransfer calldata transfer) internal returns (bool) {
         // Process the transfer for each split component.
         _processSplitTransferComponents(transfer.recipients, transfer.id);
-
-        return true;
-    }
-
-    /**
-     * @notice Internal function for performing a set of batch transfer or withdrawal operations.
-     * Executes the transfer or withdrawal operation for a single recipient from multiple
-     * resource locks.
-     * @param transfer  A BatchTransfer struct containing batch transfer details.
-     * @param operation Function pointer to either _release or _withdraw for executing the claim.
-     * @return          Whether the transfer was successfully processed.
-     */
-    function performBatchTransfer(
-        BatchTransfer calldata transfer,
-        function(address, address, uint256, uint256) internal returns (bool) operation
-    ) internal returns (bool) {
-        // Navigate to the transfer components in calldata.
-        TransferComponent[] calldata transfers = transfer.transfers;
-
-        // Retrieve the recipient and the total number of components.
-        address recipient = transfer.recipient;
-        uint256 totalTransfers = transfers.length;
-
-        unchecked {
-            // Iterate over each component in calldata.
-            for (uint256 i = 0; i < totalTransfers; ++i) {
-                // Navigate to location of the component in calldata.
-                TransferComponent calldata component = transfers[i];
-
-                // Perform the transfer or withdrawal for the component.
-                operation(msg.sender, recipient, component.id, component.amount);
-            }
-        }
 
         return true;
     }

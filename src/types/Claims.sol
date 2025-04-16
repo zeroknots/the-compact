@@ -3,15 +3,6 @@ pragma solidity ^0.8.27;
 
 import { SplitComponent } from "./Components.sol";
 
-struct BasicTransfer {
-    bytes allocatorData; // Authorization from the allocator.
-    uint256 nonce; // A parameter to enforce replay protection, scoped to allocator.
-    uint256 expires; // The time at which the transfer or withdrawal expires.
-    uint256 id; // The token ID of the ERC6909 token to transfer or withdraw.
-    uint256 amount; // The token amount to transfer or withdraw.
-    address recipient; // The recipient of the transfer or withdrawal.
-}
-
 struct SplitTransfer {
     bytes allocatorData; // Authorization from the allocator.
     uint256 nonce; // A parameter to enforce replay protection, scoped to allocator.

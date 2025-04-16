@@ -1,15 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.27;
 
-import { SplitByIdComponent, TransferComponent, SplitBatchClaimComponent } from "./Components.sol";
-
-struct BatchTransfer {
-    bytes allocatorData; // Authorization from the allocator.
-    uint256 nonce; // A parameter to enforce replay protection, scoped to allocator.
-    uint256 expires; // The time at which the transfer or withdrawal expires.
-    TransferComponent[] transfers; // The token IDs and amounts to transfer.
-    address recipient; // The recipient of the batch transfers.
-}
+import { SplitByIdComponent, SplitBatchClaimComponent } from "./Components.sol";
 
 struct SplitBatchTransfer {
     bytes allocatorData; // Authorization from the allocator.

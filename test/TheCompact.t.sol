@@ -19,8 +19,8 @@ import { AlwaysOKEmissary } from "../src/test/AlwaysOKEmissary.sol";
 import { SimpleAllocator } from "../src/examples/allocator/SimpleAllocator.sol";
 import { QualifiedAllocator } from "../src/examples/allocator/QualifiedAllocator.sol";
 
-import { BasicTransfer, SplitTransfer, Claim } from "../src/types/Claims.sol";
-import { BatchTransfer, SplitBatchTransfer, BatchClaim } from "../src/types/BatchClaims.sol";
+import { SplitTransfer, Claim } from "../src/types/Claims.sol";
+import { SplitBatchTransfer, BatchClaim } from "../src/types/BatchClaims.sol";
 
 import { MultichainClaim, ExogenousMultichainClaim } from "../src/types/MultichainClaims.sol";
 

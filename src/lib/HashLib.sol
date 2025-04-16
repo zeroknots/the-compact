@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.27;
 
-import { BatchTransfer, SplitBatchTransfer } from "../types/BatchClaims.sol";
-import { BasicTransfer, SplitTransfer } from "../types/Claims.sol";
+import { SplitBatchTransfer } from "../types/BatchClaims.sol";
+import { SplitTransfer } from "../types/Claims.sol";
 import {
     TransferComponent, SplitComponent, SplitByIdComponent, SplitBatchClaimComponent
 } from "../types/Components.sol";
@@ -41,34 +41,10 @@ import { TransferFunctionCastLib } from "./TransferFunctionCastLib.sol";
 library HashLib {
     using EfficiencyLib for bool;
     using EfficiencyLib for uint256;
-    using TransferFunctionCastLib for function(BatchTransfer calldata, uint256) internal view returns (bytes32);
+    using TransferFunctionCastLib for function(SplitTransfer calldata, uint256) internal view returns (bytes32);
     using HashLib for uint256;
     using HashLib for uint256[2][];
-    using HashLib for BatchTransfer;
-
-    /**
-     * @notice Internal view function for deriving the EIP-712 message hash for
-     * a basic transfer or withdrawal where the arbiter is the sponsor.
-     * @param transfer     A BasicTransfer struct containing the transfer details.
-     * @return messageHash The EIP-712 compliant message hash.
-     */
-    function toBasicTransferMessageHash(BasicTransfer calldata transfer) internal view returns (bytes32 messageHash) {
-        assembly ("memory-safe") {
-            // Retrieve the free memory pointer; memory will be left dirtied.
-            let m := mload(0x40)
-
-            // Prepare initial components of message data: typehash, arbiter, & sponsor.
-            mstore(m, COMPACT_TYPEHASH)
-            mstore(add(m, 0x20), caller()) // arbiter: msg.sender
-            mstore(add(m, 0x40), caller()) // sponsor: msg.sender
-
-            // Remaining data copied from calldata: nonce, expires, id & amount.
-            calldatacopy(add(m, 0x60), add(transfer, 0x20), 0x80)
-
-            // Derive the message hash from the prepared data.
-            messageHash := keccak256(m, 0xe0)
-        }
-    }
+    using HashLib for SplitBatchTransfer;
 
     /**
      * @notice Internal view function for deriving the EIP-712 message hash for
@@ -126,37 +102,6 @@ library HashLib {
             // Derive the message hash from the prepared data.
             messageHash := keccak256(m, 0xe0)
         }
-    }
-
-    /**
-     * @notice Internal view function for deriving the EIP-712 message hash for
-     * a batch transfer or withdrawal.
-     * @param transfer     A BatchTransfer struct containing the transfer details.
-     * @return messageHash The EIP-712 compliant message hash.
-     */
-    function toBatchTransferMessageHash(BatchTransfer calldata transfer) internal view returns (bytes32) {
-        // Navigate to the transfer components array in calldata.
-        TransferComponent[] calldata transfers = transfer.transfers;
-
-        // Declare a variable for the ids and amounts hash.
-        uint256 idsAndAmountsHash;
-
-        assembly ("memory-safe") {
-            // Retrieve the free memory pointer; memory will be left dirtied.
-            let m := mload(0x40)
-
-            // Calculate the total size of the transfer data.
-            let totalTransferData := mul(transfers.length, 0x40)
-
-            // Copy the transfer data from calldata to memory.
-            calldatacopy(m, transfers.offset, totalTransferData)
-
-            // Derive the ids and amounts hash from the transfer data.
-            idsAndAmountsHash := keccak256(m, totalTransferData)
-        }
-
-        // Derive message hash from transfer data and idsAndAmounts hash.
-        return transfer.toBatchTransferMessageHashUsingIdsAndAmountsHash(idsAndAmountsHash);
     }
 
     /**
@@ -236,7 +181,7 @@ library HashLib {
         }
 
         // Derive message hash from transfer data and idsAndAmounts hash.
-        return toBatchTransferMessageHashUsingIdsAndAmountsHash.usingSplitBatchTransfer()(transfer, idsAndAmountsHash);
+        return toBatchTransferMessageHashUsingIdsAndAmountsHash(transfer, idsAndAmountsHash);
     }
 
     /**
@@ -319,12 +264,12 @@ library HashLib {
     /**
      * @notice Internal view function for deriving the EIP-712 message hash for
      * a batch transfer or withdrawal once an idsAndAmounts hash is available.
-     * @param transfer          A BatchTransfer struct containing the transfer details.
+     * @param transfer          A SplitBatchTransfer struct containing the transfer details.
      * @param idsAndAmountsHash A hash of the ids and amounts.
      * @return messageHash      The EIP-712 compliant message hash.
      */
     function toBatchTransferMessageHashUsingIdsAndAmountsHash(
-        BatchTransfer calldata transfer,
+        SplitBatchTransfer calldata transfer,
         uint256 idsAndAmountsHash
     ) internal view returns (bytes32 messageHash) {
         assembly ("memory-safe") {
