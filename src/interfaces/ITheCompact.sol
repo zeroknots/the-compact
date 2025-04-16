@@ -7,10 +7,9 @@ import { ResetPeriod } from "../types/ResetPeriod.sol";
 import { Scope } from "../types/Scope.sol";
 import { CompactCategory } from "../types/CompactCategory.sol";
 import { ISignatureTransfer } from "permit2/src/interfaces/ISignatureTransfer.sol";
-import { BasicTransfer, SplitTransfer } from "../types/Claims.sol";
+import { SplitTransfer } from "../types/Claims.sol";
 import { DepositDetails } from "../types/DepositDetails.sol";
-
-import { BatchTransfer, SplitBatchTransfer } from "../types/BatchClaims.sol";
+import { SplitBatchTransfer } from "../types/BatchClaims.sol";
 
 /**
  * @title The Compact — Core Interface

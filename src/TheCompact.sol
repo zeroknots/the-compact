@@ -3,8 +3,8 @@ pragma solidity ^0.8.27;
 
 import { ITheCompact } from "./interfaces/ITheCompact.sol";
 
-import { BatchTransfer, SplitBatchTransfer } from "./types/BatchClaims.sol";
-import { BasicTransfer, SplitTransfer } from "./types/Claims.sol";
+import { SplitBatchTransfer } from "./types/BatchClaims.sol";
+import { SplitTransfer } from "./types/Claims.sol";
 import { CompactCategory } from "./types/CompactCategory.sol";
 import { Lock } from "./types/Lock.sol";
 import { Scope } from "./types/Scope.sol";
