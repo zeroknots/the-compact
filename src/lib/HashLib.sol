@@ -274,15 +274,10 @@ library HashLib {
      * @notice Internal view function for deriving the EIP-712 message hash for
      * a claim with a witness.
      * @param claim               Pointer to the claim location in calldata.
-     * @param qualificationOffset Additional offset from claim pointer to ID from most compact case.
      * @return messageHash        The EIP-712 compliant message hash.
      * @return typehash           The EIP-712 typehash.
      */
-    function toMessageHashWithWitness(uint256 claim, uint256 qualificationOffset)
-        internal
-        view
-        returns (bytes32 messageHash, bytes32 typehash)
-    {
+    function toMessageHashWithWitness(uint256 claim) internal view returns (bytes32 messageHash, bytes32 typehash) {
         assembly ("memory-safe") {
             // Retrieve the free memory pointer; memory will be left dirtied.
             let m := mload(0x40)
@@ -312,8 +307,8 @@ library HashLib {
             calldatacopy(add(m, 0x40), add(claim, 0x40), 0x60)
 
             // Prepare final components of message data: id, amount, & witness.
-            mstore(add(m, 0xa0), calldataload(add(claim, add(0xe0, qualificationOffset)))) // id
-            mstore(add(m, 0xc0), calldataload(add(claim, add(0x100, qualificationOffset)))) // amount
+            mstore(add(m, 0xa0), calldataload(add(claim, 0xe0))) // id
+            mstore(add(m, 0xc0), calldataload(add(claim, 0x100))) // amount
             mstore(add(m, 0xe0), calldataload(add(claim, 0xa0))) // witness
 
             // Derive the message hash from the prepared data.
@@ -519,14 +514,17 @@ library HashLib {
             mstore(add(m, 0x20), caller()) // arbiter
             mstore(add(m, 0x40), chainid())
 
-            // Determine if the segment typestring has a witness.
-            let hasWitness := iszero(eq(segmentTypehash, SEGMENT_TYPEHASH))
+            let segmentHash
+            {
+                // Determine if the segment typestring has a witness.
+                let hasWitness := iszero(eq(segmentTypehash, SEGMENT_TYPEHASH))
 
-            // If the segment has a witness, store the witness in memory.
-            if hasWitness { mstore(add(m, 0x80), calldataload(add(claim, 0xa0))) } // witness
+                // If the segment has a witness, store the witness in memory.
+                if hasWitness { mstore(add(m, 0x80), calldataload(add(claim, 0xa0))) } // witness
 
-            // Derive the segment hash from the prepared data and write it to memory.
-            let segmentHash := keccak256(m, add(0x80, mul(0x20, hasWitness)))
+                // Derive the segment hash from the prepared data and write it to memory.
+                segmentHash := keccak256(m, add(0x80, mul(0x20, hasWitness)))
+            }
 
             // Derive the pointer to the additional chains and retrieve the length.
             let claimWithAdditionalOffset := add(claim, additionalOffset)

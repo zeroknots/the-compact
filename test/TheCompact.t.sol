@@ -8,6 +8,7 @@ import { Compact, BatchCompact, Segment } from "../src/types/EIP712Types.sol";
 import { ResetPeriod } from "../src/types/ResetPeriod.sol";
 import { Scope } from "../src/types/Scope.sol";
 import { CompactCategory } from "../src/types/CompactCategory.sol";
+import { DepositDetails } from "../src/types/DepositDetails.sol";
 import { ISignatureTransfer } from "permit2/src/interfaces/ISignatureTransfer.sol";
 
 import { HashLib } from "../src/lib/HashLib.sol";
@@ -43,6 +44,64 @@ interface ImmutableCreate2Factory {
         returns (address deploymentAddress);
 }
 
+struct CreateClaimHashWithWitnessArgs {
+    bytes32 typehash;
+    address arbiter;
+    address sponsor;
+    uint256 nonce;
+    uint256 expires;
+    uint256 id;
+    uint256 amount;
+    bytes32 witness;
+}
+
+struct CreateBatchClaimHashWithWitnessArgs {
+    bytes32 typehash;
+    address arbiter;
+    address sponsor;
+    uint256 nonce;
+    uint256 expires;
+    bytes32 idsAndAmountsHash;
+    bytes32 witness;
+}
+
+struct CreatePermitBatchWitnessDigestArgs {
+    bytes32 domainSeparator;
+    bytes32 tokenPermissionsHash;
+    address spender;
+    uint256 nonce;
+    uint256 deadline;
+    bytes32 activationTypehash;
+    bytes32 idsHash;
+    bytes32 claimHash;
+}
+
+struct SetupPermitCallExpectationArgs {
+    bytes32 activationTypehash;
+    uint256[] ids;
+    bytes32 claimHash;
+    uint256 nonce;
+    uint256 deadline;
+    bytes signature;
+}
+
+struct TestParams {
+    address recipient;
+    ResetPeriod resetPeriod;
+    Scope scope;
+    uint256 amount;
+    uint256 nonce;
+    uint256 deadline;
+}
+
+struct LockDetails {
+    address token;
+    address allocator;
+    ResetPeriod resetPeriod;
+    Scope scope;
+    bytes12 lockTag;
+}
+
 contract TheCompactTest is Test {
     using IdLib for uint96;
 
@@ -58,6 +117,14 @@ contract TheCompactTest is Test {
         keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)");
     bytes32 permit2EIP712DomainHash = keccak256("EIP712Domain(string name,uint256 chainId,address verifyingContract)");
     address alwaysOKAllocator;
+
+    string constant compactTypestring =
+        "Compact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256 id,uint256 amount)";
+    string constant compactWitnessTypestring =
+        "Compact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256 id,uint256 amount,CompactWitness witness)CompactWitness(uint256 witnessArgument)";
+    string constant witnessTypestring = "CompactWitness witness)CompactWitness(uint256 witnessArgument)";
+    bytes32 constant compactTypehash = keccak256(bytes(compactTypestring));
+    bytes32 constant compactWithWitnessTypehash = keccak256(bytes(compactWitnessTypestring));
 
     function setUp() public virtual {
         address permit2Deployer = address(0x4e59b44847b379578588920cA78FbF26c0B4956C);
@@ -337,13 +404,15 @@ contract TheCompactTest is Test {
                 | uint256(uint160(address(0)))
         );
 
-        uint256[2][] memory idsAndAmounts = new uint256[2][](1);
-        idsAndAmounts[0] = [id, amount];
+        {
+            uint256[2][] memory idsAndAmounts = new uint256[2][](1);
+            idsAndAmounts[0] = [id, amount];
 
-        vm.prank(swapper);
-        bool ok = theCompact.deposit{ value: amount }(idsAndAmounts, recipient);
-        vm.snapshotGasLastCall("depositBatchSingleNative");
-        assert(ok);
+            vm.prank(swapper);
+            bool ok = theCompact.deposit{ value: amount }(idsAndAmounts, recipient);
+            vm.snapshotGasLastCall("depositBatchSingleNative");
+            assert(ok);
+        }
 
         (
             address derivedToken,
@@ -386,13 +455,15 @@ contract TheCompactTest is Test {
                 | uint256(uint160(address(token)))
         );
 
-        uint256[2][] memory idsAndAmounts = new uint256[2][](1);
-        idsAndAmounts[0] = [id, amount];
+        {
+            uint256[2][] memory idsAndAmounts = new uint256[2][](1);
+            idsAndAmounts[0] = [id, amount];
 
-        vm.prank(swapper);
-        bool ok = theCompact.deposit(idsAndAmounts, recipient);
-        vm.snapshotGasLastCall("depositBatchSingleERC20");
-        assert(ok);
+            vm.prank(swapper);
+            bool ok = theCompact.deposit(idsAndAmounts, recipient);
+            vm.snapshotGasLastCall("depositBatchSingleERC20");
+            assert(ok);
+        }
 
         (
             address derivedToken,
@@ -421,26 +492,16 @@ contract TheCompactTest is Test {
         assert(bytes(theCompact.tokenURI(id)).length > 0);
     }
 
-    function test_depositERC20ViaPermit2AndURI() public virtual {
-        address recipient = 0x1111111111111111111111111111111111111111;
-        ResetPeriod resetPeriod = ResetPeriod.TenMinutes;
-        Scope scope = Scope.Multichain;
-        uint256 amount = 1e18;
-        uint256 nonce = 0;
-        uint256 deadline = block.timestamp + 1000;
-
-        vm.prank(allocator);
-        uint96 allocatorId = theCompact.__registerAllocator(allocator, "");
-
-        bytes12 lockTag =
-            bytes12(bytes32((uint256(scope) << 255) | (uint256(resetPeriod) << 252) | (uint256(allocatorId) << 160)));
-
-        bytes32 domainSeparator =
-            keccak256(abi.encode(permit2EIP712DomainHash, keccak256(bytes("Permit2")), block.chainid, address(permit2)));
-
-        assertEq(domainSeparator, EIP712(permit2).DOMAIN_SEPARATOR());
-
-        bytes32 digest = keccak256(
+    function _createPermitWitnessDigest(
+        bytes32 domainSeparator,
+        address permitToken,
+        uint256 amount,
+        address spender,
+        uint256 nonce,
+        uint256 deadline,
+        bytes32 witnessHash
+    ) internal pure returns (bytes32) {
+        return keccak256(
             abi.encodePacked(
                 bytes2(0x1901),
                 domainSeparator,
@@ -450,364 +511,493 @@ contract TheCompactTest is Test {
                             "PermitWitnessTransferFrom(TokenPermissions permitted,address spender,uint256 nonce,uint256 deadline,CompactDeposit witness)CompactDeposit(bytes12 lockTag,address recipient)TokenPermissions(address token,uint256 amount)"
                         ),
                         keccak256(
-                            abi.encode(
-                                keccak256("TokenPermissions(address token,uint256 amount)"), address(token), amount
-                            )
+                            abi.encode(keccak256("TokenPermissions(address token,uint256 amount)"), permitToken, amount)
                         ),
-                        address(theCompact), // spender
+                        spender,
                         nonce,
                         deadline,
-                        keccak256(
-                            abi.encode(
-                                keccak256("CompactDeposit(bytes12 lockTag,address recipient)"), lockTag, recipient
-                            )
-                        )
+                        witnessHash
                     )
                 )
             )
         );
+    }
 
-        (bytes32 r, bytes32 vs) = vm.signCompact(swapperPrivateKey, digest);
-        bytes memory signature = abi.encodePacked(r, vs);
+    function test_depositERC20ViaPermit2AndURI() public virtual {
+        // Setup test variables
+        TestParams memory params;
+        params.recipient = 0x1111111111111111111111111111111111111111;
+        params.resetPeriod = ResetPeriod.TenMinutes;
+        params.scope = Scope.Multichain;
+        params.amount = 1e18;
+        params.nonce = 0;
+        params.deadline = block.timestamp + 1000;
 
-        vm.expectCall(
-            address(permit2),
-            abi.encodeWithSignature(
-                "permitWitnessTransferFrom(((address,uint256),uint256,uint256),(address,uint256),address,bytes32,string,bytes)",
-                ISignatureTransfer.PermitTransferFrom({
-                    permitted: ISignatureTransfer.TokenPermissions({ token: address(token), amount: amount }),
-                    nonce: nonce,
-                    deadline: deadline
-                }),
-                ISignatureTransfer.SignatureTransferDetails({ to: address(theCompact), requestedAmount: amount }),
-                swapper,
-                keccak256(
-                    abi.encode(keccak256("CompactDeposit(bytes12 lockTag,address recipient)"), lockTag, recipient)
-                ),
-                "CompactDeposit witness)CompactDeposit(bytes12 lockTag,address recipient)TokenPermissions(address token,uint256 amount)",
-                signature
-            )
-        );
+        // Register allocator and create lock tag
+        uint96 allocatorId;
+        bytes12 lockTag;
+        {
+            vm.prank(allocator);
+            allocatorId = theCompact.__registerAllocator(allocator, "");
 
-        uint256 id = theCompact.deposit(address(token), amount, nonce, deadline, swapper, lockTag, recipient, signature);
-        vm.snapshotGasLastCall("depositERC20ViaPermit2AndURI");
+            lockTag = bytes12(
+                bytes32(
+                    (uint256(params.scope) << 255) | (uint256(params.resetPeriod) << 252)
+                        | (uint256(allocatorId) << 160)
+                )
+            );
+        }
+
+        // Create domain separator and digest
+        bytes32 domainSeparator;
+        bytes32 digest;
+        {
+            domainSeparator = keccak256(
+                abi.encode(permit2EIP712DomainHash, keccak256(bytes("Permit2")), block.chainid, address(permit2))
+            );
+
+            assertEq(domainSeparator, EIP712(permit2).DOMAIN_SEPARATOR());
+
+            bytes32 witnessHash = keccak256(
+                abi.encode(keccak256("CompactDeposit(bytes12 lockTag,address recipient)"), lockTag, params.recipient)
+            );
+
+            digest = _createPermitWitnessDigest(
+                domainSeparator,
+                address(token),
+                params.amount,
+                address(theCompact),
+                params.nonce,
+                params.deadline,
+                witnessHash
+            );
+        }
+
+        // Create signature and permit
+        bytes memory signature;
+        ISignatureTransfer.PermitTransferFrom memory permit;
+        {
+            (bytes32 r, bytes32 vs) = vm.signCompact(swapperPrivateKey, digest);
+            signature = abi.encodePacked(r, vs);
+
+            permit = ISignatureTransfer.PermitTransferFrom({
+                permitted: ISignatureTransfer.TokenPermissions({ token: address(token), amount: params.amount }),
+                nonce: params.nonce,
+                deadline: params.deadline
+            });
+        }
+
+        // Setup expectations and make deposit
+        uint256 id;
+        {
+            bytes32 witnessHash = keccak256(
+                abi.encode(keccak256("CompactDeposit(bytes12 lockTag,address recipient)"), lockTag, params.recipient)
+            );
+
+            vm.expectCall(
+                address(permit2),
+                abi.encodeWithSignature(
+                    "permitWitnessTransferFrom(((address,uint256),uint256,uint256),(address,uint256),address,bytes32,string,bytes)",
+                    permit,
+                    ISignatureTransfer.SignatureTransferDetails({
+                        to: address(theCompact),
+                        requestedAmount: params.amount
+                    }),
+                    swapper,
+                    witnessHash,
+                    "CompactDeposit witness)CompactDeposit(bytes12 lockTag,address recipient)TokenPermissions(address token,uint256 amount)",
+                    signature
+                )
+            );
+
+            id = theCompact.deposit(permit, swapper, lockTag, params.recipient, signature);
+            vm.snapshotGasLastCall("depositERC20ViaPermit2AndURI");
+        }
+
+        // Verify lock details
+        {
+            LockDetails memory lockDetails;
+            (lockDetails.token, lockDetails.allocator, lockDetails.resetPeriod, lockDetails.scope, lockDetails.lockTag)
+            = theCompact.getLockDetails(id);
+
+            assertEq(lockDetails.token, address(token));
+            assertEq(lockDetails.allocator, allocator);
+            assertEq(uint256(lockDetails.resetPeriod), uint256(params.resetPeriod));
+            assertEq(uint256(lockDetails.scope), uint256(params.scope));
+            assertEq(
+                id,
+                (uint256(params.scope) << 255) | (uint256(params.resetPeriod) << 252) | (uint256(allocatorId) << 160)
+                    | uint256(uint160(address(token)))
+            );
+            assertEq(lockDetails.lockTag, lockTag);
+        }
+
+        // Verify balances and token URI
+        {
+            assertEq(token.balanceOf(address(theCompact)), params.amount);
+            assertEq(theCompact.balanceOf(params.recipient, id), params.amount);
+            assert(bytes(theCompact.tokenURI(id)).length > 0);
+        }
+    }
+
+    function _verifyLockDetails(
+        uint256 id,
+        TestParams memory params,
+        LockDetails memory expectedDetails,
+        uint96 allocatorId
+    ) internal view {
+        LockDetails memory actualDetails;
 
         (
-            address derivedToken,
-            address derivedAllocator,
-            ResetPeriod derivedResetPeriod,
-            Scope derivedScope,
-            bytes12 derivedLockTag
+            actualDetails.token,
+            actualDetails.allocator,
+            actualDetails.resetPeriod,
+            actualDetails.scope,
+            actualDetails.lockTag
         ) = theCompact.getLockDetails(id);
-        assertEq(derivedToken, address(token));
-        assertEq(derivedAllocator, allocator);
-        assertEq(uint256(derivedResetPeriod), uint256(resetPeriod));
-        assertEq(uint256(derivedScope), uint256(scope));
+
+        assertEq(actualDetails.token, expectedDetails.token);
+        assertEq(actualDetails.allocator, expectedDetails.allocator);
+        assertEq(uint256(actualDetails.resetPeriod), uint256(params.resetPeriod));
+        assertEq(uint256(actualDetails.scope), uint256(params.scope));
         assertEq(
             id,
-            (uint256(scope) << 255) | (uint256(resetPeriod) << 252) | (uint256(allocatorId) << 160)
-                | uint256(uint160(address(token)))
+            (uint256(params.scope) << 255) | (uint256(params.resetPeriod) << 252) | (uint256(allocatorId) << 160)
+                | uint256(uint160(expectedDetails.token))
         );
-        assertEq(derivedLockTag, lockTag);
-
-        assertEq(token.balanceOf(address(theCompact)), amount);
-        assertEq(theCompact.balanceOf(recipient, id), amount);
-        assert(bytes(theCompact.tokenURI(id)).length > 0);
+        assertEq(actualDetails.lockTag, expectedDetails.lockTag);
     }
 
     function test_depositBatchViaPermit2SingleERC20() public virtual {
-        address recipient = 0x1111111111111111111111111111111111111111;
-        ResetPeriod resetPeriod = ResetPeriod.TenMinutes;
-        Scope scope = Scope.Multichain;
-        uint256 amount = 1e18;
-        uint256 nonce = 0;
-        uint256 deadline = block.timestamp + 1000;
+        // Setup test variables
+        TestParams memory params;
+        params.recipient = 0x1111111111111111111111111111111111111111;
+        params.resetPeriod = ResetPeriod.TenMinutes;
+        params.scope = Scope.Multichain;
+        params.amount = 1e18;
+        params.nonce = 0;
+        params.deadline = block.timestamp + 1000;
 
-        vm.prank(allocator);
-        uint96 allocatorId = theCompact.__registerAllocator(allocator, "");
+        // Register allocator and create lock tag
+        uint96 allocatorId;
+        bytes12 lockTag;
+        {
+            (allocatorId, lockTag) = _registerAllocator(allocator);
+        }
 
-        bytes12 lockTag =
-            bytes12(bytes32((uint256(scope) << 255) | (uint256(resetPeriod) << 252) | (uint256(allocatorId) << 160)));
+        // Create domain separator
+        bytes32 domainSeparator;
+        {
+            domainSeparator = keccak256(
+                abi.encode(permit2EIP712DomainHash, keccak256(bytes("Permit2")), block.chainid, address(permit2))
+            );
 
-        bytes32 domainSeparator =
-            keccak256(abi.encode(permit2EIP712DomainHash, keccak256(bytes("Permit2")), block.chainid, address(permit2)));
+            assertEq(domainSeparator, EIP712(permit2).DOMAIN_SEPARATOR());
+        }
 
-        assertEq(domainSeparator, EIP712(permit2).DOMAIN_SEPARATOR());
+        // Prepare tokens and amounts arrays
+        address[] memory tokens;
+        uint256[] memory amounts;
+        {
+            tokens = new address[](1);
+            amounts = new uint256[](1);
+            tokens[0] = address(token);
+            amounts[0] = params.amount;
+        }
 
-        bytes32 digest = keccak256(
-            abi.encodePacked(
-                bytes2(0x1901),
-                domainSeparator,
-                keccak256(
-                    abi.encode(
-                        keccak256(
-                            "PermitBatchWitnessTransferFrom(TokenPermissions[] permitted,address spender,uint256 nonce,uint256 deadline,CompactDeposit witness)CompactDeposit(bytes12 lockTag,address recipient)TokenPermissions(address token,uint256 amount)"
-                        ),
-                        keccak256(
-                            abi.encode(
-                                keccak256(
-                                    abi.encode(
-                                        keccak256("TokenPermissions(address token,uint256 amount)"),
-                                        address(token),
-                                        amount
-                                    )
-                                )
-                            )
-                        ),
-                        address(theCompact), // spender
-                        nonce,
-                        deadline,
-                        keccak256(
-                            abi.encode(
-                                keccak256("CompactDeposit(bytes12 lockTag,address recipient)"), lockTag, recipient
-                            )
-                        )
-                    )
-                )
-            )
-        );
+        // Create signature and token permissions
+        bytes memory signature;
+        ISignatureTransfer.PermitBatchTransferFrom memory permit;
+        ISignatureTransfer.SignatureTransferDetails[] memory signatureTransferDetails;
 
-        (bytes32 r, bytes32 vs) = vm.signCompact(swapperPrivateKey, digest);
-        bytes memory signature = abi.encodePacked(r, vs);
+        {
+            ISignatureTransfer.TokenPermissions[] memory tokenPermissions;
+            {
+                (signature, tokenPermissions) = _createPermit2BatchSignature(
+                    tokens, amounts, params.nonce, params.deadline, lockTag, params.recipient, swapperPrivateKey
+                );
+            }
 
-        ISignatureTransfer.TokenPermissions[] memory tokenPermissions = new ISignatureTransfer.TokenPermissions[](1);
-        tokenPermissions[0] = ISignatureTransfer.TokenPermissions({ token: address(token), amount: amount });
+            // Create permit and transfer details
+            {
+                signatureTransferDetails = new ISignatureTransfer.SignatureTransferDetails[](1);
+                signatureTransferDetails[0] = ISignatureTransfer.SignatureTransferDetails({
+                    to: address(theCompact),
+                    requestedAmount: params.amount
+                });
 
-        ISignatureTransfer.SignatureTransferDetails[] memory signatureTransferDetails =
-            new ISignatureTransfer.SignatureTransferDetails[](1);
-        signatureTransferDetails[0] =
-            ISignatureTransfer.SignatureTransferDetails({ to: address(theCompact), requestedAmount: amount });
-
-        vm.expectCall(
-            address(permit2),
-            abi.encodeWithSignature(
-                "permitWitnessTransferFrom(((address,uint256)[],uint256,uint256),(address,uint256)[],address,bytes32,string,bytes)",
-                ISignatureTransfer.PermitBatchTransferFrom({
+                permit = ISignatureTransfer.PermitBatchTransferFrom({
                     permitted: tokenPermissions,
-                    nonce: nonce,
-                    deadline: deadline
-                }),
-                signatureTransferDetails,
-                swapper,
-                keccak256(
-                    abi.encode(keccak256("CompactDeposit(bytes12 lockTag,address recipient)"), lockTag, recipient)
-                ),
-                "CompactDeposit witness)CompactDeposit(bytes12 lockTag,address recipient)TokenPermissions(address token,uint256 amount)",
-                signature
-            )
-        );
+                    nonce: params.nonce,
+                    deadline: params.deadline
+                });
+            }
+        }
 
-        uint256[] memory ids =
-            theCompact.deposit(swapper, tokenPermissions, nonce, deadline, lockTag, recipient, signature);
-        vm.snapshotGasLastCall("depositBatchViaPermit2SingleERC20");
+        uint256[] memory ids;
 
-        assertEq(ids.length, 1);
+        {
+            // Prepare deposit details and expectations
+            DepositDetails memory details;
 
-        (
-            address derivedToken,
-            address derivedAllocator,
-            ResetPeriod derivedResetPeriod,
-            Scope derivedScope,
-            bytes12 derivedLockTag
-        ) = theCompact.getLockDetails(ids[0]);
-        assertEq(derivedToken, address(token));
-        assertEq(derivedAllocator, allocator);
-        assertEq(uint256(derivedResetPeriod), uint256(resetPeriod));
-        assertEq(uint256(derivedScope), uint256(scope));
-        assertEq(
-            ids[0],
-            (uint256(scope) << 255) | (uint256(resetPeriod) << 252) | (uint256(allocatorId) << 160)
-                | uint256(uint160(address(token)))
-        );
-        assertEq(derivedLockTag, lockTag);
+            {
+                details = DepositDetails({ nonce: params.nonce, deadline: params.deadline, lockTag: lockTag });
 
-        assertEq(token.balanceOf(address(theCompact)), amount);
-        assertEq(theCompact.balanceOf(recipient, ids[0]), amount);
-        assert(bytes(theCompact.tokenURI(ids[0])).length > 0);
+                bytes32 witnessHash = keccak256(
+                    abi.encode(
+                        keccak256("CompactDeposit(bytes12 lockTag,address recipient)"), lockTag, params.recipient
+                    )
+                );
+
+                vm.expectCall(
+                    address(permit2),
+                    abi.encodeWithSignature(
+                        "permitWitnessTransferFrom(((address,uint256)[],uint256,uint256),(address,uint256)[],address,bytes32,string,bytes)",
+                        permit,
+                        signatureTransferDetails,
+                        swapper,
+                        witnessHash,
+                        "CompactDeposit witness)CompactDeposit(bytes12 lockTag,address recipient)TokenPermissions(address token,uint256 amount)",
+                        signature
+                    )
+                );
+            }
+
+            // Make deposit
+            {
+                ids = theCompact.deposit(swapper, permit.permitted, details, params.recipient, signature);
+                vm.snapshotGasLastCall("depositBatchViaPermit2SingleERC20");
+
+                assertEq(ids.length, 1);
+            }
+        }
+
+        // Verify lock details
+        {
+            LockDetails memory expectedDetails;
+            expectedDetails.token = address(token);
+            expectedDetails.allocator = allocator;
+            expectedDetails.resetPeriod = params.resetPeriod;
+            expectedDetails.scope = params.scope;
+            expectedDetails.lockTag = lockTag;
+
+            _verifyLockDetails(ids[0], params, expectedDetails, allocatorId);
+        }
+
+        // Verify balances and token URI
+        {
+            assertEq(token.balanceOf(address(theCompact)), params.amount);
+            assertEq(theCompact.balanceOf(params.recipient, ids[0]), params.amount);
+            assert(bytes(theCompact.tokenURI(ids[0])).length > 0);
+        }
     }
 
     function test_depositBatchViaPermit2NativeAndERC20() public virtual {
-        address recipient = 0x1111111111111111111111111111111111111111;
-        ResetPeriod resetPeriod = ResetPeriod.TenMinutes;
-        Scope scope = Scope.Multichain;
-        uint256 amount = 1e18;
-        uint256 nonce = 0;
-        uint256 deadline = block.timestamp + 1000;
+        // Setup test variables
+        TestParams memory params;
+        params.recipient = 0x1111111111111111111111111111111111111111;
+        params.resetPeriod = ResetPeriod.TenMinutes;
+        params.scope = Scope.Multichain;
+        params.amount = 1e18;
+        params.nonce = 0;
+        params.deadline = block.timestamp + 1000;
 
-        vm.prank(allocator);
-        uint96 allocatorId = theCompact.__registerAllocator(allocator, "");
+        // Register allocator and create lock tag
+        uint96 allocatorId;
+        bytes12 lockTag;
+        {
+            (allocatorId, lockTag) = _registerAllocator(allocator);
+        }
 
-        bytes12 lockTag =
-            bytes12(bytes32((uint256(scope) << 255) | (uint256(resetPeriod) << 252) | (uint256(allocatorId) << 160)));
+        // Create domain separator
+        bytes32 domainSeparator;
+        {
+            domainSeparator = keccak256(
+                abi.encode(permit2EIP712DomainHash, keccak256(bytes("Permit2")), block.chainid, address(permit2))
+            );
 
-        bytes32 domainSeparator =
-            keccak256(abi.encode(permit2EIP712DomainHash, keccak256(bytes("Permit2")), block.chainid, address(permit2)));
+            assertEq(domainSeparator, EIP712(permit2).DOMAIN_SEPARATOR());
+        }
 
-        assertEq(domainSeparator, EIP712(permit2).DOMAIN_SEPARATOR());
+        // Prepare tokens and amounts arrays
+        address[] memory tokens;
+        uint256[] memory amounts;
+        {
+            tokens = new address[](2);
+            amounts = new uint256[](2);
+            tokens[0] = address(0);
+            amounts[0] = params.amount;
+            tokens[1] = address(token);
+            amounts[1] = params.amount;
+        }
 
-        bytes32 digest = keccak256(
-            abi.encodePacked(
-                bytes2(0x1901),
-                domainSeparator,
-                keccak256(
-                    abi.encode(
-                        keccak256(
-                            "PermitBatchWitnessTransferFrom(TokenPermissions[] permitted,address spender,uint256 nonce,uint256 deadline,CompactDeposit witness)CompactDeposit(bytes12 lockTag,address recipient)TokenPermissions(address token,uint256 amount)"
-                        ),
-                        keccak256(
-                            abi.encode(
-                                keccak256(
-                                    abi.encode(
-                                        keccak256("TokenPermissions(address token,uint256 amount)"),
-                                        address(token),
-                                        amount
-                                    )
-                                )
-                            )
-                        ),
-                        address(theCompact), // spender
-                        nonce,
-                        deadline,
-                        keccak256(
-                            abi.encode(
-                                keccak256("CompactDeposit(bytes12 lockTag,address recipient)"), lockTag, recipient
-                            )
+        // Create signature and token permissions
+        bytes memory signature;
+        ISignatureTransfer.TokenPermissions[] memory tokenPermissions;
+        {
+            (signature, tokenPermissions) = _createPermit2BatchSignature(
+                tokens, amounts, params.nonce, params.deadline, lockTag, params.recipient, swapperPrivateKey
+            );
+        }
+
+        uint256[] memory ids;
+
+        {
+            {
+                // Create permit and transfer details for the ERC20 token
+                ISignatureTransfer.SignatureTransferDetails[] memory signatureTransferDetails;
+                ISignatureTransfer.PermitBatchTransferFrom memory permitOnCall;
+                {
+                    ISignatureTransfer.TokenPermissions[] memory tokenPermissionsOnCall;
+                    {
+                        tokenPermissionsOnCall = new ISignatureTransfer.TokenPermissions[](1);
+                        tokenPermissionsOnCall[0] =
+                            ISignatureTransfer.TokenPermissions({ token: address(token), amount: params.amount });
+                    }
+
+                    {
+                        signatureTransferDetails = new ISignatureTransfer.SignatureTransferDetails[](1);
+                        signatureTransferDetails[0] = ISignatureTransfer.SignatureTransferDetails({
+                            to: address(theCompact),
+                            requestedAmount: params.amount
+                        });
+                    }
+
+                    {
+                        permitOnCall = ISignatureTransfer.PermitBatchTransferFrom({
+                            permitted: tokenPermissionsOnCall,
+                            nonce: params.nonce,
+                            deadline: params.deadline
+                        });
+                    }
+                }
+
+                bytes32 witnessHash;
+                {
+                    witnessHash = keccak256(
+                        abi.encode(
+                            keccak256("CompactDeposit(bytes12 lockTag,address recipient)"), lockTag, params.recipient
                         )
-                    )
-                )
-            )
-        );
+                    );
 
-        (bytes32 r, bytes32 vs) = vm.signCompact(swapperPrivateKey, digest);
-        bytes memory signature = abi.encodePacked(r, vs);
+                    vm.expectCall(
+                        address(permit2),
+                        abi.encodeWithSignature(
+                            "permitWitnessTransferFrom(((address,uint256)[],uint256,uint256),(address,uint256)[],address,bytes32,string,bytes)",
+                            permitOnCall,
+                            signatureTransferDetails,
+                            swapper,
+                            witnessHash,
+                            "CompactDeposit witness)CompactDeposit(bytes12 lockTag,address recipient)TokenPermissions(address token,uint256 amount)",
+                            signature
+                        )
+                    );
+                }
+            }
 
-        ISignatureTransfer.TokenPermissions[] memory tokenPermissions = new ISignatureTransfer.TokenPermissions[](2);
-        tokenPermissions[0] = ISignatureTransfer.TokenPermissions({ token: address(0), amount: amount });
-        tokenPermissions[1] = ISignatureTransfer.TokenPermissions({ token: address(token), amount: amount });
+            // Make deposit
+            {
+                DepositDetails memory details =
+                    DepositDetails({ nonce: params.nonce, deadline: params.deadline, lockTag: lockTag });
 
-        ISignatureTransfer.TokenPermissions[] memory tokenPermissionsOnCall =
-            new ISignatureTransfer.TokenPermissions[](1);
-        tokenPermissionsOnCall[0] = ISignatureTransfer.TokenPermissions({ token: address(token), amount: amount });
+                ids = theCompact.deposit{ value: params.amount }(
+                    swapper, tokenPermissions, details, params.recipient, signature
+                );
+                vm.snapshotGasLastCall("depositBatchViaPermit2NativeAndERC20");
 
-        ISignatureTransfer.SignatureTransferDetails[] memory signatureTransferDetails =
-            new ISignatureTransfer.SignatureTransferDetails[](1);
-        signatureTransferDetails[0] =
-            ISignatureTransfer.SignatureTransferDetails({ to: address(theCompact), requestedAmount: amount });
+                assertEq(ids.length, 2);
+            }
+        }
 
-        vm.expectCall(
-            address(permit2),
-            abi.encodeWithSignature(
-                "permitWitnessTransferFrom(((address,uint256)[],uint256,uint256),(address,uint256)[],address,bytes32,string,bytes)",
-                ISignatureTransfer.PermitBatchTransferFrom({
-                    permitted: tokenPermissionsOnCall,
-                    nonce: nonce,
-                    deadline: deadline
-                }),
-                signatureTransferDetails,
-                swapper,
-                keccak256(
-                    abi.encode(keccak256("CompactDeposit(bytes12 lockTag,address recipient)"), lockTag, recipient)
-                ),
-                "CompactDeposit witness)CompactDeposit(bytes12 lockTag,address recipient)TokenPermissions(address token,uint256 amount)",
-                signature
-            )
-        );
+        // Verify lock details for ETH (native token)
+        {
+            LockDetails memory expectedDetails;
+            expectedDetails.token = address(0);
+            expectedDetails.allocator = allocator;
+            expectedDetails.resetPeriod = params.resetPeriod;
+            expectedDetails.scope = params.scope;
+            expectedDetails.lockTag = lockTag;
 
-        uint256[] memory ids = theCompact.deposit{ value: amount }(
-            swapper, tokenPermissions, nonce, deadline, lockTag, recipient, signature
-        );
-        vm.snapshotGasLastCall("depositBatchViaPermit2NativeAndERC20");
+            _verifyLockDetails(ids[0], params, expectedDetails, allocatorId);
+        }
 
-        assertEq(ids.length, 2);
+        // Verify id for ERC20 token
+        {
+            assertEq(
+                ids[1],
+                (uint256(params.scope) << 255) | (uint256(params.resetPeriod) << 252) | (uint256(allocatorId) << 160)
+                    | uint256(uint160(address(token)))
+            );
+        }
 
-        (
-            address derivedToken,
-            address derivedAllocator,
-            ResetPeriod derivedResetPeriod,
-            Scope derivedScope,
-            bytes12 deriviedLockTag
-        ) = theCompact.getLockDetails(ids[0]);
-        assertEq(derivedToken, address(0));
-        assertEq(derivedAllocator, allocator);
-        assertEq(uint256(derivedResetPeriod), uint256(resetPeriod));
-        assertEq(uint256(derivedScope), uint256(scope));
-        assertEq(
-            ids[0],
-            (uint256(scope) << 255) | (uint256(resetPeriod) << 252) | (uint256(allocatorId) << 160)
-                | uint256(uint160(address(0)))
-        );
-        assertEq(
-            ids[1],
-            (uint256(scope) << 255) | (uint256(resetPeriod) << 252) | (uint256(allocatorId) << 160)
-                | uint256(uint160(address(token)))
-        );
-        assertEq(deriviedLockTag, lockTag);
-
-        assertEq(token.balanceOf(address(theCompact)), amount);
-        assertEq(address(theCompact).balance, amount);
-        assertEq(theCompact.balanceOf(recipient, ids[0]), amount);
-        assertEq(theCompact.balanceOf(recipient, ids[1]), amount);
-        assert(bytes(theCompact.tokenURI(ids[0])).length > 0);
+        // Verify balances and token URIs
+        {
+            assertEq(token.balanceOf(address(theCompact)), params.amount);
+            assertEq(address(theCompact).balance, params.amount);
+            assertEq(theCompact.balanceOf(params.recipient, ids[0]), params.amount);
+            assertEq(theCompact.balanceOf(params.recipient, ids[1]), params.amount);
+            assert(bytes(theCompact.tokenURI(ids[0])).length > 0);
+        }
     }
 
     function test_splitTransfer() public {
-        ResetPeriod resetPeriod = ResetPeriod.TenMinutes;
-        Scope scope = Scope.Multichain;
-        uint256 amount = 1e18;
-        uint256 nonce = 0;
-        uint256 expiration = block.timestamp + 1000;
+        // Setup test parameters
+        TestParams memory params;
+        params.resetPeriod = ResetPeriod.TenMinutes;
+        params.scope = Scope.Multichain;
+        params.amount = 1e18;
+        params.nonce = 0;
+        params.deadline = block.timestamp + 1000;
+
+        // Recipient information
         address recipientOne = 0x1111111111111111111111111111111111111111;
         address recipientTwo = 0x2222222222222222222222222222222222222222;
         uint256 amountOne = 4e17;
         uint256 amountTwo = 6e17;
 
-        vm.prank(allocator);
-        uint96 allocatorId = theCompact.__registerAllocator(allocator, "");
+        // Register allocator and create lock tag
+        uint256 id;
+        {
+            uint96 allocatorId;
+            bytes12 lockTag;
+            (allocatorId, lockTag) = _registerAllocator(allocator);
 
-        bytes12 lockTag =
-            bytes12(bytes32((uint256(scope) << 255) | (uint256(resetPeriod) << 252) | (uint256(allocatorId) << 160)));
+            // Make deposit
+            id = _makeDeposit(swapper, address(token), params.amount, lockTag);
+        }
 
-        vm.prank(swapper);
-        uint256 id = theCompact.deposit(address(token), lockTag, amount, swapper);
-        assertEq(theCompact.balanceOf(swapper, id), amount);
+        // Create digest and allocator signature
+        bytes memory allocatorData;
+        {
+            bytes32 claimHash =
+                _createClaimHash(compactTypehash, swapper, swapper, params.nonce, params.deadline, id, params.amount);
 
-        bytes32 digest = keccak256(
-            abi.encodePacked(
-                bytes2(0x1901),
-                theCompact.DOMAIN_SEPARATOR(),
-                keccak256(
-                    abi.encode(
-                        keccak256(
-                            "Compact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256 id,uint256 amount)"
-                        ),
-                        swapper,
-                        swapper,
-                        nonce,
-                        expiration,
-                        id,
-                        amount
-                    )
-                )
-            )
-        );
+            bytes32 digest = _createDigest(theCompact.DOMAIN_SEPARATOR(), claimHash);
 
-        (bytes32 r, bytes32 vs) = vm.signCompact(allocatorPrivateKey, digest);
-        bytes memory allocatorData = abi.encodePacked(r, vs);
+            bytes32 r;
+            bytes32 vs;
+            (r, vs) = vm.signCompact(allocatorPrivateKey, digest);
+            allocatorData = abi.encodePacked(r, vs);
+        }
 
-        uint256 claimantOne = abi.decode(abi.encodePacked(bytes12(bytes32(id)), recipientOne), (uint256));
-        uint256 claimantTwo = abi.decode(abi.encodePacked(bytes12(bytes32(id)), recipientTwo), (uint256));
+        // Prepare recipients
+        SplitComponent[] memory recipients;
+        {
+            uint256 claimantOne = abi.decode(abi.encodePacked(bytes12(bytes32(id)), recipientOne), (uint256));
+            uint256 claimantTwo = abi.decode(abi.encodePacked(bytes12(bytes32(id)), recipientTwo), (uint256));
 
-        SplitComponent memory splitOne = SplitComponent({ claimant: claimantOne, amount: amountOne });
+            SplitComponent memory splitOne = SplitComponent({ claimant: claimantOne, amount: amountOne });
+            SplitComponent memory splitTwo = SplitComponent({ claimant: claimantTwo, amount: amountTwo });
 
-        SplitComponent memory splitTwo = SplitComponent({ claimant: claimantTwo, amount: amountTwo });
+            recipients = new SplitComponent[](2);
+            recipients[0] = splitOne;
+            recipients[1] = splitTwo;
+        }
 
-        SplitComponent[] memory recipients = new SplitComponent[](2);
-        recipients[0] = splitOne;
-        recipients[1] = splitTwo;
-
+        // Create and execute transfer
         SplitTransfer memory transfer = SplitTransfer({
-            nonce: nonce,
-            expires: expiration,
+            nonce: params.nonce,
+            expires: params.deadline,
             allocatorData: allocatorData,
             id: id,
             recipients: recipients
@@ -818,7 +1008,8 @@ contract TheCompactTest is Test {
         vm.snapshotGasLastCall("splitTransfer");
         assert(status);
 
-        assertEq(token.balanceOf(address(theCompact)), amount);
+        // Verify balances
+        assertEq(token.balanceOf(address(theCompact)), params.amount);
         assertEq(token.balanceOf(recipientOne), 0);
         assertEq(theCompact.balanceOf(swapper, id), 0);
         assertEq(theCompact.balanceOf(recipientOne, id), amountOne);
@@ -826,239 +1017,304 @@ contract TheCompactTest is Test {
     }
 
     function test_qualified_basicTransfer() public {
-        ResetPeriod resetPeriod = ResetPeriod.TenMinutes;
-        Scope scope = Scope.Multichain;
-        uint256 amount = 1e18;
-        uint256 nonce = 0;
-        uint256 expiration = block.timestamp + 1000;
-        address recipient = 0x1111111111111111111111111111111111111111;
+        // Setup test parameters
+        TestParams memory params;
+        params.resetPeriod = ResetPeriod.TenMinutes;
+        params.scope = Scope.Multichain;
+        params.amount = 1e18;
+        params.nonce = 0;
+        params.deadline = block.timestamp + 1000;
+        params.recipient = 0x1111111111111111111111111111111111111111;
 
-        allocator = address(new QualifiedAllocator(vm.addr(allocatorPrivateKey), address(theCompact)));
+        // Setup qualified allocator
+        uint256 id;
+        {
+            allocator = address(new QualifiedAllocator(vm.addr(allocatorPrivateKey), address(theCompact)));
 
-        vm.prank(allocator);
-        uint96 allocatorId = theCompact.__registerAllocator(allocator, "");
+            // Register allocator and create lock tag
+            uint96 allocatorId;
+            bytes12 lockTag;
+            (allocatorId, lockTag) = _registerAllocator(allocator);
 
-        bytes12 lockTag =
-            bytes12(bytes32((uint256(scope) << 255) | (uint256(resetPeriod) << 252) | (uint256(allocatorId) << 160)));
+            // Make deposit
+            id = _makeDeposit(swapper, address(token), params.amount, lockTag);
+        }
 
-        vm.prank(swapper);
-        uint256 id = theCompact.deposit(address(token), lockTag, amount, swapper);
-        assertEq(theCompact.balanceOf(swapper, id), amount);
+        // Create qualified digest and allocator signature
+        bytes memory allocatorData;
+        bytes32 qualificationArgument;
+        bytes32 claimHash;
+        {
+            claimHash =
+                _createClaimHash(compactTypehash, swapper, swapper, params.nonce, params.deadline, id, params.amount);
 
-        bytes32 claimHash = keccak256(
-            abi.encode(
-                keccak256(
-                    "Compact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256 id,uint256 amount)"
-                ),
-                swapper,
-                swapper,
-                nonce,
-                expiration,
-                id,
-                amount
-            )
-        );
+            qualificationArgument = keccak256("qualification");
 
-        bytes32 qualificationArgument = keccak256("qualification");
+            {
+                bytes32 qualifiedDigest;
+                {
+                    bytes32 qualifiedHash = keccak256(
+                        abi.encode(
+                            keccak256("QualifiedClaim(bytes32 claimHash,bytes32 qualificationArg)"),
+                            claimHash,
+                            qualificationArgument
+                        )
+                    );
 
-        bytes32 qualifiedDigest = keccak256(
-            abi.encodePacked(
-                bytes2(0x1901),
-                theCompact.DOMAIN_SEPARATOR(),
-                keccak256(
-                    abi.encode(
-                        keccak256("QualifiedClaim(bytes32 claimHash,bytes32 qualificationArg)"),
-                        claimHash,
-                        qualificationArgument
-                    )
-                )
-            )
-        );
+                    qualifiedDigest = _createDigest(theCompact.DOMAIN_SEPARATOR(), qualifiedHash);
+                }
 
-        (bytes32 r, bytes32 vs) = vm.signCompact(allocatorPrivateKey, qualifiedDigest);
-        bytes memory allocatorData = abi.encodePacked(r, vs);
+                bytes32 r;
+                bytes32 vs;
+                (r, vs) = vm.signCompact(allocatorPrivateKey, qualifiedDigest);
+                allocatorData = abi.encodePacked(r, vs);
+            }
+        }
 
-        uint256 claimant = abi.decode(abi.encodePacked(bytes12(bytes32(id)), recipient), (uint256));
+        // Prepare recipients
+        SplitComponent[] memory recipients;
+        {
+            uint256 claimant = abi.decode(abi.encodePacked(bytes12(bytes32(id)), params.recipient), (uint256));
 
-        SplitComponent memory split = SplitComponent({ claimant: claimant, amount: amount });
+            SplitComponent memory split = SplitComponent({ claimant: claimant, amount: params.amount });
 
-        SplitComponent[] memory recipients = new SplitComponent[](1);
-        recipients[0] = split;
+            recipients = new SplitComponent[](1);
+            recipients[0] = split;
+        }
 
-        SplitTransfer memory transfer = SplitTransfer({
-            nonce: nonce,
-            expires: expiration,
-            allocatorData: abi.encode(allocatorData, qualificationArgument),
-            id: id,
-            recipients: recipients
-        });
+        // Create and execute transfer
+        bool status;
+        {
+            SplitTransfer memory transfer = SplitTransfer({
+                nonce: params.nonce,
+                expires: params.deadline,
+                allocatorData: abi.encode(allocatorData, qualificationArgument),
+                id: id,
+                recipients: recipients
+            });
 
-        vm.prank(swapper);
-        bool status = theCompact.allocatedTransfer(transfer);
-        vm.snapshotGasLastCall("qualified_basicTransfer");
-        assert(status);
+            vm.prank(swapper);
+            status = theCompact.allocatedTransfer(transfer);
+            vm.snapshotGasLastCall("qualified_basicTransfer");
+            assert(status);
+        }
 
-        assertEq(token.balanceOf(address(theCompact)), amount);
-        assertEq(token.balanceOf(recipient), 0);
-        assertEq(theCompact.balanceOf(swapper, id), 0);
-        assertEq(theCompact.balanceOf(recipient, id), amount);
+        // Verify balances
+        {
+            assertEq(token.balanceOf(address(theCompact)), params.amount);
+            assertEq(token.balanceOf(params.recipient), 0);
+            assertEq(theCompact.balanceOf(swapper, id), 0);
+            assertEq(theCompact.balanceOf(params.recipient, id), params.amount);
+        }
     }
 
     function test_splitWithdrawal() public {
-        ResetPeriod resetPeriod = ResetPeriod.TenMinutes;
-        Scope scope = Scope.Multichain;
-        uint256 amount = 1e18;
-        uint256 nonce = 0;
-        uint256 expiration = block.timestamp + 1000;
+        // Setup test parameters
+        TestParams memory params;
+        params.amount = 1e18;
+        params.nonce = 0;
+        params.deadline = block.timestamp + 1000;
+
+        // Recipient information
         address recipientOne = 0x1111111111111111111111111111111111111111;
         address recipientTwo = 0x2222222222222222222222222222222222222222;
         uint256 amountOne = 4e17;
         uint256 amountTwo = 6e17;
 
-        vm.prank(allocator);
-        uint96 allocatorId = theCompact.__registerAllocator(allocator, "");
+        // Register allocator and create lock tag
+        uint256 id;
+        {
+            (, bytes12 lockTag) = _registerAllocator(allocator);
 
-        bytes12 lockTag =
-            bytes12(bytes32((uint256(scope) << 255) | (uint256(resetPeriod) << 252) | (uint256(allocatorId) << 160)));
+            // Make deposit
+            id = _makeDeposit(swapper, address(token), params.amount, lockTag);
+        }
 
-        vm.prank(swapper);
-        uint256 id = theCompact.deposit(address(token), lockTag, amount, swapper);
-        assertEq(theCompact.balanceOf(swapper, id), amount);
+        // Create digest and allocator signature
+        bytes memory allocatorData;
+        {
+            bytes32 digest;
+            {
+                bytes32 claimHash = _createClaimHash(
+                    compactTypehash, swapper, swapper, params.nonce, params.deadline, id, params.amount
+                );
 
-        bytes32 digest = keccak256(
-            abi.encodePacked(
-                bytes2(0x1901),
-                theCompact.DOMAIN_SEPARATOR(),
-                keccak256(
-                    abi.encode(
-                        keccak256(
-                            "Compact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256 id,uint256 amount)"
-                        ),
-                        swapper,
-                        swapper,
-                        nonce,
-                        expiration,
-                        id,
-                        amount
-                    )
-                )
-            )
-        );
+                digest = _createDigest(theCompact.DOMAIN_SEPARATOR(), claimHash);
+            }
 
-        (bytes32 r, bytes32 vs) = vm.signCompact(allocatorPrivateKey, digest);
-        bytes memory allocatorData = abi.encodePacked(r, vs);
+            bytes32 r;
+            bytes32 vs;
+            (r, vs) = vm.signCompact(allocatorPrivateKey, digest);
+            allocatorData = abi.encodePacked(r, vs);
+        }
 
-        uint256 claimantOne = abi.decode(abi.encodePacked(bytes12(0), recipientOne), (uint256));
-        uint256 claimantTwo = abi.decode(abi.encodePacked(bytes12(0), recipientTwo), (uint256));
+        // Prepare recipients
+        SplitComponent[] memory recipients;
+        {
+            uint256 claimantOne;
+            uint256 claimantTwo;
+            {
+                claimantOne = abi.decode(abi.encodePacked(bytes12(0), recipientOne), (uint256));
+                claimantTwo = abi.decode(abi.encodePacked(bytes12(0), recipientTwo), (uint256));
+            }
 
-        SplitComponent memory splitOne = SplitComponent({ claimant: claimantOne, amount: amountOne });
+            {
+                SplitComponent memory splitOne;
+                SplitComponent memory splitTwo;
 
-        SplitComponent memory splitTwo = SplitComponent({ claimant: claimantTwo, amount: amountTwo });
+                splitOne = SplitComponent({ claimant: claimantOne, amount: amountOne });
+                splitTwo = SplitComponent({ claimant: claimantTwo, amount: amountTwo });
 
-        SplitComponent[] memory recipients = new SplitComponent[](2);
-        recipients[0] = splitOne;
-        recipients[1] = splitTwo;
+                recipients = new SplitComponent[](2);
+                recipients[0] = splitOne;
+                recipients[1] = splitTwo;
+            }
+        }
 
-        SplitTransfer memory transfer = SplitTransfer({
-            nonce: nonce,
-            expires: expiration,
-            allocatorData: allocatorData,
-            id: id,
-            recipients: recipients
-        });
+        // Create and execute transfer
+        {
+            SplitTransfer memory transfer;
+            {
+                transfer = SplitTransfer({
+                    nonce: params.nonce,
+                    expires: params.deadline,
+                    allocatorData: allocatorData,
+                    id: id,
+                    recipients: recipients
+                });
+            }
 
-        vm.prank(swapper);
-        bool status = theCompact.allocatedTransfer(transfer);
-        vm.snapshotGasLastCall("splitWithdrawal");
-        assert(status);
+            {
+                vm.prank(swapper);
+                bool status = theCompact.allocatedTransfer(transfer);
+                vm.snapshotGasLastCall("splitWithdrawal");
+                assert(status);
+            }
+        }
 
-        assertEq(token.balanceOf(address(theCompact)), 0);
-        assertEq(token.balanceOf(recipientOne), amountOne);
-        assertEq(token.balanceOf(recipientTwo), amountTwo);
-        assertEq(theCompact.balanceOf(swapper, id), 0);
-        assertEq(theCompact.balanceOf(recipientOne, id), 0);
-        assertEq(theCompact.balanceOf(recipientTwo, id), 0);
+        // Verify balances
+        {
+            assertEq(token.balanceOf(address(theCompact)), 0);
+            assertEq(token.balanceOf(recipientOne), amountOne);
+            assertEq(token.balanceOf(recipientTwo), amountTwo);
+            assertEq(theCompact.balanceOf(swapper, id), 0);
+            assertEq(theCompact.balanceOf(recipientOne, id), 0);
+            assertEq(theCompact.balanceOf(recipientTwo, id), 0);
+        }
     }
 
     function test_splitBatchTransfer() public {
-        ResetPeriod resetPeriod = ResetPeriod.TenMinutes;
-        Scope scope = Scope.Multichain;
+        // Setup test parameters
+        TestParams memory params;
+        params.resetPeriod = ResetPeriod.TenMinutes;
+        params.scope = Scope.Multichain;
+        params.nonce = 0;
+        params.deadline = block.timestamp + 1000;
+
+        // Amount information
         uint256 amountOne = 1e18;
         uint256 amountTwo = 6e17;
         uint256 amountThree = 4e17;
-        uint256 nonce = 0;
-        uint256 expiration = block.timestamp + 1000;
+
+        // Recipient information
         address recipientOne = 0x1111111111111111111111111111111111111111;
         address recipientTwo = 0x2222222222222222222222222222222222222222;
 
-        vm.prank(allocator);
-        uint96 allocatorId = theCompact.__registerAllocator(allocator, "");
+        // Register allocator and make deposits
+        uint256 idOne;
+        uint256 idTwo;
+        {
+            uint96 allocatorId;
+            bytes12 lockTag;
+            (allocatorId, lockTag) = _registerAllocator(allocator);
 
-        bytes12 lockTag =
-            bytes12(bytes32((uint256(scope) << 255) | (uint256(resetPeriod) << 252) | (uint256(allocatorId) << 160)));
+            idOne = _makeDeposit(swapper, address(token), amountOne, lockTag);
+            idTwo = _makeDeposit(swapper, amountTwo + amountThree, lockTag);
 
-        vm.startPrank(swapper);
-        uint256 idOne = theCompact.deposit(address(token), lockTag, amountOne, swapper);
-        uint256 idTwo = theCompact.deposit{ value: amountTwo + amountThree }(lockTag, swapper);
-        vm.stopPrank();
+            assertEq(theCompact.balanceOf(swapper, idOne), amountOne);
+            assertEq(theCompact.balanceOf(swapper, idTwo), amountTwo + amountThree);
+        }
 
-        assertEq(theCompact.balanceOf(swapper, idOne), amountOne);
-        assertEq(theCompact.balanceOf(swapper, idTwo), amountTwo + amountThree);
+        // Create idsAndAmounts array
+        uint256[2][] memory idsAndAmounts;
+        {
+            idsAndAmounts = new uint256[2][](2);
+            idsAndAmounts[0] = [idOne, amountOne];
+            idsAndAmounts[1] = [idTwo, amountTwo + amountThree];
+        }
 
-        uint256[2][] memory idsAndAmounts = new uint256[2][](2);
-        idsAndAmounts[0] = [idOne, amountOne];
-        idsAndAmounts[1] = [idTwo, amountTwo + amountThree];
-
-        bytes32 digest = keccak256(
-            abi.encodePacked(
-                bytes2(0x1901),
-                theCompact.DOMAIN_SEPARATOR(),
-                keccak256(
+        // Create digest and allocator signature
+        bytes memory allocatorData;
+        {
+            bytes32 digest;
+            {
+                bytes32 batchCompactHash = keccak256(
                     abi.encode(
                         keccak256(
                             "BatchCompact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256[2][] idsAndAmounts)"
                         ),
                         swapper,
                         swapper,
-                        nonce,
-                        expiration,
+                        params.nonce,
+                        params.deadline,
                         keccak256(abi.encodePacked(idsAndAmounts))
                     )
-                )
-            )
-        );
+                );
 
-        (bytes32 r, bytes32 vs) = vm.signCompact(allocatorPrivateKey, digest);
-        bytes memory allocatorData = abi.encodePacked(r, vs);
+                digest = _createDigest(theCompact.DOMAIN_SEPARATOR(), batchCompactHash);
+            }
 
+            bytes32 r;
+            bytes32 vs;
+            (r, vs) = vm.signCompact(allocatorPrivateKey, digest);
+            allocatorData = abi.encodePacked(r, vs);
+        }
+
+        // Prepare transfers
+        SplitBatchTransfer memory transfer;
         SplitByIdComponent[] memory transfers = new SplitByIdComponent[](2);
+        {
+            SplitComponent[] memory portionsOne;
 
-        uint256 claimantOne = abi.decode(abi.encodePacked(bytes12(bytes32(idOne)), recipientOne), (uint256));
-        uint256 claimantTwo = abi.decode(abi.encodePacked(bytes12(bytes32(idTwo)), recipientOne), (uint256));
-        uint256 claimantThree = abi.decode(abi.encodePacked(bytes12(bytes32(idTwo)), recipientTwo), (uint256));
+            uint256 claimantOne = abi.decode(abi.encodePacked(bytes12(bytes32(idOne)), recipientOne), (uint256));
 
-        SplitComponent[] memory portionsOne = new SplitComponent[](1);
-        portionsOne[0] = SplitComponent({ claimant: claimantOne, amount: amountOne });
+            portionsOne = new SplitComponent[](1);
+            portionsOne[0] = SplitComponent({ claimant: claimantOne, amount: amountOne });
 
-        SplitComponent[] memory portionsTwo = new SplitComponent[](2);
-        portionsTwo[0] = SplitComponent({ claimant: claimantTwo, amount: amountTwo });
-        portionsTwo[1] = SplitComponent({ claimant: claimantThree, amount: amountThree });
+            transfers[0] = SplitByIdComponent({ id: idOne, portions: portionsOne });
+        }
 
-        transfers[0] = SplitByIdComponent({ id: idOne, portions: portionsOne });
-        transfers[1] = SplitByIdComponent({ id: idTwo, portions: portionsTwo });
+        {
+            SplitComponent[] memory portionsTwo;
+            uint256 claimantTwo = abi.decode(abi.encodePacked(bytes12(bytes32(idTwo)), recipientOne), (uint256));
+            uint256 claimantThree = abi.decode(abi.encodePacked(bytes12(bytes32(idTwo)), recipientTwo), (uint256));
 
-        SplitBatchTransfer memory transfer = SplitBatchTransfer({
-            nonce: nonce,
-            expires: expiration,
-            allocatorData: allocatorData,
-            transfers: transfers
-        });
+            portionsTwo = new SplitComponent[](2);
+            portionsTwo[0] = SplitComponent({ claimant: claimantTwo, amount: amountTwo });
+            portionsTwo[1] = SplitComponent({ claimant: claimantThree, amount: amountThree });
 
-        vm.prank(swapper);
-        bool status = theCompact.allocatedTransfer(transfer);
-        vm.snapshotGasLastCall("splitBatchTransfer");
-        assert(status);
+            transfers[1] = SplitByIdComponent({ id: idTwo, portions: portionsTwo });
+        }
 
+        {
+            // Create batch transfer
+            transfer = SplitBatchTransfer({
+                nonce: params.nonce,
+                expires: params.deadline,
+                allocatorData: allocatorData,
+                transfers: transfers
+            });
+        }
+
+        // Execute transfer
+        {
+            vm.prank(swapper);
+            bool status = theCompact.allocatedTransfer(transfer);
+            vm.snapshotGasLastCall("splitBatchTransfer");
+            assert(status);
+        }
+
+        // Verify balances
         assertEq(token.balanceOf(recipientOne), 0);
         assertEq(token.balanceOf(recipientTwo), 0);
         assertEq(theCompact.balanceOf(swapper, idOne), 0);
@@ -1069,84 +1325,120 @@ contract TheCompactTest is Test {
     }
 
     function test_splitBatchWithdrawal() public {
-        ResetPeriod resetPeriod = ResetPeriod.TenMinutes;
-        Scope scope = Scope.Multichain;
+        // Setup test parameters
+        TestParams memory params;
+        params.resetPeriod = ResetPeriod.TenMinutes;
+        params.scope = Scope.Multichain;
+        params.nonce = 0;
+        params.deadline = block.timestamp + 1000;
+
+        // Amount information
         uint256 amountOne = 1e18;
         uint256 amountTwo = 6e17;
         uint256 amountThree = 4e17;
-        uint256 nonce = 0;
-        uint256 expiration = block.timestamp + 1000;
+
+        // Recipient information
         address recipientOne = 0x1111111111111111111111111111111111111111;
         address recipientTwo = 0x2222222222222222222222222222222222222222;
 
-        vm.prank(allocator);
-        uint96 allocatorId = theCompact.__registerAllocator(allocator, "");
+        // Register allocator and make deposits
+        uint256 idOne;
+        uint256 idTwo;
+        {
+            uint96 allocatorId;
+            bytes12 lockTag;
+            (allocatorId, lockTag) = _registerAllocator(allocator);
 
-        bytes12 lockTag =
-            bytes12(bytes32((uint256(scope) << 255) | (uint256(resetPeriod) << 252) | (uint256(allocatorId) << 160)));
+            idOne = _makeDeposit(swapper, address(token), amountOne, lockTag);
+            idTwo = _makeDeposit(swapper, amountTwo + amountThree, lockTag);
 
-        vm.startPrank(swapper);
-        uint256 idOne = theCompact.deposit(address(token), lockTag, amountOne, swapper);
-        uint256 idTwo = theCompact.deposit{ value: amountTwo + amountThree }(lockTag, swapper);
-        vm.stopPrank();
+            assertEq(theCompact.balanceOf(swapper, idOne), amountOne);
+            assertEq(theCompact.balanceOf(swapper, idTwo), amountTwo + amountThree);
+        }
 
-        assertEq(theCompact.balanceOf(swapper, idOne), amountOne);
-        assertEq(theCompact.balanceOf(swapper, idTwo), amountTwo + amountThree);
+        // Create idsAndAmounts array
+        uint256[2][] memory idsAndAmounts;
+        {
+            idsAndAmounts = new uint256[2][](2);
+            idsAndAmounts[0] = [idOne, amountOne];
+            idsAndAmounts[1] = [idTwo, amountTwo + amountThree];
+        }
 
-        uint256[2][] memory idsAndAmounts = new uint256[2][](2);
-        idsAndAmounts[0] = [idOne, amountOne];
-        idsAndAmounts[1] = [idTwo, amountTwo + amountThree];
-
-        bytes32 digest = keccak256(
-            abi.encodePacked(
-                bytes2(0x1901),
-                theCompact.DOMAIN_SEPARATOR(),
-                keccak256(
+        // Create digest and allocator signature
+        bytes memory allocatorData;
+        {
+            bytes32 digest;
+            {
+                bytes32 batchCompactHash = keccak256(
                     abi.encode(
                         keccak256(
                             "BatchCompact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256[2][] idsAndAmounts)"
                         ),
                         swapper,
                         swapper,
-                        nonce,
-                        expiration,
+                        params.nonce,
+                        params.deadline,
                         keccak256(abi.encodePacked(idsAndAmounts))
                     )
-                )
-            )
-        );
+                );
 
-        (bytes32 r, bytes32 vs) = vm.signCompact(allocatorPrivateKey, digest);
-        bytes memory allocatorData = abi.encodePacked(r, vs);
+                digest = _createDigest(theCompact.DOMAIN_SEPARATOR(), batchCompactHash);
+            }
 
+            bytes32 r;
+            bytes32 vs;
+            (r, vs) = vm.signCompact(allocatorPrivateKey, digest);
+            allocatorData = abi.encodePacked(r, vs);
+        }
+
+        // Prepare transfers
+        SplitBatchTransfer memory transfer;
         SplitByIdComponent[] memory transfers = new SplitByIdComponent[](2);
+        {
+            // First transfer
+            {
+                SplitComponent[] memory portionsOne;
+                uint256 claimantOne = abi.decode(abi.encodePacked(bytes12(0), recipientOne), (uint256));
 
-        uint256 claimantOne = abi.decode(abi.encodePacked(bytes12(0), recipientOne), (uint256));
-        uint256 claimantTwo = abi.decode(abi.encodePacked(bytes12(0), recipientOne), (uint256));
-        uint256 claimantThree = abi.decode(abi.encodePacked(bytes12(0), recipientTwo), (uint256));
+                portionsOne = new SplitComponent[](1);
+                portionsOne[0] = SplitComponent({ claimant: claimantOne, amount: amountOne });
 
-        SplitComponent[] memory portionsOne = new SplitComponent[](1);
-        portionsOne[0] = SplitComponent({ claimant: claimantOne, amount: amountOne });
+                transfers[0] = SplitByIdComponent({ id: idOne, portions: portionsOne });
+            }
 
-        SplitComponent[] memory portionsTwo = new SplitComponent[](2);
-        portionsTwo[0] = SplitComponent({ claimant: claimantTwo, amount: amountTwo });
-        portionsTwo[1] = SplitComponent({ claimant: claimantThree, amount: amountThree });
+            // Second transfer
+            {
+                SplitComponent[] memory portionsTwo;
+                uint256 claimantTwo = abi.decode(abi.encodePacked(bytes12(0), recipientOne), (uint256));
+                uint256 claimantThree = abi.decode(abi.encodePacked(bytes12(0), recipientTwo), (uint256));
 
-        transfers[0] = SplitByIdComponent({ id: idOne, portions: portionsOne });
-        transfers[1] = SplitByIdComponent({ id: idTwo, portions: portionsTwo });
+                portionsTwo = new SplitComponent[](2);
+                portionsTwo[0] = SplitComponent({ claimant: claimantTwo, amount: amountTwo });
+                portionsTwo[1] = SplitComponent({ claimant: claimantThree, amount: amountThree });
 
-        SplitBatchTransfer memory transfer = SplitBatchTransfer({
-            nonce: nonce,
-            expires: expiration,
-            allocatorData: allocatorData,
-            transfers: transfers
-        });
+                transfers[1] = SplitByIdComponent({ id: idTwo, portions: portionsTwo });
+            }
 
-        vm.prank(swapper);
-        bool status = theCompact.allocatedTransfer(transfer);
-        vm.snapshotGasLastCall("splitBatchWithdrawal");
-        assert(status);
+            // Create batch transfer
+            {
+                transfer = SplitBatchTransfer({
+                    nonce: params.nonce,
+                    expires: params.deadline,
+                    allocatorData: allocatorData,
+                    transfers: transfers
+                });
+            }
+        }
 
+        // Execute transfer
+        {
+            vm.prank(swapper);
+            bool status = theCompact.allocatedTransfer(transfer);
+            vm.snapshotGasLastCall("splitBatchWithdrawal");
+            assert(status);
+        }
+
+        // Verify balances
         assertEq(token.balanceOf(recipientOne), amountOne);
         assertEq(token.balanceOf(recipientTwo), 0);
         assertEq(recipientOne.balance, amountTwo);
@@ -1159,1242 +1451,1662 @@ contract TheCompactTest is Test {
     }
 
     function test_registerAndClaim() public {
-        ResetPeriod resetPeriod = ResetPeriod.TenMinutes;
-        Scope scope = Scope.Multichain;
-        uint256 amount = 1e18;
-        uint256 nonce = 0;
-        uint256 expires = block.timestamp + 1000;
+        Claim memory claim;
+        claim.sponsor = swapper;
+        claim.nonce = 0;
+        claim.expires = block.timestamp + 1000;
+        claim.allocatedAmount = 1e18;
+
         address arbiter = 0x2222222222222222222222222222222222222222;
         address recipientOne = 0x1111111111111111111111111111111111111111;
         address recipientTwo = 0x3333333333333333333333333333333333333333;
         uint256 amountOne = 4e17;
         uint256 amountTwo = 6e17;
 
-        vm.prank(allocator);
-        uint96 allocatorId = theCompact.__registerAllocator(allocator, "");
+        {
+            (, bytes12 lockTag) = _registerAllocator(allocator);
 
-        bytes12 lockTag =
-            bytes12(bytes32((uint256(scope) << 255) | (uint256(resetPeriod) << 252) | (uint256(allocatorId) << 160)));
+            claim.id = _makeDeposit(swapper, claim.allocatedAmount, lockTag);
+            claim.witness = _createCompactWitness(234);
+        }
+
+        bytes32 claimHash;
+        {
+            CreateClaimHashWithWitnessArgs memory args;
+            args.typehash = compactWithWitnessTypehash;
+            args.arbiter = arbiter;
+            args.sponsor = claim.sponsor;
+            args.nonce = claim.nonce;
+            args.expires = claim.expires;
+            args.id = claim.id;
+            args.amount = claim.allocatedAmount;
+            args.witness = claim.witness;
+
+            claimHash = _createClaimHashWithWitness(args);
+        }
+
+        bytes32 digest = _createDigest(theCompact.DOMAIN_SEPARATOR(), claimHash);
+
+        {
+            (bytes32 r, bytes32 vs) = vm.signCompact(allocatorPrivateKey, digest);
+            claim.allocatorData = abi.encodePacked(r, vs);
+        }
+
+        uint256 claimantOne = abi.decode(abi.encodePacked(bytes12(bytes32(claim.id)), recipientOne), (uint256));
+        uint256 claimantTwo = abi.decode(abi.encodePacked(bytes12(bytes32(claim.id)), recipientTwo), (uint256));
+
+        SplitComponent[] memory recipients;
+        {
+            SplitComponent memory splitOne = SplitComponent({ claimant: claimantOne, amount: amountOne });
+
+            SplitComponent memory splitTwo = SplitComponent({ claimant: claimantTwo, amount: amountTwo });
+
+            recipients = new SplitComponent[](2);
+            recipients[0] = splitOne;
+            recipients[1] = splitTwo;
+        }
+
+        claim.sponsorSignature = "";
+        claim.witnessTypestring = witnessTypestring;
+        claim.claimants = recipients;
 
         vm.prank(swapper);
-        uint256 id = theCompact.deposit{ value: amount }(lockTag, swapper);
-        assertEq(theCompact.balanceOf(swapper, id), amount);
+        {
+            (bool status) = theCompact.register(claimHash, compactWithWitnessTypehash);
+            vm.snapshotGasLastCall("register");
+            assert(status);
+        }
 
-        string memory witnessTypestring = "CompactWitness witness)CompactWitness(uint256 witnessArgument)";
-        uint256 witnessArgument = 234;
-        bytes32 witness = keccak256(abi.encode(keccak256("CompactWitness(uint256 witnessArgument)"), witnessArgument));
-
-        string memory compactTypestring =
-            "Compact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256 id,uint256 amount,CompactWitness witness)CompactWitness(uint256 witnessArgument)";
-
-        bytes32 typehash = keccak256(bytes(compactTypestring));
-
-        bytes32 claimHash = keccak256(abi.encode(typehash, arbiter, swapper, nonce, expires, id, amount, witness));
-
-        bytes32 digest = keccak256(abi.encodePacked(bytes2(0x1901), theCompact.DOMAIN_SEPARATOR(), claimHash));
-
-        (bytes32 r, bytes32 vs) = vm.signCompact(allocatorPrivateKey, digest);
-        bytes memory allocatorData = abi.encodePacked(r, vs);
-
-        uint256 claimantOne = abi.decode(abi.encodePacked(bytes12(bytes32(id)), recipientOne), (uint256));
-        uint256 claimantTwo = abi.decode(abi.encodePacked(bytes12(bytes32(id)), recipientTwo), (uint256));
-
-        SplitComponent memory splitOne = SplitComponent({ claimant: claimantOne, amount: amountOne });
-
-        SplitComponent memory splitTwo = SplitComponent({ claimant: claimantTwo, amount: amountTwo });
-
-        SplitComponent[] memory recipients = new SplitComponent[](2);
-        recipients[0] = splitOne;
-        recipients[1] = splitTwo;
-
-        bytes memory sponsorSignature = "";
-
-        Claim memory claim = Claim(
-            allocatorData, sponsorSignature, swapper, nonce, expires, witness, witnessTypestring, id, amount, recipients
-        );
-
-        vm.prank(swapper);
-        (bool status) = theCompact.register(claimHash, typehash);
-        vm.snapshotGasLastCall("register");
-        assert(status);
-
-        (bool isActive, uint256 registeredAt) = theCompact.getRegistrationStatus(swapper, claimHash, typehash);
-        assert(isActive);
-        assertEq(registeredAt, block.timestamp);
+        {
+            (bool isActive, uint256 registeredAt) =
+                theCompact.getRegistrationStatus(swapper, claimHash, compactWithWitnessTypehash);
+            assert(isActive);
+            assertEq(registeredAt, block.timestamp);
+        }
 
         vm.prank(arbiter);
         (bytes32 returnedClaimHash) = theCompact.claim(claim);
         vm.snapshotGasLastCall("claim");
         assertEq(returnedClaimHash, claimHash);
 
-        assertEq(address(theCompact).balance, amount);
+        assertEq(address(theCompact).balance, claim.allocatedAmount);
         assertEq(recipientOne.balance, 0);
         assertEq(recipientTwo.balance, 0);
-        assertEq(theCompact.balanceOf(swapper, id), 0);
-        assertEq(theCompact.balanceOf(recipientOne, id), amountOne);
-        assertEq(theCompact.balanceOf(recipientTwo, id), amountTwo);
+        assertEq(theCompact.balanceOf(swapper, claim.id), 0);
+        assertEq(theCompact.balanceOf(recipientOne, claim.id), amountOne);
+        assertEq(theCompact.balanceOf(recipientTwo, claim.id), amountTwo);
     }
 
     function test_registerForAndClaim() public {
-        ResetPeriod resetPeriod = ResetPeriod.TenMinutes;
-        Scope scope = Scope.Multichain;
-        uint256 amount = 1e18;
-        uint256 nonce = 0;
-        uint256 expires = block.timestamp + 1000;
-        address claimant = 0x1111111111111111111111111111111111111111;
-        address arbiter = 0x2222222222222222222222222222222222222222;
+        // Setup test parameters
+        TestParams memory params;
+        params.resetPeriod = ResetPeriod.TenMinutes;
+        params.scope = Scope.Multichain;
+        params.amount = 1e18;
+        params.nonce = 0;
+        params.deadline = block.timestamp + 1000;
+        params.recipient = 0x1111111111111111111111111111111111111111;
 
+        // Additional parameters
+        address arbiter = 0x2222222222222222222222222222222222222222;
         address swapperSponsor = makeAddr("swapperSponsor");
 
-        vm.prank(allocator);
-        uint96 allocatorId = theCompact.__registerAllocator(allocator, "");
+        // Register allocator and setup tokens
+        uint256 id;
+        bytes12 lockTag;
+        {
+            uint96 allocatorId;
+            (allocatorId, lockTag) = _registerAllocator(allocator);
 
-        bytes12 lockTag =
-            bytes12(bytes32((uint256(scope) << 255) | (uint256(resetPeriod) << 252) | (uint256(allocatorId) << 160)));
+            vm.prank(swapper);
+            token.transfer(swapperSponsor, params.amount);
 
-        vm.prank(swapper);
-        token.transfer(swapperSponsor, amount);
+            vm.prank(swapperSponsor);
+            token.approve(address(theCompact), params.amount);
+        }
 
-        vm.prank(swapperSponsor);
-        token.approve(address(theCompact), 1e18);
-
-        string memory witnessTypestring = "Witness witness)Witness(uint256 witnessArgument)";
+        // Create witness and deposit/register
+        bytes32 registeredClaimHash;
+        bytes32 witness;
         uint256 witnessArgument = 234;
-        bytes32 witness = keccak256(abi.encode(witnessArgument));
+        {
+            witness = keccak256(abi.encode(witnessArgument));
 
-        bytes32 typehash = keccak256(
-            "Compact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256 id,uint256 amount,Witness witness)Witness(uint256 witnessArgument)"
-        );
+            vm.prank(swapperSponsor);
+            (id, registeredClaimHash) = theCompact.depositAndRegisterFor(
+                address(swapper),
+                address(token),
+                lockTag,
+                params.amount,
+                arbiter,
+                params.nonce,
+                params.deadline,
+                compactWithWitnessTypehash,
+                witness
+            );
+            vm.snapshotGasLastCall("depositRegisterFor");
 
-        vm.prank(swapperSponsor);
-        (uint256 id, bytes32 registeredClaimHash) = theCompact.depositAndRegisterFor(
-            address(swapper), address(token), lockTag, amount, arbiter, nonce, expires, typehash, witness
-        );
-        vm.snapshotGasLastCall("depositRegisterFor");
+            assertEq(theCompact.balanceOf(swapper, id), params.amount);
+            assertEq(token.balanceOf(address(theCompact)), params.amount);
+        }
 
-        assertEq(theCompact.balanceOf(swapper, id), amount);
-        assertEq(token.balanceOf(address(theCompact)), amount);
+        // Verify claim hash
+        bytes32 claimHash;
+        {
+            CreateClaimHashWithWitnessArgs memory args;
+            args.typehash = compactWithWitnessTypehash;
+            args.arbiter = arbiter;
+            args.sponsor = swapper;
+            args.nonce = params.nonce;
+            args.expires = params.deadline;
+            args.id = id;
+            args.amount = params.amount;
+            args.witness = witness;
 
-        bytes32 claimHash = keccak256(abi.encode(typehash, arbiter, swapper, nonce, expires, id, amount, witness));
-        assertEq(registeredClaimHash, claimHash);
+            claimHash = _createClaimHashWithWitness(args);
+            assertEq(registeredClaimHash, claimHash);
 
-        bytes32 digest = keccak256(abi.encodePacked(bytes2(0x1901), theCompact.DOMAIN_SEPARATOR(), claimHash));
+            {
+                bool isActive;
+                uint256 registeredAt;
+                (isActive, registeredAt) =
+                    theCompact.getRegistrationStatus(swapper, claimHash, compactWithWitnessTypehash);
+                assert(isActive);
+                assertEq(registeredAt, block.timestamp);
+            }
+        }
 
-        (bool isActive, uint256 registeredAt) = theCompact.getRegistrationStatus(swapper, claimHash, typehash);
-        assert(isActive);
-        assertEq(registeredAt, block.timestamp);
+        // Prepare claim
+        Claim memory claim;
+        {
+            // Create digest and get allocator signature
+            bytes memory allocatorSignature;
+            {
+                bytes32 digest = keccak256(abi.encodePacked(bytes2(0x1901), theCompact.DOMAIN_SEPARATOR(), claimHash));
 
-        bytes memory sponsorSignature = "";
+                bytes32 r;
+                bytes32 vs;
+                (r, vs) = vm.signCompact(allocatorPrivateKey, digest);
+                allocatorSignature = abi.encodePacked(r, vs);
+            }
 
-        (bytes32 r, bytes32 vs) = vm.signCompact(allocatorPrivateKey, digest);
-        bytes memory allocatorSignature = abi.encodePacked(r, vs);
+            // Create recipients
+            SplitComponent[] memory recipients;
+            {
+                recipients = new SplitComponent[](1);
 
-        SplitComponent[] memory recipients = new SplitComponent[](1);
-        recipients[0] = SplitComponent({
-            claimant: uint256(bytes32(abi.encodePacked(bytes12(bytes32(id)), claimant))),
-            amount: amount
-        });
+                uint256 claimantId = uint256(bytes32(abi.encodePacked(bytes12(bytes32(id)), params.recipient)));
 
-        Claim memory claim = Claim(
-            allocatorSignature,
-            sponsorSignature,
-            swapper,
-            nonce,
-            expires,
-            witness,
-            witnessTypestring,
-            id,
-            amount,
-            recipients
-        );
+                recipients[0] = SplitComponent({ claimant: claimantId, amount: params.amount });
+            }
 
-        vm.prank(arbiter);
-        bytes32 returnedClaimHash = theCompact.claim(claim);
-        assertEq(returnedClaimHash, claimHash);
+            // Build the claim
+            claim = Claim(
+                allocatorSignature,
+                "", // sponsorSignature
+                swapper,
+                params.nonce,
+                params.deadline,
+                witness,
+                witnessTypestring,
+                id,
+                params.amount,
+                recipients
+            );
+        }
 
-        assertEq(token.balanceOf(address(theCompact)), amount);
+        // Execute claim
+        {
+            vm.prank(arbiter);
+            bytes32 returnedClaimHash = theCompact.claim(claim);
+            assertEq(returnedClaimHash, claimHash);
+        }
+
+        // Verify balances
+        assertEq(token.balanceOf(address(theCompact)), params.amount);
         assertEq(theCompact.balanceOf(swapper, id), 0);
-        assertEq(theCompact.balanceOf(claimant, id), amount);
+        assertEq(theCompact.balanceOf(params.recipient, id), params.amount);
     }
 
     function test_claimAndWithdraw() public {
-        ResetPeriod resetPeriod = ResetPeriod.TenMinutes;
-        Scope scope = Scope.Multichain;
-        uint256 amount = 1e18;
-        uint256 nonce = 0;
-        uint256 expires = block.timestamp + 1000;
+        // Initialize claim struct
+        Claim memory claim;
+        claim.sponsor = swapper;
+        claim.nonce = 0;
+        claim.expires = block.timestamp + 1000;
+        claim.allocatedAmount = 1e18;
+
+        // Recipient information
         address recipientOne = 0x1111111111111111111111111111111111111111;
         address recipientTwo = 0x3333333333333333333333333333333333333333;
         uint256 amountOne = 4e17;
         uint256 amountTwo = 6e17;
         address arbiter = 0x2222222222222222222222222222222222222222;
 
-        vm.prank(allocator);
-        uint96 allocatorId = theCompact.__registerAllocator(allocator, "");
+        // Register allocator, make deposit and create witness
+        {
+            bytes12 lockTag;
+            {
+                uint96 allocatorId;
+                (allocatorId, lockTag) = _registerAllocator(allocator);
+            }
 
-        bytes12 lockTag =
-            bytes12(bytes32((uint256(scope) << 255) | (uint256(resetPeriod) << 252) | (uint256(allocatorId) << 160)));
+            claim.id = _makeDeposit(swapper, claim.allocatedAmount, lockTag);
+            claim.witness = _createCompactWitness(234);
+        }
 
-        vm.prank(swapper);
-        uint256 id = theCompact.deposit{ value: amount }(lockTag, swapper);
-        assertEq(theCompact.balanceOf(swapper, id), amount);
+        // Create claim hash
+        bytes32 claimHash;
+        {
+            CreateClaimHashWithWitnessArgs memory args;
+            args.typehash = compactWithWitnessTypehash;
+            args.arbiter = arbiter;
+            args.sponsor = claim.sponsor;
+            args.nonce = claim.nonce;
+            args.expires = claim.expires;
+            args.id = claim.id;
+            args.amount = claim.allocatedAmount;
+            args.witness = claim.witness;
 
-        string memory witnessTypestring = "CompactWitness witness)CompactWitness(uint256 witnessArgument)";
-        uint256 witnessArgument = 234;
-        bytes32 witness = keccak256(abi.encode(keccak256("CompactWitness(uint256 witnessArgument)"), witnessArgument));
+            claimHash = _createClaimHashWithWitness(args);
+        }
 
-        string memory compactTypestring =
-            "Compact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256 id,uint256 amount,CompactWitness witness)CompactWitness(uint256 witnessArgument)";
+        // Create signatures
+        bytes32 digest = _createDigest(theCompact.DOMAIN_SEPARATOR(), claimHash);
 
-        bytes32 typehash = keccak256(bytes(compactTypestring));
+        {
+            bytes32 r;
+            bytes32 vs;
 
-        bytes32 claimHash = keccak256(abi.encode(typehash, arbiter, swapper, nonce, expires, id, amount, witness));
+            // Create sponsor signature
+            {
+                (r, vs) = vm.signCompact(swapperPrivateKey, digest);
+                claim.sponsorSignature = abi.encodePacked(r, vs);
+            }
 
-        bytes32 digest = keccak256(abi.encodePacked(bytes2(0x1901), theCompact.DOMAIN_SEPARATOR(), claimHash));
+            // Create allocator signature
+            {
+                (r, vs) = vm.signCompact(allocatorPrivateKey, digest);
+                claim.allocatorData = abi.encodePacked(r, vs);
+            }
+        }
 
-        (bytes32 r, bytes32 vs) = vm.signCompact(swapperPrivateKey, digest);
-        bytes memory sponsorSignature = abi.encodePacked(r, vs);
+        // Prepare recipients
+        {
+            uint256 claimantOne = abi.decode(abi.encodePacked(bytes12(0), recipientOne), (uint256));
+            uint256 claimantTwo = abi.decode(abi.encodePacked(bytes12(0), recipientTwo), (uint256));
 
-        (r, vs) = vm.signCompact(allocatorPrivateKey, digest);
-        bytes memory allocatorData = abi.encodePacked(r, vs);
+            SplitComponent[] memory recipients;
+            {
+                SplitComponent memory splitOne = SplitComponent({ claimant: claimantOne, amount: amountOne });
+                SplitComponent memory splitTwo = SplitComponent({ claimant: claimantTwo, amount: amountTwo });
 
-        uint256 claimantOne = abi.decode(abi.encodePacked(bytes12(0), recipientOne), (uint256));
-        uint256 claimantTwo = abi.decode(abi.encodePacked(bytes12(0), recipientTwo), (uint256));
+                recipients = new SplitComponent[](2);
+                recipients[0] = splitOne;
+                recipients[1] = splitTwo;
+            }
 
-        SplitComponent memory splitOne = SplitComponent({ claimant: claimantOne, amount: amountOne });
+            claim.witnessTypestring = witnessTypestring;
+            claim.claimants = recipients;
+        }
 
-        SplitComponent memory splitTwo = SplitComponent({ claimant: claimantTwo, amount: amountTwo });
+        // Execute claim
+        bytes32 returnedClaimHash;
+        {
+            vm.prank(arbiter);
+            returnedClaimHash = theCompact.claim(claim);
+            vm.snapshotGasLastCall("claimAndWithdraw");
+            assertEq(returnedClaimHash, claimHash);
+        }
 
-        SplitComponent[] memory recipients = new SplitComponent[](2);
-        recipients[0] = splitOne;
-        recipients[1] = splitTwo;
-
-        Claim memory claim = Claim(
-            allocatorData, sponsorSignature, swapper, nonce, expires, witness, witnessTypestring, id, amount, recipients
-        );
-
-        vm.prank(arbiter);
-        (bytes32 returnedClaimHash) = theCompact.claim(claim);
-        vm.snapshotGasLastCall("claimAndWithdraw");
-        assertEq(returnedClaimHash, claimHash);
-
+        // Verify balances
         assertEq(address(theCompact).balance, 0);
         assertEq(recipientOne.balance, amountOne);
         assertEq(recipientTwo.balance, amountTwo);
-        assertEq(theCompact.balanceOf(swapper, id), 0);
-        assertEq(theCompact.balanceOf(recipientOne, id), 0);
-        assertEq(theCompact.balanceOf(recipientTwo, id), 0);
+        assertEq(theCompact.balanceOf(swapper, claim.id), 0);
+        assertEq(theCompact.balanceOf(recipientOne, claim.id), 0);
+        assertEq(theCompact.balanceOf(recipientTwo, claim.id), 0);
     }
 
     function test_depositAndRegisterWithWitnessViaPermit2ThenClaim() public virtual {
-        ResetPeriod resetPeriod = ResetPeriod.TenMinutes;
-        Scope scope = Scope.Multichain;
-        uint256 amount = 1e18;
-        uint256 amountOne = 4e17;
-        uint256 amountTwo = 6e17;
-        uint256 nonce = 0;
-        uint256 deadline = block.timestamp + 1000;
-        uint256 expires = block.timestamp + 1000;
-        address recipientOne = 0x1111111111111111111111111111111111111111;
-        address recipientTwo = 0x3333333333333333333333333333333333333333;
-        address arbiter = 0x2222222222222222222222222222222222222222;
+        // Setup test parameters
+        TestParams memory params;
+        params.resetPeriod = ResetPeriod.TenMinutes;
+        params.scope = Scope.Multichain;
+        params.amount = 1e18;
+        params.nonce = 0;
+        params.deadline = block.timestamp + 1000;
 
-        vm.prank(allocator);
-        uint96 allocatorId = theCompact.__registerAllocator(allocator, "");
+        // Initialize claim
+        Claim memory claim;
+        claim.sponsor = swapper;
+        claim.nonce = params.nonce;
+        claim.expires = block.timestamp + 1000;
+        claim.allocatedAmount = params.amount;
+        claim.witnessTypestring = witnessTypestring;
+        claim.sponsorSignature = "";
 
-        bytes12 lockTag =
-            bytes12(bytes32((uint256(scope) << 255) | (uint256(resetPeriod) << 252) | (uint256(allocatorId) << 160)));
+        // Create domain separator
+        bytes32 domainSeparator;
+        {
+            domainSeparator = keccak256(
+                abi.encode(permit2EIP712DomainHash, keccak256(bytes("Permit2")), block.chainid, address(permit2))
+            );
+            assertEq(domainSeparator, EIP712(permit2).DOMAIN_SEPARATOR());
+        }
 
-        bytes32 domainSeparator =
-            keccak256(abi.encode(permit2EIP712DomainHash, keccak256(bytes("Permit2")), block.chainid, address(permit2)));
+        // Create witness and id
+        LockDetails memory expectedDetails;
+        uint96 allocatorId;
+        {
+            // Register allocator and setup
+            bytes12 lockTag;
+            {
+                (allocatorId, lockTag) = _registerAllocator(allocator);
+            }
+            expectedDetails.lockTag = lockTag;
 
-        assertEq(domainSeparator, EIP712(permit2).DOMAIN_SEPARATOR());
+            uint256 witnessArgument = 234;
+            claim.witness = _createCompactWitness(witnessArgument);
+            claim.id = uint256(bytes32(lockTag)) | uint256(uint160(address(token)));
+        }
 
-        string memory witnessTypestring = "CompactWitness witness)CompactWitness(uint256 witnessArgument)";
-        uint256 witnessArgument = 234;
-        bytes32 witness =
-            keccak256(abi.encode(keccak256(bytes("CompactWitness(uint256 witnessArgument)")), witnessArgument));
+        // Create claim hash
+        bytes32 claimHash;
+        {
+            CreateClaimHashWithWitnessArgs memory args;
+            args.typehash = compactWithWitnessTypehash;
+            args.arbiter = 0x2222222222222222222222222222222222222222;
+            args.sponsor = claim.sponsor;
+            args.nonce = claim.nonce;
+            args.expires = claim.expires;
+            args.id = claim.id;
+            args.amount = claim.allocatedAmount;
+            args.witness = claim.witness;
 
-        string memory compactTypestring =
-            "Compact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256 id,uint256 amount,CompactWitness witness)CompactWitness(uint256 witnessArgument)";
+            claimHash = _createClaimHashWithWitness(args);
+        }
 
-        bytes32 typehash = keccak256(bytes(compactTypestring));
+        // Create activation typehash and permit signature
+        bytes memory signature;
+        ISignatureTransfer.PermitTransferFrom memory permit;
+        {
+            bytes32 activationTypehash =
+                keccak256(bytes(string.concat("Activation(uint256 id,Compact compact)", compactWitnessTypestring)));
 
-        uint256 id = (uint256(scope) << 255) | (uint256(resetPeriod) << 252) | (uint256(allocatorId) << 160)
-            | uint256(uint160(address(token)));
-
-        bytes32 claimHash = keccak256(abi.encode(typehash, arbiter, swapper, nonce, expires, id, amount, witness));
-
-        bytes32 activationTypehash =
-            keccak256(bytes(string.concat("Activation(uint256 id,Compact compact)", compactTypestring)));
-
-        bytes32 digest = keccak256(
-            abi.encodePacked(
-                bytes2(0x1901),
-                domainSeparator,
-                keccak256(
+            {
+                bytes32 tokenPermissionsHash = keccak256(
                     abi.encode(
-                        keccak256(
-                            "PermitWitnessTransferFrom(TokenPermissions permitted,address spender,uint256 nonce,uint256 deadline,Activation witness)Activation(uint256 id,Compact compact)Compact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256 id,uint256 amount,CompactWitness witness)CompactWitness(uint256 witnessArgument)TokenPermissions(address token,uint256 amount)"
-                        ),
-                        keccak256(
-                            abi.encode(
-                                keccak256("TokenPermissions(address token,uint256 amount)"), address(token), amount
-                            )
-                        ),
-                        address(theCompact), // spender
-                        nonce,
-                        deadline,
-                        keccak256(abi.encode(activationTypehash, id, claimHash))
+                        keccak256("TokenPermissions(address token,uint256 amount)"), address(token), params.amount
                     )
-                )
-            )
-        );
+                );
 
-        (bytes32 r, bytes32 vs) = vm.signCompact(swapperPrivateKey, digest);
-        bytes memory signature = abi.encodePacked(r, vs);
+                bytes32 permitWitnessHash;
+                {
+                    bytes32 activationHash = keccak256(abi.encode(activationTypehash, claim.id, claimHash));
 
-        vm.expectCall(
-            address(permit2),
-            abi.encodeWithSignature(
-                "permitWitnessTransferFrom(((address,uint256),uint256,uint256),(address,uint256),address,bytes32,string,bytes)",
-                ISignatureTransfer.PermitTransferFrom({
-                    permitted: ISignatureTransfer.TokenPermissions({ token: address(token), amount: amount }),
-                    nonce: nonce,
-                    deadline: deadline
-                }),
-                ISignatureTransfer.SignatureTransferDetails({ to: address(theCompact), requestedAmount: amount }),
+                    permitWitnessHash = keccak256(
+                        abi.encode(
+                            keccak256(
+                                "PermitWitnessTransferFrom(TokenPermissions permitted,address spender,uint256 nonce,uint256 deadline,Activation witness)Activation(uint256 id,Compact compact)Compact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256 id,uint256 amount,CompactWitness witness)CompactWitness(uint256 witnessArgument)TokenPermissions(address token,uint256 amount)"
+                            ),
+                            tokenPermissionsHash,
+                            address(theCompact), // spender
+                            params.nonce,
+                            params.deadline,
+                            activationHash
+                        )
+                    );
+                }
+
+                bytes32 digest = keccak256(abi.encodePacked(bytes2(0x1901), domainSeparator, permitWitnessHash));
+
+                bytes32 r;
+                bytes32 vs;
+                (r, vs) = vm.signCompact(swapperPrivateKey, digest);
+                signature = abi.encodePacked(r, vs);
+            }
+
+            // Create permit
+            {
+                permit = ISignatureTransfer.PermitTransferFrom({
+                    permitted: ISignatureTransfer.TokenPermissions({ token: address(token), amount: params.amount }),
+                    nonce: params.nonce,
+                    deadline: params.deadline
+                });
+            }
+
+            // Setup expectation for permitWitnessTransferFrom call
+            {
+                bytes32 activationHash = keccak256(abi.encode(activationTypehash, claim.id, claimHash));
+
+                vm.expectCall(
+                    address(permit2),
+                    abi.encodeWithSignature(
+                        "permitWitnessTransferFrom(((address,uint256),uint256,uint256),(address,uint256),address,bytes32,string,bytes)",
+                        permit,
+                        ISignatureTransfer.SignatureTransferDetails({
+                            to: address(theCompact),
+                            requestedAmount: params.amount
+                        }),
+                        swapper,
+                        activationHash,
+                        "Activation witness)Activation(uint256 id,Compact compact)Compact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256 id,uint256 amount,CompactWitness witness)CompactWitness(uint256 witnessArgument)TokenPermissions(address token,uint256 amount)",
+                        signature
+                    )
+                );
+            }
+        }
+
+        // Deposit and register
+        {
+            uint256 returnedId = theCompact.depositAndRegister(
+                permit,
                 swapper,
-                keccak256(abi.encode(activationTypehash, id, claimHash)),
-                "Activation witness)Activation(uint256 id,Compact compact)Compact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256 id,uint256 amount,CompactWitness witness)CompactWitness(uint256 witnessArgument)TokenPermissions(address token,uint256 amount)",
+                expectedDetails.lockTag,
+                claimHash,
+                CompactCategory.Compact,
+                witnessTypestring,
                 signature
-            )
-        );
+            );
+            vm.snapshotGasLastCall("depositAndRegisterViaPermit2");
+            assertEq(returnedId, claim.id);
 
-        uint256 returnedId = theCompact.depositAndRegister(
-            address(token),
-            amount,
-            nonce,
-            deadline,
-            swapper,
-            lockTag,
-            claimHash,
-            CompactCategory.Compact,
-            witnessTypestring,
-            signature
-        );
-        vm.snapshotGasLastCall("depositAndRegisterViaPermit2");
-        assertEq(returnedId, id);
+            bool isActive;
+            uint256 registeredAt;
+            (isActive, registeredAt) = theCompact.getRegistrationStatus(swapper, claimHash, compactWithWitnessTypehash);
+            assert(isActive);
+            assertEq(registeredAt, block.timestamp);
+        }
 
-        (bool isActive, uint256 registeredAt) = theCompact.getRegistrationStatus(swapper, claimHash, typehash);
-        assert(isActive);
-        assertEq(registeredAt, block.timestamp);
+        // Verify lock details
+        {
+            expectedDetails.token = address(token);
+            expectedDetails.allocator = allocator;
+            expectedDetails.resetPeriod = params.resetPeriod;
+            expectedDetails.scope = params.scope;
 
-        (
-            address derivedToken,
-            address derivedAllocator,
-            ResetPeriod derivedResetPeriod,
-            Scope derivedScope,
-            bytes12 derivedLockTag
-        ) = theCompact.getLockDetails(id);
-        assertEq(derivedToken, address(token));
-        assertEq(derivedAllocator, allocator);
-        assertEq(uint256(derivedResetPeriod), uint256(resetPeriod));
-        assertEq(uint256(derivedScope), uint256(scope));
-        assertEq(derivedLockTag, lockTag);
+            _verifyLockDetails(claim.id, params, expectedDetails, allocatorId);
 
-        assertEq(token.balanceOf(address(theCompact)), amount);
-        assertEq(theCompact.balanceOf(swapper, id), amount);
+            assertEq(token.balanceOf(address(theCompact)), params.amount);
+            assertEq(theCompact.balanceOf(swapper, claim.id), params.amount);
+        }
 
-        digest = keccak256(abi.encodePacked(bytes2(0x1901), theCompact.DOMAIN_SEPARATOR(), claimHash));
+        // Create allocator signature
+        {
+            bytes32 digest = _createDigest(theCompact.DOMAIN_SEPARATOR(), claimHash);
 
-        bytes memory sponsorSignature = "";
+            bytes32 r;
+            bytes32 vs;
+            (r, vs) = vm.signCompact(allocatorPrivateKey, digest);
+            claim.allocatorData = abi.encodePacked(r, vs);
+        }
 
-        (r, vs) = vm.signCompact(allocatorPrivateKey, digest);
-        bytes memory allocatorData = abi.encodePacked(r, vs);
-
-        uint256 claimantOne = abi.decode(abi.encodePacked(bytes12(bytes32(id)), recipientOne), (uint256));
-        uint256 claimantTwo = abi.decode(abi.encodePacked(bytes12(bytes32(id)), recipientTwo), (uint256));
-
-        SplitComponent memory splitOne = SplitComponent({ claimant: claimantOne, amount: amountOne });
-
-        SplitComponent memory splitTwo = SplitComponent({ claimant: claimantTwo, amount: amountTwo });
-
-        SplitComponent[] memory recipients = new SplitComponent[](2);
-        recipients[0] = splitOne;
-        recipients[1] = splitTwo;
-
-        Claim memory claim = Claim(
-            allocatorData, sponsorSignature, swapper, nonce, expires, witness, witnessTypestring, id, amount, recipients
-        );
-
-        vm.prank(arbiter);
-        (bytes32 returnedClaimHash) = theCompact.claim(claim);
-        vm.snapshotGasLastCall("claim");
-        assertEq(returnedClaimHash, claimHash);
-
-        assertEq(token.balanceOf(address(theCompact)), amount);
-        assertEq(theCompact.balanceOf(swapper, id), 0);
-        assertEq(theCompact.balanceOf(recipientOne, id), amountOne);
-        assertEq(theCompact.balanceOf(recipientTwo, id), amountTwo);
-    }
-
-    function test_splitClaimWithWitness() public {
-        ResetPeriod resetPeriod = ResetPeriod.TenMinutes;
-        Scope scope = Scope.Multichain;
-        uint256 amount = 1e18;
-        uint256 nonce = 0;
-        uint256 expires = block.timestamp + 1000;
-        address arbiter = 0x2222222222222222222222222222222222222222;
-        address recipientOne = 0x1111111111111111111111111111111111111111;
-        address recipientTwo = 0x3333333333333333333333333333333333333333;
         uint256 amountOne = 4e17;
         uint256 amountTwo = 6e17;
 
-        vm.prank(allocator);
-        uint96 allocatorId = theCompact.__registerAllocator(allocator, "");
+        // Create split components
+        {
+            uint256 claimantOne = abi.decode(
+                abi.encodePacked(bytes12(bytes32(claim.id)), 0x1111111111111111111111111111111111111111), (uint256)
+            );
+            uint256 claimantTwo = abi.decode(
+                abi.encodePacked(bytes12(bytes32(claim.id)), 0x3333333333333333333333333333333333333333), (uint256)
+            );
 
-        bytes12 lockTag =
-            bytes12(bytes32((uint256(scope) << 255) | (uint256(resetPeriod) << 252) | (uint256(allocatorId) << 160)));
+            SplitComponent[] memory recipients;
+            {
+                SplitComponent memory splitOne = SplitComponent({ claimant: claimantOne, amount: amountOne });
+                SplitComponent memory splitTwo = SplitComponent({ claimant: claimantTwo, amount: amountTwo });
 
-        vm.prank(swapper);
-        uint256 id = theCompact.deposit{ value: amount }(lockTag, swapper);
-        assertEq(theCompact.balanceOf(swapper, id), amount);
+                recipients = new SplitComponent[](2);
+                recipients[0] = splitOne;
+                recipients[1] = splitTwo;
 
-        string memory witnessTypestring = "Witness witness)Witness(uint256 witnessArgument)";
-        uint256 witnessArgument = 234;
-        bytes32 witness = keccak256(abi.encode(witnessArgument));
+                claim.claimants = recipients;
+            }
+        }
 
-        bytes32 claimHash = keccak256(
-            abi.encode(
-                keccak256(
-                    "Compact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256 id,uint256 amount,Witness witness)Witness(uint256 witnessArgument)"
-                ),
-                arbiter,
-                swapper,
-                nonce,
-                expires,
-                id,
-                amount,
-                witness
-            )
-        );
+        // Execute claim
+        bytes32 returnedClaimHash;
+        {
+            vm.prank(0x2222222222222222222222222222222222222222);
+            returnedClaimHash = theCompact.claim(claim);
+            vm.snapshotGasLastCall("claim");
+            assertEq(returnedClaimHash, claimHash);
+        }
 
-        bytes32 digest = keccak256(abi.encodePacked(bytes2(0x1901), theCompact.DOMAIN_SEPARATOR(), claimHash));
-
-        (bytes32 r, bytes32 vs) = vm.signCompact(swapperPrivateKey, digest);
-        bytes memory sponsorSignature = abi.encodePacked(r, vs);
-
-        (r, vs) = vm.signCompact(allocatorPrivateKey, digest);
-        bytes memory allocatorData = abi.encodePacked(r, vs);
-
-        uint256 claimantOne = abi.decode(abi.encodePacked(bytes12(bytes32(id)), recipientOne), (uint256));
-        uint256 claimantTwo = abi.decode(abi.encodePacked(bytes12(bytes32(id)), recipientTwo), (uint256));
-
-        SplitComponent memory splitOne = SplitComponent({ claimant: claimantOne, amount: amountOne });
-
-        SplitComponent memory splitTwo = SplitComponent({ claimant: claimantTwo, amount: amountTwo });
-
-        SplitComponent[] memory recipients = new SplitComponent[](2);
-        recipients[0] = splitOne;
-        recipients[1] = splitTwo;
-
-        Claim memory claim = Claim(
-            allocatorData, sponsorSignature, swapper, nonce, expires, witness, witnessTypestring, id, amount, recipients
-        );
-
-        vm.prank(arbiter);
-        (bytes32 returnedClaimHash) = theCompact.claim(claim);
-        vm.snapshotGasLastCall("splitClaimWithWitness");
-        assertEq(returnedClaimHash, claimHash);
-
-        assertEq(address(theCompact).balance, amount);
-        assertEq(recipientOne.balance, 0);
-        assertEq(recipientTwo.balance, 0);
-        assertEq(theCompact.balanceOf(swapper, id), 0);
-
-        assertEq(theCompact.balanceOf(recipientOne, id), amountOne);
-        assertEq(theCompact.balanceOf(recipientTwo, id), amountTwo);
+        // Verify balances
+        assertEq(token.balanceOf(address(theCompact)), params.amount);
+        assertEq(theCompact.balanceOf(swapper, claim.id), 0);
+        assertEq(theCompact.balanceOf(0x1111111111111111111111111111111111111111, claim.id), amountOne);
+        assertEq(theCompact.balanceOf(0x3333333333333333333333333333333333333333, claim.id), amountTwo);
     }
 
     function test_batchDepositAndRegisterWithWitnessViaPermit2ThenClaim() public virtual {
-        ResetPeriod resetPeriod = ResetPeriod.TenMinutes;
-        Scope scope = Scope.Multichain;
-        uint256 nonce = 0;
-        uint256 deadline = block.timestamp + 1000;
-        uint256 expires = block.timestamp + 1000;
-        address recipientOne = 0x1111111111111111111111111111111111111111;
-        address recipientTwo = 0x3333333333333333333333333333333333333333;
-        address arbiter = 0x2222222222222222222222222222222222222222;
-        uint256 amountOne = 4e17;
-        uint256 amountTwo = 6e17;
-        uint256 amount = 1e18;
-        uint256 anotherAmount = 1e18;
-        uint256 aThirdAmount = 1e18;
+        // Setup test parameters
+        TestParams memory params;
+        params.resetPeriod = ResetPeriod.TenMinutes;
+        params.scope = Scope.Multichain;
+        params.nonce = 0;
+        params.deadline = block.timestamp + 1000;
 
-        vm.prank(allocator);
-        uint96 allocatorId = theCompact.__registerAllocator(allocator, "");
+        // Initialize claim data
+        BatchClaim memory claim;
+        claim.sponsor = swapper;
+        claim.nonce = params.nonce;
+        claim.expires = block.timestamp + 1000;
+        claim.witnessTypestring = witnessTypestring;
 
-        bytes12 lockTag =
-            bytes12(bytes32((uint256(scope) << 255) | (uint256(resetPeriod) << 252) | (uint256(allocatorId) << 160)));
+        // Register allocator and setup basic variables
+        uint96 allocatorId;
+        bytes12 lockTag;
+        {
+            (allocatorId, lockTag) = _registerAllocator(allocator);
+        }
 
-        bytes32 domainSeparator =
-            keccak256(abi.encode(permit2EIP712DomainHash, keccak256(bytes("Permit2")), block.chainid, address(permit2)));
+        // Create domain separator
+        bytes32 domainSeparator;
+        {
+            domainSeparator = keccak256(
+                abi.encode(permit2EIP712DomainHash, keccak256(bytes("Permit2")), block.chainid, address(permit2))
+            );
+            assertEq(domainSeparator, EIP712(permit2).DOMAIN_SEPARATOR());
+        }
 
-        assertEq(domainSeparator, EIP712(permit2).DOMAIN_SEPARATOR());
+        // Create witness and typestring
+        bytes32 typehash;
+        {
+            claim.witness = _createCompactWitness(234);
 
-        string memory witnessTypestring = "CompactWitness witness)CompactWitness(uint256 witnessArgument)";
-        uint256 witnessArgument = 234;
-        bytes32 witness =
-            keccak256(abi.encode(keccak256(bytes("CompactWitness(uint256 witnessArgument)")), witnessArgument));
+            string memory typestring =
+                "BatchCompact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256[2][] idsAndAmounts,CompactWitness witness)CompactWitness(uint256 witnessArgument)";
+            typehash = keccak256(bytes(typestring));
+        }
 
-        string memory compactTypestring =
-            "BatchCompact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256[2][] idsAndAmounts,CompactWitness witness)CompactWitness(uint256 witnessArgument)";
+        // Create ids and idsAndAmounts
+        uint256[] memory ids;
+        uint256[2][] memory idsAndAmounts;
+        {
+            uint256 id = (uint256(params.scope) << 255) | (uint256(params.resetPeriod) << 252)
+                | (uint256(allocatorId) << 160) | uint256(uint160(address(0)));
+            uint256 anotherId = (uint256(params.scope) << 255) | (uint256(params.resetPeriod) << 252)
+                | (uint256(allocatorId) << 160) | uint256(uint160(address(token)));
+            uint256 aThirdId = (uint256(params.scope) << 255) | (uint256(params.resetPeriod) << 252)
+                | (uint256(allocatorId) << 160) | uint256(uint160(address(anotherToken)));
 
-        bytes32 typehash = keccak256(bytes(compactTypestring));
+            ids = new uint256[](3);
+            idsAndAmounts = new uint256[2][](3);
 
-        uint256 id = (uint256(scope) << 255) | (uint256(resetPeriod) << 252) | (uint256(allocatorId) << 160)
-            | uint256(uint160(address(0)));
-        uint256 anotherId = (uint256(scope) << 255) | (uint256(resetPeriod) << 252) | (uint256(allocatorId) << 160)
-            | uint256(uint160(address(token)));
-        uint256 aThirdId = (uint256(scope) << 255) | (uint256(resetPeriod) << 252) | (uint256(allocatorId) << 160)
-            | uint256(uint160(address(anotherToken)));
+            ids[0] = id;
+            ids[1] = anotherId;
+            ids[2] = aThirdId;
 
-        uint256[] memory ids = new uint256[](3);
-        uint256[2][] memory idsAndAmounts = new uint256[2][](3);
-        ids[0] = id;
-        ids[1] = anotherId;
-        ids[2] = aThirdId;
+            idsAndAmounts[0][0] = id;
+            idsAndAmounts[0][1] = 1e18; // amount
+            idsAndAmounts[1][0] = anotherId;
+            idsAndAmounts[1][1] = 1e18; // anotherAmount
+            idsAndAmounts[2][0] = aThirdId;
+            idsAndAmounts[2][1] = 1e18; // aThirdAmount
+        }
 
-        idsAndAmounts[0][0] = id;
-        idsAndAmounts[0][1] = amount;
-        idsAndAmounts[1][0] = anotherId;
-        idsAndAmounts[1][1] = anotherAmount;
-        idsAndAmounts[2][0] = aThirdId;
-        idsAndAmounts[2][1] = aThirdAmount;
+        // Create claim hash
+        bytes32 claimHash;
+        {
+            CreateBatchClaimHashWithWitnessArgs memory args;
+            {
+                args.typehash = typehash;
+                args.arbiter = 0x2222222222222222222222222222222222222222;
+                args.sponsor = claim.sponsor;
+                args.nonce = params.nonce;
+                args.expires = claim.expires;
+                args.idsAndAmountsHash = keccak256(abi.encodePacked(idsAndAmounts));
+                args.witness = claim.witness;
+            }
 
-        bytes32 claimHash = keccak256(
-            abi.encode(typehash, arbiter, swapper, nonce, expires, keccak256(abi.encodePacked(idsAndAmounts)), witness)
-        );
+            claimHash = _createBatchClaimHashWithWitness(args);
+        }
 
-        bytes32 activationTypehash =
-            keccak256(bytes(string.concat("BatchActivation(uint256[] ids,BatchCompact compact)", compactTypestring)));
+        // Create activation typehash
+        bytes32 activationTypehash;
+        {
+            string memory typestring =
+                "BatchCompact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256[2][] idsAndAmounts,CompactWitness witness)CompactWitness(uint256 witnessArgument)";
+            activationTypehash =
+                keccak256(bytes(string.concat("BatchActivation(uint256[] ids,BatchCompact compact)", typestring)));
+        }
 
-        ISignatureTransfer.TokenPermissions[] memory tokenPermissions = new ISignatureTransfer.TokenPermissions[](3);
-        bytes32[] memory tokenPermissionsHashes = new bytes32[](2);
-        tokenPermissions[0] = ISignatureTransfer.TokenPermissions({ token: address(0), amount: amount });
-        tokenPermissionsHashes[0] =
-            keccak256(abi.encode(keccak256("TokenPermissions(address token,uint256 amount)"), tokenPermissions[0]));
-        tokenPermissions[1] = ISignatureTransfer.TokenPermissions({ token: address(token), amount: anotherAmount });
-        tokenPermissionsHashes[0] =
-            keccak256(abi.encode(keccak256("TokenPermissions(address token,uint256 amount)"), tokenPermissions[1]));
-        tokenPermissions[2] =
-            ISignatureTransfer.TokenPermissions({ token: address(anotherToken), amount: aThirdAmount });
-        tokenPermissionsHashes[1] =
-            keccak256(abi.encode(keccak256("TokenPermissions(address token,uint256 amount)"), tokenPermissions[2]));
-        bytes32 tokenPermissionsHash = keccak256(abi.encodePacked(tokenPermissionsHashes));
+        // Create token permissions and signature
+        ISignatureTransfer.TokenPermissions[] memory tokenPermissions;
+        bytes memory signature;
+        {
+            tokenPermissions = new ISignatureTransfer.TokenPermissions[](3);
+            tokenPermissions[0] = ISignatureTransfer.TokenPermissions({ token: address(0), amount: 1e18 });
+            tokenPermissions[1] = ISignatureTransfer.TokenPermissions({ token: address(token), amount: 1e18 });
+            tokenPermissions[2] = ISignatureTransfer.TokenPermissions({ token: address(anotherToken), amount: 1e18 });
 
-        bytes32 digest = keccak256(
-            abi.encodePacked(
-                bytes2(0x1901),
-                domainSeparator,
-                keccak256(
-                    abi.encode(
-                        keccak256(
-                            "PermitBatchWitnessTransferFrom(TokenPermissions[] permitted,address spender,uint256 nonce,uint256 deadline,BatchActivation witness)BatchActivation(uint256[] ids,BatchCompact compact)BatchCompact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256[2][] idsAndAmounts,CompactWitness witness)CompactWitness(uint256 witnessArgument)TokenPermissions(address token,uint256 amount)"
-                        ),
-                        tokenPermissionsHash,
-                        address(theCompact), // spender
-                        nonce,
-                        deadline,
-                        keccak256(abi.encode(activationTypehash, keccak256(abi.encodePacked(ids)), claimHash))
-                    )
-                )
-            )
-        );
+            // Create signature
+            {
+                bytes32 tokenPermissionsHash;
+                {
+                    bytes32[] memory tokenPermissionsHashes = new bytes32[](2);
 
-        (bytes32 r, bytes32 vs) = vm.signCompact(swapperPrivateKey, digest);
-        bytes memory signature = abi.encodePacked(r, vs);
+                    tokenPermissionsHashes[0] = keccak256(
+                        abi.encode(keccak256("TokenPermissions(address token,uint256 amount)"), tokenPermissions[0])
+                    );
+                    tokenPermissionsHashes[0] = keccak256(
+                        abi.encode(keccak256("TokenPermissions(address token,uint256 amount)"), tokenPermissions[1])
+                    );
+                    tokenPermissionsHashes[1] = keccak256(
+                        abi.encode(keccak256("TokenPermissions(address token,uint256 amount)"), tokenPermissions[2])
+                    );
 
-        ISignatureTransfer.TokenPermissions[] memory tokenPermissionsOnCall =
-            new ISignatureTransfer.TokenPermissions[](2);
-        tokenPermissionsOnCall[0] = ISignatureTransfer.TokenPermissions({ token: address(token), amount: amount });
-        tokenPermissionsOnCall[1] =
-            ISignatureTransfer.TokenPermissions({ token: address(anotherToken), amount: amount });
+                    tokenPermissionsHash = keccak256(abi.encodePacked(tokenPermissionsHashes));
+                }
 
-        ISignatureTransfer.SignatureTransferDetails[] memory signatureTransferDetails =
-            new ISignatureTransfer.SignatureTransferDetails[](2);
-        signatureTransferDetails[0] =
-            ISignatureTransfer.SignatureTransferDetails({ to: address(theCompact), requestedAmount: anotherAmount });
-        signatureTransferDetails[1] =
-            ISignatureTransfer.SignatureTransferDetails({ to: address(theCompact), requestedAmount: aThirdAmount });
+                bytes32 digest;
+                {
+                    CreatePermitBatchWitnessDigestArgs memory args;
+                    {
+                        args.domainSeparator = domainSeparator;
+                        args.tokenPermissionsHash = tokenPermissionsHash;
+                        args.spender = address(theCompact);
+                        args.nonce = params.nonce;
+                        args.deadline = params.deadline;
+                        args.activationTypehash = activationTypehash;
+                        args.idsHash = keccak256(abi.encodePacked(ids));
+                        args.claimHash = claimHash;
+                    }
 
-        vm.expectCall(
-            address(permit2),
-            abi.encodeWithSignature(
-                "permitWitnessTransferFrom(((address,uint256)[],uint256,uint256),(address,uint256)[],address,bytes32,string,bytes)",
-                ISignatureTransfer.PermitBatchTransferFrom({
-                    permitted: tokenPermissionsOnCall,
-                    nonce: nonce,
-                    deadline: deadline
-                }),
-                signatureTransferDetails,
+                    digest = _createPermitBatchWitnessDigest(args);
+                }
+
+                bytes32 r;
+                bytes32 vs;
+                (r, vs) = vm.signCompact(swapperPrivateKey, digest);
+                signature = abi.encodePacked(r, vs);
+            }
+        }
+
+        {
+            SetupPermitCallExpectationArgs memory args;
+            args.activationTypehash = activationTypehash;
+            args.ids = ids;
+            args.claimHash = claimHash;
+            args.nonce = params.nonce;
+            args.deadline = params.deadline;
+            args.signature = signature;
+
+            _setupPermitCallExpectation(args);
+        }
+
+        // Deposit and register
+        uint256[] memory returnedIds;
+        {
+            DepositDetails memory depositDetails;
+            depositDetails.nonce = params.nonce;
+            depositDetails.deadline = params.deadline;
+            depositDetails.lockTag = lockTag;
+
+            returnedIds = theCompact.depositAndRegister{ value: 1e18 }(
                 swapper,
-                keccak256(abi.encode(activationTypehash, keccak256(abi.encodePacked(ids)), claimHash)),
-                "BatchActivation witness)BatchActivation(uint256[] ids,BatchCompact compact)BatchCompact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256[2][] idsAndAmounts,CompactWitness witness)CompactWitness(uint256 witnessArgument)TokenPermissions(address token,uint256 amount)",
+                tokenPermissions,
+                depositDetails,
+                claimHash,
+                CompactCategory.BatchCompact,
+                witnessTypestring,
                 signature
-            )
-        );
+            );
+            vm.snapshotGasLastCall("batchDepositAndRegisterWithWitnessViaPermit2");
 
-        uint256[] memory returnedIds = theCompact.depositAndRegister{ value: amount }(
-            swapper,
-            tokenPermissions,
-            nonce,
-            deadline,
-            lockTag,
-            claimHash,
-            CompactCategory.BatchCompact,
-            witnessTypestring,
-            signature
-        );
-        vm.snapshotGasLastCall("batchDepositAndRegisterWithWitnessViaPermit2");
-        assertEq(returnedIds.length, 3);
-        assertEq(returnedIds[0], id);
-        assertEq(returnedIds[1], anotherId);
-        assertEq(returnedIds[2], aThirdId);
+            assertEq(returnedIds.length, 3);
+            assertEq(returnedIds[0], ids[0]);
+            assertEq(returnedIds[1], ids[1]);
+            assertEq(returnedIds[2], ids[2]);
 
-        assertEq(theCompact.balanceOf(swapper, id), amount);
-        assertEq(theCompact.balanceOf(swapper, anotherId), anotherAmount);
-        assertEq(theCompact.balanceOf(swapper, aThirdId), aThirdAmount);
+            assertEq(theCompact.balanceOf(swapper, ids[0]), 1e18);
+            assertEq(theCompact.balanceOf(swapper, ids[1]), 1e18);
+            assertEq(theCompact.balanceOf(swapper, ids[2]), 1e18);
 
-        (bool isActive, uint256 registeredAt) = theCompact.getRegistrationStatus(swapper, claimHash, typehash);
-        assert(isActive);
-        assertEq(registeredAt, block.timestamp);
+            bool isActive;
+            uint256 registeredAt;
+            (isActive, registeredAt) = theCompact.getRegistrationStatus(swapper, claimHash, typehash);
+            assert(isActive);
+            assertEq(registeredAt, block.timestamp);
+        }
 
-        claimHash = keccak256(
-            abi.encode(
-                keccak256(
+        // Regenerate claim hash
+        {
+            CreateBatchClaimHashWithWitnessArgs memory args;
+            {
+                args.typehash = keccak256(
                     "BatchCompact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256[2][] idsAndAmounts,CompactWitness witness)CompactWitness(uint256 witnessArgument)"
-                ),
-                arbiter,
-                swapper,
-                nonce,
-                expires,
-                keccak256(abi.encodePacked(idsAndAmounts)),
-                witness
-            )
-        );
+                );
+                args.arbiter = 0x2222222222222222222222222222222222222222;
+                args.sponsor = swapper;
+                args.nonce = params.nonce;
+                args.expires = claim.expires;
+                args.idsAndAmountsHash = keccak256(abi.encodePacked(idsAndAmounts));
+                args.witness = claim.witness;
+            }
 
-        digest = keccak256(abi.encodePacked(bytes2(0x1901), theCompact.DOMAIN_SEPARATOR(), claimHash));
+            claimHash = _createBatchClaimHashWithWitness(args);
+        }
 
-        (r, vs) = vm.signCompact(swapperPrivateKey, digest);
-        bytes memory sponsorSignature = abi.encodePacked(r, vs);
+        // Create signatures for claim
+        {
+            bytes32 digest = _createDigest(theCompact.DOMAIN_SEPARATOR(), claimHash);
 
-        (r, vs) = vm.signCompact(allocatorPrivateKey, digest);
-        bytes memory allocatorData = abi.encodePacked(r, vs);
+            {
+                bytes32 r;
+                bytes32 vs;
+                (r, vs) = vm.signCompact(swapperPrivateKey, digest);
+                claim.sponsorSignature = abi.encodePacked(r, vs);
+            }
 
-        uint256 claimantOne = abi.decode(abi.encodePacked(bytes12(bytes32(id)), recipientOne), (uint256));
-        uint256 claimantTwo = abi.decode(abi.encodePacked(bytes12(bytes32(id)), recipientTwo), (uint256));
-        uint256 claimantThree = abi.decode(abi.encodePacked(bytes12(bytes32(anotherId)), recipientOne), (uint256));
-        uint256 claimantFour = abi.decode(abi.encodePacked(bytes12(bytes32(aThirdId)), recipientTwo), (uint256));
+            {
+                bytes32 r;
+                bytes32 vs;
+                (r, vs) = vm.signCompact(allocatorPrivateKey, digest);
+                claim.allocatorData = abi.encodePacked(r, vs);
+            }
+        }
 
-        SplitBatchClaimComponent[] memory claims = new SplitBatchClaimComponent[](3);
-        SplitComponent[] memory portions = new SplitComponent[](2);
-        portions[0] = SplitComponent({ claimant: claimantOne, amount: amountOne });
-        portions[1] = SplitComponent({ claimant: claimantTwo, amount: amountTwo });
-        claims[0] = SplitBatchClaimComponent({ id: id, allocatedAmount: amount, portions: portions });
-        SplitComponent[] memory anotherPortion = new SplitComponent[](1);
-        anotherPortion[0] = SplitComponent({ claimant: claimantThree, amount: anotherAmount });
-        claims[1] =
-            SplitBatchClaimComponent({ id: anotherId, allocatedAmount: anotherAmount, portions: anotherPortion });
-        SplitComponent[] memory aThirdPortion = new SplitComponent[](1);
-        aThirdPortion[0] = SplitComponent({ claimant: claimantFour, amount: aThirdAmount });
-        claims[2] = SplitBatchClaimComponent({ id: aThirdId, allocatedAmount: aThirdAmount, portions: aThirdPortion });
+        // Create claim components
+        {
+            SplitBatchClaimComponent[] memory claims = new SplitBatchClaimComponent[](3);
+            {
+                uint256 claimantOne = abi.decode(
+                    abi.encodePacked(bytes12(bytes32(ids[0])), 0x1111111111111111111111111111111111111111), (uint256)
+                );
+                uint256 claimantTwo = abi.decode(
+                    abi.encodePacked(bytes12(bytes32(ids[0])), 0x3333333333333333333333333333333333333333), (uint256)
+                );
+                uint256 claimantThree = abi.decode(
+                    abi.encodePacked(bytes12(bytes32(ids[1])), 0x1111111111111111111111111111111111111111), (uint256)
+                );
+                uint256 claimantFour = abi.decode(
+                    abi.encodePacked(bytes12(bytes32(ids[2])), 0x3333333333333333333333333333333333333333), (uint256)
+                );
 
-        BatchClaim memory claim =
-            BatchClaim(allocatorData, sponsorSignature, swapper, nonce, expires, witness, witnessTypestring, claims);
+                {
+                    SplitComponent[] memory portions = new SplitComponent[](2);
+                    portions[0] = SplitComponent({ claimant: claimantOne, amount: 4e17 });
+                    portions[1] = SplitComponent({ claimant: claimantTwo, amount: 6e17 });
+                    claims[0] = SplitBatchClaimComponent({ id: ids[0], allocatedAmount: 1e18, portions: portions });
+                }
 
-        vm.prank(arbiter);
-        (bytes32 returnedClaimHash) = theCompact.claim(claim);
-        vm.snapshotGasLastCall("batchClaimRegisteredWithDepositWithWitness");
-        assertEq(returnedClaimHash, claimHash);
+                {
+                    SplitComponent[] memory anotherPortion = new SplitComponent[](1);
+                    anotherPortion[0] = SplitComponent({ claimant: claimantThree, amount: 1e18 });
+                    claims[1] =
+                        SplitBatchClaimComponent({ id: ids[1], allocatedAmount: 1e18, portions: anotherPortion });
+                }
 
-        assertEq(address(theCompact).balance, amount);
-        assertEq(token.balanceOf(address(theCompact)), anotherAmount);
-        assertEq(anotherToken.balanceOf(address(theCompact)), aThirdAmount);
+                {
+                    SplitComponent[] memory aThirdPortion = new SplitComponent[](1);
+                    aThirdPortion[0] = SplitComponent({ claimant: claimantFour, amount: 1e18 });
+                    claims[2] = SplitBatchClaimComponent({ id: ids[2], allocatedAmount: 1e18, portions: aThirdPortion });
+                }
+            }
 
-        assertEq(theCompact.balanceOf(recipientOne, id), amountOne);
-        assertEq(theCompact.balanceOf(recipientTwo, id), amountTwo);
-        assertEq(theCompact.balanceOf(recipientOne, anotherId), anotherAmount);
-        assertEq(theCompact.balanceOf(recipientTwo, aThirdId), aThirdAmount);
+            claim.claims = claims;
+        }
+
+        // Execute claim
+        bytes32 returnedClaimHash;
+        {
+            vm.prank(0x2222222222222222222222222222222222222222);
+            returnedClaimHash = theCompact.claim(claim);
+            vm.snapshotGasLastCall("batchClaimRegisteredWithDepositWithWitness");
+            assertEq(returnedClaimHash, claimHash);
+        }
+
+        // Verify balances
+        assertEq(address(theCompact).balance, 1e18);
+        assertEq(token.balanceOf(address(theCompact)), 1e18);
+        assertEq(anotherToken.balanceOf(address(theCompact)), 1e18);
+
+        assertEq(theCompact.balanceOf(0x1111111111111111111111111111111111111111, ids[0]), 4e17);
+        assertEq(theCompact.balanceOf(0x3333333333333333333333333333333333333333, ids[0]), 6e17);
+        assertEq(theCompact.balanceOf(0x1111111111111111111111111111111111111111, ids[1]), 1e18);
+        assertEq(theCompact.balanceOf(0x3333333333333333333333333333333333333333, ids[2]), 1e18);
+    }
+
+    function test_splitClaimWithWitness() public {
+        // Setup test parameters
+        TestParams memory params;
+        params.resetPeriod = ResetPeriod.TenMinutes;
+        params.scope = Scope.Multichain;
+        params.nonce = 0;
+        params.deadline = block.timestamp + 1000;
+
+        // Initialize claim
+        Claim memory claim;
+        claim.sponsor = swapper;
+        claim.nonce = params.nonce;
+        claim.expires = block.timestamp + 1000;
+        claim.allocatedAmount = 1e18;
+        claim.witnessTypestring = witnessTypestring;
+
+        // Register allocator and make deposit
+        {
+            bytes12 lockTag;
+            {
+                uint96 allocatorId;
+                (allocatorId, lockTag) = _registerAllocator(allocator);
+            }
+
+            claim.id = _makeDeposit(swapper, 1e18, lockTag);
+
+            // Create witness
+            uint256 witnessArgument = 234;
+            claim.witness = keccak256(abi.encode(witnessArgument));
+        }
+
+        // Create claim hash
+        bytes32 claimHash;
+        {
+            CreateClaimHashWithWitnessArgs memory args;
+            {
+                args.typehash = compactWithWitnessTypehash;
+                args.arbiter = 0x2222222222222222222222222222222222222222;
+                args.sponsor = claim.sponsor;
+                args.nonce = claim.nonce;
+                args.expires = claim.expires;
+                args.id = claim.id;
+                args.amount = claim.allocatedAmount;
+                args.witness = claim.witness;
+            }
+
+            claimHash = _createClaimHashWithWitness(args);
+        }
+
+        // Create signatures
+        {
+            bytes32 digest = _createDigest(theCompact.DOMAIN_SEPARATOR(), claimHash);
+
+            {
+                bytes32 r;
+                bytes32 vs;
+                (r, vs) = vm.signCompact(swapperPrivateKey, digest);
+                claim.sponsorSignature = abi.encodePacked(r, vs);
+            }
+
+            {
+                bytes32 r;
+                bytes32 vs;
+                (r, vs) = vm.signCompact(allocatorPrivateKey, digest);
+                claim.allocatorData = abi.encodePacked(r, vs);
+            }
+        }
+
+        // Create split components
+        {
+            uint256 claimantOne = abi.decode(
+                abi.encodePacked(bytes12(bytes32(claim.id)), 0x1111111111111111111111111111111111111111), (uint256)
+            );
+            uint256 claimantTwo = abi.decode(
+                abi.encodePacked(bytes12(bytes32(claim.id)), 0x3333333333333333333333333333333333333333), (uint256)
+            );
+
+            SplitComponent[] memory recipients;
+            {
+                SplitComponent memory splitOne = SplitComponent({ claimant: claimantOne, amount: 4e17 });
+                SplitComponent memory splitTwo = SplitComponent({ claimant: claimantTwo, amount: 6e17 });
+
+                recipients = new SplitComponent[](2);
+                recipients[0] = splitOne;
+                recipients[1] = splitTwo;
+
+                claim.claimants = recipients;
+            }
+        }
+
+        // Execute claim
+        bytes32 returnedClaimHash;
+        {
+            vm.prank(0x2222222222222222222222222222222222222222);
+            returnedClaimHash = theCompact.claim(claim);
+            vm.snapshotGasLastCall("splitClaimWithWitness");
+            assertEq(returnedClaimHash, claimHash);
+        }
+
+        // Verify balances
+        {
+            assertEq(address(theCompact).balance, 1e18);
+            assertEq(0x1111111111111111111111111111111111111111.balance, 0);
+            assertEq(0x3333333333333333333333333333333333333333.balance, 0);
+            assertEq(theCompact.balanceOf(swapper, claim.id), 0);
+
+            assertEq(theCompact.balanceOf(0x1111111111111111111111111111111111111111, claim.id), 4e17);
+            assertEq(theCompact.balanceOf(0x3333333333333333333333333333333333333333, claim.id), 6e17);
+        }
     }
 
     function test_splitBatchClaimWithWitness() public {
-        uint256 amount = 1e18;
-        uint256 anotherAmount = 1e18;
-        uint256 aThirdAmount = 1e18;
-        uint256 nonce = 0;
-        uint256 expires = block.timestamp + 1000;
-        address arbiter = 0x2222222222222222222222222222222222222222;
+        // Setup test parameters
+        TestParams memory params;
+        params.nonce = 0;
+        params.deadline = block.timestamp + 1000;
 
-        address recipientOne = 0x1111111111111111111111111111111111111111;
-        address recipientTwo = 0x3333333333333333333333333333333333333333;
-        uint256 amountOne = 4e17;
-        uint256 amountTwo = 6e17;
+        // Initialize batch claim
+        BatchClaim memory claim;
+        claim.sponsor = swapper;
+        claim.nonce = params.nonce;
+        claim.expires = block.timestamp + 1000;
+        claim.witnessTypestring = witnessTypestring;
 
-        vm.prank(allocator);
-        uint96 allocatorId = theCompact.__registerAllocator(allocator, "");
+        // Register allocator and make deposits
+        uint256 id;
+        uint256 anotherId;
+        uint256 aThirdId;
+        {
+            bytes12 lockTag;
+            {
+                uint96 allocatorId;
+                (allocatorId, lockTag) = _registerAllocator(allocator);
+            }
 
-        bytes12 lockTag = bytes12(
-            bytes32(
-                (uint256(Scope.Multichain) << 255) | (uint256(ResetPeriod.TenMinutes) << 252)
-                    | (uint256(allocatorId) << 160)
-            )
-        );
+            id = _makeDeposit(swapper, 1e18, lockTag);
+            anotherId = _makeDeposit(swapper, address(token), 1e18, lockTag);
+            aThirdId = _makeDeposit(swapper, address(anotherToken), 1e18, lockTag);
 
-        vm.startPrank(swapper);
-        uint256 id = theCompact.deposit{ value: amount }(lockTag, swapper);
+            assertEq(theCompact.balanceOf(swapper, id), 1e18);
+            assertEq(theCompact.balanceOf(swapper, anotherId), 1e18);
+            assertEq(theCompact.balanceOf(swapper, aThirdId), 1e18);
+        }
 
-        uint256 anotherId = theCompact.deposit(address(token), lockTag, anotherAmount, swapper);
-        assertEq(theCompact.balanceOf(swapper, anotherId), anotherAmount);
+        // Create idsAndAmounts and witness
+        uint256[2][] memory idsAndAmounts;
+        {
+            idsAndAmounts = new uint256[2][](3);
+            idsAndAmounts[0] = [id, 1e18];
+            idsAndAmounts[1] = [anotherId, 1e18];
+            idsAndAmounts[2] = [aThirdId, 1e18];
 
-        uint256 aThirdId = theCompact.deposit(address(anotherToken), lockTag, aThirdAmount, swapper);
-        assertEq(theCompact.balanceOf(swapper, aThirdId), aThirdAmount);
+            uint256 witnessArgument = 234;
+            claim.witness = keccak256(abi.encode(witnessArgument));
+        }
 
-        vm.stopPrank();
+        // Create claim hash
+        bytes32 claimHash;
+        {
+            CreateBatchClaimHashWithWitnessArgs memory args;
+            {
+                args.typehash = keccak256(
+                    "BatchCompact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256[2][] idsAndAmounts,CompactWitness witness)CompactWitness(uint256 witnessArgument)"
+                );
+                args.arbiter = 0x2222222222222222222222222222222222222222;
+                args.sponsor = claim.sponsor;
+                args.nonce = claim.nonce;
+                args.expires = claim.expires;
+                args.idsAndAmountsHash = keccak256(abi.encodePacked(idsAndAmounts));
+                args.witness = claim.witness;
+            }
 
-        assertEq(theCompact.balanceOf(swapper, id), amount);
-        assertEq(theCompact.balanceOf(swapper, anotherId), anotherAmount);
-        assertEq(theCompact.balanceOf(swapper, aThirdId), aThirdAmount);
+            claimHash = _createBatchClaimHashWithWitness(args);
+        }
 
-        uint256[2][] memory idsAndAmounts = new uint256[2][](3);
-        idsAndAmounts[0] = [id, amount];
-        idsAndAmounts[1] = [anotherId, anotherAmount];
-        idsAndAmounts[2] = [aThirdId, aThirdAmount];
+        // Create signatures
+        {
+            bytes32 digest = _createDigest(theCompact.DOMAIN_SEPARATOR(), claimHash);
 
-        string memory witnessTypestring = "Witness witness)Witness(uint256 witnessArgument)";
-        uint256 witnessArgument = 234;
-        bytes32 witness = keccak256(abi.encode(witnessArgument));
+            {
+                bytes32 r;
+                bytes32 vs;
+                (r, vs) = vm.signCompact(swapperPrivateKey, digest);
+                claim.sponsorSignature = abi.encodePacked(r, vs);
+            }
 
-        bytes32 claimHash = keccak256(
-            abi.encode(
-                keccak256(
-                    "BatchCompact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256[2][] idsAndAmounts,Witness witness)Witness(uint256 witnessArgument)"
-                ),
-                arbiter,
-                swapper,
-                nonce,
-                expires,
-                keccak256(abi.encodePacked(idsAndAmounts)),
-                witness
-            )
-        );
+            {
+                bytes32 r;
+                bytes32 vs;
+                (r, vs) = vm.signCompact(allocatorPrivateKey, digest);
+                claim.allocatorData = abi.encodePacked(r, vs);
+            }
+        }
 
-        bytes32 digest = keccak256(abi.encodePacked(bytes2(0x1901), theCompact.DOMAIN_SEPARATOR(), claimHash));
+        // Create batch claim components
+        {
+            SplitBatchClaimComponent[] memory claims = new SplitBatchClaimComponent[](3);
 
-        (bytes32 r, bytes32 vs) = vm.signCompact(swapperPrivateKey, digest);
-        bytes memory sponsorSignature = abi.encodePacked(r, vs);
+            // First claim component
+            {
+                uint256 claimantOne = abi.decode(
+                    abi.encodePacked(bytes12(bytes32(id)), 0x1111111111111111111111111111111111111111), (uint256)
+                );
+                uint256 claimantTwo = abi.decode(
+                    abi.encodePacked(bytes12(bytes32(id)), 0x3333333333333333333333333333333333333333), (uint256)
+                );
 
-        (r, vs) = vm.signCompact(allocatorPrivateKey, digest);
-        bytes memory allocatorData = abi.encodePacked(r, vs);
+                SplitComponent[] memory portions = new SplitComponent[](2);
+                portions[0] = SplitComponent({ claimant: claimantOne, amount: 4e17 });
+                portions[1] = SplitComponent({ claimant: claimantTwo, amount: 6e17 });
 
-        uint256 claimantOne = abi.decode(abi.encodePacked(bytes12(bytes32(id)), recipientOne), (uint256));
-        uint256 claimantTwo = abi.decode(abi.encodePacked(bytes12(bytes32(id)), recipientTwo), (uint256));
-        uint256 claimantThree = abi.decode(abi.encodePacked(bytes12(bytes32(anotherId)), recipientOne), (uint256));
-        uint256 claimantFour = abi.decode(abi.encodePacked(bytes12(bytes32(aThirdId)), recipientTwo), (uint256));
+                claims[0] = SplitBatchClaimComponent({ id: id, allocatedAmount: 1e18, portions: portions });
+            }
 
-        SplitBatchClaimComponent[] memory claims = new SplitBatchClaimComponent[](3);
-        SplitComponent[] memory portions = new SplitComponent[](2);
-        portions[0] = SplitComponent({ claimant: claimantOne, amount: amountOne });
-        portions[1] = SplitComponent({ claimant: claimantTwo, amount: amountTwo });
-        claims[0] = SplitBatchClaimComponent({ id: id, allocatedAmount: amount, portions: portions });
-        SplitComponent[] memory anotherPortion = new SplitComponent[](1);
-        anotherPortion[0] = SplitComponent({ claimant: claimantThree, amount: anotherAmount });
-        claims[1] =
-            SplitBatchClaimComponent({ id: anotherId, allocatedAmount: anotherAmount, portions: anotherPortion });
-        SplitComponent[] memory aThirdPortion = new SplitComponent[](1);
-        aThirdPortion[0] = SplitComponent({ claimant: claimantFour, amount: aThirdAmount });
-        claims[2] = SplitBatchClaimComponent({ id: aThirdId, allocatedAmount: aThirdAmount, portions: aThirdPortion });
+            // Second claim component
+            {
+                uint256 claimantThree = abi.decode(
+                    abi.encodePacked(bytes12(bytes32(anotherId)), 0x1111111111111111111111111111111111111111), (uint256)
+                );
 
-        BatchClaim memory claim =
-            BatchClaim(allocatorData, sponsorSignature, swapper, nonce, expires, witness, witnessTypestring, claims);
+                SplitComponent[] memory anotherPortion = new SplitComponent[](1);
+                anotherPortion[0] = SplitComponent({ claimant: claimantThree, amount: 1e18 });
 
-        vm.prank(arbiter);
-        (bytes32 returnedClaimHash) = theCompact.claim(claim);
-        vm.snapshotGasLastCall("splitBatchClaimWithWitness");
-        assertEq(returnedClaimHash, claimHash);
+                claims[1] = SplitBatchClaimComponent({ id: anotherId, allocatedAmount: 1e18, portions: anotherPortion });
+            }
 
-        assertEq(address(theCompact).balance, amount);
-        assertEq(token.balanceOf(address(theCompact)), anotherAmount);
-        assertEq(anotherToken.balanceOf(address(theCompact)), aThirdAmount);
+            // Third claim component
+            {
+                uint256 claimantFour = abi.decode(
+                    abi.encodePacked(bytes12(bytes32(aThirdId)), 0x3333333333333333333333333333333333333333), (uint256)
+                );
 
-        assertEq(theCompact.balanceOf(recipientOne, id), amountOne);
-        assertEq(theCompact.balanceOf(recipientTwo, id), amountTwo);
-        assertEq(theCompact.balanceOf(recipientOne, anotherId), anotherAmount);
-        assertEq(theCompact.balanceOf(recipientTwo, aThirdId), aThirdAmount);
+                SplitComponent[] memory aThirdPortion = new SplitComponent[](1);
+                aThirdPortion[0] = SplitComponent({ claimant: claimantFour, amount: 1e18 });
+
+                claims[2] = SplitBatchClaimComponent({ id: aThirdId, allocatedAmount: 1e18, portions: aThirdPortion });
+            }
+
+            claim.claims = claims;
+        }
+
+        // Execute claim
+        bytes32 returnedClaimHash;
+        {
+            vm.prank(0x2222222222222222222222222222222222222222);
+            returnedClaimHash = theCompact.claim(claim);
+            vm.snapshotGasLastCall("splitBatchClaimWithWitness");
+            assertEq(returnedClaimHash, claimHash);
+        }
+
+        // Verify balances
+        {
+            assertEq(address(theCompact).balance, 1e18);
+            assertEq(token.balanceOf(address(theCompact)), 1e18);
+            assertEq(anotherToken.balanceOf(address(theCompact)), 1e18);
+
+            assertEq(theCompact.balanceOf(0x1111111111111111111111111111111111111111, id), 4e17);
+            assertEq(theCompact.balanceOf(0x3333333333333333333333333333333333333333, id), 6e17);
+            assertEq(theCompact.balanceOf(0x1111111111111111111111111111111111111111, anotherId), 1e18);
+            assertEq(theCompact.balanceOf(0x3333333333333333333333333333333333333333, aThirdId), 1e18);
+        }
     }
 
     function test_splitMultichainClaimWithWitness() public {
-        ResetPeriod resetPeriod = ResetPeriod.TenMinutes;
-        Scope scope = Scope.Multichain;
-        uint256 amount = 1e18;
-        uint256 anotherAmount = 1e18;
-        uint256 nonce = 0;
-        uint256 expires = block.timestamp + 1000;
-        address arbiter = 0x2222222222222222222222222222222222222222;
+        // Setup test parameters
+        TestParams memory params;
+        params.resetPeriod = ResetPeriod.TenMinutes;
+        params.scope = Scope.Multichain;
+        params.nonce = 0;
+        params.deadline = block.timestamp + 1000;
+
+        // Initialize multichain claim
+        MultichainClaim memory claim;
+        claim.sponsor = swapper;
+        claim.nonce = params.nonce;
+        claim.expires = params.deadline;
+        claim.witnessTypestring = witnessTypestring;
+
+        // Set up chain IDs
         uint256 anotherChainId = 7171717;
+        uint256 thirdChainId = 41414141;
 
-        address recipientOne = 0x1111111111111111111111111111111111111111;
-        address recipientTwo = 0x3333333333333333333333333333333333333333;
-        uint256 amountOne = 4e17;
-        uint256 amountTwo = 6e17;
+        // Register allocator and make deposits
+        uint256 id;
+        uint256 anotherId;
+        {
+            bytes12 lockTag;
+            {
+                uint96 allocatorId;
+                (allocatorId, lockTag) = _registerAllocator(allocator);
+            }
 
-        vm.prank(allocator);
-        uint96 allocatorId = theCompact.__registerAllocator(allocator, "");
+            id = _makeDeposit(swapper, 1e18, lockTag);
+            anotherId = _makeDeposit(swapper, address(token), 1e18, lockTag);
 
-        bytes12 lockTag =
-            bytes12(bytes32((uint256(scope) << 255) | (uint256(resetPeriod) << 252) | (uint256(allocatorId) << 160)));
+            claim.id = id;
+            claim.allocatedAmount = 1e18;
+        }
 
-        vm.startPrank(swapper);
-        uint256 id = theCompact.deposit{ value: amount }(lockTag, swapper);
-        uint256 anotherId = theCompact.deposit(address(token), lockTag, anotherAmount, swapper);
-        vm.stopPrank();
+        // Create ids and amounts arrays
+        uint256[2][] memory idsAndAmountsOne;
+        uint256[2][] memory idsAndAmountsTwo;
+        {
+            idsAndAmountsOne = new uint256[2][](1);
+            idsAndAmountsOne[0] = [id, 1e18];
 
-        assertEq(theCompact.balanceOf(swapper, id), amount);
-        assertEq(theCompact.balanceOf(swapper, anotherId), anotherAmount);
+            idsAndAmountsTwo = new uint256[2][](1);
+            idsAndAmountsTwo[0] = [anotherId, 1e18];
+        }
 
-        uint256[2][] memory idsAndAmountsOne = new uint256[2][](1);
-        idsAndAmountsOne[0] = [id, amount];
+        // Create witness
+        {
+            uint256 witnessArgument = 234;
+            claim.witness = keccak256(abi.encode(witnessArgument));
+        }
 
-        uint256[2][] memory idsAndAmountsTwo = new uint256[2][](1);
-        idsAndAmountsTwo[0] = [anotherId, anotherAmount];
+        // Create allocation hashes
+        bytes32[] memory allocationHashes = new bytes32[](3);
+        {
+            bytes32 segmentTypehash = keccak256(
+                "Segment(address arbiter,uint256 chainId,uint256[2][] idsAndAmounts,CompactWitness witness)CompactWitness(uint256 witnessArgument)"
+            );
 
-        string memory witnessTypestring = "Witness witness)Witness(uint256 witnessArgument)";
-        uint256 witnessArgument = 234;
-        bytes32 witness = keccak256(abi.encode(witnessArgument));
+            allocationHashes[0] = keccak256(
+                abi.encode(
+                    segmentTypehash,
+                    0x2222222222222222222222222222222222222222, // arbiter
+                    block.chainid,
+                    keccak256(abi.encodePacked(idsAndAmountsOne)),
+                    claim.witness
+                )
+            );
 
-        bytes32 allocationHashOne = keccak256(
-            abi.encode(
-                keccak256(
-                    "Segment(address arbiter,uint256 chainId,uint256[2][] idsAndAmounts,Witness witness)Witness(uint256 witnessArgument)"
-                ),
-                arbiter,
-                block.chainid,
-                keccak256(abi.encodePacked(idsAndAmountsOne)),
-                witness
-            )
-        );
+            allocationHashes[1] = keccak256(
+                abi.encode(
+                    segmentTypehash,
+                    0x2222222222222222222222222222222222222222, // arbiter
+                    anotherChainId,
+                    keccak256(abi.encodePacked(idsAndAmountsTwo)),
+                    claim.witness
+                )
+            );
 
-        bytes32 allocationHashTwo = keccak256(
-            abi.encode(
-                keccak256(
-                    "Segment(address arbiter,uint256 chainId,uint256[2][] idsAndAmounts,Witness witness)Witness(uint256 witnessArgument)"
-                ),
-                arbiter,
-                anotherChainId,
-                keccak256(abi.encodePacked(idsAndAmountsTwo)),
-                witness
-            )
-        );
+            allocationHashes[2] = keccak256(
+                abi.encode(
+                    segmentTypehash,
+                    0x2222222222222222222222222222222222222222, // arbiter
+                    thirdChainId,
+                    keccak256(abi.encodePacked(idsAndAmountsTwo)),
+                    claim.witness
+                )
+            );
+        }
 
-        bytes32 allocationHashThree = keccak256(
-            abi.encode(
-                keccak256(
-                    "Segment(address arbiter,uint256 chainId,uint256[2][] idsAndAmounts,Witness witness)Witness(uint256 witnessArgument)"
-                ),
-                arbiter,
-                41414141,
-                keccak256(abi.encodePacked(idsAndAmountsTwo)),
-                witness
-            )
-        );
+        // Create multichain claim hash
+        bytes32 claimHash;
+        {
+            bytes32 multichainTypehash = keccak256(
+                "MultichainCompact(address sponsor,uint256 nonce,uint256 expires,Segment[] segments)Segment(address arbiter,uint256 chainId,uint256[2][] idsAndAmounts,CompactWitness witness)CompactWitness(uint256 witnessArgument)"
+            );
 
-        bytes32 claimHash = keccak256(
-            abi.encode(
-                keccak256(
-                    "MultichainCompact(address sponsor,uint256 nonce,uint256 expires,Segment[] segments)Segment(address arbiter,uint256 chainId,uint256[2][] idsAndAmounts,Witness witness)Witness(uint256 witnessArgument)"
-                ),
-                swapper,
-                nonce,
-                expires,
-                keccak256(abi.encodePacked(allocationHashOne, allocationHashTwo, allocationHashThree))
-            )
-        );
+            claimHash = keccak256(
+                abi.encode(
+                    multichainTypehash,
+                    claim.sponsor,
+                    claim.nonce,
+                    claim.expires,
+                    keccak256(abi.encodePacked(allocationHashes))
+                )
+            );
+        }
 
+        // Store initial domain separator
         bytes32 initialDomainSeparator = theCompact.DOMAIN_SEPARATOR();
 
-        bytes32 digest = keccak256(abi.encodePacked(bytes2(0x1901), initialDomainSeparator, claimHash));
+        // Create signatures
+        {
+            bytes32 digest = _createDigest(initialDomainSeparator, claimHash);
 
-        (bytes32 r, bytes32 vs) = vm.signCompact(swapperPrivateKey, digest);
-        bytes memory sponsorSignature = abi.encodePacked(r, vs);
+            {
+                bytes32 r;
+                bytes32 vs;
+                (r, vs) = vm.signCompact(swapperPrivateKey, digest);
+                claim.sponsorSignature = abi.encodePacked(r, vs);
+            }
 
-        (r, vs) = vm.signCompact(allocatorPrivateKey, digest);
-        bytes memory allocatorData = abi.encodePacked(r, vs);
+            {
+                bytes32 r;
+                bytes32 vs;
+                (r, vs) = vm.signCompact(allocatorPrivateKey, digest);
+                claim.allocatorData = abi.encodePacked(r, vs);
+            }
+        }
 
-        bytes32[] memory additionalChains = new bytes32[](2);
-        additionalChains[0] = allocationHashTwo;
-        additionalChains[1] = allocationHashThree;
+        // Set up additional chains
+        {
+            bytes32[] memory additionalChains = new bytes32[](2);
+            additionalChains[0] = allocationHashes[1];
+            additionalChains[1] = allocationHashes[2];
+            claim.additionalChains = additionalChains;
+        }
 
-        uint256 claimantOne = abi.decode(abi.encodePacked(bytes12(bytes32(id)), recipientOne), (uint256));
-        uint256 claimantTwo = abi.decode(abi.encodePacked(bytes12(bytes32(id)), recipientTwo), (uint256));
+        // Create split components
+        {
+            uint256 claimantOne = abi.decode(
+                abi.encodePacked(bytes12(bytes32(id)), 0x1111111111111111111111111111111111111111), (uint256)
+            );
+            uint256 claimantTwo = abi.decode(
+                abi.encodePacked(bytes12(bytes32(id)), 0x3333333333333333333333333333333333333333), (uint256)
+            );
 
-        SplitComponent memory splitOne = SplitComponent({ claimant: claimantOne, amount: amountOne });
+            SplitComponent[] memory recipients;
+            {
+                SplitComponent memory splitOne = SplitComponent({ claimant: claimantOne, amount: 4e17 });
+                SplitComponent memory splitTwo = SplitComponent({ claimant: claimantTwo, amount: 6e17 });
 
-        SplitComponent memory splitTwo = SplitComponent({ claimant: claimantTwo, amount: amountTwo });
+                recipients = new SplitComponent[](2);
+                recipients[0] = splitOne;
+                recipients[1] = splitTwo;
+            }
 
-        SplitComponent[] memory recipients = new SplitComponent[](2);
-        recipients[0] = splitOne;
-        recipients[1] = splitTwo;
+            claim.claimants = recipients;
+        }
 
-        MultichainClaim memory claim = MultichainClaim(
-            allocatorData,
-            sponsorSignature,
-            swapper,
-            nonce,
-            expires,
-            witness,
-            witnessTypestring,
-            additionalChains,
-            id,
-            amount,
-            recipients
-        );
+        // Execute claim and verify - first part
+        {
+            uint256 snapshotId = vm.snapshotState();
 
-        uint256 snapshotId = vm.snapshotState();
-        vm.prank(arbiter);
-        (bytes32 returnedClaimHash) = theCompact.claim(claim);
-        vm.snapshotGasLastCall("splitMultichainClaimWithWitness");
-        assertEq(returnedClaimHash, claimHash);
+            {
+                vm.prank(0x2222222222222222222222222222222222222222);
+                bytes32 returnedClaimHash = theCompact.claim(claim);
+                vm.snapshotGasLastCall("splitMultichainClaimWithWitness");
+                assertEq(returnedClaimHash, claimHash);
 
-        assertEq(address(theCompact).balance, amount);
-        assertEq(recipientOne.balance, 0);
-        assertEq(recipientTwo.balance, 0);
-        assertEq(theCompact.balanceOf(recipientOne, id), amountOne);
-        assertEq(theCompact.balanceOf(recipientTwo, id), amountTwo);
-        vm.revertToAndDelete(snapshotId);
+                assertEq(address(theCompact).balance, 1e18);
+                assertEq(0x1111111111111111111111111111111111111111.balance, 0);
+                assertEq(0x3333333333333333333333333333333333333333.balance, 0);
+                assertEq(theCompact.balanceOf(0x1111111111111111111111111111111111111111, id), 4e17);
+                assertEq(theCompact.balanceOf(0x3333333333333333333333333333333333333333, id), 6e17);
+            }
 
-        // change to "new chain" (this hack is so the original one gets stored)
-        uint256 notarizedChainId = abi.decode(abi.encode(block.chainid), (uint256));
-        assert(notarizedChainId != anotherChainId);
-        vm.chainId(anotherChainId);
-        assertEq(block.chainid, anotherChainId);
-        assert(notarizedChainId != anotherChainId);
+            vm.revertToAndDelete(snapshotId);
+        }
 
-        bytes32 anotherDomainSeparator = theCompact.DOMAIN_SEPARATOR();
+        // Change to "new chain" and execute exogenous claim
+        {
+            // Save current chain ID and switch to another
+            uint256 notarizedChainId = abi.decode(abi.encode(block.chainid), (uint256));
+            vm.chainId(anotherChainId);
+            assertEq(block.chainid, anotherChainId);
 
-        assert(initialDomainSeparator != anotherDomainSeparator);
+            // Get new domain separator
+            bytes32 anotherDomainSeparator = theCompact.DOMAIN_SEPARATOR();
+            assert(initialDomainSeparator != anotherDomainSeparator);
 
-        digest = keccak256(abi.encodePacked(bytes2(0x1901), anotherDomainSeparator, claimHash));
+            // Create exogenous allocator signature
+            bytes memory exogenousAllocatorData;
+            {
+                bytes32 digest = _createDigest(anotherDomainSeparator, claimHash);
 
-        (r, vs) = vm.signCompact(allocatorPrivateKey, digest);
-        bytes memory exogenousallocatorData = abi.encodePacked(r, vs);
+                bytes32 r;
+                bytes32 vs;
+                (r, vs) = vm.signCompact(allocatorPrivateKey, digest);
+                exogenousAllocatorData = abi.encodePacked(r, vs);
+            }
 
-        additionalChains[0] = allocationHashOne;
-        additionalChains[1] = allocationHashThree;
-        uint256 chainIndex = 0;
+            // Set up exogenous claim
+            ExogenousMultichainClaim memory anotherClaim;
+            {
+                bytes32[] memory additionalChains = new bytes32[](2);
+                additionalChains[0] = allocationHashes[0];
+                additionalChains[1] = allocationHashes[2];
 
-        ExogenousMultichainClaim memory anotherClaim = ExogenousMultichainClaim(
-            exogenousallocatorData,
-            sponsorSignature,
-            swapper,
-            nonce,
-            expires,
-            witness,
-            witnessTypestring,
-            additionalChains,
-            chainIndex,
-            notarizedChainId,
-            anotherId,
-            anotherAmount,
-            recipients
-        );
+                anotherClaim.allocatorData = exogenousAllocatorData;
+                anotherClaim.sponsorSignature = claim.sponsorSignature;
+                anotherClaim.sponsor = claim.sponsor;
+                anotherClaim.nonce = claim.nonce;
+                anotherClaim.expires = claim.expires;
+                anotherClaim.witness = claim.witness;
+                anotherClaim.witnessTypestring = claim.witnessTypestring;
+                anotherClaim.additionalChains = additionalChains;
+                anotherClaim.chainIndex = 0;
+                anotherClaim.notarizedChainId = notarizedChainId; // Changed from exogenousChainId to notarizedChainId
+                anotherClaim.id = anotherId;
+                anotherClaim.allocatedAmount = 1e18;
+                anotherClaim.claimants = claim.claimants;
+            }
 
-        vm.prank(arbiter);
-        (returnedClaimHash) = theCompact.claim(anotherClaim);
-        vm.snapshotGasLastCall("exogenousSplitMultichainClaimWithWitness");
-        assertEq(returnedClaimHash, claimHash);
+            // Execute exogenous claim
+            {
+                vm.prank(0x2222222222222222222222222222222222222222);
+                bytes32 returnedClaimHash = theCompact.claim(anotherClaim);
+                vm.snapshotGasLastCall("exogenousSplitMultichainClaimWithWitness");
+                assertEq(returnedClaimHash, claimHash);
 
-        assertEq(theCompact.balanceOf(swapper, anotherId), 0);
-        assertEq(theCompact.balanceOf(recipientOne, anotherId), amountOne);
-        assertEq(theCompact.balanceOf(recipientTwo, anotherId), amountTwo);
+                assertEq(theCompact.balanceOf(swapper, anotherId), 0);
+                assertEq(theCompact.balanceOf(0x1111111111111111111111111111111111111111, anotherId), 4e17);
+                assertEq(theCompact.balanceOf(0x3333333333333333333333333333333333333333, anotherId), 6e17);
+            }
 
-        // change back
-        vm.chainId(notarizedChainId);
-        assertEq(block.chainid, notarizedChainId);
+            // Change back to original chain
+            vm.chainId(notarizedChainId);
+            assertEq(block.chainid, notarizedChainId);
+        }
     }
 
     function test_splitBatchMultichainClaimWithWitness() public {
-        uint256 amount = 1e18;
-        uint256 anotherAmount = 1e18;
-        uint256 aThirdAmount = 1e18;
-        uint256 expires = block.timestamp + 1000;
-        address arbiter = 0x2222222222222222222222222222222222222222;
+        // Setup test parameters
+        TestParams memory params;
+        params.deadline = block.timestamp + 1000;
 
+        // Initialize batch multichain claim
+        BatchMultichainClaim memory claim;
+        claim.sponsor = swapper;
+        claim.nonce = 0;
+        claim.expires = params.deadline;
+        claim.witnessTypestring = witnessTypestring;
+
+        // Set up chain IDs
+        uint256 anotherChainId = 7171717;
+
+        // Register allocator and make deposits
+        uint256[] memory ids = new uint256[](3);
+        {
+            bytes12 lockTag;
+            {
+                uint96 allocatorId;
+                (allocatorId, lockTag) = _registerAllocator(allocator);
+            }
+
+            ids[0] = _makeDeposit(swapper, 1e18, lockTag);
+            ids[1] = _makeDeposit(swapper, address(token), 1e18, lockTag);
+            assertEq(theCompact.balanceOf(swapper, ids[1]), 1e18);
+
+            ids[2] = _makeDeposit(swapper, address(anotherToken), 1e18, lockTag);
+            assertEq(theCompact.balanceOf(swapper, ids[2]), 1e18);
+
+            vm.stopPrank();
+
+            assertEq(theCompact.balanceOf(swapper, ids[0]), 1e18);
+            assertEq(theCompact.balanceOf(swapper, ids[1]), 1e18);
+            assertEq(theCompact.balanceOf(swapper, ids[2]), 1e18);
+        }
+
+        // Create idsAndAmounts arrays
+        uint256[2][] memory idsAndAmountsOne;
+        uint256[2][] memory idsAndAmountsTwo;
+        {
+            idsAndAmountsOne = new uint256[2][](1);
+            idsAndAmountsOne[0] = [ids[0], 1e18];
+
+            idsAndAmountsTwo = new uint256[2][](2);
+            idsAndAmountsTwo[0] = [ids[1], 1e18];
+            idsAndAmountsTwo[1] = [ids[2], 1e18];
+        }
+
+        // Create witness
+        {
+            uint256 witnessArgument = 234;
+            claim.witness = keccak256(abi.encode(witnessArgument));
+        }
+
+        // Create allocation hashes
+        bytes32 allocationHashOne;
+        bytes32 allocationHashTwo;
+        {
+            bytes32 segmentTypehash = keccak256(
+                "Segment(address arbiter,uint256 chainId,uint256[2][] idsAndAmounts,CompactWitness witness)CompactWitness(uint256 witnessArgument)"
+            );
+
+            allocationHashOne = keccak256(
+                abi.encode(
+                    segmentTypehash,
+                    0x2222222222222222222222222222222222222222, // arbiter
+                    block.chainid,
+                    keccak256(abi.encodePacked(idsAndAmountsOne)),
+                    claim.witness
+                )
+            );
+
+            allocationHashTwo = keccak256(
+                abi.encode(
+                    segmentTypehash,
+                    0x2222222222222222222222222222222222222222, // arbiter
+                    anotherChainId,
+                    keccak256(abi.encodePacked(idsAndAmountsTwo)),
+                    claim.witness
+                )
+            );
+        }
+
+        // Create additional chains
+        {
+            bytes32[] memory additionalChains = new bytes32[](1);
+            additionalChains[0] = allocationHashTwo;
+            claim.additionalChains = additionalChains;
+        }
+
+        // Create multichain claim hash
+        bytes32 claimHash;
+        {
+            bytes32 multichainTypehash = keccak256(
+                "MultichainCompact(address sponsor,uint256 nonce,uint256 expires,Segment[] segments)Segment(address arbiter,uint256 chainId,uint256[2][] idsAndAmounts,CompactWitness witness)CompactWitness(uint256 witnessArgument)"
+            );
+
+            claimHash = keccak256(
+                abi.encode(
+                    multichainTypehash,
+                    claim.sponsor,
+                    claim.nonce,
+                    claim.expires,
+                    keccak256(abi.encodePacked(allocationHashOne, allocationHashTwo))
+                )
+            );
+        }
+
+        // Store initial domain separator
+        bytes32 initialDomainSeparator = theCompact.DOMAIN_SEPARATOR();
+
+        // Create signatures
+        {
+            bytes32 digest = _createDigest(theCompact.DOMAIN_SEPARATOR(), claimHash);
+
+            {
+                (bytes32 r, bytes32 vs) = vm.signCompact(swapperPrivateKey, digest);
+                claim.sponsorSignature = abi.encodePacked(r, vs);
+                (r, vs) = vm.signCompact(allocatorPrivateKey, digest);
+                claim.allocatorData = abi.encodePacked(r, vs);
+            }
+        }
+
+        // Create batch claim components
+        SplitBatchClaimComponent[] memory claims = new SplitBatchClaimComponent[](1);
+        {
+            SplitComponent[] memory recipients = new SplitComponent[](2);
+            {
+                uint256 claimantOne = abi.decode(
+                    abi.encodePacked(bytes12(bytes32(ids[0])), 0x1111111111111111111111111111111111111111), (uint256)
+                );
+                uint256 claimantTwo = abi.decode(
+                    abi.encodePacked(bytes12(bytes32(ids[0])), 0x3333333333333333333333333333333333333333), (uint256)
+                );
+
+                SplitComponent memory splitOne = SplitComponent({ claimant: claimantOne, amount: 4e17 });
+                SplitComponent memory splitTwo = SplitComponent({ claimant: claimantTwo, amount: 6e17 });
+
+                recipients[0] = splitOne;
+                recipients[1] = splitTwo;
+            }
+            claims[0] = SplitBatchClaimComponent({ id: ids[0], allocatedAmount: 1e18, portions: recipients });
+        }
+
+        // Execute claim and verify - first part
+        {
+            uint256 snapshotId = vm.snapshotState();
+
+            {
+                claim.claims = claims;
+
+                vm.prank(0x2222222222222222222222222222222222222222);
+                bytes32 returnedClaimHash = theCompact.claim(claim);
+                vm.snapshotGasLastCall("splitBatchMultichainClaimWithWitness");
+                assertEq(returnedClaimHash, claimHash);
+
+                assertEq(address(theCompact).balance, 1e18);
+                assertEq(0x1111111111111111111111111111111111111111.balance, 0);
+                assertEq(0x3333333333333333333333333333333333333333.balance, 0);
+                assertEq(theCompact.balanceOf(swapper, ids[0]), 0);
+                assertEq(theCompact.balanceOf(0x1111111111111111111111111111111111111111, ids[0]), 4e17);
+                assertEq(theCompact.balanceOf(0x3333333333333333333333333333333333333333, ids[0]), 6e17);
+            }
+
+            vm.revertToStateAndDelete(snapshotId);
+        }
+
+        // Change to "new chain" and execute exogenous claim
+        {
+            // Save current chain ID and switch to another
+            uint256 notarizedChainId = abi.decode(abi.encode(block.chainid), (uint256));
+            vm.chainId(anotherChainId);
+            assertEq(block.chainid, anotherChainId);
+
+            assert(initialDomainSeparator != theCompact.DOMAIN_SEPARATOR());
+
+            // Prepare additional chains
+            bytes32[] memory additionalChains = new bytes32[](1);
+            additionalChains[0] = allocationHashOne;
+
+            // Create new recipients for different IDs
+            SplitBatchClaimComponent[] memory newClaims = new SplitBatchClaimComponent[](2);
+            {
+                // First claim component
+                {
+                    uint256 claimantOne = abi.decode(
+                        abi.encodePacked(bytes12(bytes32(ids[1])), 0x1111111111111111111111111111111111111111),
+                        (uint256)
+                    );
+
+                    SplitComponent[] memory anotherRecipient = new SplitComponent[](1);
+                    anotherRecipient[0] = SplitComponent({ claimant: claimantOne, amount: 1e18 });
+
+                    newClaims[0] =
+                        SplitBatchClaimComponent({ id: ids[1], allocatedAmount: 1e18, portions: anotherRecipient });
+                }
+
+                // Second claim component
+                {
+                    uint256 claimantOne = abi.decode(
+                        abi.encodePacked(bytes12(bytes32(ids[2])), 0x1111111111111111111111111111111111111111),
+                        (uint256)
+                    );
+                    uint256 claimantTwo = abi.decode(
+                        abi.encodePacked(bytes12(bytes32(ids[2])), 0x3333333333333333333333333333333333333333),
+                        (uint256)
+                    );
+
+                    SplitComponent[] memory aThirdPortion = new SplitComponent[](2);
+                    aThirdPortion[0] = SplitComponent({ claimant: claimantOne, amount: 4e17 });
+                    aThirdPortion[1] = SplitComponent({ claimant: claimantTwo, amount: 6e17 });
+
+                    newClaims[1] =
+                        SplitBatchClaimComponent({ id: ids[2], allocatedAmount: 1e18, portions: aThirdPortion });
+                }
+            }
+
+            // Set up exogenous claim
+            ExogenousBatchMultichainClaim memory anotherClaim;
+
+            // Create exogenous allocator signature
+            {
+                bytes32 digest = _createDigest(theCompact.DOMAIN_SEPARATOR(), claimHash);
+                (bytes32 r, bytes32 vs) = vm.signCompact(allocatorPrivateKey, digest);
+                anotherClaim.allocatorData = abi.encodePacked(r, vs);
+            }
+            {
+                anotherClaim.sponsorSignature = claim.sponsorSignature;
+                anotherClaim.sponsor = claim.sponsor;
+                anotherClaim.nonce = claim.nonce;
+                anotherClaim.expires = claim.expires;
+                anotherClaim.witness = claim.witness;
+                anotherClaim.witnessTypestring = "CompactWitness witness)CompactWitness(uint256 witnessArgument)";
+                anotherClaim.additionalChains = additionalChains;
+                anotherClaim.chainIndex = 0;
+                anotherClaim.notarizedChainId = notarizedChainId;
+                anotherClaim.claims = newClaims;
+            }
+
+            // Execute exogenous claim
+            {
+                vm.prank(0x2222222222222222222222222222222222222222);
+                bytes32 returnedClaimHash = theCompact.claim(anotherClaim);
+                vm.snapshotGasLastCall("exogenousSplitBatchMultichainClaimWithWitness");
+                assertEq(returnedClaimHash, claimHash);
+            }
+
+            // Verify balances
+            assertEq(theCompact.balanceOf(swapper, ids[1]), 0);
+            assertEq(theCompact.balanceOf(0x1111111111111111111111111111111111111111, ids[1]), 1e18);
+            assertEq(theCompact.balanceOf(0x1111111111111111111111111111111111111111, ids[2]), 4e17);
+            assertEq(theCompact.balanceOf(0x3333333333333333333333333333333333333333, ids[2]), 6e17);
+
+            // Change back to original chain
+            vm.chainId(notarizedChainId);
+            assertEq(block.chainid, notarizedChainId);
+        }
+    }
+
+    function test_claimAndWithdraw_withEmissary() public {
+        uint256 amount = 1e18;
+        uint256 nonce = 0;
+        uint256 expires = block.timestamp + 1000;
         address recipientOne = 0x1111111111111111111111111111111111111111;
         address recipientTwo = 0x3333333333333333333333333333333333333333;
         uint256 amountOne = 4e17;
         uint256 amountTwo = 6e17;
+        address arbiter = 0x2222222222222222222222222222222222222222;
 
-        vm.prank(allocator);
-        uint96 allocatorId = theCompact.__registerAllocator(allocator, "");
+        (, bytes12 lockTag) = _registerAllocator(allocator);
 
-        bytes12 lockTag = bytes12(
-            bytes32(
-                (uint256(Scope.Multichain) << 255) | (uint256(ResetPeriod.TenMinutes) << 252)
-                    | (uint256(allocatorId) << 160)
-            )
-        );
+        address emissary = address(new AlwaysOKEmissary());
+        vm.prank(swapper);
+        theCompact.assignEmissary(lockTag, emissary);
 
-        vm.startPrank(swapper);
-        uint256 id = theCompact.deposit{ value: amount }(lockTag, swapper);
+        uint256 id = _makeDeposit(swapper, amount, lockTag);
 
-        uint256 anotherId = theCompact.deposit(address(token), lockTag, anotherAmount, swapper);
-        assertEq(theCompact.balanceOf(swapper, anotherId), anotherAmount);
+        bytes32 claimHash;
+        bytes32 witness = _createCompactWitness(234);
+        {
+            CreateClaimHashWithWitnessArgs memory args;
+            args.typehash = compactWithWitnessTypehash;
+            args.arbiter = arbiter;
+            args.sponsor = swapper;
+            args.nonce = nonce;
+            args.expires = expires;
+            args.id = id;
+            args.amount = amount;
+            args.witness = witness;
 
-        uint256 aThirdId = theCompact.deposit(address(anotherToken), lockTag, aThirdAmount, swapper);
-        assertEq(theCompact.balanceOf(swapper, aThirdId), aThirdAmount);
+            claimHash = _createClaimHashWithWitness(args);
+        }
 
-        vm.stopPrank();
+        Claim memory claim;
+        {
+            bytes32 digest = _createDigest(theCompact.DOMAIN_SEPARATOR(), claimHash);
 
-        assertEq(theCompact.balanceOf(swapper, id), amount);
-        assertEq(theCompact.balanceOf(swapper, anotherId), anotherAmount);
-        assertEq(theCompact.balanceOf(swapper, aThirdId), aThirdAmount);
+            (bytes32 r, bytes32 vs) = vm.signCompact(swapperPrivateKey, digest);
+            claim.sponsorSignature = hex"41414141414141414141";
 
-        uint256[2][] memory idsAndAmounts = new uint256[2][](3);
-        idsAndAmounts[0] = [id, amount];
-        idsAndAmounts[1] = [anotherId, anotherAmount];
-        idsAndAmounts[2] = [aThirdId, aThirdAmount];
-
-        uint256 anotherChainId = 7171717;
-
-        uint256[2][] memory idsAndAmountsOne = new uint256[2][](1);
-        idsAndAmountsOne[0] = [id, amount];
-
-        uint256[2][] memory idsAndAmountsTwo = new uint256[2][](2);
-        idsAndAmountsTwo[0] = [anotherId, anotherAmount];
-        idsAndAmountsTwo[1] = [aThirdId, aThirdAmount];
-
-        uint256 witnessArgument = 234;
-        bytes32 witness = keccak256(abi.encode(witnessArgument));
-
-        bytes32 allocationHashOne = keccak256(
-            abi.encode(
-                keccak256(
-                    "Segment(address arbiter,uint256 chainId,uint256[2][] idsAndAmounts,Witness witness)Witness(uint256 witnessArgument)"
-                ),
-                arbiter,
-                block.chainid,
-                keccak256(abi.encodePacked(idsAndAmountsOne)),
-                witness
-            )
-        );
-
-        bytes32 allocationHashTwo = keccak256(
-            abi.encode(
-                keccak256(
-                    "Segment(address arbiter,uint256 chainId,uint256[2][] idsAndAmounts,Witness witness)Witness(uint256 witnessArgument)"
-                ),
-                arbiter,
-                anotherChainId,
-                keccak256(abi.encodePacked(idsAndAmountsTwo)),
-                witness
-            )
-        );
-
-        bytes32[] memory additionalChains = new bytes32[](1);
-        additionalChains[0] = allocationHashTwo;
-
-        bytes32 claimHash = keccak256(
-            abi.encode(
-                keccak256(
-                    "MultichainCompact(address sponsor,uint256 nonce,uint256 expires,Segment[] segments)Segment(address arbiter,uint256 chainId,uint256[2][] idsAndAmounts,Witness witness)Witness(uint256 witnessArgument)"
-                ),
-                swapper,
-                0,
-                expires,
-                keccak256(abi.encodePacked(allocationHashOne, allocationHashTwo))
-            )
-        );
-
-        bytes32 initialDomainSeparator = theCompact.DOMAIN_SEPARATOR();
-
-        bytes32 digest = keccak256(abi.encodePacked(bytes2(0x1901), theCompact.DOMAIN_SEPARATOR(), claimHash));
-
-        (bytes32 r, bytes32 vs) = vm.signCompact(swapperPrivateKey, digest);
-        bytes memory sponsorSignature = abi.encodePacked(r, vs);
-
-        (r, vs) = vm.signCompact(allocatorPrivateKey, digest);
-
-        SplitBatchClaimComponent[] memory claims = new SplitBatchClaimComponent[](1);
-        SplitComponent[] memory recipients = new SplitComponent[](2);
+            (r, vs) = vm.signCompact(allocatorPrivateKey, digest);
+            claim.allocatorData = abi.encodePacked(r, vs);
+        }
 
         {
-            uint256 claimantOne = abi.decode(abi.encodePacked(bytes12(bytes32(id)), recipientOne), (uint256));
-            uint256 claimantTwo = abi.decode(abi.encodePacked(bytes12(bytes32(id)), recipientTwo), (uint256));
+            uint256 claimantOne = abi.decode(abi.encodePacked(bytes12(0), recipientOne), (uint256));
+            uint256 claimantTwo = abi.decode(abi.encodePacked(bytes12(0), recipientTwo), (uint256));
 
             SplitComponent memory splitOne = SplitComponent({ claimant: claimantOne, amount: amountOne });
 
             SplitComponent memory splitTwo = SplitComponent({ claimant: claimantTwo, amount: amountTwo });
 
+            SplitComponent[] memory recipients = new SplitComponent[](2);
             recipients[0] = splitOne;
             recipients[1] = splitTwo;
 
-            claims[0] = SplitBatchClaimComponent({ id: id, allocatedAmount: amount, portions: recipients });
+            claim.claimants = recipients;
         }
 
-        BatchMultichainClaim memory claim;
-        claim.sponsorSignature = sponsorSignature;
-
-        {
-            uint256 snapshotId = vm.snapshotState();
-
-            claim.allocatorData = abi.encodePacked(r, vs);
-            claim.sponsor = swapper;
-            claim.nonce = 0;
-            claim.expires = expires;
-            claim.witness = witness;
-            claim.witnessTypestring = "Witness witness)Witness(uint256 witnessArgument)";
-            claim.additionalChains = additionalChains;
-            claim.claims = claims;
-
-            vm.prank(arbiter);
-            (bytes32 returnedClaimHash) = theCompact.claim(claim);
-            vm.snapshotGasLastCall("splitBatchMultichainClaimWithWitness");
-            assertEq(returnedClaimHash, claimHash);
-
-            assertEq(address(theCompact).balance, amount);
-            assertEq(recipientOne.balance, 0);
-            assertEq(recipientTwo.balance, 0);
-            assertEq(theCompact.balanceOf(swapper, id), 0);
-            assertEq(theCompact.balanceOf(recipientOne, id), amountOne);
-            assertEq(theCompact.balanceOf(recipientTwo, id), amountTwo);
-            vm.revertToStateAndDelete(snapshotId);
-        }
-
-        // change to "new chain" (this hack is so the original one gets stored)
-        uint256 notarizedChainId = abi.decode(abi.encode(block.chainid), (uint256));
-        assert(notarizedChainId != anotherChainId);
-        vm.chainId(anotherChainId);
-        assertEq(block.chainid, anotherChainId);
-        assert(notarizedChainId != anotherChainId);
-
-        assert(initialDomainSeparator != theCompact.DOMAIN_SEPARATOR());
-
-        digest = keccak256(abi.encodePacked(bytes2(0x1901), theCompact.DOMAIN_SEPARATOR(), claimHash));
-
-        (r, vs) = vm.signCompact(allocatorPrivateKey, digest);
-
-        additionalChains[0] = allocationHashOne;
-
-        {
-            uint256 claimantOne = abi.decode(abi.encodePacked(bytes12(bytes32(anotherId)), recipientOne), (uint256));
-            uint256 claimantTwo = abi.decode(abi.encodePacked(bytes12(bytes32(anotherId)), recipientTwo), (uint256));
-            recipients[0].claimant = claimantOne;
-            recipients[1].claimant = claimantTwo;
-
-            uint256 claimantThree = abi.decode(abi.encodePacked(bytes12(bytes32(aThirdId)), recipientOne), (uint256));
-
-            SplitComponent memory anotherSplit = SplitComponent({ claimant: claimantThree, amount: anotherAmount });
-
-            SplitComponent[] memory anotherRecipient = new SplitComponent[](1);
-            anotherRecipient[0] = anotherSplit;
-
-            claims = new SplitBatchClaimComponent[](2);
-            claims[0] =
-                SplitBatchClaimComponent({ id: anotherId, allocatedAmount: anotherAmount, portions: anotherRecipient });
-            claims[1] = SplitBatchClaimComponent({ id: aThirdId, allocatedAmount: aThirdAmount, portions: recipients });
-        }
-
-        ExogenousBatchMultichainClaim memory anotherClaim;
-        anotherClaim.allocatorData = abi.encodePacked(r, vs);
-        anotherClaim.sponsorSignature = sponsorSignature;
-        anotherClaim.witnessTypestring = "Witness witness)Witness(uint256 witnessArgument)";
-        anotherClaim.additionalChains = additionalChains;
-
-        {
-            anotherClaim.sponsor = swapper;
-            anotherClaim.nonce = 0;
-            anotherClaim.expires = expires;
-            anotherClaim.witness = witness;
-            anotherClaim.chainIndex = 0;
-            anotherClaim.notarizedChainId = notarizedChainId;
-            anotherClaim.claims = claims;
-        }
-
-        {
-            vm.prank(arbiter);
-            (bytes32 returnedClaimHash) = theCompact.claim(anotherClaim);
-            vm.snapshotGasLastCall("exogenousSplitBatchMultichainClaimWithWitness");
-            assertEq(returnedClaimHash, claimHash);
-        }
-
-        assertEq(theCompact.balanceOf(swapper, anotherId), 0);
-        assertEq(theCompact.balanceOf(recipientOne, anotherId), anotherAmount);
-        assertEq(theCompact.balanceOf(recipientOne, aThirdId), amountOne);
-        assertEq(theCompact.balanceOf(recipientTwo, aThirdId), amountTwo);
-
-        // change back
-        vm.chainId(notarizedChainId);
-        assertEq(block.chainid, notarizedChainId);
-    }
-
-    function test_claimAndWithdraw_withEmissary() public {
-        ResetPeriod resetPeriod = ResetPeriod.TenMinutes;
-        Scope scope = Scope.Multichain;
-        uint256 amount = 1e18;
-        uint256 nonce = 0;
-        uint256 expires = block.timestamp + 1000;
-        address recipientOne = 0x1111111111111111111111111111111111111111;
-        address recipientTwo = 0x3333333333333333333333333333333333333333;
-        uint256 amountOne = 4e17;
-        uint256 amountTwo = 6e17;
-        address arbiter = 0x2222222222222222222222222222222222222222;
-
-        vm.prank(allocator);
-        uint96 allocatorId = theCompact.__registerAllocator(allocator, "");
-
-        address emissary = address(new AlwaysOKEmissary());
-        bytes12 lockTag = allocatorId.toLockTag(scope, resetPeriod);
-        vm.prank(swapper);
-        theCompact.assignEmissary(lockTag, emissary);
-
-        vm.prank(swapper);
-        uint256 id = theCompact.deposit{ value: amount }(lockTag, swapper);
-        assertEq(theCompact.balanceOf(swapper, id), amount);
-
-        string memory witnessTypestring = "CompactWitness witness)CompactWitness(uint256 witnessArgument)";
-        uint256 witnessArgument = 234;
-        bytes32 witness = keccak256(abi.encode(keccak256("CompactWitness(uint256 witnessArgument)"), witnessArgument));
-
-        string memory compactTypestring =
-            "Compact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256 id,uint256 amount,CompactWitness witness)CompactWitness(uint256 witnessArgument)";
-
-        bytes32 typehash = keccak256(bytes(compactTypestring));
-
-        bytes32 claimHash = keccak256(abi.encode(typehash, arbiter, swapper, nonce, expires, id, amount, witness));
-
-        bytes32 digest = keccak256(abi.encodePacked(bytes2(0x1901), theCompact.DOMAIN_SEPARATOR(), claimHash));
-
-        (bytes32 r, bytes32 vs) = vm.signCompact(swapperPrivateKey, digest);
-        bytes memory sponsorSignature = hex"41414141414141414141";
-
-        (r, vs) = vm.signCompact(allocatorPrivateKey, digest);
-        bytes memory allocatorData = abi.encodePacked(r, vs);
-
-        uint256 claimantOne = abi.decode(abi.encodePacked(bytes12(0), recipientOne), (uint256));
-        uint256 claimantTwo = abi.decode(abi.encodePacked(bytes12(0), recipientTwo), (uint256));
-
-        SplitComponent memory splitOne = SplitComponent({ claimant: claimantOne, amount: amountOne });
-
-        SplitComponent memory splitTwo = SplitComponent({ claimant: claimantTwo, amount: amountTwo });
-
-        SplitComponent[] memory recipients = new SplitComponent[](2);
-        recipients[0] = splitOne;
-        recipients[1] = splitTwo;
-
-        Claim memory claim = Claim(
-            allocatorData, sponsorSignature, swapper, nonce, expires, witness, witnessTypestring, id, amount, recipients
-        );
+        claim.sponsor = swapper;
+        claim.nonce = nonce;
+        claim.expires = expires;
+        claim.witness = witness;
+        claim.witnessTypestring = witnessTypestring;
+        claim.id = id;
+        claim.allocatedAmount = amount;
 
         vm.prank(arbiter);
         (bytes32 returnedClaimHash) = theCompact.claim(claim);
@@ -2413,17 +3125,9 @@ contract TheCompactTest is Test {
         address recipient = 0x1111111111111111111111111111111111111111;
         uint256 amount = 1e18;
 
-        uint96 allocatorId = theCompact.__registerAllocator(alwaysOKAllocator, "");
+        (, bytes12 lockTag) = _registerAllocator(alwaysOKAllocator);
 
-        bytes12 lockTag = bytes12(
-            bytes32(
-                (uint256(Scope.Multichain) << 255) | (uint256(ResetPeriod.TenMinutes) << 252)
-                    | (uint256(allocatorId) << 160)
-            )
-        );
-
-        vm.prank(swapper);
-        uint256 id = theCompact.deposit{ value: amount }(lockTag);
+        uint256 id = _makeDeposit(swapper, amount, lockTag);
 
         assertEq(address(theCompact).balance, amount);
         assertEq(theCompact.balanceOf(swapper, id), amount);
@@ -2480,5 +3184,215 @@ contract TheCompactTest is Test {
         }
         // if the loop exits, the address is the 0 address
         return 40;
+    }
+
+    /**
+     * Helper function to create a lock tag with the given parameters
+     */
+    function _createLockTag(ResetPeriod resetPeriod, Scope scope, uint96 allocatorId) internal pure returns (bytes12) {
+        return bytes12(bytes32((uint256(scope) << 255) | (uint256(resetPeriod) << 252) | (uint256(allocatorId) << 160)));
+    }
+
+    /**
+     * Helper function to create and register an allocator
+     */
+    function _registerAllocator(address _allocator) internal returns (uint96 allocatorId, bytes12 lockTag) {
+        vm.prank(_allocator);
+        allocatorId = theCompact.__registerAllocator(_allocator, "");
+        lockTag = _createLockTag(ResetPeriod.TenMinutes, Scope.Multichain, allocatorId);
+        return (allocatorId, lockTag);
+    }
+
+    /**
+     * Helper function to create a witness hash for a compact witness
+     */
+    function _createCompactWitness(uint256 _witnessArgument) internal pure returns (bytes32 witness) {
+        witness = keccak256(abi.encode(keccak256("CompactWitness(uint256 witnessArgument)"), _witnessArgument));
+        return witness;
+    }
+
+    function _createClaimHash(
+        bytes32 typehash,
+        address arbiter,
+        address sponsor,
+        uint256 nonce,
+        uint256 expires,
+        uint256 id,
+        uint256 amount
+    ) internal pure returns (bytes32) {
+        return keccak256(abi.encode(typehash, arbiter, sponsor, nonce, expires, id, amount));
+    }
+
+    /**
+     * Helper function to create a claim hash with witness
+     */
+    function _createClaimHashWithWitness(CreateClaimHashWithWitnessArgs memory args) internal pure returns (bytes32) {
+        return keccak256(
+            abi.encode(
+                args.typehash, args.arbiter, args.sponsor, args.nonce, args.expires, args.id, args.amount, args.witness
+            )
+        );
+    }
+
+    /**
+     * Helper function to create a batch claim hash with witness
+     */
+    function _createBatchClaimHashWithWitness(CreateBatchClaimHashWithWitnessArgs memory args)
+        internal
+        pure
+        returns (bytes32)
+    {
+        return keccak256(
+            abi.encode(
+                args.typehash,
+                args.arbiter,
+                args.sponsor,
+                args.nonce,
+                args.expires,
+                args.idsAndAmountsHash,
+                args.witness
+            )
+        );
+    }
+
+    function _createDigest(bytes32 domainSeparator, bytes32 hashValue) internal pure returns (bytes32) {
+        return keccak256(abi.encodePacked(bytes2(0x1901), domainSeparator, hashValue));
+    }
+
+    /**
+     * Helper function to create a permit batch witness digest
+     */
+    function _createPermitBatchWitnessDigest(CreatePermitBatchWitnessDigestArgs memory args)
+        internal
+        pure
+        returns (bytes32)
+    {
+        bytes32 activationHash = keccak256(abi.encode(args.activationTypehash, args.idsHash, args.claimHash));
+
+        bytes32 permitBatchHash = keccak256(
+            abi.encode(
+                keccak256(
+                    "PermitBatchWitnessTransferFrom(TokenPermissions[] permitted,address spender,uint256 nonce,uint256 deadline,BatchActivation witness)BatchActivation(uint256[] ids,BatchCompact compact)BatchCompact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256[2][] idsAndAmounts,CompactWitness witness)CompactWitness(uint256 witnessArgument)TokenPermissions(address token,uint256 amount)"
+                ),
+                args.tokenPermissionsHash,
+                args.spender,
+                args.nonce,
+                args.deadline,
+                activationHash
+            )
+        );
+
+        return keccak256(abi.encodePacked(bytes2(0x1901), args.domainSeparator, permitBatchHash));
+    }
+
+    function _setupPermitCallExpectation(SetupPermitCallExpectationArgs memory args) internal {
+        // Create token permissions for the call
+        ISignatureTransfer.TokenPermissions[] memory tokenPermissionsOnCall =
+            new ISignatureTransfer.TokenPermissions[](2);
+        tokenPermissionsOnCall[0] = ISignatureTransfer.TokenPermissions({ token: address(token), amount: 1e18 });
+        tokenPermissionsOnCall[1] = ISignatureTransfer.TokenPermissions({ token: address(anotherToken), amount: 1e18 });
+
+        // Create signature transfer details
+        ISignatureTransfer.SignatureTransferDetails[] memory signatureTransferDetails =
+            new ISignatureTransfer.SignatureTransferDetails[](2);
+        signatureTransferDetails[0] =
+            ISignatureTransfer.SignatureTransferDetails({ to: address(theCompact), requestedAmount: 1e18 });
+        signatureTransferDetails[1] =
+            ISignatureTransfer.SignatureTransferDetails({ to: address(theCompact), requestedAmount: 1e18 });
+
+        // Create activation hash
+        bytes32 activationHash =
+            keccak256(abi.encode(args.activationTypehash, keccak256(abi.encodePacked(args.ids)), args.claimHash));
+
+        // Setup expectation
+        vm.expectCall(
+            address(permit2),
+            abi.encodeWithSignature(
+                "permitWitnessTransferFrom(((address,uint256)[],uint256,uint256),(address,uint256)[],address,bytes32,string,bytes)",
+                ISignatureTransfer.PermitBatchTransferFrom({
+                    permitted: tokenPermissionsOnCall,
+                    nonce: args.nonce,
+                    deadline: args.deadline
+                }),
+                signatureTransferDetails,
+                swapper,
+                activationHash,
+                "BatchActivation witness)BatchActivation(uint256[] ids,BatchCompact compact)BatchCompact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256[2][] idsAndAmounts,CompactWitness witness)CompactWitness(uint256 witnessArgument)TokenPermissions(address token,uint256 amount)",
+                args.signature
+            )
+        );
+    }
+
+    function _createPermit2BatchSignature(
+        address[] memory tokens,
+        uint256[] memory amounts,
+        uint256 nonce,
+        uint256 deadline,
+        bytes12 lockTag,
+        address recipient,
+        uint256 privateKey
+    ) internal view returns (bytes memory signature, ISignatureTransfer.TokenPermissions[] memory tokenPermissions) {
+        // Create token permissions array
+        tokenPermissions = new ISignatureTransfer.TokenPermissions[](tokens.length);
+        for (uint256 i = 0; i < tokens.length; i++) {
+            tokenPermissions[i] = ISignatureTransfer.TokenPermissions({ token: tokens[i], amount: amounts[i] });
+        }
+
+        // Create digest for signing
+        bytes32 domainSeparator =
+            keccak256(abi.encode(permit2EIP712DomainHash, keccak256(bytes("Permit2")), block.chainid, address(permit2)));
+
+        bytes32 tokenPermissionsPortion = keccak256(
+            abi.encode(
+                keccak256(
+                    abi.encode(
+                        keccak256("TokenPermissions(address token,uint256 amount)"),
+                        tokens[tokens.length > 1 ? 1 : 0],
+                        amounts[tokens.length > 1 ? 1 : 0]
+                    )
+                )
+            )
+        );
+
+        bytes32 digest = keccak256(
+            abi.encodePacked(
+                bytes2(0x1901),
+                domainSeparator,
+                keccak256(
+                    abi.encode(
+                        keccak256(
+                            "PermitBatchWitnessTransferFrom(TokenPermissions[] permitted,address spender,uint256 nonce,uint256 deadline,CompactDeposit witness)CompactDeposit(bytes12 lockTag,address recipient)TokenPermissions(address token,uint256 amount)"
+                        ),
+                        tokenPermissionsPortion,
+                        address(theCompact), // spender
+                        nonce,
+                        deadline,
+                        keccak256(
+                            abi.encode(
+                                keccak256("CompactDeposit(bytes12 lockTag,address recipient)"), lockTag, recipient
+                            )
+                        )
+                    )
+                )
+            )
+        );
+
+        // Sign the digest
+        (bytes32 r, bytes32 vs) = vm.signCompact(privateKey, digest);
+        signature = abi.encodePacked(r, vs);
+
+        return (signature, tokenPermissions);
+    }
+
+    function _makeDeposit(address guy, uint256 amount, bytes12 lockTag) internal returns (uint256 id) {
+        vm.prank(guy);
+        id = theCompact.deposit{ value: amount }(lockTag, guy);
+        assertEq(theCompact.balanceOf(guy, id), amount);
+    }
+
+    function _makeDeposit(address guy, address asset, uint256 amount, bytes12 lockTag) internal returns (uint256 id) {
+        vm.prank(guy);
+        id = theCompact.deposit(asset, lockTag, amount, guy);
+        assertEq(theCompact.balanceOf(guy, id), amount);
     }
 }

@@ -11,6 +11,7 @@ import { Scope } from "./types/Scope.sol";
 import { ResetPeriod } from "./types/ResetPeriod.sol";
 import { ForcedWithdrawalStatus } from "./types/ForcedWithdrawalStatus.sol";
 import { EmissaryStatus } from "./types/EmissaryStatus.sol";
+import { DepositDetails } from "./types/DepositDetails.sol";
 
 import { TheCompactLogic } from "./lib/TheCompactLogic.sol";
 
@@ -139,39 +140,31 @@ contract TheCompact is ITheCompact, ERC6909, TheCompactLogic {
     }
 
     function deposit(
-        address token,
-        uint256, // amount
-        uint256, // nonce
-        uint256, // deadline
+        ISignatureTransfer.PermitTransferFrom calldata permit,
         address, // depositor
         bytes12, // lockTag
         address recipient,
         bytes calldata signature
     ) external returns (uint256) {
-        return _depositViaPermit2(token, recipient, signature);
+        return _depositViaPermit2(permit.permitted.token, recipient, signature);
     }
 
     function depositAndRegister(
-        address token,
-        uint256, // amount
-        uint256, // nonce
-        uint256, // deadline
+        ISignatureTransfer.PermitTransferFrom calldata permit,
         address depositor, // also recipient
         bytes12, // lockTag
         bytes32 claimHash,
-        CompactCategory compactCategory,
+        CompactCategory, // compactCategory
         string calldata witness,
         bytes calldata signature
     ) external returns (uint256) {
-        return _depositAndRegisterViaPermit2(token, depositor, claimHash, compactCategory, witness, signature);
+        return _depositAndRegisterViaPermit2(permit.permitted.token, depositor, claimHash, witness, signature);
     }
 
     function deposit(
         address, // depositor
         ISignatureTransfer.TokenPermissions[] calldata permitted,
-        uint256, // nonce
-        uint256, // deadline
-        bytes12, // lockTag
+        DepositDetails calldata,
         address recipient,
         bytes calldata signature
     ) external payable returns (uint256[] memory) {
@@ -181,15 +174,13 @@ contract TheCompact is ITheCompact, ERC6909, TheCompactLogic {
     function depositAndRegister(
         address depositor,
         ISignatureTransfer.TokenPermissions[] calldata permitted,
-        uint256, // nonce
-        uint256, // deadline
-        bytes12, // lockTag,
-        bytes32 claimHash,
-        CompactCategory compactCategory,
+        DepositDetails calldata,
+        bytes32, // claimHash
+        CompactCategory, // compactCategory
         string calldata witness,
         bytes calldata signature
     ) external payable returns (uint256[] memory) {
-        return _depositBatchAndRegisterViaPermit2(depositor, permitted, claimHash, compactCategory, witness, signature);
+        return _depositBatchAndRegisterViaPermit2(depositor, permitted, witness, signature);
     }
 
     function allocatedTransfer(SplitTransfer calldata transfer) external returns (bool) {
@@ -244,12 +235,14 @@ contract TheCompact is ITheCompact, ERC6909, TheCompactLogic {
         claimHash =
             HashLib.toFlatMessageHashWithWitness(sponsor, id, amount, arbiter, nonce, expires, typehash, witness);
 
-        // Initialize idsAndAmounts array.
-        uint256[2][] memory idsAndAmounts = new uint256[2][](1);
-        idsAndAmounts[0] = [id, amount];
+        {
+            // Initialize idsAndAmounts array.
+            uint256[2][] memory idsAndAmounts = new uint256[2][](1);
+            idsAndAmounts[0] = [id, amount];
 
-        // TOOD: support registering exogenous domain separators by passing notarized chainId
-        claimHash.hasValidSponsor(sponsor, sponsorSignature, _domainSeparator(), idsAndAmounts);
+            // TODO: support registering exogenous domain separators by passing notarized chainId?
+            claimHash.hasValidSponsor(sponsor, sponsorSignature, _domainSeparator(), idsAndAmounts);
+        }
 
         sponsor.registerCompact(claimHash, typehash);
     }
@@ -264,6 +257,19 @@ contract TheCompact is ITheCompact, ERC6909, TheCompactLogic {
         bytes32 witness,
         bytes calldata sponsorSignature
     ) external returns (bytes32 claimHash) {
+        _enforceConsistentAllocators(idsAndAmounts);
+
+        claimHash = HashLib.toFlatBatchClaimWithWitnessMessageHash(
+            sponsor, idsAndAmounts, arbiter, nonce, expires, typehash, witness
+        );
+
+        // TOOD: support registering exogenous domain separators by passing notarized chainId
+        claimHash.hasValidSponsor(sponsor, sponsorSignature, _domainSeparator(), idsAndAmounts);
+
+        sponsor.registerCompact(claimHash, typehash);
+    }
+
+    function _enforceConsistentAllocators(uint256[2][] calldata idsAndAmounts) internal view {
         // Retrieve the total number of IDs and amounts in the batch.
         uint256 totalIds = idsAndAmounts.length;
 
@@ -288,15 +294,6 @@ contract TheCompact is ITheCompact, ERC6909, TheCompactLogic {
         if (errorBuffer.asBool()) {
             revert InconsistentAllocators();
         }
-
-        claimHash = HashLib.toFlatBatchClaimWithWitnessMessageHash(
-            sponsor, idsAndAmounts, arbiter, nonce, expires, typehash, witness
-        );
-
-        // TOOD: support registering exogenous domain separators by passing notarized chainId
-        claimHash.hasValidSponsor(sponsor, sponsorSignature, _domainSeparator(), idsAndAmounts);
-
-        sponsor.registerCompact(claimHash, typehash);
     }
 
     function assignEmissary(bytes12 lockTag, address emissary) external returns (bool) {
