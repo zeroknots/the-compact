@@ -3,7 +3,6 @@ pragma solidity ^0.8.27;
 
 import { RegistrationLib } from "./RegistrationLib.sol";
 import { HashLib } from "./HashLib.sol";
-import { COMPACT_TYPEHASH, BATCH_COMPACT_TYPEHASH } from "../types/EIP712Types.sol";
 import { ResetPeriod } from "../types/ResetPeriod.sol";
 
 /**

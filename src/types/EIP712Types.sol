@@ -106,25 +106,6 @@ bytes32 constant MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_FOUR =
 // uint176(abi.decode(bytes("56[2][] idsAndAmounts,"), (bytes22)))
 uint176 constant MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_FIVE = 0x35365b325d5b5d20696473416e64416d6f756e74732c;
 
-// The allocator can optionally attest to arbitrary parameters. Any EIP-712 data
-// type can be utilized as long as the first argument is the message hash of the
-// associated compact signed by the sponsor, which will be supplied by The Compact.
-// If additional parameters are not required, the allocator instead signs the same
-// payload as the sponsor.
-
-// An Emissary is an account that is authorized by a sponsor to register claims.
-// This could be a contract that facilitates the creation of dynamic claims, or
-// could relay multichain claims registerd on other domains.
-struct EmissaryAssignment {
-    address emissary; // The account to assign as the emissary.
-    uint256 nonce; // A parameter to enforce replay protection, scoped to sponsor.
-    uint256 expires; // The time at which the assignment expires.
-    bool assigned; // Whether to assign the emissary or to unassign them.
-}
-
-// keccak256(bytes("EmissaryAssignment(address emissary,uint256 nonce,uint256 expires)"))
-bytes32 constant EMISSARY_ASSIGNMENT_TYPEHASH = 0x5ca9a66b8bbf0d2316e90dfa3df465f0790b277b25393a3ef4d67e1f50865057;
-
 /// @dev `keccak256(bytes("CompactDeposit(bytes12 lockTag,address recipient)"))`.
 bytes32 constant PERMIT2_DEPOSIT_WITNESS_FRAGMENT_HASH =
     0xaced9f7c53bfda31d043cbef88f9ee23b8171ec904889af3d5d0b9b81914a404;
@@ -195,29 +176,6 @@ bytes32 constant PERMIT2_ACTIVATION_BATCH_COMPACT_TYPESTRING_FRAGMENT_THREE =
 // uint216(abi.decode(bytes("uint256[2][] idsAndAmounts,"), (bytes27)))
 uint216 constant PERMIT2_ACTIVATION_BATCH_COMPACT_TYPESTRING_FRAGMENT_FOUR =
     0x75696e743235365b325d5b5d20696473416e64416d6f756e74732c;
-
-// abi.decode(bytes("MultichainCompact compact)Multic"), (bytes32))
-bytes32 constant PERMIT2_ACTIVATION_MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_ONE =
-    0x4d756c7469636861696e436f6d7061637420636f6d70616374294d756c746963;
-
-// abi.decode(bytes("hainCompact(address sponsor,uint"), (bytes32))
-bytes32 constant PERMIT2_ACTIVATION_MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_TWO =
-    0x6861696e436f6d7061637428616464726573732073706f6e736f722c75696e74;
-
-// abi.decode(bytes("256 nonce,uint256 expires,Segmen"), (bytes32))
-bytes32 constant PERMIT2_ACTIVATION_MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_THREE =
-    0x323536206e6f6e63652c75696e7432353620657870697265732c5365676d656e;
-
-// abi.decode(bytes("t[] segments)Segment(address arb"), (bytes32))
-bytes32 constant PERMIT2_ACTIVATION_MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_FOUR =
-    0x745b5d207365676d656e7473295365676d656e74286164647265737320617262;
-
-// abi.decode(bytes("iter,uint256 chainId,uint256[2]["), (bytes32))
-bytes32 constant PERMIT2_ACTIVATION_MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_FIVE =
-    0x697465722c75696e7432353620636861696e49642c75696e743235365b325d5b;
-
-// uint128(abi.decode(bytes("] idsAndAmounts,"), (bytes16)))
-uint128 constant PERMIT2_ACTIVATION_MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_SIX = 0x5d20696473416e64416d6f756e74732c;
 
 // abi.decode(bytes(")TokenPermissions(address token,"), (bytes32))
 bytes32 constant TOKEN_PERMISSIONS_TYPESTRING_FRAGMENT_ONE =
