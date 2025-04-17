@@ -27,12 +27,6 @@ import {
     PERMIT2_ACTIVATION_BATCH_COMPACT_TYPESTRING_FRAGMENT_TWO,
     PERMIT2_ACTIVATION_BATCH_COMPACT_TYPESTRING_FRAGMENT_THREE,
     PERMIT2_ACTIVATION_BATCH_COMPACT_TYPESTRING_FRAGMENT_FOUR,
-    PERMIT2_ACTIVATION_MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_ONE,
-    PERMIT2_ACTIVATION_MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_TWO,
-    PERMIT2_ACTIVATION_MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_THREE,
-    PERMIT2_ACTIVATION_MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_FOUR,
-    PERMIT2_ACTIVATION_MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_FIVE,
-    PERMIT2_ACTIVATION_MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_SIX,
     COMPACT_DEPOSIT_TYPESTRING_FRAGMENT_ONE,
     COMPACT_DEPOSIT_TYPESTRING_FRAGMENT_TWO,
     COMPACT_DEPOSIT_TYPESTRING_FRAGMENT_THREE,
@@ -54,6 +48,8 @@ import {
 library DepositViaPermit2Lib {
     // Selector for the batch `permit2.permitWitnessTransferFrom` function.
     uint256 private constant _BATCH_PERMIT_WITNESS_TRANSFER_FROM_SELECTOR = 0xfe8ec1a7;
+
+    error InvalidCompactCategory();
 
     /**
      * @notice Internal view function for preparing batch deposit permit2 calldata.
@@ -130,7 +126,7 @@ library DepositViaPermit2Lib {
      * @notice Internal pure function for deriving typehashes and simultaneously
      * preparing the witness typestring component of the call to permit2.
      * @param memoryLocation      The memory pointer to the start of the typestring.
-     * @param category            The CompactCategory of the deposit.
+     * @param category            The CompactCategory of the deposit. Must be Compact or BatchCompact.
      * @param witness             The witness string to insert.
      * @param usingBatch          Whether the deposit involves a batch.
      * @return activationTypehash The derived activation typehash.
@@ -208,30 +204,11 @@ library DepositViaPermit2Lib {
                     categorySpecificStart := add(categorySpecificStart, 0x15)
                 }
 
-                // Handle MultichainCompact case if preparation of compact fragment has not begun.
+                // Revert on MultichainCompact case (registration only applies to the current chain).
                 if iszero(categorySpecificEnd) {
-                    // Prepare next typestring fragment using Multichain & Segment witness typestring.
-                    mstore(categorySpecificStart, PERMIT2_ACTIVATION_MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_ONE)
-                    mstore(
-                        add(categorySpecificStart, 0x20), PERMIT2_ACTIVATION_MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_TWO
-                    )
-                    mstore(
-                        add(categorySpecificStart, 0x40),
-                        PERMIT2_ACTIVATION_MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_THREE
-                    )
-                    mstore(
-                        add(categorySpecificStart, 0x60), PERMIT2_ACTIVATION_MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_FOUR
-                    )
-                    mstore(
-                        add(categorySpecificStart, 0x90), PERMIT2_ACTIVATION_MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_SIX
-                    )
-                    mstore(
-                        add(categorySpecificStart, 0x80), PERMIT2_ACTIVATION_MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_FIVE
-                    )
-
-                    // Set memory pointers for Activation and Category-specific data end.
-                    categorySpecificEnd := add(categorySpecificStart, 0xb0)
-                    categorySpecificStart := add(categorySpecificStart, 0x1a)
+                    // revert InvalidCompactCategory();
+                    mstore(0, 0xdae3f108)
+                    revert(0x1c, 4)
                 }
 
                 // Handle no-witness cases.
@@ -246,15 +223,11 @@ library DepositViaPermit2Lib {
                     // Derive total length of typestring and store at start of memory.
                     mstore(memLocation, sub(add(categorySpecificEnd, 0x2e), memoryOffset))
 
-                    // Retrieve and cache free memory pointer.
-                    let m := mload(0x40)
-
                     // Derive activation typehash based on the compact category for non-batch cases.
                     if iszero(usesBatch) {
                         // Prepare typehashes for Activation.
                         mstore(0, COMPACT_ACTIVATION_TYPEHASH)
                         mstore(0x20, BATCH_COMPACT_ACTIVATION_TYPEHASH)
-                        mstore(0x40, MULTICHAIN_COMPACT_ACTIVATION_TYPEHASH)
 
                         // Retrieve respective typehash by index.
                         derivedActivationTypehash := mload(indexWords)
@@ -265,7 +238,6 @@ library DepositViaPermit2Lib {
                         // Prepare typehashes for BatchActivation.
                         mstore(0, COMPACT_BATCH_ACTIVATION_TYPEHASH)
                         mstore(0x20, BATCH_COMPACT_BATCH_ACTIVATION_TYPEHASH)
-                        mstore(0x40, MULTICHAIN_COMPACT_BATCH_ACTIVATION_TYPEHASH)
 
                         // Retrieve respective typehash by index.
                         derivedActivationTypehash := mload(indexWords)
@@ -274,13 +246,9 @@ library DepositViaPermit2Lib {
                     // Prepare compact typehashes.
                     mstore(0, COMPACT_TYPEHASH)
                     mstore(0x20, BATCH_COMPACT_TYPEHASH)
-                    mstore(0x40, MULTICHAIN_COMPACT_TYPEHASH)
 
                     // Retrieve respective typehash by index.
                     derivedCompactTypehash := mload(indexWords)
-
-                    // Restore the free memory pointer.
-                    mstore(0x40, m)
 
                     // Leave the inline assembly scope early.
                     leave
