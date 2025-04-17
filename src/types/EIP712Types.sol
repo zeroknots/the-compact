@@ -27,6 +27,9 @@ bytes32 constant COMPACT_TYPESTRING_FRAGMENT_TWO = 0x73706f6e736f722c75696e74323
 // abi.decode(bytes("pires,uint256 id,uint256 amount,"), (bytes32))
 bytes32 constant COMPACT_TYPESTRING_FRAGMENT_THREE = 0x70697265732c75696e743235362069642c75696e7432353620616d6f756e742c;
 
+// uint192(abi.decode(bytes("Mandate mandate)Mandate("), (bytes24)))
+uint192 constant COMPACT_TYPESTRING_FRAGMENT_FOUR = 0x4d616e64617465206d616e64617465294d616e6461746528;
+
 // Message signed by the sponsor that specifies the conditions under which a set of
 // tokens, each sharing an allocator, can be claimed; the specified arbiter verifies
 // that those conditions have been met and specifies a set of beneficiaries that will
@@ -55,23 +58,20 @@ bytes32 constant BATCH_COMPACT_TYPESTRING_FRAGMENT_TWO =
 bytes32 constant BATCH_COMPACT_TYPESTRING_FRAGMENT_THREE =
     0x353620657870697265732c75696e743235365b325d5b5d20696473416e64416d;
 
-// uint48(abi.decode(bytes("ounts,"), (bytes6)))
-uint48 constant BATCH_COMPACT_TYPESTRING_FRAGMENT_FOUR = 0x6f756e74732c;
+// uint240(abi.decode(bytes("ounts,Mandate mandate)Mandate("), (bytes30)))
+uint240 constant BATCH_COMPACT_TYPESTRING_FRAGMENT_FOUR = 0x6f756e74732c4d616e64617465206d616e64617465294d616e6461746528;
 
 // A multichain compact can declare tokens and amounts to allocate from multiple chains,
 // each designated by their chainId. Any allocated tokens on an exogenous domain (e.g. all
-// but the first segment) must designate the Multichain scope. Each segment may designate
+// but the first element) must designate the Multichain scope. Each element may designate
 // a unique arbiter for the chain in question. Note that the witness data is distinct for
-// each segment, but all segments must share the same EIP-712 witness typestring.
-struct Segment {
+// each element, but all elements must share the same EIP-712 "Mandate" witness typestring.
+struct Element {
     address arbiter; // The account tasked with verifying and submitting the claim.
     uint256 chainId; // The chainId where the tokens are located.
     uint256[2][] idsAndAmounts; // The allocated token IDs and amounts.
-        // Optional witness may follow.
+        // Mandate (witness) must follow.
 }
-
-// keccak256(bytes("Segment(address arbiter,uint256 chainId,uint256[2][] idsAndAmounts)"))
-bytes32 constant SEGMENT_TYPEHASH = 0x295feb095767cc67d7e74695da0adaddede54d7b7194a8a5426fe8f0351e0337;
 
 // Message signed by the sponsor that specifies the conditions under which a set of
 // tokens across a number of different chains can be claimed; the specified arbiter on
@@ -81,11 +81,8 @@ struct MultichainCompact {
     address sponsor; // The account to source the tokens from.
     uint256 nonce; // A parameter to enforce replay protection, scoped to allocator.
     uint256 expires; // The time at which the claim expires.
-    Segment[] segments; // Arbiter, chainId, ids & amounts, and witness for each chain.
+    Element[] elements; // Arbiter, chainId, ids & amounts, and mandate for each chain.
 }
-
-// keccak256(bytes("MultichainCompact(address sponsor,uint256 nonce,uint256 expires,Segment[] segments)Segment(address arbiter,uint256 chainId,uint256[2][] idsAndAmounts)"))
-bytes32 constant MULTICHAIN_COMPACT_TYPEHASH = 0x5ca9a66b8bbf0d2316e90dfa3df465f0790b277b25393a3ef4d67e1f50865057;
 
 // abi.decode(bytes("MultichainCompact(address sponso"), (bytes32))
 bytes32 constant MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_ONE =
@@ -95,16 +92,20 @@ bytes32 constant MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_ONE =
 bytes32 constant MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_TWO =
     0x722c75696e74323536206e6f6e63652c75696e7432353620657870697265732c;
 
-// abi.decode(bytes("Segment[] segments)Segment(addre"), (bytes32))
+// abi.decode(bytes("Element[] elements)Element(addre"), (bytes32))
 bytes32 constant MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_THREE =
-    0x5365676d656e745b5d207365676d656e7473295365676d656e74286164647265;
+    0x456c656d656e745b5d20656c656d656e747329456c656d656e74286164647265;
 
 // abi.decode(bytes("ss arbiter,uint256 chainId,uint2"), (bytes32))
 bytes32 constant MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_FOUR =
     0x737320617262697465722c75696e7432353620636861696e49642c75696e7432;
 
-// uint176(abi.decode(bytes("56[2][] idsAndAmounts,"), (bytes22)))
-uint176 constant MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_FIVE = 0x35365b325d5b5d20696473416e64416d6f756e74732c;
+// abi.decode(bytes("56[2][] idsAndAmounts,Mandate ma"), (bytes32))
+bytes32 constant MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_FIVE =
+    0x35365b325d5b5d20696473416e64416d6f756e74732c4d616e64617465206d61;
+
+// uint112(abi.decode(bytes("ndate)Mandate("), (bytes14)))
+uint112 constant MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_SIX = 0x6e64617465294d616e6461746528;
 
 /// @dev `keccak256(bytes("CompactDeposit(bytes12 lockTag,address recipient)"))`.
 bytes32 constant PERMIT2_DEPOSIT_WITNESS_FRAGMENT_HASH =
@@ -116,20 +117,12 @@ bytes32 constant COMPACT_ACTIVATION_TYPEHASH = 0x2bf981c42c7f423b06fa49ba996d293
 /// @dev `keccak256(bytes("Activation(uint256 id,BatchCompact compact)BatchCompact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256[2][] idsAndAmounts)"))`.
 bytes32 constant BATCH_COMPACT_ACTIVATION_TYPEHASH = 0xd14445d78213a5acddfa89171b0199de521c3b36738b835264cae18f5a53dbf3;
 
-/// @dev `keccak256(bytes("Activation(uint256 id,MultichainCompact compact)MultichainCompact(address sponsor,uint256 nonce,uint256 expires,Segment[] segments)Segment(address arbiter,uint256 chainId,uint256[2][] idsAndAmounts)"))`.
-bytes32 constant MULTICHAIN_COMPACT_ACTIVATION_TYPEHASH =
-    0x329b3c527a3c74b8cabc51c304669d1866b87352cafdf440ef2becd6dc261d1e;
-
 /// @dev `keccak256(bytes("BatchActivation(uint256[] ids,Compact compact)Compact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256 id,uint256 amount)"))`.
 bytes32 constant COMPACT_BATCH_ACTIVATION_TYPEHASH = 0x45012d42fad8c9e937cff5a2d750ee18713dd45aadcd718660d5523056618d99;
 
 /// @dev `keccak256(bytes("BatchActivation(uint256[] ids,BatchCompact compact)BatchCompact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256[2][] idsAndAmounts)"))`.
 bytes32 constant BATCH_COMPACT_BATCH_ACTIVATION_TYPEHASH =
     0xc2e16a823b8cdddfdf889991d7a461f0a19faf1f8e608f1c164495a52151cc3e;
-
-/// @dev `keccak256(bytes("BatchActivation(uint256[] ids,MultichainCompact compact)MultichainCompact(address sponsor,uint256 nonce,uint256 expires,Segment[] segments)Segment(address arbiter,uint256 chainId,uint256[2][] idsAndAmounts)"))`.
-bytes32 constant MULTICHAIN_COMPACT_BATCH_ACTIVATION_TYPEHASH =
-    0xd2f6ad391328936f118250f231e63c7e639f9756a9ebf972d81763870a772d87;
 
 // abi.decode(bytes("Activation witness)Activation(ui"), (bytes32))
 bytes32 constant PERMIT2_DEPOSIT_WITH_ACTIVATION_TYPESTRING_FRAGMENT_ONE =
@@ -158,8 +151,12 @@ bytes32 constant PERMIT2_ACTIVATION_COMPACT_TYPESTRING_FRAGMENT_TWO =
 bytes32 constant PERMIT2_ACTIVATION_COMPACT_TYPESTRING_FRAGMENT_THREE =
     0x6e6f6e63652c75696e7432353620657870697265732c75696e74323536206964;
 
-// uint128(abi.decode(bytes(",uint256 amount,"), (bytes16)))
-uint128 constant PERMIT2_ACTIVATION_COMPACT_TYPESTRING_FRAGMENT_FOUR = 0x2c75696e7432353620616d6f756e742c;
+// abi.decode(bytes(",uint256 amount,Mandate mandate)"), (bytes32))
+bytes32 constant PERMIT2_ACTIVATION_COMPACT_TYPESTRING_FRAGMENT_FOUR =
+    0x2c75696e7432353620616d6f756e742c4d616e64617465206d616e6461746529;
+
+// uint64(abi.decode(bytes("Mandate("), (bytes8)))
+uint64 constant PERMIT2_ACTIVATION_COMPACT_TYPESTRING_FRAGMENT_FIVE = 0x4d616e6461746528;
 
 // abi.decode(bytes("BatchCompact compact)BatchCompac"), (bytes32))
 bytes32 constant PERMIT2_ACTIVATION_BATCH_COMPACT_TYPESTRING_FRAGMENT_ONE =
@@ -173,9 +170,12 @@ bytes32 constant PERMIT2_ACTIVATION_BATCH_COMPACT_TYPESTRING_FRAGMENT_TWO =
 bytes32 constant PERMIT2_ACTIVATION_BATCH_COMPACT_TYPESTRING_FRAGMENT_THREE =
     0x722c75696e74323536206e6f6e63652c75696e7432353620657870697265732c;
 
-// uint216(abi.decode(bytes("uint256[2][] idsAndAmounts,"), (bytes27)))
-uint216 constant PERMIT2_ACTIVATION_BATCH_COMPACT_TYPESTRING_FRAGMENT_FOUR =
-    0x75696e743235365b325d5b5d20696473416e64416d6f756e74732c;
+// abi.decode(bytes("uint256[2][] idsAndAmounts,Manda"), (bytes32))
+bytes32 constant PERMIT2_ACTIVATION_BATCH_COMPACT_TYPESTRING_FRAGMENT_FOUR =
+    0x75696e743235365b325d5b5d20696473416e64416d6f756e74732c4d616e6461;
+
+// uint216(abi.decode(bytes("te mandate)Mandate("), (bytes19)))
+uint216 constant PERMIT2_ACTIVATION_BATCH_COMPACT_TYPESTRING_FRAGMENT_FIVE = 0x7465206d616e64617465294d616e6461746528;
 
 // abi.decode(bytes(")TokenPermissions(address token,"), (bytes32))
 bytes32 constant TOKEN_PERMISSIONS_TYPESTRING_FRAGMENT_ONE =

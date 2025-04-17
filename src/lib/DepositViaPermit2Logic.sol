@@ -135,7 +135,6 @@ contract DepositViaPermit2Logic is DepositLogic {
                 bytes32 activationTypehash;
                 assembly ("memory-safe") {
                     compactCategory := calldataload(0xe4)
-                    if gt(compactCategory, 2) { revert(0, 0) }
                 }
 
                 // Continue preparing Permit2 call data and get activation and compact typehashes.

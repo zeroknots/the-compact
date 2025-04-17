@@ -4,7 +4,7 @@ pragma solidity ^0.8.13;
 import { Test, console } from "forge-std/Test.sol";
 import { TheCompact } from "../src/TheCompact.sol";
 import { MockERC20 } from "../lib/solady/test/utils/mocks/MockERC20.sol";
-import { Compact, BatchCompact, Segment } from "../src/types/EIP712Types.sol";
+import { Compact, BatchCompact, Element } from "../src/types/EIP712Types.sol";
 import { ResetPeriod } from "../src/types/ResetPeriod.sol";
 import { Scope } from "../src/types/Scope.sol";
 import { CompactCategory } from "../src/types/CompactCategory.sol";
@@ -121,8 +121,8 @@ contract TheCompactTest is Test {
     string constant compactTypestring =
         "Compact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256 id,uint256 amount)";
     string constant compactWitnessTypestring =
-        "Compact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256 id,uint256 amount,CompactWitness witness)CompactWitness(uint256 witnessArgument)";
-    string constant witnessTypestring = "CompactWitness witness)CompactWitness(uint256 witnessArgument)";
+        "Compact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256 id,uint256 amount,Mandate mandate)Mandate(uint256 witnessArgument)";
+    string constant witnessTypestring = "uint256 witnessArgument";
     bytes32 constant compactTypehash = keccak256(bytes(compactTypestring));
     bytes32 constant compactWithWitnessTypehash = keccak256(bytes(compactWitnessTypestring));
 
@@ -1848,7 +1848,7 @@ contract TheCompactTest is Test {
                     permitWitnessHash = keccak256(
                         abi.encode(
                             keccak256(
-                                "PermitWitnessTransferFrom(TokenPermissions permitted,address spender,uint256 nonce,uint256 deadline,Activation witness)Activation(uint256 id,Compact compact)Compact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256 id,uint256 amount,CompactWitness witness)CompactWitness(uint256 witnessArgument)TokenPermissions(address token,uint256 amount)"
+                                "PermitWitnessTransferFrom(TokenPermissions permitted,address spender,uint256 nonce,uint256 deadline,Activation witness)Activation(uint256 id,Compact compact)Compact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256 id,uint256 amount,Mandate mandate)Mandate(uint256 witnessArgument)TokenPermissions(address token,uint256 amount)"
                             ),
                             tokenPermissionsHash,
                             address(theCompact), // spender
@@ -1891,7 +1891,7 @@ contract TheCompactTest is Test {
                         }),
                         swapper,
                         activationHash,
-                        "Activation witness)Activation(uint256 id,Compact compact)Compact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256 id,uint256 amount,CompactWitness witness)CompactWitness(uint256 witnessArgument)TokenPermissions(address token,uint256 amount)",
+                        "Activation witness)Activation(uint256 id,Compact compact)Compact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256 id,uint256 amount,Mandate mandate)Mandate(uint256 witnessArgument)TokenPermissions(address token,uint256 amount)",
                         signature
                     )
                 );
@@ -2020,7 +2020,7 @@ contract TheCompactTest is Test {
             claim.witness = _createCompactWitness(234);
 
             string memory typestring =
-                "BatchCompact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256[2][] idsAndAmounts,CompactWitness witness)CompactWitness(uint256 witnessArgument)";
+                "BatchCompact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256[2][] idsAndAmounts,Mandate mandate)Mandate(uint256 witnessArgument)";
             typehash = keccak256(bytes(typestring));
         }
 
@@ -2071,7 +2071,7 @@ contract TheCompactTest is Test {
         bytes32 activationTypehash;
         {
             string memory typestring =
-                "BatchCompact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256[2][] idsAndAmounts,CompactWitness witness)CompactWitness(uint256 witnessArgument)";
+                "BatchCompact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256[2][] idsAndAmounts,Mandate mandate)Mandate(uint256 witnessArgument)";
             activationTypehash =
                 keccak256(bytes(string.concat("BatchActivation(uint256[] ids,BatchCompact compact)", typestring)));
         }
@@ -2180,7 +2180,7 @@ contract TheCompactTest is Test {
             CreateBatchClaimHashWithWitnessArgs memory args;
             {
                 args.typehash = keccak256(
-                    "BatchCompact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256[2][] idsAndAmounts,CompactWitness witness)CompactWitness(uint256 witnessArgument)"
+                    "BatchCompact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256[2][] idsAndAmounts,Mandate mandate)Mandate(uint256 witnessArgument)"
                 );
                 args.arbiter = 0x2222222222222222222222222222222222222222;
                 args.sponsor = swapper;
@@ -2301,7 +2301,7 @@ contract TheCompactTest is Test {
 
             // Create witness
             uint256 witnessArgument = 234;
-            claim.witness = keccak256(abi.encode(witnessArgument));
+            claim.witness = _createCompactWitness(witnessArgument);
         }
 
         // Create claim hash
@@ -2426,7 +2426,7 @@ contract TheCompactTest is Test {
             idsAndAmounts[2] = [aThirdId, 1e18];
 
             uint256 witnessArgument = 234;
-            claim.witness = keccak256(abi.encode(witnessArgument));
+            claim.witness = _createCompactWitness(witnessArgument);
         }
 
         // Create claim hash
@@ -2435,7 +2435,7 @@ contract TheCompactTest is Test {
             CreateBatchClaimHashWithWitnessArgs memory args;
             {
                 args.typehash = keccak256(
-                    "BatchCompact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256[2][] idsAndAmounts,CompactWitness witness)CompactWitness(uint256 witnessArgument)"
+                    "BatchCompact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256[2][] idsAndAmounts,Mandate mandate)Mandate(uint256 witnessArgument)"
                 );
                 args.arbiter = 0x2222222222222222222222222222222222222222;
                 args.sponsor = claim.sponsor;
@@ -2586,19 +2586,19 @@ contract TheCompactTest is Test {
         // Create witness
         {
             uint256 witnessArgument = 234;
-            claim.witness = keccak256(abi.encode(witnessArgument));
+            claim.witness = _createCompactWitness(witnessArgument);
         }
 
         // Create allocation hashes
         bytes32[] memory allocationHashes = new bytes32[](3);
         {
-            bytes32 segmentTypehash = keccak256(
-                "Segment(address arbiter,uint256 chainId,uint256[2][] idsAndAmounts,CompactWitness witness)CompactWitness(uint256 witnessArgument)"
+            bytes32 elementTypehash = keccak256(
+                "Element(address arbiter,uint256 chainId,uint256[2][] idsAndAmounts,Mandate mandate)Mandate(uint256 witnessArgument)"
             );
 
             allocationHashes[0] = keccak256(
                 abi.encode(
-                    segmentTypehash,
+                    elementTypehash,
                     0x2222222222222222222222222222222222222222, // arbiter
                     block.chainid,
                     keccak256(abi.encodePacked(idsAndAmountsOne)),
@@ -2608,7 +2608,7 @@ contract TheCompactTest is Test {
 
             allocationHashes[1] = keccak256(
                 abi.encode(
-                    segmentTypehash,
+                    elementTypehash,
                     0x2222222222222222222222222222222222222222, // arbiter
                     anotherChainId,
                     keccak256(abi.encodePacked(idsAndAmountsTwo)),
@@ -2618,7 +2618,7 @@ contract TheCompactTest is Test {
 
             allocationHashes[2] = keccak256(
                 abi.encode(
-                    segmentTypehash,
+                    elementTypehash,
                     0x2222222222222222222222222222222222222222, // arbiter
                     thirdChainId,
                     keccak256(abi.encodePacked(idsAndAmountsTwo)),
@@ -2631,7 +2631,7 @@ contract TheCompactTest is Test {
         bytes32 claimHash;
         {
             bytes32 multichainTypehash = keccak256(
-                "MultichainCompact(address sponsor,uint256 nonce,uint256 expires,Segment[] segments)Segment(address arbiter,uint256 chainId,uint256[2][] idsAndAmounts,CompactWitness witness)CompactWitness(uint256 witnessArgument)"
+                "MultichainCompact(address sponsor,uint256 nonce,uint256 expires,Element[] elements)Element(address arbiter,uint256 chainId,uint256[2][] idsAndAmounts,Mandate mandate)Mandate(uint256 witnessArgument)"
             );
 
             claimHash = keccak256(
@@ -2832,20 +2832,20 @@ contract TheCompactTest is Test {
         // Create witness
         {
             uint256 witnessArgument = 234;
-            claim.witness = keccak256(abi.encode(witnessArgument));
+            claim.witness = _createCompactWitness(witnessArgument);
         }
 
         // Create allocation hashes
         bytes32 allocationHashOne;
         bytes32 allocationHashTwo;
         {
-            bytes32 segmentTypehash = keccak256(
-                "Segment(address arbiter,uint256 chainId,uint256[2][] idsAndAmounts,CompactWitness witness)CompactWitness(uint256 witnessArgument)"
+            bytes32 elementTypehash = keccak256(
+                "Element(address arbiter,uint256 chainId,uint256[2][] idsAndAmounts,Mandate mandate)Mandate(uint256 witnessArgument)"
             );
 
             allocationHashOne = keccak256(
                 abi.encode(
-                    segmentTypehash,
+                    elementTypehash,
                     0x2222222222222222222222222222222222222222, // arbiter
                     block.chainid,
                     keccak256(abi.encodePacked(idsAndAmountsOne)),
@@ -2855,7 +2855,7 @@ contract TheCompactTest is Test {
 
             allocationHashTwo = keccak256(
                 abi.encode(
-                    segmentTypehash,
+                    elementTypehash,
                     0x2222222222222222222222222222222222222222, // arbiter
                     anotherChainId,
                     keccak256(abi.encodePacked(idsAndAmountsTwo)),
@@ -2875,7 +2875,7 @@ contract TheCompactTest is Test {
         bytes32 claimHash;
         {
             bytes32 multichainTypehash = keccak256(
-                "MultichainCompact(address sponsor,uint256 nonce,uint256 expires,Segment[] segments)Segment(address arbiter,uint256 chainId,uint256[2][] idsAndAmounts,CompactWitness witness)CompactWitness(uint256 witnessArgument)"
+                "MultichainCompact(address sponsor,uint256 nonce,uint256 expires,Element[] elements)Element(address arbiter,uint256 chainId,uint256[2][] idsAndAmounts,Mandate mandate)Mandate(uint256 witnessArgument)"
             );
 
             claimHash = keccak256(
@@ -3013,7 +3013,7 @@ contract TheCompactTest is Test {
                 anotherClaim.nonce = claim.nonce;
                 anotherClaim.expires = claim.expires;
                 anotherClaim.witness = claim.witness;
-                anotherClaim.witnessTypestring = "CompactWitness witness)CompactWitness(uint256 witnessArgument)";
+                anotherClaim.witnessTypestring = "uint256 witnessArgument";
                 anotherClaim.additionalChains = additionalChains;
                 anotherClaim.chainIndex = 0;
                 anotherClaim.notarizedChainId = notarizedChainId;
@@ -3207,7 +3207,7 @@ contract TheCompactTest is Test {
      * Helper function to create a witness hash for a compact witness
      */
     function _createCompactWitness(uint256 _witnessArgument) internal pure returns (bytes32 witness) {
-        witness = keccak256(abi.encode(keccak256("CompactWitness(uint256 witnessArgument)"), _witnessArgument));
+        witness = keccak256(abi.encode(keccak256("Mandate(uint256 witnessArgument)"), _witnessArgument));
         return witness;
     }
 
@@ -3272,7 +3272,7 @@ contract TheCompactTest is Test {
         bytes32 permitBatchHash = keccak256(
             abi.encode(
                 keccak256(
-                    "PermitBatchWitnessTransferFrom(TokenPermissions[] permitted,address spender,uint256 nonce,uint256 deadline,BatchActivation witness)BatchActivation(uint256[] ids,BatchCompact compact)BatchCompact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256[2][] idsAndAmounts,CompactWitness witness)CompactWitness(uint256 witnessArgument)TokenPermissions(address token,uint256 amount)"
+                    "PermitBatchWitnessTransferFrom(TokenPermissions[] permitted,address spender,uint256 nonce,uint256 deadline,BatchActivation witness)BatchActivation(uint256[] ids,BatchCompact compact)BatchCompact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256[2][] idsAndAmounts,Mandate mandate)Mandate(uint256 witnessArgument)TokenPermissions(address token,uint256 amount)"
                 ),
                 args.tokenPermissionsHash,
                 args.spender,
@@ -3317,7 +3317,7 @@ contract TheCompactTest is Test {
                 signatureTransferDetails,
                 swapper,
                 activationHash,
-                "BatchActivation witness)BatchActivation(uint256[] ids,BatchCompact compact)BatchCompact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256[2][] idsAndAmounts,CompactWitness witness)CompactWitness(uint256 witnessArgument)TokenPermissions(address token,uint256 amount)",
+                "BatchActivation witness)BatchActivation(uint256[] ids,BatchCompact compact)BatchCompact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256[2][] idsAndAmounts,Mandate mandate)Mandate(uint256 witnessArgument)TokenPermissions(address token,uint256 amount)",
                 args.signature
             )
         );

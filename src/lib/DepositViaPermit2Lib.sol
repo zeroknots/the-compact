@@ -5,7 +5,6 @@ import { CompactCategory } from "../types/CompactCategory.sol";
 import {
     COMPACT_TYPEHASH,
     BATCH_COMPACT_TYPEHASH,
-    MULTICHAIN_COMPACT_TYPEHASH,
     PERMIT2_DEPOSIT_WITNESS_FRAGMENT_HASH,
     PERMIT2_DEPOSIT_WITH_ACTIVATION_TYPESTRING_FRAGMENT_ONE,
     PERMIT2_DEPOSIT_WITH_ACTIVATION_TYPESTRING_FRAGMENT_TWO,
@@ -15,18 +14,18 @@ import {
     TOKEN_PERMISSIONS_TYPESTRING_FRAGMENT_TWO,
     COMPACT_ACTIVATION_TYPEHASH,
     BATCH_COMPACT_ACTIVATION_TYPEHASH,
-    MULTICHAIN_COMPACT_ACTIVATION_TYPEHASH,
     COMPACT_BATCH_ACTIVATION_TYPEHASH,
     BATCH_COMPACT_BATCH_ACTIVATION_TYPEHASH,
-    MULTICHAIN_COMPACT_BATCH_ACTIVATION_TYPEHASH,
     PERMIT2_ACTIVATION_COMPACT_TYPESTRING_FRAGMENT_ONE,
     PERMIT2_ACTIVATION_COMPACT_TYPESTRING_FRAGMENT_TWO,
     PERMIT2_ACTIVATION_COMPACT_TYPESTRING_FRAGMENT_THREE,
     PERMIT2_ACTIVATION_COMPACT_TYPESTRING_FRAGMENT_FOUR,
+    PERMIT2_ACTIVATION_COMPACT_TYPESTRING_FRAGMENT_FIVE,
     PERMIT2_ACTIVATION_BATCH_COMPACT_TYPESTRING_FRAGMENT_ONE,
     PERMIT2_ACTIVATION_BATCH_COMPACT_TYPESTRING_FRAGMENT_TWO,
     PERMIT2_ACTIVATION_BATCH_COMPACT_TYPESTRING_FRAGMENT_THREE,
     PERMIT2_ACTIVATION_BATCH_COMPACT_TYPESTRING_FRAGMENT_FOUR,
+    PERMIT2_ACTIVATION_BATCH_COMPACT_TYPESTRING_FRAGMENT_FIVE,
     COMPACT_DEPOSIT_TYPESTRING_FRAGMENT_ONE,
     COMPACT_DEPOSIT_TYPESTRING_FRAGMENT_TWO,
     COMPACT_DEPOSIT_TYPESTRING_FRAGMENT_THREE,
@@ -183,11 +182,12 @@ library DepositViaPermit2Lib {
                     // Prepare next typestring fragment using Compact witness typestring.
                     mstore(categorySpecificStart, PERMIT2_ACTIVATION_COMPACT_TYPESTRING_FRAGMENT_ONE)
                     mstore(add(categorySpecificStart, 0x20), PERMIT2_ACTIVATION_COMPACT_TYPESTRING_FRAGMENT_TWO)
-                    mstore(add(categorySpecificStart, 0x50), PERMIT2_ACTIVATION_COMPACT_TYPESTRING_FRAGMENT_FOUR)
                     mstore(add(categorySpecificStart, 0x40), PERMIT2_ACTIVATION_COMPACT_TYPESTRING_FRAGMENT_THREE)
+                    mstore(add(categorySpecificStart, 0x68), PERMIT2_ACTIVATION_COMPACT_TYPESTRING_FRAGMENT_FIVE)
+                    mstore(add(categorySpecificStart, 0x60), PERMIT2_ACTIVATION_COMPACT_TYPESTRING_FRAGMENT_FOUR)
 
                     // Set memory pointers for Activation and Category-specific data end.
-                    categorySpecificEnd := add(categorySpecificStart, 0x70)
+                    categorySpecificEnd := add(categorySpecificStart, 0x88)
                     categorySpecificStart := add(categorySpecificStart, 0x10)
                 }
 
@@ -196,15 +196,16 @@ library DepositViaPermit2Lib {
                     // Prepare next typestring fragment using BatchCompact witness typestring.
                     mstore(categorySpecificStart, PERMIT2_ACTIVATION_BATCH_COMPACT_TYPESTRING_FRAGMENT_ONE)
                     mstore(add(categorySpecificStart, 0x20), PERMIT2_ACTIVATION_BATCH_COMPACT_TYPESTRING_FRAGMENT_TWO)
-                    mstore(add(categorySpecificStart, 0x5b), PERMIT2_ACTIVATION_BATCH_COMPACT_TYPESTRING_FRAGMENT_FOUR)
                     mstore(add(categorySpecificStart, 0x40), PERMIT2_ACTIVATION_BATCH_COMPACT_TYPESTRING_FRAGMENT_THREE)
+                    mstore(add(categorySpecificStart, 0x73), PERMIT2_ACTIVATION_BATCH_COMPACT_TYPESTRING_FRAGMENT_FIVE)
+                    mstore(add(categorySpecificStart, 0x60), PERMIT2_ACTIVATION_BATCH_COMPACT_TYPESTRING_FRAGMENT_FOUR)
 
                     // Set memory pointers for Activation and Category-specific data end.
-                    categorySpecificEnd := add(categorySpecificStart, 0x7b)
+                    categorySpecificEnd := add(categorySpecificStart, 0x93)
                     categorySpecificStart := add(categorySpecificStart, 0x15)
                 }
 
-                // Revert on MultichainCompact case (registration only applies to the current chain).
+                // Revert on MultichainCompact case or above (registration only applies to the current chain).
                 if iszero(categorySpecificEnd) {
                     // revert InvalidCompactCategory();
                     mstore(0, 0xdae3f108)
@@ -259,19 +260,19 @@ library DepositViaPermit2Lib {
 
                 // Insert tokenPermissions typestring fragment.
                 let tokenPermissionsFragmentStart := add(categorySpecificEnd, witnessLength)
-                mstore(add(tokenPermissionsFragmentStart, 0x0e), TOKEN_PERMISSIONS_TYPESTRING_FRAGMENT_TWO)
-                mstore(sub(tokenPermissionsFragmentStart, 1), TOKEN_PERMISSIONS_TYPESTRING_FRAGMENT_ONE)
+                mstore(add(tokenPermissionsFragmentStart, 0x0f), TOKEN_PERMISSIONS_TYPESTRING_FRAGMENT_TWO)
+                mstore(tokenPermissionsFragmentStart, TOKEN_PERMISSIONS_TYPESTRING_FRAGMENT_ONE)
 
                 // Derive total length of typestring and store at start of memory.
-                mstore(memLocation, sub(add(tokenPermissionsFragmentStart, 0x2e), memoryOffset))
+                mstore(memLocation, sub(add(tokenPermissionsFragmentStart, 0x2f), memoryOffset))
 
                 // Derive activation typehash.
                 derivedActivationTypehash :=
-                    keccak256(activationStart, sub(tokenPermissionsFragmentStart, activationStart))
+                    keccak256(activationStart, sub(add(tokenPermissionsFragmentStart, 1), activationStart))
 
                 // Derive compact typehash.
                 derivedCompactTypehash :=
-                    keccak256(categorySpecificStart, sub(tokenPermissionsFragmentStart, categorySpecificStart))
+                    keccak256(categorySpecificStart, sub(add(tokenPermissionsFragmentStart, 1), categorySpecificStart))
             }
 
             // Execute internal assembly function and store derived typehashes.
