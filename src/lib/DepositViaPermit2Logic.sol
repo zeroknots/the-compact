@@ -280,7 +280,6 @@ contract DepositViaPermit2Logic is DepositLogic {
                             )
 
                         compactCategory := calldataload(0xc4)
-                        if gt(compactCategory, 2) { revert(0, 0) }
                     }
 
                     // Begin preparing Permit2 call data.
@@ -308,8 +307,8 @@ contract DepositViaPermit2Logic is DepositLogic {
                     let totalWitnessMemoryOffset :=
                         and(
                             add(
-                                add(0xf3, add(witness.length, iszero(iszero(witness.length)))),
-                                add(mul(eq(compactCategory, 1), 0x0b), shl(6, eq(compactCategory, 2)))
+                                add(0x10b, add(witness.length, iszero(iszero(witness.length)))),
+                                mul(eq(compactCategory, 1), 0x0b)
                             ),
                             not(0x1f)
                         )
