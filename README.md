@@ -155,14 +155,14 @@ struct BatchCompact {
 
 // A multichain compact can declare tokens and amounts to allocate from multiple chains,
 // each designated by their chainId. Any allocated tokens on an exogenous domain (e.g. all
-// but the first segment) must designate the Multichain scope. Each segment may designate
+// but the first element) must designate the Multichain scope. Each element may designate
 // a unique arbiter for the chain in question. Note that the witness data is distinct for
-// each segment, but all segments must share the same EIP-712 witness typestring.
-struct Segment {
+// each element, but all elements must share the same EIP-712 "Mandate" witness typestring.
+struct Element {
     address arbiter; // The account tasked with verifying and submitting the claim.
     uint256 chainId; // The chainId where the tokens are located.
     uint256[2][] idsAndAmounts; // The allocated token IDs and amounts.
-    // Optional witness may follow.
+    // Mandate witness will follow.
 }
 
 // Message signed by the sponsor that specifies the conditions under which a set of
@@ -173,7 +173,7 @@ struct MultichainCompact {
     address sponsor; // The account to source the tokens from.
     uint256 nonce; // A parameter to enforce replay protection, scoped to allocator.
     uint256 expires; // The time at which the claim expires.
-    Segment[] segments; // Arbiter, chainId, ids & amounts, and witness for each chain.
+    Element[] elements; // Arbiter, chainId, ids & amounts, and witness for each chain.
 }
 ```
 

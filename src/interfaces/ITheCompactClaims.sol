@@ -27,11 +27,11 @@ import { BatchMultichainClaim, ExogenousBatchMultichainClaim } from "../types/Ba
  *    other chains where the resource locks indicate a multichain scope (the "exogenous"
  *    chains). When the sponsor is utilizing multiple resource locks across multiple chains,
  *    they will sign a `MultichainCompact` EIP-712 payload. When claiming these for the
- *    notarized chain, an array of bytes32 values representing additional chain "segments"
+ *    notarized chain, an array of bytes32 values representing additional chain "elements"
  *    is provided. When claiming against an exogenous chain, the additional chains array
  *    begins with the notarized chain and then includes values for all exogenous chains
  *    excluding the one being claimed against, and a chain index is supplied indicating the
- *    location in the list of segments of the current chain (a value of 0 means that it is)
+ *    location in the list of elements of the current chain (a value of 0 means that it is)
  *    the first exogenous chain) as well as a `notarizedChainId` representing the chainId
  *    for the domain that the multichain claim was signed against.
  */
@@ -52,7 +52,7 @@ interface ITheCompactClaims {
 
     /**
      * @notice Process a multichain claim for the notarized chain (where domain matches the one signed for).
-     * @param claimPayload The multichain claim data containing signature, allocator data, compact details, and chain segments.
+     * @param claimPayload The multichain claim data containing signature, allocator data, compact details, and chain elements.
      * @return claimHash   The hash of the processed multichain claim.
      */
     function claim(MultichainClaim calldata claimPayload) external returns (bytes32 claimHash);
@@ -66,7 +66,7 @@ interface ITheCompactClaims {
 
     /**
      * @notice Process a batch multichain claim for multiple resource locks on the notarized chain.
-     * @param claimPayload The batch multichain claim data containing signature, allocator data, compact details, and chain segments.
+     * @param claimPayload The batch multichain claim data containing signature, allocator data, compact details, and chain elements.
      * @return claimHash   The hash of the processed batch multichain claim.
      */
     function claim(BatchMultichainClaim calldata claimPayload) external returns (bytes32 claimHash);
