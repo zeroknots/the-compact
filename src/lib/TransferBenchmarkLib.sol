@@ -19,38 +19,33 @@ import { BenchmarkERC20 } from "./BenchmarkERC20.sol";
 library TransferBenchmarkLib {
     // Storage scope for native token benchmarks:
     // slot: _NATIVE_TOKEN_BENCHMARK_SCOPE => benchmark.
-    uint256 private constant _NATIVE_TOKEN_BENCHMARK_SCOPE = 0x655e83a8;
+    uint32 private constant _NATIVE_TOKEN_BENCHMARK_SCOPE = 0x655e83a8;
 
     // Storage scope for erc20 token benchmarks:
     // slot: _ERC20_TOKEN_BENCHMARK_SCOPE => benchmark.
-    uint256 private constant _ERC20_TOKEN_BENCHMARK_SCOPE = 0x824664ed;
+    uint32 private constant _ERC20_TOKEN_BENCHMARK_SCOPE = 0x824664ed;
 
     // Storage scope for erc20 token benchmark transaction uniqueness.
     // slot: _ERC20_TOKEN_BENCHMARK_SENTINEL => block.number
-    uint256 private constant _ERC20_TOKEN_BENCHMARK_SENTINEL = 0x83ceba49;
+    uint32 private constant _ERC20_TOKEN_BENCHMARK_SENTINEL = 0x83ceba49;
 
     error InvalidBenchmark();
 
     error InsufficientStipendForWithdrawalFallback();
 
     function setNativeTokenBenchmark(bytes32 salt) internal returns (uint256 benchmark) {
-        address target = address(
-            uint160(
-                uint256(
-                    keccak256(
-                        abi.encodePacked(
-                            "Derive a deliberately unusable account to capture account creation cost", salt
-                        )
-                    )
-                )
-            )
-        );
+        assembly ("memory-safe") {
+            // Derive the target for  native token transfer using address.this & salt.
+            mstore(0, address())
+            mstore(0x20, salt)
+            let target := keccak256(0x0c, 0x34)
 
-        if (msg.value != 2 || target.balance != 0) {
-            revert InvalidBenchmark();
-        }
+            // Ensure callvalue is exactly 2 wei and the target balance is zero.
+            if or(iszero(eq(callvalue(), 2)), iszero(iszero(balance(target)))) {
+                mstore(0, 0x9f608b8a)
+                revert(0x1c, 4)
+            }
 
-        assembly {
             // Get gas before first call.
             let firstStart := gas()
 
@@ -72,7 +67,8 @@ library TransferBenchmarkLib {
             // Ensure that both calls succeeded and that the cost of the first call
             // exceeded that of the second, indicating that the account was not warm.
             if or(or(iszero(success1), iszero(success2)), iszero(gt(benchmark, sub(secondStart, secondEnd)))) {
-                revert(0, 0)
+                mstore(0, 0x9f608b8a)
+                revert(0x1c, 4)
             }
 
             // Store the benchmark in the appropriate scope.
@@ -84,7 +80,7 @@ library TransferBenchmarkLib {
         // Set the caller as the target.
         address target = msg.sender;
 
-        assembly {
+        assembly ("memory-safe") {
             {
                 // Retrieve sentinel value.
                 let sentinel := sload(_ERC20_TOKEN_BENCHMARK_SENTINEL)
@@ -165,24 +161,20 @@ library TransferBenchmarkLib {
             // to the fact that a single call is performed, to derive the benchmark.
             benchmark := sub(add(firstCallCost, thirdCallCost), secondCallCost)
 
+            // Burn the transferred tokens from the target.
+            mstore(0, 0x89afcb44)
+            if iszero(call(gas(), token, 0, 4, 0x1c, codesize(), 0)) {
+                mstore(0, 0x9f608b8a)
+                revert(0x1c, 4)
+            }
+
             // Store the benchmark in the appropriate scope.
             sstore(_ERC20_TOKEN_BENCHMARK_SCOPE, benchmark)
         }
-
-        // Declare an interface for the benchmark reference token.
-        BenchmarkERC20 benchmarkERC20 = BenchmarkERC20(token);
-
-        // Ensure the token has the expected balance after the reference transfer.
-        if (benchmarkERC20.balanceOf(target) != 1) {
-            revert InvalidBenchmark();
-        }
-
-        // Burn the transferred token from the target.
-        benchmarkERC20.burn(target);
     }
 
     function ensureBenchmarkExceeded(address token) internal view {
-        assembly {
+        assembly ("memory-safe") {
             // Select the appropriate scope based on the token in question.
             let scope :=
                 xor(

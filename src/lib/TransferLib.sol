@@ -131,7 +131,7 @@ library TransferLib {
             postWithdrawalAmount = initialBalance - token.balanceOf(address(this));
 
             // Consider the withdrawal as having succeeded if any amount was withdrawn.
-            assembly {
+            assembly ("memory-safe") {
                 withdrawalSucceeded := or(withdrawalSucceeded, iszero(iszero(postWithdrawalAmount)))
             }
         }
