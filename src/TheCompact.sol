@@ -24,6 +24,8 @@ import { HashLib } from "./lib/HashLib.sol";
 import { ValidityLib } from "./lib/ValidityLib.sol";
 import { IdLib } from "./lib/IdLib.sol";
 import { RegistrationLib } from "./lib/RegistrationLib.sol";
+import { BenchmarkERC20 } from "./lib/BenchmarkERC20.sol";
+import { TransferBenchmarkLib } from "./lib/TransferBenchmarkLib.sol";
 
 /**
  * @title The Compact
@@ -42,6 +44,18 @@ contract TheCompact is ITheCompact, ERC6909, TheCompactLogic {
     using RegistrationLib for address;
     using EfficiencyLib for bool;
     using EfficiencyLib for uint256;
+    using TransferBenchmarkLib for address;
+    using TransferBenchmarkLib for bytes32;
+
+    // Declare an immutable argument for the account of the benchmark ERC20 token.
+    address private immutable _BENCHMARK_ERC20;
+
+    constructor() {
+        // Deploy reference ERC20 for benchmarking generic ERC20 token withdrawals. Note
+        // that benchmark cannot be evaluated as part of contract creation as it requires
+        // that the token account is not already warm as part of deriving the benchmark.
+        _BENCHMARK_ERC20 = address(new BenchmarkERC20());
+    }
 
     function deposit(bytes12 lockTag) external payable returns (uint256) {
         return _performCustomNativeTokenDeposit(lockTag, msg.sender);
@@ -310,6 +324,19 @@ contract TheCompact is ITheCompact, ERC6909, TheCompactLogic {
 
     function __registerAllocator(address allocator, bytes calldata proof) external returns (uint96) {
         return _registerAllocator(allocator, proof);
+    }
+
+    function __benchmark(bytes32 salt) external {
+        salt.setNativeTokenBenchmark();
+        _BENCHMARK_ERC20.setERC20TokenBenchmark();
+    }
+
+    function getRequiredWithdrawalFallbackStipends()
+        external
+        view
+        returns (uint256 nativeTokenStipend, uint256 erc20TokenStipend)
+    {
+        return TransferBenchmarkLib.getTokenWithdrawalBenchmarks();
     }
 
     function getForcedWithdrawalStatus(address account, uint256 id)

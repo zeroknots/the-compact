@@ -292,7 +292,7 @@ contract DepositViaPermit2Logic is DepositLogic {
                     );
 
                     bytes32 claimHash;
-                    assembly {
+                    assembly ("memory-safe") {
                         claimHash := calldataload(0xa4)
                     }
 
@@ -327,7 +327,7 @@ contract DepositViaPermit2Logic is DepositLogic {
         _verifyBalancesAndPerformDeposits(ids, permitted, initialTokenBalances, depositor, firstUnderlyingTokenIsNative);
 
         bytes32 registeredClaimHash;
-        assembly {
+        assembly ("memory-safe") {
             registeredClaimHash := calldataload(0xa4)
         }
 
