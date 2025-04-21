@@ -547,6 +547,18 @@ interface ITheCompact {
      */
     function __registerAllocator(address allocator, bytes calldata proof) external returns (uint96 allocatorId);
 
+    // Benchmark withdrawal costs to determine the required stipend on the fallback for failing withdrawals when
+    // processing claims. The salt is used to derive a cold account to benchmark the native token withdrawal.
+    function __benchmark(bytes32 salt) external;
+
+    // Get required stipends for releasing tokens as a fallback on claims where withdrawals do not succeed. Any
+    // requested withdrawal is first attempted using half of available gas. If it fails, then a direct 6909 transfer
+    // will be performed as long as the remaining gas left exceeds the benchmarked stipend.
+    function getRequiredWithdrawalFallbackStipends()
+        external
+        view
+        returns (uint256 nativeTokenStipend, uint256 erc20TokenStipend);
+
     /**
      * @notice External view function for checking the forced withdrawal status of a resource
      * lock for a given account. Returns both the current status (disabled, pending, or enabled)

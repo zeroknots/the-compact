@@ -3,6 +3,7 @@ pragma solidity ^0.8.27;
 
 import { ConstructorLogic } from "./ConstructorLogic.sol";
 import { IdLib } from "./IdLib.sol";
+import { TransferBenchmarkLib } from "./TransferBenchmarkLib.sol";
 
 import { SafeTransferLib } from "solady/utils/SafeTransferLib.sol";
 
@@ -15,6 +16,7 @@ library TransferLib {
     using TransferLib for address;
     using IdLib for uint256;
     using SafeTransferLib for address;
+    using TransferBenchmarkLib for address;
 
     // Storage slot seed for ERC6909 state, used in computing balance slots.
     uint256 private constant _ERC6909_MASTER_SLOT_SEED = 0xedcaa89a82293940;
@@ -86,7 +88,8 @@ library TransferLib {
      * tokens. Updates the sender's balance and transfers either native tokens or ERC20
      * tokens to the recipient. For ERC20 withdrawals, the actual amount burned is derived
      * from the balance change. Ensure that a reentrancy guard has been set before calling.
-     * Emits a Transfer event.
+     * Emits a Transfer event. Note that if the withdrawal fails, a direct release of the
+     * 6909 tokens in question will be performed instead.
      * @param from   The account to burn tokens from.
      * @param to     The account to send underlying tokens to.
      * @param id     The ERC6909 token identifier to burn.
@@ -97,24 +100,52 @@ library TransferLib {
         address token = id.toAddress();
 
         // Handle native token withdrawals directly.
+        bool withdrawalSucceeded;
+        uint256 postWithdrawalAmount = amount;
         if (token == address(0)) {
-            to.safeTransferETH(amount);
+            // Attempt to transfer the ETH using half of available gas.
+            assembly ("memory-safe") {
+                withdrawalSucceeded := call(div(gas(), 2), to, amount, codesize(), 0, codesize(), 0)
+            }
         } else {
             // For ERC20s, track balance change to determine actual withdrawal amount.
             uint256 initialBalance = token.balanceOf(address(this));
 
-            // Perform the token withdrawal.
-            token.safeTransfer(to, amount);
+            // Attempt to transfer the tokens using half of available gas.
+            assembly ("memory-safe") {
+                mstore(0x14, to) // Store the `to` argument.
+                mstore(0x34, amount) // Store the `amount` argument.
+                mstore(0x00, 0xa9059cbb000000000000000000000000) // `transfer(address,uint256)`.
 
-            // Derive actual amount from balance change. A balance increase would cause
-            // a massive underflow, resulting in a failure during the subsequent burn.
-            unchecked {
-                amount = initialBalance - token.balanceOf(address(this));
+                // Perform the transfer and examine the call for failure.
+                withdrawalSucceeded :=
+                    and( // The arguments of `and` are evaluated from right to left.
+                        or(eq(mload(0x00), 1), iszero(returndatasize())), // Returned 1 or nothing.
+                        call(gas(), token, 0, 0x10, 0x44, 0x00, 0x20)
+                    )
+
+                mstore(0x34, 0) // Restore the part of the free memory pointer that was overwritten.
+            }
+
+            // Derive actual amount from balance change.
+            postWithdrawalAmount = initialBalance - token.balanceOf(address(this));
+
+            // Consider the withdrawal as having succeeded if any amount was withdrawn.
+            assembly {
+                withdrawalSucceeded := or(withdrawalSucceeded, iszero(iszero(postWithdrawalAmount)))
             }
         }
 
-        // Burn the 6909 tokens.
-        from.burn(id, amount);
+        // Burn the 6909 tokens if the withdrawal succeeded.
+        if (withdrawalSucceeded) {
+            from.burn(id, postWithdrawalAmount);
+        } else {
+            // Ensure that sufficient additional gas stipend has been supplied.
+            token.ensureBenchmarkExceeded();
+
+            // Transfer original amount of associated 6909 tokens directly.
+            from.release(to, id, amount);
+        }
     }
 
     /**
