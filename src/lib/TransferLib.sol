@@ -117,11 +117,11 @@ library TransferLib {
                 mstore(0x34, amount) // Store the `amount` argument.
                 mstore(0x00, 0xa9059cbb000000000000000000000000) // `transfer(address,uint256)`.
 
-                // Perform the transfer and examine the call for failure.
+                // Perform the transfer using half of available gas & examine the call for failure.
                 withdrawalSucceeded :=
                     and( // The arguments of `and` are evaluated from right to left.
                         or(eq(mload(0x00), 1), iszero(returndatasize())), // Returned 1 or nothing.
-                        call(gas(), token, 0, 0x10, 0x44, 0x00, 0x20)
+                        call(div(gas(), 2), token, 0, 0x10, 0x44, 0x00, 0x20)
                     )
 
                 mstore(0x34, 0) // Restore the part of the free memory pointer that was overwritten.

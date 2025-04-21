@@ -13,7 +13,7 @@
   "depositERC20ViaPermit2AndURI": "97702",
   "depositETHAndURI": "26041",
   "depositETHBasic": "26221",
-  "depositRegisterFor": "78235",
+  "depositRegisterFor": "78219",
   "exogenousSplitBatchMultichainClaimWithWitness": "120134",
   "exogenousSplitMultichainClaimWithWitness": "91715",
   "qualified_basicTransfer": "59938",
@@ -21,9 +21,9 @@
   "splitBatchClaimWithWitness": "145426",
   "splitBatchMultichainClaimWithWitness": "92324",
   "splitBatchTransfer": "117397",
-  "splitBatchWithdrawal": "146229",
+  "splitBatchWithdrawal": "146235",
   "splitClaimWithWitness": "89791",
   "splitMultichainClaimWithWitness": "90447",
   "splitTransfer": "87123",
-  "splitWithdrawal": "96063"
+  "splitWithdrawal": "96075"
 }
