@@ -25,7 +25,7 @@ The core interface for The Compact protocol, which is an ownerless ERC6909 contr
 
 Resource locks are entered into by ERC20 or native token holders (called the **depositor**). Once a resource lock has been established, the owner of the ERC6909 token representing a resource lock can act as a **sponsor** and create a **compact**. A compact is a commitment allowing interested parties to claim their tokens through the sponsor's indicated **arbiter**. The arbiter is then responsible for processing the claim once it has attested to the specified conditions of the compact having been met.
 
-### Overview
+## Overview
 
 ITheCompact provides functions for:
 - Making deposits (native tokens, ERC20 tokens)
@@ -36,7 +36,7 @@ ITheCompact provides functions for:
 - Registering allocators
 - Enabling allocators to consume nonces directly
 
-### Key Events
+## Key Events
 
 ```solidity
 event Claim(
@@ -79,16 +79,20 @@ event EmissaryAssigned(address indexed sponsor, bytes12 indexed lockTag, address
 ```
 Emitted when a sponsor assigns an emissary for a specific lock tag by calling the `assignEmissary` function. This event provides information about the sponsor, the lock tag, and the assigned emissary address.
 
-### Deposit Functions
+## Deposit Functions
 
-#### Native Token Deposits
+### Native Token Deposits
+
+### depositNative
 
 ```solidity
 function depositNative(bytes12 lockTag, address recipient) external payable returns (uint256 id);
 ```
 Deposits native tokens into a resource lock with custom reset period and scope parameters. The ERC6909 token amount received by the recipient will match the amount of native tokens sent with the transaction.
 
-#### ERC20 Token Deposits
+### ERC20 Token Deposits
+
+### depositERC20
 
 ```solidity
 function depositERC20(
@@ -100,7 +104,9 @@ function depositERC20(
 ```
 Deposits ERC20 tokens into a resource lock with custom reset period and scope parameters. The caller must directly approve The Compact to transfer a sufficient amount of the ERC20 token on its behalf.
 
-#### Batch Deposits
+### Batch Deposits
+
+### batchDeposit
 
 ```solidity
 function batchDeposit(
@@ -110,7 +116,9 @@ function batchDeposit(
 ```
 Deposits multiple tokens in a single transaction. The first entry in idsAndAmounts can optionally represent native tokens by providing the null address and an amount matching msg.value.
 
-#### Permit2 Deposits
+### Permit2 Deposits
+
+### depositERC20ViaPermit2
 
 ```solidity
 function depositERC20ViaPermit2(
@@ -123,6 +131,8 @@ function depositERC20ViaPermit2(
 ```
 Deposits ERC20 tokens using Permit2 authorization. The depositor must approve Permit2 to transfer the tokens on its behalf unless the token automatically grants approval to Permit2.
 
+### batchDepositViaPermit2
+
 ```solidity
 function batchDepositViaPermit2(
     address depositor,
@@ -132,31 +142,41 @@ function batchDepositViaPermit2(
     bytes calldata signature
 ) external payable returns (uint256[] memory ids);
 ```
-Deposits multiple tokens using Permit2 authorization in a single transaction.
+Deposits multiple tokens using Permit2 authorization in a single transaction. Native tokens may be simultaneously deposited to the depositor by providing a corresponding msg.value.
 
-### Transfer Functions
+## Transfer Functions
+
+### allocatedTransfer
 
 ```solidity
 function allocatedTransfer(AllocatedTransfer calldata transfer) external returns (bool);
 ```
 Transfers or withdraws ERC6909 tokens to multiple recipients with allocator approval.
 
+### allocatedBatchTransfer
+
 ```solidity
 function allocatedBatchTransfer(AllocatedBatchTransfer calldata transfer) external returns (bool);
 ```
 Transfers or withdraws ERC6909 tokens from multiple resource locks to multiple recipients with allocator approval.
 
-### Registration Functions
+## Registration Functions
+
+### register
 
 ```solidity
 function register(bytes32 claimHash, bytes32 typehash) external returns (bool);
 ```
 Registers a claim hash and its associated EIP-712 typehash. The registered claim hash will remain valid for the duration of the shortest reset period across all locks on the compact.
 
+### registerMultiple
+
 ```solidity
 function registerMultiple(bytes32[2][] calldata claimHashesAndTypehashes) external returns (bool);
 ```
 Registers multiple claim hashes and their associated EIP-712 typehashes in a single call.
+
+### registerFor
 
 ```solidity
 function registerFor(
@@ -172,7 +192,9 @@ function registerFor(
     bytes calldata sponsorSignature
 ) external returns (uint256 id, bytes32 claimHash);
 ```
-Registers a claim on behalf of a sponsor with their signature.
+Registers a claim on behalf of a sponsor with their signature. The caller provides the tokens and must have the necessary approvals set for the token transfer. The registered compact can only utilize the deposited amount and not register arbitrary compacts on behalf of the recipient.
+
+### registerBatchFor
 
 ```solidity
 function registerBatchFor(
@@ -186,11 +208,13 @@ function registerBatchFor(
     bytes calldata sponsorSignature
 ) external returns (bytes32 claimHash);
 ```
-Registers a batch claim on behalf of a sponsor with their signature.
+Registers a batch claim on behalf of a sponsor with their signature. The caller provides the tokens and must have the necessary approvals set for the token transfers. The registered compact can only utilize the deposited amounts and not register arbitrary compacts on behalf of the recipient.
 
-### Combined Deposit and Registration Functions
+## Combined Deposit and Registration Functions
 
-The interface provides several functions that combine deposit and registration operations:
+The interface provides several functions that combine deposit and registration operations. These functions streamline the process of creating a resource lock and registering a compact in a single transaction.
+
+### depositNativeAndRegister
 
 ```solidity
 function depositNativeAndRegister(
@@ -198,7 +222,12 @@ function depositNativeAndRegister(
     bytes32 claimHash, 
     bytes32 typehash
 ) external payable returns (uint256 id);
+```
+Deposits native tokens into a resource lock and registers a compact with the provided claim hash and typehash. The caller is both the depositor and the sponsor of the registered compact.
 
+### depositNativeAndRegisterFor
+
+```solidity
 function depositNativeAndRegisterFor(
     address recipient,
     bytes12 lockTag,
@@ -208,7 +237,12 @@ function depositNativeAndRegisterFor(
     bytes32 typehash,
     bytes32 witness
 ) external payable returns (uint256 id, bytes32 claimhash);
+```
+Deposits native tokens into a resource lock to a given recipient and registers a compact on behalf of that recipient. The caller must provide the native tokens, and the registered compact can only utilize the deposited amount and not register arbitrary compacts on behalf of the recipient.
 
+### depositERC20AndRegister
+
+```solidity
 function depositERC20AndRegister(
     address token,
     bytes12 lockTag,
@@ -216,7 +250,12 @@ function depositERC20AndRegister(
     bytes32 claimHash,
     bytes32 typehash
 ) external returns (uint256 id);
+```
+Deposits ERC20 tokens into a resource lock and registers a compact with the provided claim hash and typehash. The caller must approve The Compact to transfer the tokens on its behalf.
 
+### depositERC20AndRegisterFor
+
+```solidity
 function depositERC20AndRegisterFor(
     address recipient,
     address token,
@@ -228,12 +267,22 @@ function depositERC20AndRegisterFor(
     bytes32 typehash,
     bytes32 witness
 ) external returns (uint256 id, bytes32 claimhash);
+```
+Deposits ERC20 tokens into a resource lock to a given recipient and registers a compact on behalf of that recipient. The caller provides the tokens and must have the necessary approvals set for the token transfer. The registered compact can only utilize the deposited amount and not register arbitrary compacts on behalf of the recipient.
 
+### batchDepositAndRegisterMultiple
+
+```solidity
 function batchDepositAndRegisterMultiple(
     uint256[2][] calldata idsAndAmounts,
     bytes32[2][] calldata claimHashesAndTypehashes
 ) external payable returns (bool);
+```
+Deposits multiple tokens and registers multiple compacts in a single transaction. The first entry in idsAndAmounts can optionally represent native tokens by providing the null address and an amount matching msg.value.
 
+### batchDepositAndRegisterFor
+
+```solidity
 function batchDepositAndRegisterFor(
     address recipient,
     uint256[2][] calldata idsAndAmounts,
@@ -244,8 +293,13 @@ function batchDepositAndRegisterFor(
     bytes32 witness
 ) external payable returns (bytes32 claimhash);
 ```
+Deposits multiple tokens to a given recipient and registers a batch compact on behalf of that recipient. The caller provides the tokens and must have the necessary approvals set where relevant. The registered compact can only utilize the deposited amounts and not register arbitrary compacts on behalf of the recipient.
 
-There are also Permit2 versions of these combined functions:
+### Permit2 Combined Functions
+
+The interface also provides Permit2 versions of these combined functions for gasless deposits:
+
+### depositERC20AndRegisterViaPermit2
 
 ```solidity
 function depositERC20AndRegisterViaPermit2(
@@ -257,7 +311,12 @@ function depositERC20AndRegisterViaPermit2(
     string calldata witness,
     bytes calldata signature
 ) external returns (uint256 id);
+```
+Deposits ERC20 tokens using Permit2 authorization and registers a compact in a single transaction. The depositor must approve Permit2 to transfer the tokens on its behalf (or the ERC20 token must have automatic Permit2 allowance configured).
 
+### batchDepositAndRegisterViaPermit2
+
+```solidity
 function batchDepositAndRegisterViaPermit2(
     address depositor,
     ISignatureTransfer.TokenPermissions[] calldata permitted,
@@ -268,18 +327,25 @@ function batchDepositAndRegisterViaPermit2(
     bytes calldata signature
 ) external payable returns (uint256[] memory ids);
 ```
+Deposits multiple tokens using Permit2 authorization and registers a compact in a single transaction. Native tokens may be simultaneously deposited to the depositor by providing a corresponding msg.value.
 
-### Forced Withdrawal Functions
+## Forced Withdrawal Functions
+
+### enableForcedWithdrawal
 
 ```solidity
 function enableForcedWithdrawal(uint256 id) external returns (uint256 withdrawableAt);
 ```
-Initiates a forced withdrawal for a resource lock. Once enabled, forced withdrawals can be executed after the reset period has elapsed.
+Initiates a forced withdrawal for a resource lock. Once enabled, forced withdrawals can be executed after the reset period has elapsed. This state will remain in force until it is explicitly disabled.
+
+### disableForcedWithdrawal
 
 ```solidity
 function disableForcedWithdrawal(uint256 id) external returns (bool);
 ```
-Disables a previously enabled forced withdrawal for a resource lock.
+Disables a previously enabled forced withdrawal state for a resource lock.
+
+### forcedWithdrawal
 
 ```solidity
 function forcedWithdrawal(
@@ -288,26 +354,34 @@ function forcedWithdrawal(
     uint256 amount
 ) external returns (bool);
 ```
-Executes a forced withdrawal from a resource lock after the reset period has elapsed.
+Executes a forced withdrawal from a resource lock assuming it is in an activated state, indicating that forced withdrawals have been enabled for at least the duration of the reset period on the corresponding resource lock.
 
-### Emissary Functions
+## Emissary Functions
+
+### assignEmissary
 
 ```solidity
 function assignEmissary(bytes12 lockTag, address emissary) external returns (bool);
 ```
-Assigns an emissary for the caller that has authority to authorize claims where that caller is the sponsor.
+Assigns an emissary for the caller that has authority to authorize claims where that caller is the sponsor. Once an emissary has been set for a given sponsor and lock tag, any reassignment must first be scheduled and can only be reassigned once the reset period on the lock tag in question has elapsed. 
+
+### scheduleEmissaryAssignment
 
 ```solidity
 function scheduleEmissaryAssignment(bytes12 lockTag) external returns (uint256 emissaryAssignmentAvailableAt);
 ```
-Schedules a future emissary assignment for a specific lock tag.
+Schedules a future emissary assignment for a specific lock tag. A new emissary can then be assigned once the reassignment has been scheduled for at least the duration of the reset period as indicated on the lockTag in question.
 
-### Allocator Functions
+## Allocator Functions
+
+### consume
 
 ```solidity
 function consume(uint256[] calldata nonces) external returns (bool);
 ```
 Consumes allocator nonces. Only callable by a registered allocator.
+
+### __registerAllocator
 
 ```solidity
 function __registerAllocator(
@@ -317,7 +391,9 @@ function __registerAllocator(
 ```
 Registers an allocator. Can be called by anyone if one of three conditions is met: the caller is the allocator address being registered, the allocator address contains code, or a proof is supplied representing valid create2 deployment parameters.
 
-### View Functions
+## View Functions
+
+### getLockDetails
 
 ```solidity
 function getLockDetails(uint256 id)
@@ -327,13 +403,17 @@ function getLockDetails(uint256 id)
 ```
 Retrieves the details of a resource lock.
 
+### getRegistrationStatus
+
 ```solidity
 function getRegistrationStatus(address sponsor, bytes32 claimHash, bytes32 typehash)
     external
     view
     returns (bool isActive, uint256 registrationTimestamp);
 ```
-Checks the registration status of a compact.
+Checks the registration status of a compact, including whether it is registered and, if so, the time that it was registered. Note that a registered compact may not still be claimable, especially if the nonce has already been consumed.
+
+### getForcedWithdrawalStatus
 
 ```solidity
 function getForcedWithdrawalStatus(address account, uint256 id)
@@ -341,7 +421,9 @@ function getForcedWithdrawalStatus(address account, uint256 id)
     view
     returns (ForcedWithdrawalStatus status, uint256 forcedWithdrawalAvailableAt);
 ```
-Checks the forced withdrawal status of a resource lock for a given account.
+Checks the forced withdrawal status of a resource lock for a given account. This status is either disabled (no pending forced withdrawal state), pending (indicating that `enableForcedWithdrawal` has been called but the reset period has not elapsed), or enabled (indicating that the owner of the resource lock can withdraw from it at any point).
+
+### getEmissaryStatus
 
 ```solidity
 function getEmissaryStatus(address sponsor, bytes12 lockTag)
@@ -351,10 +433,14 @@ function getEmissaryStatus(address sponsor, bytes12 lockTag)
 ```
 Gets the current emissary status for an allocator.
 
+### hasConsumedAllocatorNonce
+
 ```solidity
 function hasConsumedAllocatorNonce(uint256 nonce, address allocator) external view returns (bool consumed);
 ```
-Checks whether a specific nonce has been consumed by an allocator.
+Checks whether a specific nonce has been consumed by an allocator. Nonces are scoped to allocators, meaning two allocators can consume the same nonce but a single allocator cannot consume the same nonce twice.
+
+### getRequiredWithdrawalFallbackStipends
 
 ```solidity
 function getRequiredWithdrawalFallbackStipends()
@@ -364,41 +450,25 @@ function getRequiredWithdrawalFallbackStipends()
 ```
 Gets required stipends for releasing tokens as a fallback on claims where withdrawals do not succeed.
 
+### DOMAIN_SEPARATOR
+
 ```solidity
 function DOMAIN_SEPARATOR() external view returns (bytes32 domainSeparator);
 ```
-Returns the domain separator of the contract.
+Returns the EIP712 domain separator of the contract.
+
+### name
 
 ```solidity
 function name() external pure returns (string memory);
 ```
 Returns the name of the contract.
 
-### Errors
-
-```solidity
-error InvalidToken(address token);
-error Expired(uint256 expiration);
-error InvalidSignature();
-error PrematureWithdrawal(uint256 id);
-error ForcedWithdrawalAlreadyDisabled(address account, uint256 id);
-error UnallocatedTransfer(address operator, address from, address to, uint256 id, uint256 amount);
-error InvalidBatchAllocation();
-error InvalidRegistrationProof(address allocator);
-error InvalidBatchDepositStructure();
-error AllocatedAmountExceeded(uint256 allocatedAmount, uint256 providedAmount);
-error InvalidScope(uint256 id);
-error InvalidDepositTokenOrdering();
-error InvalidDepositBalanceChange();
-error Permit2CallFailed();
-error ReentrantCall(address existingCaller);
-```
-
-## ITheCompactClaims
+# ITheCompactClaims
 
 The claims interface for The Compact protocol, which provides endpoints for settling compacts.
 
-### Overview
+## Overview
 
 ITheCompactClaims provides functions for processing different types of claims:
 - Standard single-chain claims
@@ -408,11 +478,13 @@ ITheCompactClaims provides functions for processing different types of claims:
 - Batch multichain claims for the notarized chain
 - Batch multichain claims for exogenous chains
 
-### Multichain and Exogenous Claims
+> Note: the "notarized chain" refers to the first "element" on a multichain compact, which must match the domain separator that was used to sign the compact in question. the "exogenous chains" refer to the subsequent elements on a multichain compact, and additionally require the chainId of the notarized chain and an index of the exogenous chain element. Exogenous claims also require that all resource locks on that chain contain a Multichain scope as part of their lock tag.
+
+## Multichain and Exogenous Claims
 
 The Compact protocol supports compacts that span multiple chains through its multichain claim system. This system is built around the concept of "elements" in a MultichainCompact structure.
 
-#### MultichainCompact Structure
+### MultichainCompact Structure
 
 A `MultichainCompact` contains:
 - The sponsor's address
@@ -442,7 +514,7 @@ struct Element {
 }
 ```
 
-#### Notarized vs. Exogenous Claims
+### Notarized vs. Exogenous Claims
 
 When a sponsor signs a MultichainCompact, they sign it against the domain of the first chain in the elements array. This first chain is considered the "notarized" chain.
 
@@ -459,17 +531,15 @@ When a sponsor signs a MultichainCompact, they sign it against the domain of the
      - `notarizedChainId`: The chain ID of the notarized chain (used to reconstruct the domain for signature verification)
      - `additionalChains`: An array of element hashes from all chains except the one being claimed
 
-#### Scope Requirement for Exogenous Claims
+### Scope Requirement for Exogenous Claims
 
-A critical requirement for exogenous claims is that the resource locks must have a **multichain scope**. This is because:
+A critical requirement for exogenous claims is that the resource locks must have a **multichain scope**. The multichain scope signals that the sponsor has acknowledged and approved authorization to spend their tokens via cross-chain signatures.
 
-1. Resource locks with a single-chain scope are restricted to be used only on their original chain
-2. Exogenous claims involve cross-chain operations, so they require resource locks that are explicitly marked as usable across multiple chains
-3. The multichain scope signals that the sponsor has acknowledged and approved the cross-chain usage of their tokens
+Without this authorization, a sponsor might assume that because they are signing a payload on one chain that their resource locks on other chains will not be affected.
 
 If a resource lock does not have a multichain scope, it cannot be used in an exogenous claim, and any attempt to do so will result in an `InvalidScope` error.
 
-#### Claim Processing Flow
+### Claim Processing Flow
 
 When processing a multichain claim:
 
@@ -480,47 +550,59 @@ When processing a multichain claim:
 
 This architecture allows for complex cross-chain operations while maintaining security through proper signature verification and scope restrictions.
 
-### Functions
+## Functions
+
+### claim
 
 ```solidity
 function claim(Claim calldata claimPayload) external returns (bytes32 claimHash);
 ```
 Processes a standard single-chain claim.
 
+### batchClaim
+
 ```solidity
 function batchClaim(BatchClaim calldata claimPayload) external returns (bytes32 claimHash);
 ```
 Processes a batch claim for multiple resource locks on a single chain.
+
+### multichainClaim
 
 ```solidity
 function multichainClaim(MultichainClaim calldata claimPayload) external returns (bytes32 claimHash);
 ```
 Processes a multichain claim for the notarized chain (where domain matches the one signed for).
 
+### exogenousClaim
+
 ```solidity
 function exogenousClaim(ExogenousMultichainClaim calldata claimPayload) external returns (bytes32 claimHash);
 ```
 Processes a multichain claim for an exogenous chain (not the notarized chain).
+
+### batchMultichainClaim
 
 ```solidity
 function batchMultichainClaim(BatchMultichainClaim calldata claimPayload) external returns (bytes32 claimHash);
 ```
 Processes a batch multichain claim for multiple resource locks on the notarized chain.
 
+### exogenousBatchClaim
+
 ```solidity
 function exogenousBatchClaim(ExogenousBatchMultichainClaim calldata claimPayload) external returns (bytes32 claimHash);
 ```
 Processes a batch multichain claim for multiple resource locks on an exogenous chain.
 
-## IAllocator
+# IAllocator
 
 The allocator interface for The Compact protocol, which is responsible for mediating resource locks and authorizing claims.
 
-### Overview
+## Overview
 
 Each resource lock is mediated by an **allocator**, tasked with attesting to the availability of the underlying token balances and preserving the balances required for the commitments they have attested to. In other words, an allocator ensures that sponsors do not "double-spend," transfer, or withdraw any token balances that are already committed to a specific compact.
 
-The allocator's primary function is to ensure that any resource locks it is assigned to are not "double-spent" — this entails ensuring that sufficient unallocated balance is available before cosigning on any requests to withdraw or transfer the balance or to sponsor a claim on that balance, and also ensuring that nonces are not reused.
+The allocator's primary function is to ensure that any resource locks it is assigned to are not "double-spent" — this entails ensuring that sufficient unallocated balance is available before authorizing any requests to withdraw or transfer the balance or to sponsor a claim on that balance, and also ensuring that nonces are not reused.
 
 IAllocator provides functions for:
 - Validating transfers
@@ -529,7 +611,9 @@ IAllocator provides functions for:
 
 Allocators can also call a `consume` method at any point to consume nonces so that they cannot be used again.
 
-### Functions
+## Functions
+
+### attest
 
 ```solidity
 function attest(
@@ -541,6 +625,8 @@ function attest(
 ) external returns (bytes4);
 ```
 Called on standard transfers to validate the transfer. Must return the function selector (0x1a808f91).
+
+### authorizeClaim
 
 ```solidity
 function authorizeClaim(
@@ -554,6 +640,8 @@ function authorizeClaim(
 ) external returns (bytes4);
 ```
 Authorizes a claim. Called from The Compact as part of claim processing. Must return the function selector (0x7bb023f7).
+
+### isClaimAuthorized
 
 ```solidity
 function isClaimAuthorized(
