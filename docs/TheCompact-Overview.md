@@ -826,7 +826,7 @@ In The Compact V1, the recipient is encoded alongside the `lockTag` in the `clai
 
 #### Encoding Structure
 
-The `claimant` field in the `Component` struct is a uint256 value that packs both the recipient address and a lockTag (or special flags) into a single value:
+The `claimant` field in the `Component` struct is a uint256 value that packs both the recipient address and a lockTag into a single value:
 
 ```
 claimant = (lockTag << 160) | recipient
@@ -841,17 +841,17 @@ Where:
 When a claim is processed, The Compact examines the encoded claimant value to determine how to handle the transfer:
 
 1. **Direct 6909 Transfers**: 
-   - If the lockTag portion is zero, The Compact performs a direct ERC6909 token transfer to the recipient.
+   - If the lockTag portion is the same as that on the resource lock being claimed, The Compact performs a direct ERC6909 token transfer to the recipient.
    - This is useful for simple transfers where the recipient wants to receive the ERC6909 tokens directly.
    - Example: A user wants to receive ERC6909 tokens representing a resource lock without any conversion or withdrawal.
 
 2. **Converting Between Resource Locks**: 
-   - If the lockTag portion contains a valid lockTag (not zero and not the special withdrawal flag), The Compact converts the tokens from one resource lock to another.
+   - If the lockTag portion contains a valid lockTag that is not bytes12(0), The Compact converts the tokens from one resource lock to another.
    - This allows for moving tokens between different resource locks with different properties (e.g., changing the allocator, reset period, or scope).
-   - Example: Converting tokens from a resource lock with a 10-minute reset period to one with a 1-day reset period, or changing from a single-chain scope to a multichain scope.
+   - Example: Converting tokens from a resource lock with one allocator to another, or from a 10-minute reset period to one with a 1-day reset period, or changing from a single-chain scope to a multichain scope.
 
 3. **Processing Withdrawals**: 
-   - If the lockTag portion contains a special withdrawal flag, The Compact attempts to withdraw the underlying tokens to the recipient.
+   - If the lockTag portion is equal to bytes12(0), The Compact attempts to withdraw the underlying tokens to the recipient.
    - The withdrawal process extracts the actual tokens (native or ERC20) from the resource lock and sends them to the recipient.
    - Example: A user wants to receive the actual USDC tokens from a USDC resource lock rather than the ERC6909 tokens representing that lock.
 
