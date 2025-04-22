@@ -57,15 +57,15 @@ contract TheCompact is ITheCompact, ERC6909, TheCompactLogic {
         _BENCHMARK_ERC20 = address(new BenchmarkERC20());
     }
 
-    function deposit(bytes12 lockTag) external payable returns (uint256) {
+    function depositNative(bytes12 lockTag) external payable returns (uint256) {
         return _performCustomNativeTokenDeposit(lockTag, msg.sender);
     }
 
-    function deposit(bytes12 lockTag, address recipient) external payable returns (uint256) {
+    function depositNativeTo(bytes12 lockTag, address recipient) external payable returns (uint256) {
         return _performCustomNativeTokenDeposit(lockTag, recipient);
     }
 
-    function depositAndRegister(bytes12 lockTag, bytes32 claimHash, bytes32 typehash)
+    function depositNativeAndRegister(bytes12 lockTag, bytes32 claimHash, bytes32 typehash)
         external
         payable
         returns (uint256 id)
@@ -75,7 +75,7 @@ contract TheCompact is ITheCompact, ERC6909, TheCompactLogic {
         _register(msg.sender, claimHash, typehash);
     }
 
-    function depositAndRegisterFor(
+    function depositNativeAndRegisterFor(
         address recipient,
         bytes12 lockTag,
         address arbiter,
@@ -89,24 +89,30 @@ contract TheCompact is ITheCompact, ERC6909, TheCompactLogic {
         claimhash = _registerUsingClaimWithWitness(recipient, id, msg.value, arbiter, nonce, expires, typehash, witness);
     }
 
-    function deposit(address token, bytes12 lockTag, uint256 amount) external returns (uint256) {
+    function depositERC20(address token, bytes12 lockTag, uint256 amount) external returns (uint256) {
         return _performCustomERC20Deposit(token, lockTag, amount, msg.sender);
     }
 
-    function deposit(address token, bytes12 lockTag, uint256 amount, address recipient) external returns (uint256) {
+    function depositERC20To(address token, bytes12 lockTag, uint256 amount, address recipient)
+        external
+        returns (uint256)
+    {
         return _performCustomERC20Deposit(token, lockTag, amount, recipient);
     }
 
-    function depositAndRegister(address token, bytes12 lockTag, uint256 amount, bytes32 claimHash, bytes32 typehash)
-        external
-        returns (uint256 id)
-    {
+    function depositERC20AndRegister(
+        address token,
+        bytes12 lockTag,
+        uint256 amount,
+        bytes32 claimHash,
+        bytes32 typehash
+    ) external returns (uint256 id) {
         id = _performCustomERC20Deposit(token, lockTag, amount, msg.sender);
 
         _register(msg.sender, claimHash, typehash);
     }
 
-    function depositAndRegisterFor(
+    function depositERC20AndRegisterFor(
         address recipient,
         address token,
         bytes12 lockTag,
@@ -122,23 +128,22 @@ contract TheCompact is ITheCompact, ERC6909, TheCompactLogic {
         claimhash = _registerUsingClaimWithWitness(recipient, id, amount, arbiter, nonce, expires, typehash, witness);
     }
 
-    function deposit(uint256[2][] calldata idsAndAmounts, address recipient) external payable returns (bool) {
+    function batchDeposit(uint256[2][] calldata idsAndAmounts, address recipient) external payable returns (bool) {
         _processBatchDeposit(idsAndAmounts, recipient, false);
 
         return true;
     }
 
-    function depositAndRegister(uint256[2][] calldata idsAndAmounts, bytes32[2][] calldata claimHashesAndTypehashes)
-        external
-        payable
-        returns (bool)
-    {
+    function batchDepositAndRegisterMultiple(
+        uint256[2][] calldata idsAndAmounts,
+        bytes32[2][] calldata claimHashesAndTypehashes
+    ) external payable returns (bool) {
         _processBatchDeposit(idsAndAmounts, msg.sender, false);
 
         return _registerBatch(claimHashesAndTypehashes);
     }
 
-    function depositAndRegisterFor(
+    function batchDepositAndRegisterFor(
         address recipient,
         uint256[2][] calldata idsAndAmounts,
         address arbiter,
@@ -153,7 +158,7 @@ contract TheCompact is ITheCompact, ERC6909, TheCompactLogic {
             _registerUsingBatchClaimWithWitness(recipient, idsAndAmounts, arbiter, nonce, expires, typehash, witness);
     }
 
-    function deposit(
+    function depositERC20ViaPermit2(
         ISignatureTransfer.PermitTransferFrom calldata permit,
         address, // depositor
         bytes12, // lockTag
@@ -163,7 +168,7 @@ contract TheCompact is ITheCompact, ERC6909, TheCompactLogic {
         return _depositViaPermit2(permit.permitted.token, recipient, signature);
     }
 
-    function depositAndRegister(
+    function depositERC20AndRegisterViaPermit2(
         ISignatureTransfer.PermitTransferFrom calldata permit,
         address depositor, // also recipient
         bytes12, // lockTag
@@ -175,7 +180,7 @@ contract TheCompact is ITheCompact, ERC6909, TheCompactLogic {
         return _depositAndRegisterViaPermit2(permit.permitted.token, depositor, claimHash, witness, signature);
     }
 
-    function deposit(
+    function batchDepositViaPermit2(
         address, // depositor
         ISignatureTransfer.TokenPermissions[] calldata permitted,
         DepositDetails calldata,
@@ -185,7 +190,7 @@ contract TheCompact is ITheCompact, ERC6909, TheCompactLogic {
         return _depositBatchViaPermit2(permitted, recipient, signature);
     }
 
-    function depositAndRegister(
+    function batchDepositAndRegisterViaPermit2(
         address depositor,
         ISignatureTransfer.TokenPermissions[] calldata permitted,
         DepositDetails calldata,
@@ -201,7 +206,7 @@ contract TheCompact is ITheCompact, ERC6909, TheCompactLogic {
         return _processSplitTransfer(transfer);
     }
 
-    function allocatedTransfer(SplitBatchTransfer calldata transfer) external returns (bool) {
+    function allocatedBatchTransfer(SplitBatchTransfer calldata transfer) external returns (bool) {
         return _processSplitBatchTransfer(transfer);
     }
 
@@ -227,7 +232,7 @@ contract TheCompact is ITheCompact, ERC6909, TheCompactLogic {
         return true;
     }
 
-    function register(bytes32[2][] calldata claimHashesAndTypehashes) external returns (bool) {
+    function registerMultiple(bytes32[2][] calldata claimHashesAndTypehashes) external returns (bool) {
         return _registerBatch(claimHashesAndTypehashes);
     }
 
@@ -261,7 +266,7 @@ contract TheCompact is ITheCompact, ERC6909, TheCompactLogic {
         sponsor.registerCompact(claimHash, typehash);
     }
 
-    function registerFor(
+    function registerBatchFor(
         address sponsor,
         uint256[2][] calldata idsAndAmounts,
         address arbiter,

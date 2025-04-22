@@ -235,7 +235,7 @@ contract TheCompactTest is Test {
             bytes12(bytes32((uint256(scope) << 255) | (uint256(resetPeriod) << 252) | (uint256(allocatorId) << 160)));
 
         vm.prank(swapper);
-        uint256 id = theCompact.deposit{ value: amount }(lockTag);
+        uint256 id = theCompact.depositNative{ value: amount }(lockTag);
         vm.snapshotGasLastCall("depositETHBasic");
 
         (
@@ -277,7 +277,7 @@ contract TheCompactTest is Test {
             bytes12(bytes32((uint256(scope) << 255) | (uint256(resetPeriod) << 252) | (uint256(allocatorId) << 160)));
 
         vm.prank(swapper);
-        uint256 id = theCompact.deposit{ value: amount }(lockTag, recipient);
+        uint256 id = theCompact.depositNativeTo{ value: amount }(lockTag, recipient);
         vm.snapshotGasLastCall("depositETHAndURI");
 
         (
@@ -319,7 +319,7 @@ contract TheCompactTest is Test {
             bytes12(bytes32((uint256(scope) << 255) | (uint256(resetPeriod) << 252) | (uint256(allocatorId) << 160)));
 
         vm.prank(swapper);
-        uint256 id = theCompact.deposit(address(token), lockTag, amount, swapper);
+        uint256 id = theCompact.depositERC20To(address(token), lockTag, amount, swapper);
         vm.snapshotGasLastCall("depositERC20Basic");
 
         (
@@ -361,7 +361,7 @@ contract TheCompactTest is Test {
             bytes12(bytes32((uint256(scope) << 255) | (uint256(resetPeriod) << 252) | (uint256(allocatorId) << 160)));
 
         vm.prank(swapper);
-        uint256 id = theCompact.deposit(address(token), lockTag, amount, recipient);
+        uint256 id = theCompact.depositERC20To(address(token), lockTag, amount, recipient);
         vm.snapshotGasLastCall("depositERC20AndURI");
 
         (
@@ -409,7 +409,7 @@ contract TheCompactTest is Test {
             idsAndAmounts[0] = [id, amount];
 
             vm.prank(swapper);
-            bool ok = theCompact.deposit{ value: amount }(idsAndAmounts, recipient);
+            bool ok = theCompact.batchDeposit{ value: amount }(idsAndAmounts, recipient);
             vm.snapshotGasLastCall("depositBatchSingleNative");
             assert(ok);
         }
@@ -460,7 +460,7 @@ contract TheCompactTest is Test {
             idsAndAmounts[0] = [id, amount];
 
             vm.prank(swapper);
-            bool ok = theCompact.deposit(idsAndAmounts, recipient);
+            bool ok = theCompact.batchDeposit(idsAndAmounts, recipient);
             vm.snapshotGasLastCall("depositBatchSingleERC20");
             assert(ok);
         }
@@ -610,7 +610,7 @@ contract TheCompactTest is Test {
                 )
             );
 
-            id = theCompact.deposit(permit, swapper, lockTag, params.recipient, signature);
+            id = theCompact.depositERC20ViaPermit2(permit, swapper, lockTag, params.recipient, signature);
             vm.snapshotGasLastCall("depositERC20ViaPermit2AndURI");
         }
 
@@ -765,7 +765,7 @@ contract TheCompactTest is Test {
 
             // Make deposit
             {
-                ids = theCompact.deposit(swapper, permit.permitted, details, params.recipient, signature);
+                ids = theCompact.batchDepositViaPermit2(swapper, permit.permitted, details, params.recipient, signature);
                 vm.snapshotGasLastCall("depositBatchViaPermit2SingleERC20");
 
                 assertEq(ids.length, 1);
@@ -900,7 +900,7 @@ contract TheCompactTest is Test {
                 DepositDetails memory details =
                     DepositDetails({ nonce: params.nonce, deadline: params.deadline, lockTag: lockTag });
 
-                ids = theCompact.deposit{ value: params.amount }(
+                ids = theCompact.batchDepositViaPermit2{ value: params.amount }(
                     swapper, tokenPermissions, details, params.recipient, signature
                 );
                 vm.snapshotGasLastCall("depositBatchViaPermit2NativeAndERC20");
@@ -1309,7 +1309,7 @@ contract TheCompactTest is Test {
         // Execute transfer
         {
             vm.prank(swapper);
-            bool status = theCompact.allocatedTransfer(transfer);
+            bool status = theCompact.allocatedBatchTransfer(transfer);
             vm.snapshotGasLastCall("splitBatchTransfer");
             assert(status);
         }
@@ -1433,7 +1433,7 @@ contract TheCompactTest is Test {
         // Execute transfer
         {
             vm.prank(swapper);
-            bool status = theCompact.allocatedTransfer(transfer);
+            bool status = theCompact.allocatedBatchTransfer(transfer);
             vm.snapshotGasLastCall("splitBatchWithdrawal");
             assert(status);
         }
@@ -1573,7 +1573,7 @@ contract TheCompactTest is Test {
             witness = keccak256(abi.encode(witnessArgument));
 
             vm.prank(swapperSponsor);
-            (id, registeredClaimHash) = theCompact.depositAndRegisterFor(
+            (id, registeredClaimHash) = theCompact.depositERC20AndRegisterFor(
                 address(swapper),
                 address(token),
                 lockTag,
@@ -1900,7 +1900,7 @@ contract TheCompactTest is Test {
 
         // Deposit and register
         {
-            uint256 returnedId = theCompact.depositAndRegister(
+            uint256 returnedId = theCompact.depositERC20AndRegisterViaPermit2(
                 permit,
                 swapper,
                 expectedDetails.lockTag,
@@ -2148,7 +2148,7 @@ contract TheCompactTest is Test {
             depositDetails.deadline = params.deadline;
             depositDetails.lockTag = lockTag;
 
-            returnedIds = theCompact.depositAndRegister{ value: 1e18 }(
+            returnedIds = theCompact.batchDepositAndRegisterViaPermit2{ value: 1e18 }(
                 swapper,
                 tokenPermissions,
                 depositDetails,
@@ -3386,13 +3386,13 @@ contract TheCompactTest is Test {
 
     function _makeDeposit(address guy, uint256 amount, bytes12 lockTag) internal returns (uint256 id) {
         vm.prank(guy);
-        id = theCompact.deposit{ value: amount }(lockTag, guy);
+        id = theCompact.depositNativeTo{ value: amount }(lockTag, guy);
         assertEq(theCompact.balanceOf(guy, id), amount);
     }
 
     function _makeDeposit(address guy, address asset, uint256 amount, bytes12 lockTag) internal returns (uint256 id) {
         vm.prank(guy);
-        id = theCompact.deposit(asset, lockTag, amount, guy);
+        id = theCompact.depositERC20To(asset, lockTag, amount, guy);
         assertEq(theCompact.balanceOf(guy, id), amount);
     }
 }

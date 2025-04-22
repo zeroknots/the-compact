@@ -77,7 +77,7 @@ interface ITheCompact {
      * @param lockTag  The lock tag containing allocator ID, reset period, and scope.
      * @return id      The ERC6909 token identifier of the associated resource lock.
      */
-    function deposit(bytes12 lockTag) external payable returns (uint256 id);
+    function depositNative(bytes12 lockTag) external payable returns (uint256 id);
 
     /**
      * @notice External payable function for depositing native tokens into a resource lock with
@@ -87,7 +87,7 @@ interface ITheCompact {
      * @param recipient The address that will receive the corresponding ERC6909 tokens.
      * @return id       The ERC6909 token identifier of the associated resource lock.
      */
-    function deposit(bytes12 lockTag, address recipient) external payable returns (uint256 id);
+    function depositNativeTo(bytes12 lockTag, address recipient) external payable returns (uint256 id);
 
     /**
      * @notice External payable function for depositing native tokens into a resource lock
@@ -100,7 +100,7 @@ interface ITheCompact {
      * @param typehash  The EIP-712 typehash associated with the registered compact.
      * @return id       The ERC6909 token identifier of the associated resource lock.
      */
-    function depositAndRegister(bytes12 lockTag, bytes32 claimHash, bytes32 typehash)
+    function depositNativeAndRegister(bytes12 lockTag, bytes32 claimHash, bytes32 typehash)
         external
         payable
         returns (uint256 id);
@@ -119,7 +119,7 @@ interface ITheCompact {
      * @return id         The ERC6909 token identifier of the associated resource lock.
      * @return claimhash  Hash of the claim. Can be used to verify the expected claim was registered.
      */
-    function depositAndRegisterFor(
+    function depositNativeAndRegisterFor(
         address recipient,
         bytes12 lockTag,
         address arbiter,
@@ -141,7 +141,7 @@ interface ITheCompact {
      * @param amount   The amount of tokens to deposit.
      * @return id      The ERC6909 token identifier of the associated resource lock.
      */
-    function deposit(address token, bytes12 lockTag, uint256 amount) external returns (uint256 id);
+    function depositERC20(address token, bytes12 lockTag, uint256 amount) external returns (uint256 id);
 
     /**
      * @notice External function for depositing ERC20 tokens into a resource lock with custom reset
@@ -156,7 +156,9 @@ interface ITheCompact {
      * @param recipient The address that will receive the corresponding ERC6909 tokens.
      * @return id       The ERC6909 token identifier of the associated resource lock.
      */
-    function deposit(address token, bytes12 lockTag, uint256 amount, address recipient) external returns (uint256 id);
+    function depositERC20To(address token, bytes12 lockTag, uint256 amount, address recipient)
+        external
+        returns (uint256 id);
 
     /**
      * @notice External function for depositing ERC20 tokens and simultaneously registering a
@@ -172,9 +174,13 @@ interface ITheCompact {
      * @param typehash  The EIP-712 typehash associated with the registered compact.
      * @return id       The ERC6909 token identifier of the associated resource lock.
      */
-    function depositAndRegister(address token, bytes12 lockTag, uint256 amount, bytes32 claimHash, bytes32 typehash)
-        external
-        returns (uint256 id);
+    function depositERC20AndRegister(
+        address token,
+        bytes12 lockTag,
+        uint256 amount,
+        bytes32 claimHash,
+        bytes32 typehash
+    ) external returns (uint256 id);
 
     /**
      * @notice External function for depositing ERC20 tokens and simultaneously registering a
@@ -195,7 +201,7 @@ interface ITheCompact {
      * @return id         The ERC6909 token identifier of the associated resource lock.
      * @return claimhash  Hash of the claim. Can be used to verify the expected claim was registered.
      */
-    function depositAndRegisterFor(
+    function depositERC20AndRegisterFor(
         address recipient,
         address token,
         bytes12 lockTag,
@@ -219,7 +225,7 @@ interface ITheCompact {
      * @param recipient     The address that will receive the corresponding ERC6909 tokens.
      * @return              Whether the batch deposit was successfully completed.
      */
-    function deposit(uint256[2][] calldata idsAndAmounts, address recipient) external payable returns (bool);
+    function batchDeposit(uint256[2][] calldata idsAndAmounts, address recipient) external payable returns (bool);
 
     /**
      * @notice External payable function for depositing multiple tokens in a single transaction
@@ -234,10 +240,10 @@ interface ITheCompact {
      * @param claimHashesAndTypehashes Array of [claimHash, typehash] pairs for registration.
      * @return                        Whether the batch deposit and claim hash registration was successfully completed.
      */
-    function depositAndRegister(uint256[2][] calldata idsAndAmounts, bytes32[2][] calldata claimHashesAndTypehashes)
-        external
-        payable
-        returns (bool);
+    function batchDepositAndRegisterMultiple(
+        uint256[2][] calldata idsAndAmounts,
+        bytes32[2][] calldata claimHashesAndTypehashes
+    ) external payable returns (bool);
 
     /**
      * @notice External function for depositing ERC20 tokens and simultaneously registering a
@@ -255,7 +261,7 @@ interface ITheCompact {
      * @param witness       Hash of the witness data.
      * @return claimhash  Hash of the claim. Can be used to verify the expected claim was registered.
      */
-    function depositAndRegisterFor(
+    function batchDepositAndRegisterFor(
         address recipient,
         uint256[2][] calldata idsAndAmounts,
         address arbiter,
@@ -280,7 +286,7 @@ interface ITheCompact {
      * @param signature   The Permit2 signature from the depositor authorizing the deposit.
      * @return id         The ERC6909 token identifier of the associated resource lock.
      */
-    function deposit(
+    function depositERC20ViaPermit2(
         ISignatureTransfer.PermitTransferFrom calldata permit,
         address depositor,
         bytes12 lockTag,
@@ -307,7 +313,7 @@ interface ITheCompact {
      * @param signature       The Permit2 signature from the depositor authorizing the deposit.
      * @return id             The ERC6909 token identifier of the associated resource lock.
      */
-    function depositAndRegister(
+    function depositERC20AndRegisterViaPermit2(
         ISignatureTransfer.PermitTransferFrom calldata permit,
         address depositor,
         bytes12 lockTag,
@@ -335,7 +341,7 @@ interface ITheCompact {
      * @param signature   The Permit2 signature from the depositor authorizing the deposits.
      * @return ids        Array of ERC6909 token identifiers for the associated resource locks.
      */
-    function deposit(
+    function batchDepositViaPermit2(
         address depositor,
         ISignatureTransfer.TokenPermissions[] calldata permitted,
         DepositDetails calldata details,
@@ -364,7 +370,7 @@ interface ITheCompact {
      * @param signature       The Permit2 signature from the depositor authorizing the deposits.
      * @return ids            Array of ERC6909 token identifiers for the associated resource locks.
      */
-    function depositAndRegister(
+    function batchDepositAndRegisterViaPermit2(
         address depositor,
         ISignatureTransfer.TokenPermissions[] calldata permitted,
         DepositDetails calldata details,
@@ -402,7 +408,7 @@ interface ITheCompact {
      *        -  amount   The amount of tokens the claimant will receive.
      * @return            Whether the transfer was successful.
      */
-    function allocatedTransfer(SplitBatchTransfer calldata transfer) external returns (bool);
+    function allocatedBatchTransfer(SplitBatchTransfer calldata transfer) external returns (bool);
 
     /**
      * @notice External function to initiate a forced withdrawal for a resource lock. Once
@@ -454,7 +460,7 @@ interface ITheCompact {
      * @param claimHashesAndTypehashes Array of [claimHash, typehash] pairs for registration.
      * @return                         Whether all claim hashes were successfully registered.
      */
-    function register(bytes32[2][] calldata claimHashesAndTypehashes) external returns (bool);
+    function registerMultiple(bytes32[2][] calldata claimHashesAndTypehashes) external returns (bool);
 
     /**
      * @notice Register a claim on behalf of a sponsor with their signature.
@@ -496,7 +502,7 @@ interface ITheCompact {
      * @param sponsorSignature The signature from the sponsor authorizing the registration.
      * @return claimHash       The hash of the registered claim.
      */
-    function registerFor(
+    function registerBatchFor(
         address sponsor,
         uint256[2][] calldata idsAndAmounts,
         address arbiter,
