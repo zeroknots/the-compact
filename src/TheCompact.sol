@@ -3,8 +3,8 @@ pragma solidity ^0.8.27;
 
 import { ITheCompact } from "./interfaces/ITheCompact.sol";
 
-import { SplitBatchTransfer } from "./types/BatchClaims.sol";
-import { SplitTransfer } from "./types/Claims.sol";
+import { AllocatedBatchTransfer } from "./types/BatchClaims.sol";
+import { AllocatedTransfer } from "./types/Claims.sol";
 import { CompactCategory } from "./types/CompactCategory.sol";
 import { Lock } from "./types/Lock.sol";
 import { Scope } from "./types/Scope.sol";
@@ -202,11 +202,11 @@ contract TheCompact is ITheCompact, ERC6909, TheCompactLogic {
         return _depositBatchAndRegisterViaPermit2(depositor, permitted, witness, signature);
     }
 
-    function allocatedTransfer(SplitTransfer calldata transfer) external returns (bool) {
+    function allocatedTransfer(AllocatedTransfer calldata transfer) external returns (bool) {
         return _processSplitTransfer(transfer);
     }
 
-    function allocatedBatchTransfer(SplitBatchTransfer calldata transfer) external returns (bool) {
+    function allocatedBatchTransfer(AllocatedBatchTransfer calldata transfer) external returns (bool) {
         return _processSplitBatchTransfer(transfer);
     }
 

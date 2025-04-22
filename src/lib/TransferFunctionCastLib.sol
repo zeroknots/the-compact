@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.27;
 
-import { SplitBatchTransfer } from "../types/BatchClaims.sol";
-import { SplitTransfer } from "../types/Claims.sol";
-import { TransferComponent, SplitByIdComponent } from "../types/Components.sol";
+import { AllocatedBatchTransfer } from "../types/BatchClaims.sol";
+import { AllocatedTransfer } from "../types/Claims.sol";
+import { TransferComponent, ComponentsById } from "../types/Components.sol";
 
 /**
  * @title TransferFunctionCastLib
@@ -17,17 +17,17 @@ import { TransferComponent, SplitByIdComponent } from "../types/Components.sol";
  */
 library TransferFunctionCastLib {
     /**
-     * @notice Function cast to provide a SplitBatchTransfer calldata struct while
+     * @notice Function cast to provide a BatchTransfer calldata struct while
      * treating it as a BasicTransfer calldata struct.
      * @param fnIn   Function pointer to `TransferLogic._notExpiredAndAuthorizedByAllocator`.
      * @return fnOut Modified function used in `TransferLogic._processSplitBatchTransfer`.
      */
     function usingSplitBatchTransfer(
-        function (bytes32, address, SplitTransfer calldata, uint256[2][] memory) internal fnIn
+        function (bytes32, address, AllocatedTransfer calldata, uint256[2][] memory) internal fnIn
     )
         internal
         pure
-        returns (function (bytes32, address, SplitBatchTransfer calldata, uint256[2][] memory) internal fnOut)
+        returns (function (bytes32, address, AllocatedBatchTransfer calldata, uint256[2][] memory) internal fnOut)
     {
         assembly ("memory-safe") {
             fnOut := fnIn
@@ -35,7 +35,7 @@ library TransferFunctionCastLib {
     }
 
     /**
-     * @notice Function cast to provide a SplitByIdComponent array while treating it
+     * @notice Function cast to provide a ComponentsById array while treating it
      * as a TransferComponent array.
      * @param fnIn   Function pointer to `TransferLogic._deriveConsistentAllocatorAndConsumeNonce`.
      * @return fnOut Modified function used in `TransferLogic._processSplitBatchTransfer`.
@@ -47,7 +47,7 @@ library TransferFunctionCastLib {
         internal
         pure
         returns (
-            function(SplitByIdComponent[] calldata, uint256, function (SplitByIdComponent[] calldata, uint256) internal pure returns (uint96)) internal returns (address)
+            function(ComponentsById[] calldata, uint256, function (ComponentsById[] calldata, uint256) internal pure returns (uint96)) internal returns (address)
             fnOut
         )
     {

@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.27;
 
-import { SplitBatchTransfer } from "../types/BatchClaims.sol";
-import { SplitTransfer } from "../types/Claims.sol";
-import { TransferComponent, SplitComponent, SplitByIdComponent } from "../types/Components.sol";
+import { AllocatedBatchTransfer } from "../types/BatchClaims.sol";
+import { AllocatedTransfer } from "../types/Claims.sol";
+import { TransferComponent, Component, ComponentsById } from "../types/Components.sol";
 
 import { ClaimHashLib } from "./ClaimHashLib.sol";
 import { ComponentLib } from "./ComponentLib.sol";
@@ -24,18 +24,20 @@ import { AllocatorLib } from "./AllocatorLib.sol";
  * sponsor.
  */
 contract TransferLogic is ConstructorLogic {
-    using ClaimHashLib for SplitTransfer;
-    using ClaimHashLib for SplitBatchTransfer;
-    using ComponentLib for SplitTransfer;
-    using ComponentLib for SplitBatchTransfer;
-    using ComponentLib for SplitComponent[];
+    using ClaimHashLib for AllocatedTransfer;
+    using ClaimHashLib for AllocatedBatchTransfer;
+    using ComponentLib for AllocatedTransfer;
+    using ComponentLib for AllocatedBatchTransfer;
+    using ComponentLib for Component[];
     using IdLib for uint256;
     using EfficiencyLib for bool;
     using EventLib for address;
     using ValidityLib for uint96;
     using ValidityLib for uint256;
     using ValidityLib for bytes32;
-    using TransferFunctionCastLib for function(bytes32, address, SplitTransfer calldata, uint256[2][] memory) internal;
+    using
+    TransferFunctionCastLib
+    for function(bytes32, address, AllocatedTransfer calldata, uint256[2][] memory) internal;
     using
     TransferFunctionCastLib
     for
@@ -46,13 +48,13 @@ contract TransferLogic is ConstructorLogic {
     uint32 private constant _ATTEST_SELECTOR = 0x1a808f91;
 
     /**
-     * @notice Internal function for processing a split transfer or withdrawal. Validates the
+     * @notice Internal function for processing a transfer or withdrawal. Validates the
      * allocator signature, checks expiration, consumes the nonce, and executes the transfer
      * or withdrawal operation targeting multiple recipients from a single resource lock.
-     * @param transfer  A SplitTransfer struct containing signature, nonce, expiry, and split transfer details.
+     * @param transfer  An AllocatedTransfer struct containing signature, nonce, expiry, and transfer details.
      * @return          Whether the transfer was successfully processed.
      */
-    function _processSplitTransfer(SplitTransfer calldata transfer) internal returns (bool) {
+    function _processSplitTransfer(AllocatedTransfer calldata transfer) internal returns (bool) {
         // Set the reentrancy guard.
         _setReentrancyGuard();
 
@@ -67,7 +69,7 @@ contract TransferLogic is ConstructorLogic {
             idsAndAmounts
         );
 
-        // Perform the split transfers or withdrawals.
+        // Perform the transfers or withdrawals.
         transfer.processSplitTransfer();
 
         // Clear the reentancy guard.
@@ -77,19 +79,19 @@ contract TransferLogic is ConstructorLogic {
     }
 
     /**
-     * @notice Internal function for processing a split batch transfer or withdrawal. Validates
+     * @notice Internal function for processing a batch transfer or withdrawal. Validates
      * the allocator signature, checks expiration, consumes the nonce, ensures consistent
      * allocator across all resource locks, and executes the transfer or withdrawal operation
      * for multiple recipients from multiple resource locks.
-     * @param transfer  A SplitBatchTransfer struct containing signature, nonce, expiry, and split batch transfer details.
+     * @param transfer  An AllocatedBatchTransfer struct containing signature, nonce, expiry, and batch transfer details.
      * @return          Whether the transfer was successfully processed.
      */
-    function _processSplitBatchTransfer(SplitBatchTransfer calldata transfer) internal returns (bool) {
+    function _processSplitBatchTransfer(AllocatedBatchTransfer calldata transfer) internal returns (bool) {
         // Set the reentrancy guard.
         _setReentrancyGuard();
 
-        // Navigate to the split batch components array in calldata.
-        SplitByIdComponent[] calldata transfers = transfer.transfers;
+        // Navigate to the batch components array in calldata.
+        ComponentsById[] calldata transfers = transfer.transfers;
 
         // Retrieve the total number of components.
         uint256 totalIds = transfers.length;
@@ -99,9 +101,9 @@ contract TransferLogic is ConstructorLogic {
             // Iterate over each component in calldata.
             for (uint256 i = 0; i < totalIds; ++i) {
                 // Navigate to location of the component in calldata.
-                SplitByIdComponent calldata component = transfers[i];
+                ComponentsById calldata component = transfers[i];
 
-                // Process transfer for each split component in the set.
+                // Process transfer for each component in the set.
                 idsAndAmounts[i] = [component.id, component.portions.aggregate()];
             }
         }
@@ -116,7 +118,7 @@ contract TransferLogic is ConstructorLogic {
             idsAndAmounts
         );
 
-        // Perform the split batch transfers or withdrawals.
+        // Perform the batch transfers or withdrawals.
         transfer.performSplitBatchTransfer();
 
         // Clear the reentancy guard.
@@ -185,13 +187,13 @@ contract TransferLogic is ConstructorLogic {
      * and emits a claim event.
      * @param messageHash     The EIP-712 hash of the transfer message.
      * @param allocator       The address of the allocator.
-     * @param transferPayload The BasicTransfer struct containing signature and expiry.
+     * @param transferPayload The AllocatedTransfer struct containing signature and expiry.
      * @param idsAndAmounts   An array with IDs and aggregate transfer amounts.
      */
     function _notExpiredAndAuthorizedByAllocator(
         bytes32 messageHash,
         address allocator,
-        SplitTransfer calldata transferPayload,
+        AllocatedTransfer calldata transferPayload,
         uint256[2][] memory idsAndAmounts
     ) private {
         uint256 expires = transferPayload.expires;
@@ -219,7 +221,7 @@ contract TransferLogic is ConstructorLogic {
      * allocator or if the batch is empty.
      * @param components           Array of transfer components to check.
      * @param nonce                The nonce to consume.
-     * @param allocatorIdRetrieval Function pointer to retrieve allocatorId from components array (handles split components).
+     * @param allocatorIdRetrieval Function pointer to retrieve allocatorId from components array.
      * @return allocator           The validated allocator address.
      */
     function _deriveConsistentAllocatorAndConsumeNonce(
@@ -274,13 +276,13 @@ contract TransferLogic is ConstructorLogic {
     }
 
     /**
-     * @notice Private pure function that retrieves the ID of a split batch transfer component
+     * @notice Private pure function that retrieves the ID of a batch transfer component
      * from an array of components at a specific index and uses it to derive an allocator ID.
-     * @param components   Array of split batch transfer components.
-     * @param index        The index of the split batch transfer component to retrieve.
+     * @param components   Array of batch transfer components.
+     * @param index        The index of the batch transfer component to retrieve.
      * @return allocatorId The allocator ID derived from the transfer component at the given index.
      */
-    function _allocatorIdOfSplitByIdComponent(SplitByIdComponent[] calldata components, uint256 index)
+    function _allocatorIdOfSplitByIdComponent(ComponentsById[] calldata components, uint256 index)
         private
         pure
         returns (uint96)

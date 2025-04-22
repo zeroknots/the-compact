@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.27;
 
-import { SplitBatchClaimComponent } from "./Components.sol";
+import { BatchClaimComponent } from "./Components.sol";
 
 struct BatchMultichainClaim {
     bytes allocatorData; // Authorization from the allocator.
@@ -12,7 +12,7 @@ struct BatchMultichainClaim {
     bytes32 witness; // Hash of the witness data.
     string witnessTypestring; // Witness typestring appended to existing typestring.
     bytes32[] additionalChains; // The allocation hashes from additional chains.
-    SplitBatchClaimComponent[] claims; // The claim token IDs, recipients and amounts.
+    BatchClaimComponent[] claims; // The claim token IDs, recipients and amounts.
 }
 
 struct ExogenousBatchMultichainClaim {
@@ -26,5 +26,5 @@ struct ExogenousBatchMultichainClaim {
     bytes32[] additionalChains; // The allocation hashes from additional chains.
     uint256 chainIndex; // The index after which to insert the current allocation hash.
     uint256 notarizedChainId; // The chain id used to sign the multichain claim.
-    SplitBatchClaimComponent[] claims; // The claim token IDs, recipients and amounts.
+    BatchClaimComponent[] claims; // The claim token IDs, recipients and amounts.
 }

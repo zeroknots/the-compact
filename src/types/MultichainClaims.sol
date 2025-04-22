@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.27;
 
-import { SplitComponent } from "./Components.sol";
+import { Component } from "./Components.sol";
 
 struct MultichainClaim {
     bytes allocatorData; // Authorization from the allocator.
@@ -14,7 +14,7 @@ struct MultichainClaim {
     bytes32[] additionalChains; // The allocation hashes from additional chains.
     uint256 id; // The token ID of the ERC6909 token to allocate.
     uint256 allocatedAmount; // The original allocated amount of ERC6909 tokens.
-    SplitComponent[] claimants; // The claim recipients and amounts; specified by the arbiter.
+    Component[] claimants; // The claim recipients and amounts; specified by the arbiter.
 }
 
 struct ExogenousMultichainClaim {
@@ -30,5 +30,5 @@ struct ExogenousMultichainClaim {
     uint256 notarizedChainId; // The chain id used to sign the multichain claim.
     uint256 id; // The token ID of the ERC6909 token to allocate.
     uint256 allocatedAmount; // The original allocated amount of ERC6909 tokens.
-    SplitComponent[] claimants; // The claim recipients and amounts; specified by the arbiter.
+    Component[] claimants; // The claim recipients and amounts; specified by the arbiter.
 }

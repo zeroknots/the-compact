@@ -1,4 +1,6 @@
 {
+  "BatchTransfer": "116979",
+  "Transfer": "87079",
   "batchClaimRegisteredWithDepositWithWitness": "145866",
   "batchDepositAndRegisterWithWitnessViaPermit2": "218577",
   "claim": "86656",
@@ -20,10 +22,8 @@
   "register": "24480",
   "splitBatchClaimWithWitness": "145866",
   "splitBatchMultichainClaimWithWitness": "92588",
-  "splitBatchTransfer": "116979",
   "splitBatchWithdrawal": "145817",
   "splitClaimWithWitness": "89791",
   "splitMultichainClaimWithWitness": "91371",
-  "splitTransfer": "87079",
   "splitWithdrawal": "96031"
 }

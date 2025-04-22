@@ -19,19 +19,14 @@ import { AlwaysOKEmissary } from "../src/test/AlwaysOKEmissary.sol";
 import { SimpleAllocator } from "../src/examples/allocator/SimpleAllocator.sol";
 import { QualifiedAllocator } from "../src/examples/allocator/QualifiedAllocator.sol";
 
-import { SplitTransfer, Claim } from "../src/types/Claims.sol";
-import { SplitBatchTransfer, BatchClaim } from "../src/types/BatchClaims.sol";
+import { AllocatedTransfer, Claim } from "../src/types/Claims.sol";
+import { AllocatedBatchTransfer, BatchClaim } from "../src/types/BatchClaims.sol";
 
 import { MultichainClaim, ExogenousMultichainClaim } from "../src/types/MultichainClaims.sol";
 
 import { BatchMultichainClaim, ExogenousBatchMultichainClaim } from "../src/types/BatchMultichainClaims.sol";
 
-import {
-    SplitComponent,
-    TransferComponent,
-    SplitByIdComponent,
-    SplitBatchClaimComponent
-} from "../src/types/Components.sol";
+import { Component, TransferComponent, ComponentsById, BatchClaimComponent } from "../src/types/Components.sol";
 
 interface EIP712 {
     function DOMAIN_SEPARATOR() external view returns (bytes32);
@@ -940,7 +935,7 @@ contract TheCompactTest is Test {
         }
     }
 
-    function test_splitTransfer() public {
+    function test_Transfer() public {
         // Setup test parameters
         TestParams memory params;
         params.resetPeriod = ResetPeriod.TenMinutes;
@@ -981,21 +976,21 @@ contract TheCompactTest is Test {
         }
 
         // Prepare recipients
-        SplitComponent[] memory recipients;
+        Component[] memory recipients;
         {
             uint256 claimantOne = abi.decode(abi.encodePacked(bytes12(bytes32(id)), recipientOne), (uint256));
             uint256 claimantTwo = abi.decode(abi.encodePacked(bytes12(bytes32(id)), recipientTwo), (uint256));
 
-            SplitComponent memory splitOne = SplitComponent({ claimant: claimantOne, amount: amountOne });
-            SplitComponent memory splitTwo = SplitComponent({ claimant: claimantTwo, amount: amountTwo });
+            Component memory splitOne = Component({ claimant: claimantOne, amount: amountOne });
+            Component memory splitTwo = Component({ claimant: claimantTwo, amount: amountTwo });
 
-            recipients = new SplitComponent[](2);
+            recipients = new Component[](2);
             recipients[0] = splitOne;
             recipients[1] = splitTwo;
         }
 
         // Create and execute transfer
-        SplitTransfer memory transfer = SplitTransfer({
+        AllocatedTransfer memory transfer = AllocatedTransfer({
             nonce: params.nonce,
             expires: params.deadline,
             allocatorData: allocatorData,
@@ -1005,7 +1000,7 @@ contract TheCompactTest is Test {
 
         vm.prank(swapper);
         bool status = theCompact.allocatedTransfer(transfer);
-        vm.snapshotGasLastCall("splitTransfer");
+        vm.snapshotGasLastCall("Transfer");
         assert(status);
 
         // Verify balances
@@ -1072,20 +1067,20 @@ contract TheCompactTest is Test {
         }
 
         // Prepare recipients
-        SplitComponent[] memory recipients;
+        Component[] memory recipients;
         {
             uint256 claimant = abi.decode(abi.encodePacked(bytes12(bytes32(id)), params.recipient), (uint256));
 
-            SplitComponent memory split = SplitComponent({ claimant: claimant, amount: params.amount });
+            Component memory split = Component({ claimant: claimant, amount: params.amount });
 
-            recipients = new SplitComponent[](1);
+            recipients = new Component[](1);
             recipients[0] = split;
         }
 
         // Create and execute transfer
         bool status;
         {
-            SplitTransfer memory transfer = SplitTransfer({
+            AllocatedTransfer memory transfer = AllocatedTransfer({
                 nonce: params.nonce,
                 expires: params.deadline,
                 allocatorData: abi.encode(allocatorData, qualificationArgument),
@@ -1149,7 +1144,7 @@ contract TheCompactTest is Test {
         }
 
         // Prepare recipients
-        SplitComponent[] memory recipients;
+        Component[] memory recipients;
         {
             uint256 claimantOne;
             uint256 claimantTwo;
@@ -1159,13 +1154,13 @@ contract TheCompactTest is Test {
             }
 
             {
-                SplitComponent memory splitOne;
-                SplitComponent memory splitTwo;
+                Component memory splitOne;
+                Component memory splitTwo;
 
-                splitOne = SplitComponent({ claimant: claimantOne, amount: amountOne });
-                splitTwo = SplitComponent({ claimant: claimantTwo, amount: amountTwo });
+                splitOne = Component({ claimant: claimantOne, amount: amountOne });
+                splitTwo = Component({ claimant: claimantTwo, amount: amountTwo });
 
-                recipients = new SplitComponent[](2);
+                recipients = new Component[](2);
                 recipients[0] = splitOne;
                 recipients[1] = splitTwo;
             }
@@ -1173,9 +1168,9 @@ contract TheCompactTest is Test {
 
         // Create and execute transfer
         {
-            SplitTransfer memory transfer;
+            AllocatedTransfer memory transfer;
             {
-                transfer = SplitTransfer({
+                transfer = AllocatedTransfer({
                     nonce: params.nonce,
                     expires: params.deadline,
                     allocatorData: allocatorData,
@@ -1203,7 +1198,7 @@ contract TheCompactTest is Test {
         }
     }
 
-    function test_splitBatchTransfer() public {
+    function test_BatchTransfer() public {
         // Setup test parameters
         TestParams memory params;
         params.resetPeriod = ResetPeriod.TenMinutes;
@@ -1271,34 +1266,34 @@ contract TheCompactTest is Test {
         }
 
         // Prepare transfers
-        SplitBatchTransfer memory transfer;
-        SplitByIdComponent[] memory transfers = new SplitByIdComponent[](2);
+        AllocatedBatchTransfer memory transfer;
+        ComponentsById[] memory transfers = new ComponentsById[](2);
         {
-            SplitComponent[] memory portionsOne;
+            Component[] memory portionsOne;
 
             uint256 claimantOne = abi.decode(abi.encodePacked(bytes12(bytes32(idOne)), recipientOne), (uint256));
 
-            portionsOne = new SplitComponent[](1);
-            portionsOne[0] = SplitComponent({ claimant: claimantOne, amount: amountOne });
+            portionsOne = new Component[](1);
+            portionsOne[0] = Component({ claimant: claimantOne, amount: amountOne });
 
-            transfers[0] = SplitByIdComponent({ id: idOne, portions: portionsOne });
+            transfers[0] = ComponentsById({ id: idOne, portions: portionsOne });
         }
 
         {
-            SplitComponent[] memory portionsTwo;
+            Component[] memory portionsTwo;
             uint256 claimantTwo = abi.decode(abi.encodePacked(bytes12(bytes32(idTwo)), recipientOne), (uint256));
             uint256 claimantThree = abi.decode(abi.encodePacked(bytes12(bytes32(idTwo)), recipientTwo), (uint256));
 
-            portionsTwo = new SplitComponent[](2);
-            portionsTwo[0] = SplitComponent({ claimant: claimantTwo, amount: amountTwo });
-            portionsTwo[1] = SplitComponent({ claimant: claimantThree, amount: amountThree });
+            portionsTwo = new Component[](2);
+            portionsTwo[0] = Component({ claimant: claimantTwo, amount: amountTwo });
+            portionsTwo[1] = Component({ claimant: claimantThree, amount: amountThree });
 
-            transfers[1] = SplitByIdComponent({ id: idTwo, portions: portionsTwo });
+            transfers[1] = ComponentsById({ id: idTwo, portions: portionsTwo });
         }
 
         {
             // Create batch transfer
-            transfer = SplitBatchTransfer({
+            transfer = AllocatedBatchTransfer({
                 nonce: params.nonce,
                 expires: params.deadline,
                 allocatorData: allocatorData,
@@ -1310,7 +1305,7 @@ contract TheCompactTest is Test {
         {
             vm.prank(swapper);
             bool status = theCompact.allocatedBatchTransfer(transfer);
-            vm.snapshotGasLastCall("splitBatchTransfer");
+            vm.snapshotGasLastCall("BatchTransfer");
             assert(status);
         }
 
@@ -1392,36 +1387,36 @@ contract TheCompactTest is Test {
         }
 
         // Prepare transfers
-        SplitBatchTransfer memory transfer;
-        SplitByIdComponent[] memory transfers = new SplitByIdComponent[](2);
+        AllocatedBatchTransfer memory transfer;
+        ComponentsById[] memory transfers = new ComponentsById[](2);
         {
             // First transfer
             {
-                SplitComponent[] memory portionsOne;
+                Component[] memory portionsOne;
                 uint256 claimantOne = abi.decode(abi.encodePacked(bytes12(0), recipientOne), (uint256));
 
-                portionsOne = new SplitComponent[](1);
-                portionsOne[0] = SplitComponent({ claimant: claimantOne, amount: amountOne });
+                portionsOne = new Component[](1);
+                portionsOne[0] = Component({ claimant: claimantOne, amount: amountOne });
 
-                transfers[0] = SplitByIdComponent({ id: idOne, portions: portionsOne });
+                transfers[0] = ComponentsById({ id: idOne, portions: portionsOne });
             }
 
             // Second transfer
             {
-                SplitComponent[] memory portionsTwo;
+                Component[] memory portionsTwo;
                 uint256 claimantTwo = abi.decode(abi.encodePacked(bytes12(0), recipientOne), (uint256));
                 uint256 claimantThree = abi.decode(abi.encodePacked(bytes12(0), recipientTwo), (uint256));
 
-                portionsTwo = new SplitComponent[](2);
-                portionsTwo[0] = SplitComponent({ claimant: claimantTwo, amount: amountTwo });
-                portionsTwo[1] = SplitComponent({ claimant: claimantThree, amount: amountThree });
+                portionsTwo = new Component[](2);
+                portionsTwo[0] = Component({ claimant: claimantTwo, amount: amountTwo });
+                portionsTwo[1] = Component({ claimant: claimantThree, amount: amountThree });
 
-                transfers[1] = SplitByIdComponent({ id: idTwo, portions: portionsTwo });
+                transfers[1] = ComponentsById({ id: idTwo, portions: portionsTwo });
             }
 
             // Create batch transfer
             {
-                transfer = SplitBatchTransfer({
+                transfer = AllocatedBatchTransfer({
                     nonce: params.nonce,
                     expires: params.deadline,
                     allocatorData: allocatorData,
@@ -1495,13 +1490,13 @@ contract TheCompactTest is Test {
         uint256 claimantOne = abi.decode(abi.encodePacked(bytes12(bytes32(claim.id)), recipientOne), (uint256));
         uint256 claimantTwo = abi.decode(abi.encodePacked(bytes12(bytes32(claim.id)), recipientTwo), (uint256));
 
-        SplitComponent[] memory recipients;
+        Component[] memory recipients;
         {
-            SplitComponent memory splitOne = SplitComponent({ claimant: claimantOne, amount: amountOne });
+            Component memory splitOne = Component({ claimant: claimantOne, amount: amountOne });
 
-            SplitComponent memory splitTwo = SplitComponent({ claimant: claimantTwo, amount: amountTwo });
+            Component memory splitTwo = Component({ claimant: claimantTwo, amount: amountTwo });
 
-            recipients = new SplitComponent[](2);
+            recipients = new Component[](2);
             recipients[0] = splitOne;
             recipients[1] = splitTwo;
         }
@@ -1631,13 +1626,13 @@ contract TheCompactTest is Test {
             }
 
             // Create recipients
-            SplitComponent[] memory recipients;
+            Component[] memory recipients;
             {
-                recipients = new SplitComponent[](1);
+                recipients = new Component[](1);
 
                 uint256 claimantId = uint256(bytes32(abi.encodePacked(bytes12(bytes32(id)), params.recipient)));
 
-                recipients[0] = SplitComponent({ claimant: claimantId, amount: params.amount });
+                recipients[0] = Component({ claimant: claimantId, amount: params.amount });
             }
 
             // Build the claim
@@ -1736,12 +1731,12 @@ contract TheCompactTest is Test {
             uint256 claimantOne = abi.decode(abi.encodePacked(bytes12(0), recipientOne), (uint256));
             uint256 claimantTwo = abi.decode(abi.encodePacked(bytes12(0), recipientTwo), (uint256));
 
-            SplitComponent[] memory recipients;
+            Component[] memory recipients;
             {
-                SplitComponent memory splitOne = SplitComponent({ claimant: claimantOne, amount: amountOne });
-                SplitComponent memory splitTwo = SplitComponent({ claimant: claimantTwo, amount: amountTwo });
+                Component memory splitOne = Component({ claimant: claimantOne, amount: amountOne });
+                Component memory splitTwo = Component({ claimant: claimantTwo, amount: amountTwo });
 
-                recipients = new SplitComponent[](2);
+                recipients = new Component[](2);
                 recipients[0] = splitOne;
                 recipients[1] = splitTwo;
             }
@@ -1954,12 +1949,12 @@ contract TheCompactTest is Test {
                 abi.encodePacked(bytes12(bytes32(claim.id)), 0x3333333333333333333333333333333333333333), (uint256)
             );
 
-            SplitComponent[] memory recipients;
+            Component[] memory recipients;
             {
-                SplitComponent memory splitOne = SplitComponent({ claimant: claimantOne, amount: amountOne });
-                SplitComponent memory splitTwo = SplitComponent({ claimant: claimantTwo, amount: amountTwo });
+                Component memory splitOne = Component({ claimant: claimantOne, amount: amountOne });
+                Component memory splitTwo = Component({ claimant: claimantTwo, amount: amountTwo });
 
-                recipients = new SplitComponent[](2);
+                recipients = new Component[](2);
                 recipients[0] = splitOne;
                 recipients[1] = splitTwo;
 
@@ -2214,7 +2209,7 @@ contract TheCompactTest is Test {
 
         // Create claim components
         {
-            SplitBatchClaimComponent[] memory claims = new SplitBatchClaimComponent[](3);
+            BatchClaimComponent[] memory claims = new BatchClaimComponent[](3);
             {
                 uint256 claimantOne = abi.decode(
                     abi.encodePacked(bytes12(bytes32(ids[0])), 0x1111111111111111111111111111111111111111), (uint256)
@@ -2230,23 +2225,22 @@ contract TheCompactTest is Test {
                 );
 
                 {
-                    SplitComponent[] memory portions = new SplitComponent[](2);
-                    portions[0] = SplitComponent({ claimant: claimantOne, amount: 4e17 });
-                    portions[1] = SplitComponent({ claimant: claimantTwo, amount: 6e17 });
-                    claims[0] = SplitBatchClaimComponent({ id: ids[0], allocatedAmount: 1e18, portions: portions });
+                    Component[] memory portions = new Component[](2);
+                    portions[0] = Component({ claimant: claimantOne, amount: 4e17 });
+                    portions[1] = Component({ claimant: claimantTwo, amount: 6e17 });
+                    claims[0] = BatchClaimComponent({ id: ids[0], allocatedAmount: 1e18, portions: portions });
                 }
 
                 {
-                    SplitComponent[] memory anotherPortion = new SplitComponent[](1);
-                    anotherPortion[0] = SplitComponent({ claimant: claimantThree, amount: 1e18 });
-                    claims[1] =
-                        SplitBatchClaimComponent({ id: ids[1], allocatedAmount: 1e18, portions: anotherPortion });
+                    Component[] memory anotherPortion = new Component[](1);
+                    anotherPortion[0] = Component({ claimant: claimantThree, amount: 1e18 });
+                    claims[1] = BatchClaimComponent({ id: ids[1], allocatedAmount: 1e18, portions: anotherPortion });
                 }
 
                 {
-                    SplitComponent[] memory aThirdPortion = new SplitComponent[](1);
-                    aThirdPortion[0] = SplitComponent({ claimant: claimantFour, amount: 1e18 });
-                    claims[2] = SplitBatchClaimComponent({ id: ids[2], allocatedAmount: 1e18, portions: aThirdPortion });
+                    Component[] memory aThirdPortion = new Component[](1);
+                    aThirdPortion[0] = Component({ claimant: claimantFour, amount: 1e18 });
+                    claims[2] = BatchClaimComponent({ id: ids[2], allocatedAmount: 1e18, portions: aThirdPortion });
                 }
             }
 
@@ -2350,12 +2344,12 @@ contract TheCompactTest is Test {
                 abi.encodePacked(bytes12(bytes32(claim.id)), 0x3333333333333333333333333333333333333333), (uint256)
             );
 
-            SplitComponent[] memory recipients;
+            Component[] memory recipients;
             {
-                SplitComponent memory splitOne = SplitComponent({ claimant: claimantOne, amount: 4e17 });
-                SplitComponent memory splitTwo = SplitComponent({ claimant: claimantTwo, amount: 6e17 });
+                Component memory splitOne = Component({ claimant: claimantOne, amount: 4e17 });
+                Component memory splitTwo = Component({ claimant: claimantTwo, amount: 6e17 });
 
-                recipients = new SplitComponent[](2);
+                recipients = new Component[](2);
                 recipients[0] = splitOne;
                 recipients[1] = splitTwo;
 
@@ -2469,7 +2463,7 @@ contract TheCompactTest is Test {
 
         // Create batch claim components
         {
-            SplitBatchClaimComponent[] memory claims = new SplitBatchClaimComponent[](3);
+            BatchClaimComponent[] memory claims = new BatchClaimComponent[](3);
 
             // First claim component
             {
@@ -2480,11 +2474,11 @@ contract TheCompactTest is Test {
                     abi.encodePacked(bytes12(bytes32(id)), 0x3333333333333333333333333333333333333333), (uint256)
                 );
 
-                SplitComponent[] memory portions = new SplitComponent[](2);
-                portions[0] = SplitComponent({ claimant: claimantOne, amount: 4e17 });
-                portions[1] = SplitComponent({ claimant: claimantTwo, amount: 6e17 });
+                Component[] memory portions = new Component[](2);
+                portions[0] = Component({ claimant: claimantOne, amount: 4e17 });
+                portions[1] = Component({ claimant: claimantTwo, amount: 6e17 });
 
-                claims[0] = SplitBatchClaimComponent({ id: id, allocatedAmount: 1e18, portions: portions });
+                claims[0] = BatchClaimComponent({ id: id, allocatedAmount: 1e18, portions: portions });
             }
 
             // Second claim component
@@ -2493,10 +2487,10 @@ contract TheCompactTest is Test {
                     abi.encodePacked(bytes12(bytes32(anotherId)), 0x1111111111111111111111111111111111111111), (uint256)
                 );
 
-                SplitComponent[] memory anotherPortion = new SplitComponent[](1);
-                anotherPortion[0] = SplitComponent({ claimant: claimantThree, amount: 1e18 });
+                Component[] memory anotherPortion = new Component[](1);
+                anotherPortion[0] = Component({ claimant: claimantThree, amount: 1e18 });
 
-                claims[1] = SplitBatchClaimComponent({ id: anotherId, allocatedAmount: 1e18, portions: anotherPortion });
+                claims[1] = BatchClaimComponent({ id: anotherId, allocatedAmount: 1e18, portions: anotherPortion });
             }
 
             // Third claim component
@@ -2505,10 +2499,10 @@ contract TheCompactTest is Test {
                     abi.encodePacked(bytes12(bytes32(aThirdId)), 0x3333333333333333333333333333333333333333), (uint256)
                 );
 
-                SplitComponent[] memory aThirdPortion = new SplitComponent[](1);
-                aThirdPortion[0] = SplitComponent({ claimant: claimantFour, amount: 1e18 });
+                Component[] memory aThirdPortion = new Component[](1);
+                aThirdPortion[0] = Component({ claimant: claimantFour, amount: 1e18 });
 
-                claims[2] = SplitBatchClaimComponent({ id: aThirdId, allocatedAmount: 1e18, portions: aThirdPortion });
+                claims[2] = BatchClaimComponent({ id: aThirdId, allocatedAmount: 1e18, portions: aThirdPortion });
             }
 
             claim.claims = claims;
@@ -2684,12 +2678,12 @@ contract TheCompactTest is Test {
                 abi.encodePacked(bytes12(bytes32(id)), 0x3333333333333333333333333333333333333333), (uint256)
             );
 
-            SplitComponent[] memory recipients;
+            Component[] memory recipients;
             {
-                SplitComponent memory splitOne = SplitComponent({ claimant: claimantOne, amount: 4e17 });
-                SplitComponent memory splitTwo = SplitComponent({ claimant: claimantTwo, amount: 6e17 });
+                Component memory splitOne = Component({ claimant: claimantOne, amount: 4e17 });
+                Component memory splitTwo = Component({ claimant: claimantTwo, amount: 6e17 });
 
-                recipients = new SplitComponent[](2);
+                recipients = new Component[](2);
                 recipients[0] = splitOne;
                 recipients[1] = splitTwo;
             }
@@ -2905,9 +2899,9 @@ contract TheCompactTest is Test {
         }
 
         // Create batch claim components
-        SplitBatchClaimComponent[] memory claims = new SplitBatchClaimComponent[](1);
+        BatchClaimComponent[] memory claims = new BatchClaimComponent[](1);
         {
-            SplitComponent[] memory recipients = new SplitComponent[](2);
+            Component[] memory recipients = new Component[](2);
             {
                 uint256 claimantOne = abi.decode(
                     abi.encodePacked(bytes12(bytes32(ids[0])), 0x1111111111111111111111111111111111111111), (uint256)
@@ -2916,13 +2910,13 @@ contract TheCompactTest is Test {
                     abi.encodePacked(bytes12(bytes32(ids[0])), 0x3333333333333333333333333333333333333333), (uint256)
                 );
 
-                SplitComponent memory splitOne = SplitComponent({ claimant: claimantOne, amount: 4e17 });
-                SplitComponent memory splitTwo = SplitComponent({ claimant: claimantTwo, amount: 6e17 });
+                Component memory splitOne = Component({ claimant: claimantOne, amount: 4e17 });
+                Component memory splitTwo = Component({ claimant: claimantTwo, amount: 6e17 });
 
                 recipients[0] = splitOne;
                 recipients[1] = splitTwo;
             }
-            claims[0] = SplitBatchClaimComponent({ id: ids[0], allocatedAmount: 1e18, portions: recipients });
+            claims[0] = BatchClaimComponent({ id: ids[0], allocatedAmount: 1e18, portions: recipients });
         }
 
         // Execute claim and verify - first part
@@ -2962,7 +2956,7 @@ contract TheCompactTest is Test {
             additionalChains[0] = allocationHashOne;
 
             // Create new recipients for different IDs
-            SplitBatchClaimComponent[] memory newClaims = new SplitBatchClaimComponent[](2);
+            BatchClaimComponent[] memory newClaims = new BatchClaimComponent[](2);
             {
                 // First claim component
                 {
@@ -2971,11 +2965,11 @@ contract TheCompactTest is Test {
                         (uint256)
                     );
 
-                    SplitComponent[] memory anotherRecipient = new SplitComponent[](1);
-                    anotherRecipient[0] = SplitComponent({ claimant: claimantOne, amount: 1e18 });
+                    Component[] memory anotherRecipient = new Component[](1);
+                    anotherRecipient[0] = Component({ claimant: claimantOne, amount: 1e18 });
 
                     newClaims[0] =
-                        SplitBatchClaimComponent({ id: ids[1], allocatedAmount: 1e18, portions: anotherRecipient });
+                        BatchClaimComponent({ id: ids[1], allocatedAmount: 1e18, portions: anotherRecipient });
                 }
 
                 // Second claim component
@@ -2989,12 +2983,11 @@ contract TheCompactTest is Test {
                         (uint256)
                     );
 
-                    SplitComponent[] memory aThirdPortion = new SplitComponent[](2);
-                    aThirdPortion[0] = SplitComponent({ claimant: claimantOne, amount: 4e17 });
-                    aThirdPortion[1] = SplitComponent({ claimant: claimantTwo, amount: 6e17 });
+                    Component[] memory aThirdPortion = new Component[](2);
+                    aThirdPortion[0] = Component({ claimant: claimantOne, amount: 4e17 });
+                    aThirdPortion[1] = Component({ claimant: claimantTwo, amount: 6e17 });
 
-                    newClaims[1] =
-                        SplitBatchClaimComponent({ id: ids[2], allocatedAmount: 1e18, portions: aThirdPortion });
+                    newClaims[1] = BatchClaimComponent({ id: ids[2], allocatedAmount: 1e18, portions: aThirdPortion });
                 }
             }
 
@@ -3089,11 +3082,11 @@ contract TheCompactTest is Test {
             uint256 claimantOne = abi.decode(abi.encodePacked(bytes12(0), recipientOne), (uint256));
             uint256 claimantTwo = abi.decode(abi.encodePacked(bytes12(0), recipientTwo), (uint256));
 
-            SplitComponent memory splitOne = SplitComponent({ claimant: claimantOne, amount: amountOne });
+            Component memory splitOne = Component({ claimant: claimantOne, amount: amountOne });
 
-            SplitComponent memory splitTwo = SplitComponent({ claimant: claimantTwo, amount: amountTwo });
+            Component memory splitTwo = Component({ claimant: claimantTwo, amount: amountTwo });
 
-            SplitComponent[] memory recipients = new SplitComponent[](2);
+            Component[] memory recipients = new Component[](2);
             recipients[0] = splitOne;
             recipients[1] = splitTwo;
 
