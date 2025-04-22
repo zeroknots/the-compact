@@ -23,23 +23,26 @@ contract ClaimProcessor is ITheCompactClaims, ClaimProcessorLogic {
         return _processClaim(claimPayload);
     }
 
-    function claim(BatchClaim calldata claimPayload) external returns (bytes32 claimHash) {
+    function batchClaim(BatchClaim calldata claimPayload) external returns (bytes32 claimHash) {
         return _processBatchClaim(claimPayload);
     }
 
-    function claim(MultichainClaim calldata claimPayload) external returns (bytes32 claimHash) {
+    function multichainClaim(MultichainClaim calldata claimPayload) external returns (bytes32 claimHash) {
         return _processMultichainClaim(claimPayload);
     }
 
-    function claim(ExogenousMultichainClaim calldata claimPayload) external returns (bytes32 claimHash) {
+    function exogenousClaim(ExogenousMultichainClaim calldata claimPayload) external returns (bytes32 claimHash) {
         return _processExogenousMultichainClaim(claimPayload);
     }
 
-    function claim(BatchMultichainClaim calldata claimPayload) external returns (bytes32 claimHash) {
+    function batchMultichainClaim(BatchMultichainClaim calldata claimPayload) external returns (bytes32 claimHash) {
         return _processBatchMultichainClaim(claimPayload);
     }
 
-    function claim(ExogenousBatchMultichainClaim calldata claimPayload) external returns (bytes32 claimHash) {
+    function exogenousBatchClaim(ExogenousBatchMultichainClaim calldata claimPayload)
+        external
+        returns (bytes32 claimHash)
+    {
         return _processExogenousBatchMultichainClaim(claimPayload);
     }
 }

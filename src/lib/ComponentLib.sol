@@ -1,13 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.27;
 
-import { SplitTransfer } from "../types/Claims.sol";
-import { SplitBatchTransfer } from "../types/BatchClaims.sol";
+import { AllocatedTransfer } from "../types/Claims.sol";
+import { AllocatedBatchTransfer } from "../types/BatchClaims.sol";
 import { ResetPeriod } from "../types/ResetPeriod.sol";
 
-import {
-    TransferComponent, SplitComponent, SplitByIdComponent, SplitBatchClaimComponent
-} from "../types/Components.sol";
+import { TransferComponent, Component, ComponentsById, BatchClaimComponent } from "../types/Components.sol";
 
 import { EfficiencyLib } from "./EfficiencyLib.sol";
 import { EventLib } from "./EventLib.sol";
@@ -22,7 +20,7 @@ import { FixedPointMathLib } from "solady/utils/FixedPointMathLib.sol";
 /**
  * @title ComponentLib
  * @notice Library contract implementing internal functions with helper logic for
- * processing claims that incorporate split and/or batch components.
+ * processing claims including those with batch components.
  * @dev IMPORTANT NOTE: logic for processing claims assumes that the utilized structs are
  * formatted in a very specific manner — if parameters are rearranged or new parameters
  * are inserted, much of this functionality will break. Proceed with caution when making
@@ -30,7 +28,7 @@ import { FixedPointMathLib } from "solady/utils/FixedPointMathLib.sol";
  */
 library ComponentLib {
     using TransferLib for address;
-    using ComponentLib for SplitComponent[];
+    using ComponentLib for Component[];
     using EfficiencyLib for bool;
     using EfficiencyLib for ResetPeriod;
     using EfficiencyLib for uint256;
@@ -49,28 +47,28 @@ library ComponentLib {
     error NoIdsAndAmountsProvided();
 
     /**
-     * @notice Internal function for performing a set of split transfers or withdrawals.
+     * @notice Internal function for performing a set of transfers or withdrawals.
      * Executes the transfer or withdrawal operation targeting multiple recipients from
      * a single resource lock.
-     * @param transfer  A SplitTransfer struct containing split transfer details.
+     * @param transfer  An AllocatedTransfer struct containing transfer details.
      * @return          Whether the transfer was successfully processed.
      */
-    function processSplitTransfer(SplitTransfer calldata transfer) internal returns (bool) {
-        // Process the transfer for each split component.
+    function processSplitTransfer(AllocatedTransfer calldata transfer) internal returns (bool) {
+        // Process the transfer for each component.
         _processSplitTransferComponents(transfer.recipients, transfer.id);
 
         return true;
     }
 
     /**
-     * @notice Internal function for performing a set of split batch transfers or withdrawals.
+     * @notice Internal function for performing a set of batch transfers or withdrawals.
      * Executes the transfer or withdrawal operation for multiple recipients from multiple
      * resource locks.
-     * @param transfer  A SplitBatchTransfer struct containing split batch transfer details.
+     * @param transfer  An AllocatedBatchTransfer struct containing batch transfer details.
      */
-    function performSplitBatchTransfer(SplitBatchTransfer calldata transfer) internal {
+    function performSplitBatchTransfer(AllocatedBatchTransfer calldata transfer) internal {
         // Navigate to the split batch components array in calldata.
-        SplitByIdComponent[] calldata transfers = transfer.transfers;
+        ComponentsById[] calldata transfers = transfer.transfers;
 
         // Retrieve the total number of components.
         uint256 totalIds = transfers.length;
@@ -79,7 +77,7 @@ library ComponentLib {
             // Iterate over each component in calldata.
             for (uint256 i = 0; i < totalIds; ++i) {
                 // Navigate to location of the component in calldata.
-                SplitByIdComponent calldata component = transfers[i];
+                ComponentsById calldata component = transfers[i];
 
                 // Process transfer for each split component in the set.
                 _processSplitTransferComponents(component.portions, component.id);
@@ -88,10 +86,10 @@ library ComponentLib {
     }
 
     /**
-     * @notice Internal function for processing qualified split claims with potentially exogenous
-     * sponsor signatures. Extracts claim parameters from calldata, validates the claim,
-     * validates the scope, and executes either releases of ERC6909 tokens or withdrawals of
-     * underlying tokens to multiple recipients.
+     * @notice Internal function for processing claims with potentially exogenous sponsor
+     * signatures. Extracts claim parameters from calldata, validates the claim, validates
+     * the scope, and executes either releases of ERC6909 tokens or withdrawals of underlying
+     * tokens to multiple recipients.
      * @param messageHash              The EIP-712 hash of the claim message.
      * @param calldataPointer          Pointer to the location of the associated struct in calldata.
      * @param offsetToId               Offset to segment of calldata where relevant claim parameters begin.
@@ -113,7 +111,7 @@ library ComponentLib {
         // Declare variables for parameters that will be extracted from calldata.
         uint256 id;
         uint256 allocatedAmount;
-        SplitComponent[] calldata components;
+        Component[] calldata components;
 
         assembly ("memory-safe") {
             // Calculate pointer to claim parameters using provided offset.
@@ -123,7 +121,7 @@ library ComponentLib {
             id := calldataload(calldataPointerWithOffset)
             allocatedAmount := calldataload(add(calldataPointerWithOffset, 0x20))
 
-            // Extract array of split components containing claimant addresses and amounts.
+            // Extract array of components containing claimant addresses and amounts.
             let componentsPtr := add(calldataPointer, calldataload(add(calldataPointerWithOffset, 0x40)))
             components.offset := add(0x20, componentsPtr)
             components.length := calldataload(componentsPtr)
@@ -148,14 +146,14 @@ library ComponentLib {
         // Verify the resource lock scope is compatible with the provided domain separator.
         sponsorDomainSeparator.ensureValidScope(id);
 
-        // Process each split component, verifying total amount and executing operations.
+        // Process each component, verifying total amount and executing operations.
         components.verifyAndProcessSplitComponents(sponsor, id, allocatedAmount);
     }
 
     /**
-     * @notice Internal function for processing qualified split batch claims with potentially
-     * exogenous sponsor signatures. Extracts split batch claim parameters from calldata,
-     * validates the claim, and executes split operations for each resource lock. Uses optimized
+     * @notice Internal function for processing qualified batch claims with potentially
+     * exogenous sponsor signatures. Extracts batch claim parameters from calldata,
+     * validates the claim, and executes operations for each resource lock. Uses optimized
      * validation of allocator consistency and scopes, with explicit validation on failure to
      * identify specific issues. Each resource lock can be split among multiple recipients.
      * @param messageHash              The EIP-712 hash of the claim message.
@@ -176,10 +174,10 @@ library ComponentLib {
         function(bytes32, uint96, uint256, bytes32, bytes32, bytes32, uint256[2][] memory, uint256) internal returns (address)
             validation
     ) internal {
-        // Declare variable for SplitBatchClaimComponent array that will be extracted from calldata.
-        SplitBatchClaimComponent[] calldata claims;
+        // Declare variable for BatchClaimComponent array that will be extracted from calldata.
+        BatchClaimComponent[] calldata claims;
         assembly ("memory-safe") {
-            // Extract array of split batch claim components.
+            // Extract array of batch claim components.
             let claimsPtr := add(calldataPointer, calldataload(add(calldataPointer, offsetToId)))
             claims.offset := add(0x20, claimsPtr)
             claims.length := calldataload(claimsPtr)
@@ -204,9 +202,9 @@ library ComponentLib {
         unchecked {
             // Process each claim component.
             for (uint256 i = 0; i < idsAndAmounts.length; ++i) {
-                SplitBatchClaimComponent calldata claimComponent = claims[i];
+                BatchClaimComponent calldata claimComponent = claims[i];
 
-                // Process each split component, verifying total amount and executing operations.
+                // Process each component, verifying total amount and executing operations.
                 claimComponent.portions.verifyAndProcessSplitComponents(
                     sponsor, claimComponent.id, claimComponent.allocatedAmount
                 );
@@ -214,7 +212,7 @@ library ComponentLib {
         }
     }
 
-    function _buildIdsAndAmounts(SplitBatchClaimComponent[] calldata claims, bytes32 sponsorDomainSeparator)
+    function _buildIdsAndAmounts(BatchClaimComponent[] calldata claims, bytes32 sponsorDomainSeparator)
         internal
         pure
         returns (uint256[2][] memory idsAndAmounts, uint96 firstAllocatorId, uint256 shortestResetPeriod)
@@ -225,7 +223,7 @@ library ComponentLib {
         }
 
         // Extract allocator id and amount from first claim for validation.
-        SplitBatchClaimComponent calldata claimComponent = claims[0];
+        BatchClaimComponent calldata claimComponent = claims[0];
         uint256 id = claimComponent.id;
         firstAllocatorId = id.toAllocatorId();
         shortestResetPeriod = id.toResetPeriod().asUint256();
@@ -259,17 +257,17 @@ library ComponentLib {
     }
 
     /**
-     * @notice Internal function for verifying and processing split components. Ensures that the
-     * sum of split amounts doesn't exceed the allocated amount, checks for arithmetic overflow,
-     * and executes the specified operation for each split recipient. Reverts if the total
-     * claimed amount exceeds the allocation or if arithmetic overflow occurs during summation.
-     * @param claimants       Array of split components specifying recipients and their amounts.
+     * @notice Internal function for verifying and processing components. Ensures that the
+     * sum of amounts doesn't exceed the allocated amount, checks for arithmetic overflow,
+     * and executes the specified operation for each recipient. Reverts if the total claimed
+     * amount exceeds the allocation or if arithmetic overflow occurs during summation.
+     * @param claimants       Array of components specifying recipients and their amounts.
      * @param sponsor         The address of the claim sponsor.
      * @param id              The ERC6909 token identifier of the resource lock.
      * @param allocatedAmount The total amount allocated for this claim.
      */
     function verifyAndProcessSplitComponents(
-        SplitComponent[] calldata claimants,
+        Component[] calldata claimants,
         address sponsor,
         uint256 id,
         uint256 allocatedAmount
@@ -282,7 +280,7 @@ library ComponentLib {
         unchecked {
             // Process each split component while tracking total amount and checking for overflow.
             for (uint256 i = 0; i < totalClaims; ++i) {
-                SplitComponent calldata component = claimants[i];
+                Component calldata component = claimants[i];
                 uint256 amount = component.amount;
 
                 // Track total amount claimed, checking for overflow.
@@ -308,11 +306,11 @@ library ComponentLib {
     }
 
     /**
-     * @notice Internal pure function for summing all amounts in a SplitComponent array.
-     * @param recipients A SplitComponent struct array containing split transfer details.
+     * @notice Internal pure function for summing all amounts in a Component array.
+     * @param recipients A Component struct array containing transfer details.
      * @return sum Total amount across all components.
      */
-    function aggregate(SplitComponent[] calldata recipients) internal pure returns (uint256 sum) {
+    function aggregate(Component[] calldata recipients) internal pure returns (uint256 sum) {
         // Retrieve the total number of components.
         uint256 totalSplits = recipients.length;
 
@@ -333,13 +331,13 @@ library ComponentLib {
     }
 
     /**
-     * @notice Private function for performing a set of split transfers or withdrawals
-     * given an array of split components and an ID for an associated resource lock.
+     * @notice Private function for performing a set of transfers or withdrawals
+     * given an array of components and an ID for an associated resource lock.
      * Executes the transfer or withdrawal operation targeting multiple recipients.
-     * @param recipients A SplitComponent struct array containing split transfer details.
+     * @param recipients A Component struct array containing transfer details.
      * @param id         The ERC6909 token identifier of the resource lock.
      */
-    function _processSplitTransferComponents(SplitComponent[] calldata recipients, uint256 id) private {
+    function _processSplitTransferComponents(Component[] calldata recipients, uint256 id) private {
         // Retrieve the total number of components.
         uint256 totalSplits = recipients.length;
 
@@ -347,7 +345,7 @@ library ComponentLib {
             // Iterate over each additional component in calldata.
             for (uint256 i = 0; i < totalSplits; ++i) {
                 // Navigate to location of the component in calldata.
-                SplitComponent calldata component = recipients[i];
+                Component calldata component = recipients[i];
 
                 // Perform the transfer or withdrawal for the portion.
                 msg.sender.performOperation(id, component.claimant, component.amount);

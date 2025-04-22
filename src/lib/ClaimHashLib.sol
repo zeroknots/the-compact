@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.27;
 
-import { SplitTransfer, Claim } from "../types/Claims.sol";
+import { AllocatedTransfer, Claim } from "../types/Claims.sol";
 
-import { SplitBatchTransfer, BatchClaim } from "../types/BatchClaims.sol";
+import { AllocatedBatchTransfer, BatchClaim } from "../types/BatchClaims.sol";
 
 import { MultichainClaim, ExogenousMultichainClaim } from "../types/MultichainClaims.sol";
 
 import { BatchMultichainClaim, ExogenousBatchMultichainClaim } from "../types/BatchMultichainClaims.sol";
 
-import { SplitBatchClaimComponent } from "../types/Components.sol";
+import { BatchClaimComponent } from "../types/Components.sol";
 
 import { ResetPeriod } from "../types/ResetPeriod.sol";
 import { Scope } from "../types/Scope.sol";
@@ -49,16 +49,16 @@ library ClaimHashLib {
         function(uint256, uint256, function (uint256, uint256, bytes32, bytes32, uint256) internal view returns (bytes32)) internal view returns (bytes32, bytes32, bytes32);
     using EfficiencyLib for uint256;
     using HashLib for uint256;
-    using HashLib for SplitBatchClaimComponent[];
-    using HashLib for SplitTransfer;
-    using HashLib for SplitBatchTransfer;
+    using HashLib for BatchClaimComponent[];
+    using HashLib for AllocatedTransfer;
+    using HashLib for AllocatedBatchTransfer;
 
     ///// CATEGORY 1: Transfer claim hashes /////
-    function toClaimHash(SplitTransfer calldata transfer) internal view returns (bytes32 claimHash) {
+    function toClaimHash(AllocatedTransfer calldata transfer) internal view returns (bytes32 claimHash) {
         return transfer.toSplitTransferMessageHash();
     }
 
-    function toClaimHash(SplitBatchTransfer calldata transfer) internal view returns (bytes32 claimHash) {
+    function toClaimHash(AllocatedBatchTransfer calldata transfer) internal view returns (bytes32 claimHash) {
         return transfer.toSplitBatchTransferMessageHash();
     }
 

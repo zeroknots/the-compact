@@ -1,11 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.27;
 
-import { SplitBatchTransfer } from "../types/BatchClaims.sol";
-import { SplitTransfer } from "../types/Claims.sol";
-import {
-    TransferComponent, SplitComponent, SplitByIdComponent, SplitBatchClaimComponent
-} from "../types/Components.sol";
+import { AllocatedBatchTransfer } from "../types/BatchClaims.sol";
+import { AllocatedTransfer } from "../types/Claims.sol";
+import { TransferComponent, Component, ComponentsById, BatchClaimComponent } from "../types/Components.sol";
 import {
     COMPACT_TYPEHASH,
     COMPACT_TYPESTRING_FRAGMENT_ONE,
@@ -39,31 +37,35 @@ import { TransferFunctionCastLib } from "./TransferFunctionCastLib.sol";
 library HashLib {
     using EfficiencyLib for bool;
     using EfficiencyLib for uint256;
-    using TransferFunctionCastLib for function(SplitTransfer calldata, uint256) internal view returns (bytes32);
+    using TransferFunctionCastLib for function(AllocatedTransfer calldata, uint256) internal view returns (bytes32);
     using HashLib for uint256;
     using HashLib for uint256[2][];
-    using HashLib for SplitBatchTransfer;
+    using HashLib for AllocatedBatchTransfer;
 
     /**
      * @notice Internal view function for deriving the EIP-712 message hash for
-     * a split transfer or withdrawal.
-     * @param transfer     A SplitTransfer struct containing the transfer details.
+     * a transfer or withdrawal.
+     * @param transfer     An AllocatedTransfer struct containing the transfer details.
      * @return messageHash The EIP-712 compliant message hash.
      */
-    function toSplitTransferMessageHash(SplitTransfer calldata transfer) internal view returns (bytes32 messageHash) {
+    function toSplitTransferMessageHash(AllocatedTransfer calldata transfer)
+        internal
+        view
+        returns (bytes32 messageHash)
+    {
         // Declare variables for tracking, total amount, current amount, and errors.
         uint256 amount = 0;
         uint256 currentAmount;
         uint256 errorBuffer;
 
-        // Navigate to the split components array in calldata.
-        SplitComponent[] calldata recipients = transfer.recipients;
+        // Navigate to the components array in calldata.
+        Component[] calldata recipients = transfer.recipients;
 
         // Retrieve the length of the array.
         uint256 totalRecipients = recipients.length;
 
         unchecked {
-            // Iterate over each split component.
+            // Iterate over each component.
             for (uint256 i = 0; i < totalRecipients; ++i) {
                 // Retrieve the current amount of the component.
                 currentAmount = recipients[i].amount;
@@ -104,13 +106,17 @@ library HashLib {
 
     /**
      * @notice Internal view function for deriving the EIP-712 message hash for
-     * a split batch transfer or withdrawal.
-     * @param transfer     A SplitBatchTransfer struct containing the transfer details.
+     * a batch transfer or withdrawal.
+     * @param transfer     An AllocatedBatchTransfer struct containing the transfer details.
      * @return messageHash The EIP-712 compliant message hash.
      */
-    function toSplitBatchTransferMessageHash(SplitBatchTransfer calldata transfer) internal view returns (bytes32) {
+    function toSplitBatchTransferMessageHash(AllocatedBatchTransfer calldata transfer)
+        internal
+        view
+        returns (bytes32)
+    {
         // Navigate to the transfer components array in calldata.
-        SplitByIdComponent[] calldata transfers = transfer.transfers;
+        ComponentsById[] calldata transfers = transfer.transfers;
 
         // Retrieve the length of the array.
         uint256 totalIds = transfers.length;
@@ -125,7 +131,7 @@ library HashLib {
             // Iterate over each transfer component.
             for (uint256 i = 0; i < totalIds; ++i) {
                 // Navigate to the current transfer component.
-                SplitByIdComponent calldata transferComponent = transfers[i];
+                ComponentsById calldata transferComponent = transfers[i];
 
                 // Retrieve the id from the current transfer component.
                 uint256 id = transferComponent.id;
@@ -137,7 +143,7 @@ library HashLib {
                 uint256 singleAmount;
 
                 // Navigate to the portions array in the current transfer component.
-                SplitComponent[] calldata portions = transferComponent.portions;
+                Component[] calldata portions = transferComponent.portions;
 
                 // Retrieve the length of the portions array.
                 uint256 portionsLength = portions.length;
@@ -153,7 +159,7 @@ library HashLib {
                 }
 
                 assembly ("memory-safe") {
-                    // Derive offset to id and amount based on total split components.
+                    // Derive offset to id and amount based on total components.
                     let extraOffset := add(add(idsAndAmounts, 0x20), mul(i, 0x40))
 
                     // Store the id and aggregate amount at the derived offset.
@@ -267,12 +273,12 @@ library HashLib {
     /**
      * @notice Internal view function for deriving the EIP-712 message hash for
      * a batch transfer or withdrawal once an idsAndAmounts hash is available.
-     * @param transfer          A SplitBatchTransfer struct containing the transfer details.
+     * @param transfer          An AllocatedBatchTransfer struct containing the transfer details.
      * @param idsAndAmountsHash A hash of the ids and amounts.
      * @return messageHash      The EIP-712 compliant message hash.
      */
     function toBatchTransferMessageHashUsingIdsAndAmountsHash(
-        SplitBatchTransfer calldata transfer,
+        AllocatedBatchTransfer calldata transfer,
         uint256 idsAndAmountsHash
     ) internal view returns (bytes32 messageHash) {
         assembly ("memory-safe") {
@@ -607,10 +613,10 @@ library HashLib {
 
     /**
      * @notice Internal pure function for deriving the hash of the ids and amounts.
-     * @param claims             An array of SplitBatchClaimComponent structs.
+     * @param claims             An array of BatchClaimComponent structs.
      * @return idsAndAmountsHash The hash of the ids and amounts.
      */
-    function toSplitIdsAndAmountsHash(SplitBatchClaimComponent[] calldata claims)
+    function toSplitIdsAndAmountsHash(BatchClaimComponent[] calldata claims)
         internal
         pure
         returns (uint256 idsAndAmountsHash)
@@ -625,7 +631,7 @@ library HashLib {
             // Iterate over the claims array.
             for (uint256 i = 0; i < totalIds; ++i) {
                 // Navigate to the current claim component in calldata.
-                SplitBatchClaimComponent calldata claimComponent = claims[i];
+                BatchClaimComponent calldata claimComponent = claims[i];
 
                 assembly ("memory-safe") {
                     // Derive the offset to the current position in the memory region.
