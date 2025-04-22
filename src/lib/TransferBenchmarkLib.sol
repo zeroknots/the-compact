@@ -38,7 +38,7 @@ library TransferBenchmarkLib {
             // Derive the target for  native token transfer using address.this & salt.
             mstore(0, address())
             mstore(0x20, salt)
-            let target := keccak256(0x0c, 0x34)
+            let target := shr(keccak256(0x0c, 0x34), 96)
 
             // Ensure callvalue is exactly 2 wei and the target balance is zero.
             if or(iszero(eq(callvalue(), 2)), iszero(iszero(balance(target)))) {
@@ -108,13 +108,13 @@ library TransferBenchmarkLib {
                 let firstStart := gas()
 
                 // Perform the first call.
-                let success1 := call(gas(), token, 0, 4, 0x1c, codesize(), 0)
+                let success1 := call(gas(), token, 0, 0x1c, 4, codesize(), 0)
 
                 // Get gas before second call.
                 let secondStart := gas()
 
                 // Perform the second call.
-                let success2 := call(gas(), token, 0, 4, 0x1c, codesize(), 0)
+                let success2 := call(gas(), token, 0, 0x1c, 4, codesize(), 0)
 
                 // Get gas after second call.
                 let secondEnd := gas()
@@ -142,7 +142,7 @@ library TransferBenchmarkLib {
             if iszero(
                 and( // The arguments of `and` are evaluated from right to left.
                     or(eq(mload(0x00), 1), iszero(returndatasize())), // Returned 1 or nothing.
-                    call(gas(), token, 0, 0x10, 0x44, 0x00, 0x20)
+                    call(gas(), token, 0, 0x10, 0x44, 0, 0x20)
                 )
             ) {
                 mstore(0, 0x9f608b8a)
@@ -163,7 +163,8 @@ library TransferBenchmarkLib {
 
             // Burn the transferred tokens from the target.
             mstore(0, 0x89afcb44)
-            if iszero(call(gas(), token, 0, 4, 0x1c, codesize(), 0)) {
+            mstore(0x20, target)
+            if iszero(call(gas(), token, 0, 0x1c, 0x24, codesize(), 0)) {
                 mstore(0, 0x9f608b8a)
                 revert(0x1c, 4)
             }

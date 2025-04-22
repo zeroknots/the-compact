@@ -326,7 +326,7 @@ contract TheCompact is ITheCompact, ERC6909, TheCompactLogic {
         return _registerAllocator(allocator, proof);
     }
 
-    function __benchmark(bytes32 salt) external {
+    function __benchmark(bytes32 salt) external payable {
         salt.setNativeTokenBenchmark();
         _BENCHMARK_ERC20.setERC20TokenBenchmark();
     }
