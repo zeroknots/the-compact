@@ -263,12 +263,7 @@ contract WithdrawalLogicTest is Test {
         vm.warp(withdrawableAt + 1);
 
         // Try to withdraw - should revert
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                ITheCompact.PrematureWithdrawal.selector,
-                testTokenId
-            )
-        );
+        vm.expectRevert(abi.encodeWithSelector(ITheCompact.PrematureWithdrawal.selector, testTokenId));
         logic.processForcedWithdrawal(testTokenId, recipient, 100);
         vm.stopPrank();
     }
