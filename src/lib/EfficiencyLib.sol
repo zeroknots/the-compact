@@ -12,6 +12,22 @@ import { ResetPeriod } from "../types/ResetPeriod.sol";
  */
 library EfficiencyLib {
     /**
+     * @notice Internal view function to convert the provided account address to the caller if that
+     *         address is the null address (0x0).
+     * @dev    Uses bitwise operations to avoid branching, making this function more gas efficient
+     *         than using a traditional if-else statement. The implementation follows the pattern:
+     *         result = xor(a, mul(xor(a, b), condition)) which resolves to either a or b based on
+     *         the condition.
+     * @param  account               The address to check and potentially replace.
+     * @return accountOrCallerIfNull The original address if non-zero, otherwise msg.sender.
+     */
+    function usingCallerIfNull(address account) internal view returns (address accountOrCallerIfNull) {
+        assembly ("memory-safe") {
+            accountOrCallerIfNull := xor(account, mul(xor(account, caller()), iszero(account)))
+        }
+    }
+
+    /**
      * @notice Internal pure function that performs a bitwise AND on two booleans.
      * Avoids Solidity's conditional evaluation of logical AND. Only safe when
      * inputs are known to be exactly 0 or 1 with no dirty bits.

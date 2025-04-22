@@ -230,7 +230,7 @@ contract TheCompactTest is Test {
             bytes12(bytes32((uint256(scope) << 255) | (uint256(resetPeriod) << 252) | (uint256(allocatorId) << 160)));
 
         vm.prank(swapper);
-        uint256 id = theCompact.depositNative{ value: amount }(lockTag);
+        uint256 id = theCompact.depositNative{ value: amount }(lockTag, address(0));
         vm.snapshotGasLastCall("depositETHBasic");
 
         (
@@ -272,7 +272,7 @@ contract TheCompactTest is Test {
             bytes12(bytes32((uint256(scope) << 255) | (uint256(resetPeriod) << 252) | (uint256(allocatorId) << 160)));
 
         vm.prank(swapper);
-        uint256 id = theCompact.depositNativeTo{ value: amount }(lockTag, recipient);
+        uint256 id = theCompact.depositNative{ value: amount }(lockTag, recipient);
         vm.snapshotGasLastCall("depositETHAndURI");
 
         (
@@ -314,7 +314,7 @@ contract TheCompactTest is Test {
             bytes12(bytes32((uint256(scope) << 255) | (uint256(resetPeriod) << 252) | (uint256(allocatorId) << 160)));
 
         vm.prank(swapper);
-        uint256 id = theCompact.depositERC20To(address(token), lockTag, amount, swapper);
+        uint256 id = theCompact.depositERC20(address(token), lockTag, amount, swapper);
         vm.snapshotGasLastCall("depositERC20Basic");
 
         (
@@ -356,7 +356,7 @@ contract TheCompactTest is Test {
             bytes12(bytes32((uint256(scope) << 255) | (uint256(resetPeriod) << 252) | (uint256(allocatorId) << 160)));
 
         vm.prank(swapper);
-        uint256 id = theCompact.depositERC20To(address(token), lockTag, amount, recipient);
+        uint256 id = theCompact.depositERC20(address(token), lockTag, amount, recipient);
         vm.snapshotGasLastCall("depositERC20AndURI");
 
         (
@@ -3379,13 +3379,13 @@ contract TheCompactTest is Test {
 
     function _makeDeposit(address guy, uint256 amount, bytes12 lockTag) internal returns (uint256 id) {
         vm.prank(guy);
-        id = theCompact.depositNativeTo{ value: amount }(lockTag, guy);
+        id = theCompact.depositNative{ value: amount }(lockTag, guy);
         assertEq(theCompact.balanceOf(guy, id), amount);
     }
 
     function _makeDeposit(address guy, address asset, uint256 amount, bytes12 lockTag) internal returns (uint256 id) {
         vm.prank(guy);
-        id = theCompact.depositERC20To(asset, lockTag, amount, guy);
+        id = theCompact.depositERC20(asset, lockTag, amount, guy);
         assertEq(theCompact.balanceOf(guy, id), amount);
     }
 }

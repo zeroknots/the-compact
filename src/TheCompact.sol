@@ -43,6 +43,7 @@ contract TheCompact is ITheCompact, ERC6909, TheCompactLogic {
     using IdLib for uint256;
     using RegistrationLib for address;
     using EfficiencyLib for bool;
+    using EfficiencyLib for address;
     using EfficiencyLib for uint256;
     using TransferBenchmarkLib for address;
     using TransferBenchmarkLib for bytes32;
@@ -57,12 +58,8 @@ contract TheCompact is ITheCompact, ERC6909, TheCompactLogic {
         _BENCHMARK_ERC20 = address(new BenchmarkERC20());
     }
 
-    function depositNative(bytes12 lockTag) external payable returns (uint256) {
-        return _performCustomNativeTokenDeposit(lockTag, msg.sender);
-    }
-
-    function depositNativeTo(bytes12 lockTag, address recipient) external payable returns (uint256) {
-        return _performCustomNativeTokenDeposit(lockTag, recipient);
+    function depositNative(bytes12 lockTag, address recipient) external payable returns (uint256) {
+        return _performCustomNativeTokenDeposit(lockTag, recipient.usingCallerIfNull());
     }
 
     function depositNativeAndRegister(bytes12 lockTag, bytes32 claimHash, bytes32 typehash)
@@ -89,15 +86,11 @@ contract TheCompact is ITheCompact, ERC6909, TheCompactLogic {
         claimhash = _registerUsingClaimWithWitness(recipient, id, msg.value, arbiter, nonce, expires, typehash, witness);
     }
 
-    function depositERC20(address token, bytes12 lockTag, uint256 amount) external returns (uint256) {
-        return _performCustomERC20Deposit(token, lockTag, amount, msg.sender);
-    }
-
-    function depositERC20To(address token, bytes12 lockTag, uint256 amount, address recipient)
+    function depositERC20(address token, bytes12 lockTag, uint256 amount, address recipient)
         external
         returns (uint256)
     {
-        return _performCustomERC20Deposit(token, lockTag, amount, recipient);
+        return _performCustomERC20Deposit(token, lockTag, amount, recipient.usingCallerIfNull());
     }
 
     function depositERC20AndRegister(

@@ -70,24 +70,15 @@ interface ITheCompact {
     event AllocatorRegistered(uint96 allocatorId, address allocator);
 
     /**
-     * @notice External payable function for depositing native tokens into a resource lock
-     * and receiving back ERC6909 tokens representing the underlying locked balance controlled
-     * by the depositor. The ERC6909 token amount received by the caller will match the amount
-     * of native tokens sent with the transaction.
-     * @param lockTag  The lock tag containing allocator ID, reset period, and scope.
-     * @return id      The ERC6909 token identifier of the associated resource lock.
-     */
-    function depositNative(bytes12 lockTag) external payable returns (uint256 id);
-
-    /**
      * @notice External payable function for depositing native tokens into a resource lock with
      * custom reset period and scope parameters. The ERC6909 token amount received by the recipient
-     * will match the amount of native tokens sent with the transaction.
+     * will match the amount of native tokens sent with the transaction. Note that supplying the
+     * null address for the recipient will result in the caller being applied as the recipient.
      * @param lockTag   The lock tag containing allocator ID, reset period, and scope.
      * @param recipient The address that will receive the corresponding ERC6909 tokens.
      * @return id       The ERC6909 token identifier of the associated resource lock.
      */
-    function depositNativeTo(bytes12 lockTag, address recipient) external payable returns (uint256 id);
+    function depositNative(bytes12 lockTag, address recipient) external payable returns (uint256 id);
 
     /**
      * @notice External payable function for depositing native tokens into a resource lock
@@ -130,33 +121,20 @@ interface ITheCompact {
     ) external payable returns (uint256 id, bytes32 claimhash);
 
     /**
-     * @notice External function for depositing ERC20 tokens into a resource lock. The default
-     * reset period (ten minutes) and scope (multichain) will be used. The caller must directly
-     * approve The Compact to transfer a sufficient amount of the ERC20 token on its behalf. The
-     * ERC6909 token amount received back by the caller is derived from the difference between
-     * the starting and ending balance held in the resource lock, which may differ from the amount
-     * transferred depending on the implementation details of the respective token.
-     * @param token    The address of the ERC20 token to deposit.
-     * @param lockTag  The address of the allocator mediating the resource lock.
-     * @param amount   The amount of tokens to deposit.
-     * @return id      The ERC6909 token identifier of the associated resource lock.
-     */
-    function depositERC20(address token, bytes12 lockTag, uint256 amount) external returns (uint256 id);
-
-    /**
      * @notice External function for depositing ERC20 tokens into a resource lock with custom reset
      * period and scope parameters. The caller must directly approve The Compact to transfer a
      * sufficient amount of the ERC20 token on its behalf. The ERC6909 token amount received by
      * the recipient is derived from the difference between the starting and ending balance held
      * in the resource lock, which may differ from the amount transferred depending on the
-     * implementation details of the respective token.
+     * implementation details of the respective token.  Note that supplying the null address for
+     * the recipient will result in the caller being applied as the recipient.
      * @param token     The address of the ERC20 token to deposit.
      * @param lockTag   The lock tag containing allocator ID, reset period, and scope.
      * @param amount    The amount of tokens to deposit.
      * @param recipient The address that will receive the corresponding ERC6909 tokens.
      * @return id       The ERC6909 token identifier of the associated resource lock.
      */
-    function depositERC20To(address token, bytes12 lockTag, uint256 amount, address recipient)
+    function depositERC20(address token, bytes12 lockTag, uint256 amount, address recipient)
         external
         returns (uint256 id);
 
@@ -220,7 +198,8 @@ interface ITheCompact {
      * approve The Compact to transfer sufficient amounts on its behalf. The ERC6909 token amounts
      * received by the recipient are derived from the differences between starting and ending
      * balances held in the resource locks, which may differ from the amounts transferred depending
-     * on the implementation details of the respective tokens.
+     * on the implementation details of the respective tokens.  Note that supplying the null
+     * address for the recipient will result in the caller being applied as the recipient.
      * @param idsAndAmounts Array of [id, amount] pairs with each pair indicating the resource lock and amount to deposit.
      * @param recipient     The address that will receive the corresponding ERC6909 tokens.
      * @return              Whether the batch deposit was successfully completed.
