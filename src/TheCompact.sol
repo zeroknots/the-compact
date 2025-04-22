@@ -388,10 +388,12 @@ contract TheCompact is ITheCompact, ERC6909, TheCompactLogic {
     }
 
     /**
-     * @notice Hook that is called before any token transfer.
-     * @param from  The address tokens are transferred from.
-     * @param to    The address tokens are transferred to.
-     * @param id    The ERC6909 token identifier.
+     * @notice Hook that is called before any standard ERC6909 token transfer. Note that this hook
+     *         is not called when performing allocated transfers or when processing claims, nor are
+     *         standard token approvals required.
+     * @param from   The address tokens are transferred from.
+     * @param to     The address tokens are transferred to.
+     * @param id     The ERC6909 token identifier.
      * @param amount The amount of tokens being transferred.
      */
     function _beforeTokenTransfer(address from, address to, uint256 id, uint256 amount) internal virtual override {
