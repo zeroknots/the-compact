@@ -549,7 +549,8 @@ interface ITheCompact {
 
     // Benchmark withdrawal costs to determine the required stipend on the fallback for failing withdrawals when
     // processing claims. The salt is used to derive a cold account to benchmark the native token withdrawal.
-    function __benchmark(bytes32 salt) external;
+    // Must provide exactly 2 wei when calling this function.
+    function __benchmark(bytes32 salt) external payable;
 
     // Get required stipends for releasing tokens as a fallback on claims where withdrawals do not succeed. Any
     // requested withdrawal is first attempted using half of available gas. If it fails, then a direct 6909 transfer
