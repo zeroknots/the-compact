@@ -1,14 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.28;
 
-import { Test, console } from "forge-std/Test.sol";
+import { Test } from "forge-std/Test.sol";
 import { ResetPeriod } from "src/types/ResetPeriod.sol";
 import { EmissaryStatus } from "src/types/EmissaryStatus.sol";
 import "./MockEmissaryLogic.sol";
 import "src/test/AlwaysOKEmissary.sol";
 import "src/test/AlwaysOKAllocator.sol";
 import "src/lib/EfficiencyLib.sol";
-import { console2 } from "forge-std/console2.sol";
 
 contract EmissaryLogicTest is Test {
     using IdLib for *;
@@ -37,7 +36,6 @@ contract EmissaryLogicTest is Test {
         scope = Scope.Multichain;
 
         allocatorId = logic.registerAllocator(address(allocator), "");
-        console2.log("Allocator ID: ", allocatorId);
         lockTag = allocatorId.toLockTag(scope, resetPeriod);
 
         vm.warp(1743479729);
