@@ -2257,7 +2257,7 @@ contract TheCompactTest is Test {
         bytes32 returnedClaimHash;
         {
             vm.prank(0x2222222222222222222222222222222222222222);
-            returnedClaimHash = theCompact.claim(claim);
+            returnedClaimHash = theCompact.batchClaim(claim);
             vm.snapshotGasLastCall("batchClaimRegisteredWithDepositWithWitness");
             assertEq(returnedClaimHash, claimHash);
         }
@@ -2518,7 +2518,7 @@ contract TheCompactTest is Test {
         bytes32 returnedClaimHash;
         {
             vm.prank(0x2222222222222222222222222222222222222222);
-            returnedClaimHash = theCompact.claim(claim);
+            returnedClaimHash = theCompact.batchClaim(claim);
             vm.snapshotGasLastCall("splitBatchClaimWithWitness");
             assertEq(returnedClaimHash, claimHash);
         }
@@ -2703,7 +2703,7 @@ contract TheCompactTest is Test {
 
             {
                 vm.prank(0x2222222222222222222222222222222222222222);
-                bytes32 returnedClaimHash = theCompact.claim(claim);
+                bytes32 returnedClaimHash = theCompact.multichainClaim(claim);
                 vm.snapshotGasLastCall("splitMultichainClaimWithWitness");
                 assertEq(returnedClaimHash, claimHash);
 
@@ -2764,7 +2764,7 @@ contract TheCompactTest is Test {
             // Execute exogenous claim
             {
                 vm.prank(0x2222222222222222222222222222222222222222);
-                bytes32 returnedClaimHash = theCompact.claim(anotherClaim);
+                bytes32 returnedClaimHash = theCompact.exogenousClaim(anotherClaim);
                 vm.snapshotGasLastCall("exogenousSplitMultichainClaimWithWitness");
                 assertEq(returnedClaimHash, claimHash);
 
@@ -2933,7 +2933,7 @@ contract TheCompactTest is Test {
                 claim.claims = claims;
 
                 vm.prank(0x2222222222222222222222222222222222222222);
-                bytes32 returnedClaimHash = theCompact.claim(claim);
+                bytes32 returnedClaimHash = theCompact.batchMultichainClaim(claim);
                 vm.snapshotGasLastCall("splitBatchMultichainClaimWithWitness");
                 assertEq(returnedClaimHash, claimHash);
 
@@ -3023,7 +3023,7 @@ contract TheCompactTest is Test {
             // Execute exogenous claim
             {
                 vm.prank(0x2222222222222222222222222222222222222222);
-                bytes32 returnedClaimHash = theCompact.claim(anotherClaim);
+                bytes32 returnedClaimHash = theCompact.exogenousBatchClaim(anotherClaim);
                 vm.snapshotGasLastCall("exogenousSplitBatchMultichainClaimWithWitness");
                 assertEq(returnedClaimHash, claimHash);
             }
