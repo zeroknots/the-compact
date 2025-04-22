@@ -656,17 +656,19 @@ function isClaimAuthorized(
 ```
 Checks if given allocatorData authorizes a claim. Intended to be called offchain.
 
-## IEmissary
+# IEmissary
 
 The emissary interface for The Compact protocol, which is responsible for verifying claims on behalf of sponsors.
 
-### Overview
+## Overview
 
 The emissary provides a fallback signer in case an EIP-1271 signature gets updated or an underlying EIP-7702 delegation that leverages EIP-1271 is changed by the account in question. This is particularly useful for smart contract accounts or other accounts that can change their signing mechanism at will, as otherwise these accounts can break equivocation after the mandate of a given compact has been fulfilled but before it has been claimed.
 
 IEmissary provides a function for verifying claims on behalf of sponsors.
 
-### Functions
+## Functions
+
+### verifyClaim
 
 ```solidity
 function verifyClaim(
@@ -678,9 +680,9 @@ function verifyClaim(
 ```
 Verifies a claim. Called from The Compact as part of claim processing. Must return the function selector (0xcd4d6588).
 
-## Key Concepts
+# Key Concepts
 
-### Resource Locks
+## Resource Locks
 
 Resource locks are the fundamental building blocks of The Compact protocol. They are created when a depositor places tokens (either native tokens or ERC20 tokens) into The Compact contract. Each resource lock has four key properties:
 
@@ -689,7 +691,7 @@ Resource locks are the fundamental building blocks of The Compact protocol. They
 3. The **scope** of the resource lock (either spendable on any chain or limited to a single chain)
 4. The **reset period** for forcibly exiting the lock and withdrawing the funds without the allocator's approval
 
-#### Fee-on-Transfer Token Handling
+### Fee-on-Transfer Token Handling
 
 The Compact has special handling for fee-on-transfer tokens (tokens that deduct a fee from the transferred amount):
 
@@ -703,7 +705,7 @@ Each unique combination of these four properties is represented by a fungible ER
 
 Each allocator must be registered by calling the `__registerAllocator` function, which will assign them a unique allocatorId (this value will be consistent for a given account address regardless of the chain on which it has been registered). The scope, reset period, and allocatorId on a given resource lock are then packed to create a **lock tag** that encapsulates the full set of information about a given lock aside from the underlying token; this lock tag is then used throughout various interfaces (including alongside the recipient as part of claimants on processed claims) to succinctly communicate which resource lock is relevant to the task at hand.
 
-### Allocators
+## Allocators
 
 Allocators play a critical role in The Compact protocol by ensuring the integrity of resource locks. Their responsibilities include:
 
@@ -718,7 +720,7 @@ The trust assumptions around allocators are important:
 
 Allocators can be implemented in various ways, including reputation-based systems, trusted execution environments, smart-contract-based systems, or even dedicated rollups. The Compact takes a neutral stance on implementations, enabling support for a wide variety of potential applications.
 
-### Arbiters
+## Arbiters
 
 Arbiters are responsible for verifying and submitting claims. When a sponsor creates a compact, they designate an arbiter who will:
 
@@ -730,7 +732,7 @@ The trust assumptions around arbiters are also important:
 - Sponsors must trust that the arbiter is sound and will not process claims where the conditions were not successfully met
 - Claimants must trust that the arbiter is sound and will not fail to process claims where the conditions were successfully met
 
-### Emissaries
+## Emissaries
 
 Emissaries provide a fallback verification mechanism for sponsors. They are particularly useful for:
 
@@ -740,7 +742,7 @@ Emissaries provide a fallback verification mechanism for sponsors. They are part
 
 The emissary is assigned for a specific lock tag and uses the reset period on that lock tag to block reassignment for the duration of that reset period. This ensures that once an emissary is assigned, another assignment cannot be made until the reset period has elapsed.
 
-### Forced Withdrawals
+## Forced Withdrawals
 
 Forced withdrawals provide a safety mechanism for sponsors in case an allocator goes down or refuses to cosign for a claim. The process works as follows:
 
@@ -750,7 +752,7 @@ Forced withdrawals provide a safety mechanism for sponsors in case an allocator 
 
 This mechanism ensures that sponsors always have recourse from potential censorship by allocators. The reset period only needs to be long enough for legitimate claims to finalize (generally some multiple of the slowest blockchain involved in the swap).
 
-### Registration
+## Registration
 
 Registration is an alternative to the signature-based flow for creating compacts. Instead of requiring signatures from the sponsor and allocator, the sponsor can register a compact by submitting a "claim hash" along with the typehash of the underlying compact.
 
@@ -761,11 +763,11 @@ This approach supports more advanced functionality, such as:
 
 When registering a compact directly, a duration is either explicitly provided or inferred from the reset period on the corresponding deposit. The registered compact becomes inactive once that duration elapses.
 
-### EIP-712 Payloads
+## EIP-712 Payloads
 
 The Compact protocol uses EIP-712 typed structured data for creating and verifying signatures. There are three main types of payloads that can be signed to create a compact:
 
-#### 1. Compact
+### 1. Compact
 
 The basic `Compact` payload is used for single resource lock operations on a single chain:
 
@@ -781,7 +783,7 @@ struct Compact {
 }
 ```
 
-#### 2. BatchCompact
+### 2. BatchCompact
 
 The `BatchCompact` payload is used when a sponsor wants to allocate multiple resource locks on a single chain:
 
@@ -796,7 +798,7 @@ struct BatchCompact {
 }
 ```
 
-#### 3. MultichainCompact
+### 3. MultichainCompact
 
 The `MultichainCompact` payload is used for cross-chain operations, allowing a sponsor to allocate resource locks across multiple chains:
 
@@ -818,27 +820,26 @@ struct Element {
 
 The EIP-712 typehash for these structures is constructed dynamically based on the typestring fragments defined in the code; empty Mandate structs will result in a typestring that does not contain witness data.
 
-#### Permit2 Integration Payloads
+### Permit2 Integration Payloads
 
 The Compact also supports integration with Permit2 for gasless deposits. These use additional EIP-712 structures:
 
 1. **CompactDeposit**: Used for basic Permit2 deposits
    ```solidity
-   // keccak256(bytes("CompactDeposit(bytes12 lockTag,address recipient)"))
-   bytes32 constant PERMIT2_DEPOSIT_WITNESS_FRAGMENT_HASH = 0xaced9f7c53bfda31d043cbef88f9ee23b8171ec904889af3d5d0b9b81914a404;
+   keccak256(bytes("CompactDeposit(bytes12 lockTag,address recipient)"))
    ```
 
 2. **Activation**: Used to combine deposits with compact registration
    ```solidity
-   // keccak256(bytes("Activation(uint256 id,Compact compact)Compact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256 id,uint256 amount,Mandate mandate)Mandate(...)"))
+   keccak256(bytes("Activation(uint256 id,Compact compact)Compact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256 id,uint256 amount,Mandate mandate)Mandate(...)"))
    ```
 
 3. **BatchActivation**: Used for batch deposits with compact registration
    ```solidity
-   // keccak256(bytes("BatchActivation(uint256[] ids,Compact compact)Compact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256 id,uint256 amount,Mandate mandate)Mandate(...)"))
+   keccak256(bytes("BatchActivation(uint256[] ids,Compact compact)Compact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256 id,uint256 amount,Mandate mandate)Mandate(...)"))
    ```
 
-#### Signature Verification
+### Signature Verification
 
 When a compact is created through signatures, the following verification process occurs:
 
@@ -853,11 +854,11 @@ When a compact is created through signatures, the following verification process
 
 This approach ensures that both the sponsor and allocator have authorized the compact, providing security against unauthorized claims. Note that sponsors do not have authority to "cancel" a compact; only allocators have the authority to cancel (as they are the entities bearing the trust assumption to uphold equivocation guarantees on behalf of claimants that fulfill the mandate of a given compact).
 
-### Witness Structure
+## Witness Structure
 
 The witness mechanism in The Compact allows for extending the basic compact structures with additional data that can be used to specify conditions or parameters for the claim. This is particularly important for more complex use cases where additional context is needed.
 
-#### Witness Format
+### Witness Format
 
 The witness is always structured as a "Mandate" appended to the end of the compact in question. For example, if the basic compact typestring is:
 
@@ -883,7 +884,7 @@ Then the witness typestring provided would be:
 uint256 witnessArgument, bytes32 anotherArgument
 ```
 
-#### Nested Structs in Witnesses
+### Nested Structs in Witnesses
 
 Since EIP-712 requires that all nested structs are ordered alphanumerically after the top-level struct, it's recommended to prefix any nested structs with "Mandate" (like MandateA, MandateB, etc.) to ensure they appear in the correct order in the final typestring.
 
@@ -899,7 +900,7 @@ Then the provided witness typestring would contain this payload, omitting the pa
 MandateCondition condition,uint256 witnessArgument)MandateCondition(bool required,uint256 value
 ```
 
-#### Witness Processing
+### Witness Processing
 
 The Compact doesn't evaluate the contents of the witness itself - this is up to the arbiter to interpret and act upon. However, The Compact does use:
 
@@ -908,11 +909,11 @@ The Compact doesn't evaluate the contents of the witness itself - this is up to 
 
 These are used to derive the final claim hash and validate the compact during claim processing. This allows for flexible, application-specific conditions to be attached to each compact while maintaining core security guarantees within the protocol.
 
-### Claimant Structure
+## Claimant Structure
 
 In The Compact V1, the recipient is encoded alongside the `lockTag` in the `claimant` field of each `Component` struct in the `claimants` array. This encoding allows for more flexible claim processing by determining the action to take for each claimant based on the encoded information.
 
-#### Encoding Structure
+### Encoding Structure
 
 The `claimant` field in the `Component` struct is a uint256 value that packs both the recipient address and a lockTag into a single value:
 
@@ -924,7 +925,7 @@ Where:
 - `lockTag` is a bytes12 value that contains the allocatorId, reset period, and scope
 - `recipient` is the address that will receive the tokens
 
-#### Processing Options
+### Processing Options
 
 When a claim is processed, The Compact examines the encoded claimant value to determine how to handle the transfer:
 
@@ -943,7 +944,7 @@ When a claim is processed, The Compact examines the encoded claimant value to de
    - The withdrawal process extracts the actual tokens (native or ERC20) from the resource lock and sends them to the recipient.
    - Example: A user wants to receive the actual USDC tokens from a USDC resource lock rather than the ERC6909 tokens representing that lock.
 
-#### Withdrawal Fallback Mechanism
+### Withdrawal Fallback Mechanism
 
 To prevent griefing by claimants via malicious receive hooks or callbacks during claim processing, The Compact implements a withdrawal fallback mechanism:
 
@@ -954,7 +955,7 @@ To prevent griefing by claimants via malicious receive hooks or callbacks during
 
 This fallback mechanism ensures that claims can still be processed even if there are issues with the underlying token and that one claimant cannot prevent a claim from being processed by other claimants via manipulation of receive hooks or other callbacks.
 
-## Key Data Structures
+# Key Data Structures
 
 ### AllocatedTransfer
 
