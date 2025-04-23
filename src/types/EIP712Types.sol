@@ -111,33 +111,38 @@ uint112 constant MULTICHAIN_COMPACT_TYPESTRING_FRAGMENT_SIX = 0x6e64617465294d61
 bytes32 constant PERMIT2_DEPOSIT_WITNESS_FRAGMENT_HASH =
     0xaced9f7c53bfda31d043cbef88f9ee23b8171ec904889af3d5d0b9b81914a404;
 
-/// @dev `keccak256(bytes("Activation(uint256 id,Compact compact)Compact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256 id,uint256 amount)"))`.
-bytes32 constant COMPACT_ACTIVATION_TYPEHASH = 0x2bf981c42c7f423b06fa49ba996d2930887e2f1f53d9a26b8c7423ac1cf83e61;
+/// @dev `keccak256(bytes("Activation(address activator,uint256 id,Compact compact)Compact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256 id,uint256 amount)"))`.
+bytes32 constant COMPACT_ACTIVATION_TYPEHASH = 0x4f98b503a6e2ea90ad3d4fd29ee51936aa65c953c6c8222275209afe2296d248;
 
-/// @dev `keccak256(bytes("Activation(uint256 id,BatchCompact compact)BatchCompact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256[2][] idsAndAmounts)"))`.
-bytes32 constant BATCH_COMPACT_ACTIVATION_TYPEHASH = 0xd14445d78213a5acddfa89171b0199de521c3b36738b835264cae18f5a53dbf3;
+/// @dev `keccak256(bytes("Activation(address activator,uint256 id,BatchCompact compact)BatchCompact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256[2][] idsAndAmounts)"))`.
+bytes32 constant BATCH_COMPACT_ACTIVATION_TYPEHASH = 0xe37f0d90f018fef9bb705317ef64ff37be45200ef61cf58ce5e3645ffd8eda7a;
 
-/// @dev `keccak256(bytes("BatchActivation(uint256[] ids,Compact compact)Compact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256 id,uint256 amount)"))`.
-bytes32 constant COMPACT_BATCH_ACTIVATION_TYPEHASH = 0x45012d42fad8c9e937cff5a2d750ee18713dd45aadcd718660d5523056618d99;
+/// @dev `keccak256(bytes("BatchActivation(address activator,uint256[] ids,Compact compact)Compact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256 id,uint256 amount)"))`.
+bytes32 constant COMPACT_BATCH_ACTIVATION_TYPEHASH = 0x4fa634d0371a799fc5d37aa6faf04064780a8cc75a3fe25ac9d591c5a8d4e143;
 
-/// @dev `keccak256(bytes("BatchActivation(uint256[] ids,BatchCompact compact)BatchCompact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256[2][] idsAndAmounts)"))`.
+/// @dev `keccak256(bytes("BatchActivation(address activator,uint256[] ids,BatchCompact compact)BatchCompact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256[2][] idsAndAmounts)"))`.
 bytes32 constant BATCH_COMPACT_BATCH_ACTIVATION_TYPEHASH =
-    0xc2e16a823b8cdddfdf889991d7a461f0a19faf1f8e608f1c164495a52151cc3e;
+    0xccd1083bf76e8cc4025444a9a97d4a6eeab40d6d806c020d80dd5b20b554833c;
 
-// abi.decode(bytes("Activation witness)Activation(ui"), (bytes32))
+// abi.decode(bytes("Activation witness)Activation(ad"), (bytes32))
 bytes32 constant PERMIT2_DEPOSIT_WITH_ACTIVATION_TYPESTRING_FRAGMENT_ONE =
-    0x41637469766174696f6e207769746e6573732941637469766174696f6e287569;
+    0x41637469766174696f6e207769746e6573732941637469766174696f6e286164;
 
 // uint72(abi.decode(bytes("nt256 id,"), (bytes9)))
-uint72 constant PERMIT2_DEPOSIT_WITH_ACTIVATION_TYPESTRING_FRAGMENT_TWO = 0x6e743235362069642c;
+// uint216(abi.decode(bytes("dress activator,uint256 id,"), (bytes27)))
+uint216 constant PERMIT2_DEPOSIT_WITH_ACTIVATION_TYPESTRING_FRAGMENT_TWO =
+    0x647265737320616374697661746f722c75696e743235362069642c;
 
 // abi.decode(bytes("BatchActivation witness)BatchAct"), (bytes32))
 bytes32 constant PERMIT2_BATCH_DEPOSIT_WITH_ACTIVATION_TYPESTRING_FRAGMENT_ONE =
     0x426174636841637469766174696f6e207769746e657373294261746368416374;
 
-// uint176(abi.decode(bytes("ivation(uint256[] ids,"), (bytes22)))
-uint176 constant PERMIT2_BATCH_DEPOSIT_WITH_ACTIVATION_TYPESTRING_FRAGMENT_TWO =
-    0x69766174696f6e2875696e743235365b5d206964732c;
+// abi.decode(bytes("ivation(address activator,uint25"), (bytes32))
+bytes32 constant PERMIT2_BATCH_DEPOSIT_WITH_ACTIVATION_TYPESTRING_FRAGMENT_TWO =
+    0x69766174696f6e286164647265737320616374697661746f722c75696e743235;
+
+// uint64(abi.decode(bytes("6[] ids,"), (bytes8)))
+uint64 constant PERMIT2_BATCH_DEPOSIT_WITH_ACTIVATION_TYPESTRING_FRAGMENT_THREE = 0x365b5d206964732c;
 
 // abi.decode(bytes("Compact compact)Compact(address "), (bytes32))
 bytes32 constant PERMIT2_ACTIVATION_COMPACT_TYPESTRING_FRAGMENT_ONE =

@@ -1825,8 +1825,11 @@ contract TheCompactTest is Test {
         bytes memory signature;
         ISignatureTransfer.PermitTransferFrom memory permit;
         {
-            bytes32 activationTypehash =
-                keccak256(bytes(string.concat("Activation(uint256 id,Compact compact)", compactWitnessTypestring)));
+            bytes32 activationTypehash = keccak256(
+                bytes(
+                    string.concat("Activation(address activator,uint256 id,Compact compact)", compactWitnessTypestring)
+                )
+            );
 
             {
                 bytes32 tokenPermissionsHash = keccak256(
@@ -1837,12 +1840,13 @@ contract TheCompactTest is Test {
 
                 bytes32 permitWitnessHash;
                 {
-                    bytes32 activationHash = keccak256(abi.encode(activationTypehash, claim.id, claimHash));
+                    bytes32 activationHash =
+                        keccak256(abi.encode(activationTypehash, address(1010), claim.id, claimHash));
 
                     permitWitnessHash = keccak256(
                         abi.encode(
                             keccak256(
-                                "PermitWitnessTransferFrom(TokenPermissions permitted,address spender,uint256 nonce,uint256 deadline,Activation witness)Activation(uint256 id,Compact compact)Compact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256 id,uint256 amount,Mandate mandate)Mandate(uint256 witnessArgument)TokenPermissions(address token,uint256 amount)"
+                                "PermitWitnessTransferFrom(TokenPermissions permitted,address spender,uint256 nonce,uint256 deadline,Activation witness)Activation(address activator,uint256 id,Compact compact)Compact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256 id,uint256 amount,Mandate mandate)Mandate(uint256 witnessArgument)TokenPermissions(address token,uint256 amount)"
                             ),
                             tokenPermissionsHash,
                             address(theCompact), // spender
@@ -1872,7 +1876,7 @@ contract TheCompactTest is Test {
 
             // Setup expectation for permitWitnessTransferFrom call
             {
-                bytes32 activationHash = keccak256(abi.encode(activationTypehash, claim.id, claimHash));
+                bytes32 activationHash = keccak256(abi.encode(activationTypehash, address(1010), claim.id, claimHash));
 
                 vm.expectCall(
                     address(permit2),
@@ -1885,7 +1889,7 @@ contract TheCompactTest is Test {
                         }),
                         swapper,
                         activationHash,
-                        "Activation witness)Activation(uint256 id,Compact compact)Compact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256 id,uint256 amount,Mandate mandate)Mandate(uint256 witnessArgument)TokenPermissions(address token,uint256 amount)",
+                        "Activation witness)Activation(address activator,uint256 id,Compact compact)Compact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256 id,uint256 amount,Mandate mandate)Mandate(uint256 witnessArgument)TokenPermissions(address token,uint256 amount)",
                         signature
                     )
                 );
@@ -1894,6 +1898,7 @@ contract TheCompactTest is Test {
 
         // Deposit and register
         {
+            vm.prank(address(1010));
             uint256 returnedId = theCompact.depositERC20AndRegisterViaPermit2(
                 permit,
                 swapper,
@@ -2066,8 +2071,11 @@ contract TheCompactTest is Test {
         {
             string memory typestring =
                 "BatchCompact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256[2][] idsAndAmounts,Mandate mandate)Mandate(uint256 witnessArgument)";
-            activationTypehash =
-                keccak256(bytes(string.concat("BatchActivation(uint256[] ids,BatchCompact compact)", typestring)));
+            activationTypehash = keccak256(
+                bytes(
+                    string.concat("BatchActivation(address activator,uint256[] ids,BatchCompact compact)", typestring)
+                )
+            );
         }
 
         // Create token permissions and signature
@@ -2142,6 +2150,8 @@ contract TheCompactTest is Test {
             depositDetails.deadline = params.deadline;
             depositDetails.lockTag = lockTag;
 
+            vm.prank(address(1010));
+            vm.deal(address(1010), 1e18);
             returnedIds = theCompact.batchDepositAndRegisterViaPermit2{ value: 1e18 }(
                 swapper,
                 tokenPermissions,
@@ -3259,12 +3269,13 @@ contract TheCompactTest is Test {
         pure
         returns (bytes32)
     {
-        bytes32 activationHash = keccak256(abi.encode(args.activationTypehash, args.idsHash, args.claimHash));
+        bytes32 activationHash =
+            keccak256(abi.encode(args.activationTypehash, address(1010), args.idsHash, args.claimHash));
 
         bytes32 permitBatchHash = keccak256(
             abi.encode(
                 keccak256(
-                    "PermitBatchWitnessTransferFrom(TokenPermissions[] permitted,address spender,uint256 nonce,uint256 deadline,BatchActivation witness)BatchActivation(uint256[] ids,BatchCompact compact)BatchCompact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256[2][] idsAndAmounts,Mandate mandate)Mandate(uint256 witnessArgument)TokenPermissions(address token,uint256 amount)"
+                    "PermitBatchWitnessTransferFrom(TokenPermissions[] permitted,address spender,uint256 nonce,uint256 deadline,BatchActivation witness)BatchActivation(address activator,uint256[] ids,BatchCompact compact)BatchCompact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256[2][] idsAndAmounts,Mandate mandate)Mandate(uint256 witnessArgument)TokenPermissions(address token,uint256 amount)"
                 ),
                 args.tokenPermissionsHash,
                 args.spender,
@@ -3293,8 +3304,9 @@ contract TheCompactTest is Test {
             ISignatureTransfer.SignatureTransferDetails({ to: address(theCompact), requestedAmount: 1e18 });
 
         // Create activation hash
-        bytes32 activationHash =
-            keccak256(abi.encode(args.activationTypehash, keccak256(abi.encodePacked(args.ids)), args.claimHash));
+        bytes32 activationHash = keccak256(
+            abi.encode(args.activationTypehash, address(1010), keccak256(abi.encodePacked(args.ids)), args.claimHash)
+        );
 
         // Setup expectation
         vm.expectCall(
@@ -3309,7 +3321,7 @@ contract TheCompactTest is Test {
                 signatureTransferDetails,
                 swapper,
                 activationHash,
-                "BatchActivation witness)BatchActivation(uint256[] ids,BatchCompact compact)BatchCompact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256[2][] idsAndAmounts,Mandate mandate)Mandate(uint256 witnessArgument)TokenPermissions(address token,uint256 amount)",
+                "BatchActivation witness)BatchActivation(address activator,uint256[] ids,BatchCompact compact)BatchCompact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256[2][] idsAndAmounts,Mandate mandate)Mandate(uint256 witnessArgument)TokenPermissions(address token,uint256 amount)",
                 args.signature
             )
         );
