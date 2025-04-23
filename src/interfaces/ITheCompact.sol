@@ -653,4 +653,6 @@ interface ITheCompact {
     error InvalidDepositBalanceChange();
     error Permit2CallFailed();
     error ReentrantCall(address existingCaller);
+    error InconsistentAllocators();
+    error InvalidAllocation(address allocator);
 }

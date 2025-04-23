@@ -13,19 +13,10 @@ import { ForcedWithdrawalStatus } from "./types/ForcedWithdrawalStatus.sol";
 import { EmissaryStatus } from "./types/EmissaryStatus.sol";
 import { DepositDetails } from "./types/DepositDetails.sol";
 
-import { TheCompactLogic } from "./lib/TheCompactLogic.sol";
-
 import { ERC6909 } from "solady/tokens/ERC6909.sol";
 import { ISignatureTransfer } from "permit2/src/interfaces/ISignatureTransfer.sol";
 
-// TODO: refactor these into logic files
-import { EfficiencyLib } from "./lib/EfficiencyLib.sol";
-import { HashLib } from "./lib/HashLib.sol";
-import { ValidityLib } from "./lib/ValidityLib.sol";
-import { IdLib } from "./lib/IdLib.sol";
-import { RegistrationLib } from "./lib/RegistrationLib.sol";
-import { BenchmarkERC20 } from "./lib/BenchmarkERC20.sol";
-import { TransferBenchmarkLib } from "./lib/TransferBenchmarkLib.sol";
+import { TheCompactLogic } from "./lib/TheCompactLogic.sol";
 
 /**
  * @title The Compact
@@ -36,41 +27,19 @@ import { TransferBenchmarkLib } from "./lib/TransferBenchmarkLib.sol";
  *         This contract has not yet been properly tested, audited, or reviewed.
  */
 contract TheCompact is ITheCompact, ERC6909, TheCompactLogic {
-    using ValidityLib for address;
-    using ValidityLib for bytes32;
-    using IdLib for address;
-    using IdLib for uint96;
-    using IdLib for uint256;
-    using RegistrationLib for address;
-    using EfficiencyLib for bool;
-    using EfficiencyLib for address;
-    using EfficiencyLib for uint256;
-    using TransferBenchmarkLib for address;
-    using TransferBenchmarkLib for bytes32;
-
-    // Declare an immutable argument for the account of the benchmark ERC20 token.
-    address private immutable _BENCHMARK_ERC20;
-
-    constructor() {
-        // Deploy reference ERC20 for benchmarking generic ERC20 token withdrawals. Note
-        // that benchmark cannot be evaluated as part of contract creation as it requires
-        // that the token account is not already warm as part of deriving the benchmark.
-        _BENCHMARK_ERC20 = address(new BenchmarkERC20());
-    }
-
     function depositNative(bytes12 lockTag, address recipient) external payable returns (uint256) {
-        return _performCustomNativeTokenDeposit(lockTag, recipient.usingCallerIfNull());
+        return _performCustomNativeTokenDeposit(lockTag, recipient);
     }
 
     function depositERC20(address token, bytes12 lockTag, uint256 amount, address recipient)
         external
         returns (uint256 id)
     {
-        (id,) = _performCustomERC20Deposit(token, lockTag, amount, recipient.usingCallerIfNull());
+        (id,) = _performCustomERC20Deposit(token, lockTag, amount, recipient);
     }
 
     function batchDeposit(uint256[2][] calldata idsAndAmounts, address recipient) external payable returns (bool) {
-        _processBatchDeposit(idsAndAmounts, recipient.usingCallerIfNull(), false);
+        _processBatchDeposit(idsAndAmounts, recipient, false);
 
         return true;
     }
@@ -125,22 +94,8 @@ contract TheCompact is ITheCompact, ERC6909, TheCompactLogic {
         bytes32 witness,
         bytes calldata sponsorSignature
     ) external returns (uint256 id, bytes32 claimHash) {
-        // Derive resource lock ID using provided token, parameters, and allocator.
-        id = token.excludingNative().toIdIfRegistered(lockTag);
-
-        claimHash =
-            HashLib.toFlatMessageHashWithWitness(sponsor, id, amount, arbiter, nonce, expires, typehash, witness);
-
-        {
-            // Initialize idsAndAmounts array.
-            uint256[2][] memory idsAndAmounts = new uint256[2][](1);
-            idsAndAmounts[0] = [id, amount];
-
-            // TODO: support registering exogenous domain separators by passing notarized chainId?
-            claimHash.hasValidSponsor(sponsor, sponsorSignature, _domainSeparator(), idsAndAmounts);
-        }
-
-        sponsor.registerCompact(claimHash, typehash);
+        return
+            _registerFor(sponsor, token, lockTag, amount, arbiter, nonce, expires, typehash, witness, sponsorSignature);
     }
 
     function registerBatchFor(
@@ -153,17 +108,7 @@ contract TheCompact is ITheCompact, ERC6909, TheCompactLogic {
         bytes32 witness,
         bytes calldata sponsorSignature
     ) external returns (bytes32 claimHash) {
-        _enforceConsistentAllocators(idsAndAmounts);
-
-        // Note: skips replacement of provided amounts as there are no corresponding deposits.
-        claimHash = HashLib.toFlatBatchClaimWithWitnessMessageHash(
-            sponsor, idsAndAmounts, arbiter, nonce, expires, typehash, witness, new uint256[](0)
-        );
-
-        // TODO: support registering exogenous domain separators by passing notarized chainId
-        claimHash.hasValidSponsor(sponsor, sponsorSignature, _domainSeparator(), idsAndAmounts);
-
-        sponsor.registerCompact(claimHash, typehash);
+        return _registerBatchFor(sponsor, idsAndAmounts, arbiter, nonce, expires, typehash, witness, sponsorSignature);
     }
 
     function depositNativeAndRegister(bytes12 lockTag, bytes32 claimHash, bytes32 typehash)
@@ -184,10 +129,10 @@ contract TheCompact is ITheCompact, ERC6909, TheCompactLogic {
         uint256 expires,
         bytes32 typehash,
         bytes32 witness
-    ) external payable returns (uint256 id, bytes32 claimhash) {
+    ) external payable returns (uint256 id, bytes32 claimHash) {
         id = _performCustomNativeTokenDeposit(lockTag, recipient);
 
-        claimhash = _registerUsingClaimWithWitness(recipient, id, msg.value, arbiter, nonce, expires, typehash, witness);
+        claimHash = _registerUsingClaimWithWitness(recipient, id, msg.value, arbiter, nonce, expires, typehash, witness);
     }
 
     function depositERC20AndRegister(
@@ -212,10 +157,10 @@ contract TheCompact is ITheCompact, ERC6909, TheCompactLogic {
         uint256 expires,
         bytes32 typehash,
         bytes32 witness
-    ) external returns (uint256 id, bytes32 claimhash, uint256 registeredAmount) {
+    ) external returns (uint256 id, bytes32 claimHash, uint256 registeredAmount) {
         (id, registeredAmount) = _performCustomERC20Deposit(token, lockTag, amount, recipient);
 
-        claimhash =
+        claimHash =
             _registerUsingClaimWithWitness(recipient, id, registeredAmount, arbiter, nonce, expires, typehash, witness);
     }
 
@@ -236,10 +181,10 @@ contract TheCompact is ITheCompact, ERC6909, TheCompactLogic {
         uint256 expires,
         bytes32 typehash,
         bytes32 witness
-    ) external payable returns (bytes32 claimhash, uint256[] memory registeredAmounts) {
+    ) external payable returns (bytes32 claimHash, uint256[] memory registeredAmounts) {
         registeredAmounts = _processBatchDeposit(idsAndAmounts, recipient, true);
 
-        claimhash = _registerUsingBatchClaimWithWitness(
+        claimHash = _registerUsingBatchClaimWithWitness(
             recipient, idsAndAmounts, arbiter, nonce, expires, typehash, witness, registeredAmounts
         );
     }
@@ -301,8 +246,7 @@ contract TheCompact is ITheCompact, ERC6909, TheCompactLogic {
     }
 
     function __benchmark(bytes32 salt) external payable {
-        salt.setNativeTokenBenchmark();
-        _BENCHMARK_ERC20.setERC20TokenBenchmark();
+        _benchmark(salt);
     }
 
     function getRequiredWithdrawalFallbackStipends()
@@ -310,7 +254,7 @@ contract TheCompact is ITheCompact, ERC6909, TheCompactLogic {
         view
         returns (uint256 nativeTokenStipend, uint256 erc20TokenStipend)
     {
-        return TransferBenchmarkLib.getTokenWithdrawalBenchmarks();
+        return _getRequiredWithdrawalFallbackStipends();
     }
 
     function getForcedWithdrawalStatus(address account, uint256 id)
@@ -401,37 +345,5 @@ contract TheCompact is ITheCompact, ERC6909, TheCompactLogic {
      */
     function _beforeTokenTransfer(address from, address to, uint256 id, uint256 amount) internal virtual override {
         _ensureAttested(from, to, id, amount);
-    }
-
-    /**
-     * @notice Internal function to ensure all resource lock IDs in a batch have the same allocator.
-     * @param idsAndAmounts Array of [id, amount] pairs to check for consistent allocators.
-     * @dev Reverts with InconsistentAllocators if any ID has a different allocator than the first ID.
-     */
-    function _enforceConsistentAllocators(uint256[2][] calldata idsAndAmounts) internal view {
-        // Retrieve the total number of IDs and amounts in the batch.
-        uint256 totalIds = idsAndAmounts.length;
-
-        if (totalIds == 0) {
-            revert InconsistentAllocators();
-        }
-
-        // Derive current allocator ID from first resource lock ID.
-        uint96 initialAllocatorId = idsAndAmounts[0][0].toRegisteredAllocatorId();
-
-        // Declare error buffer for tracking allocator ID consistency.
-        uint256 errorBuffer;
-
-        // Iterate over remaining IDs.
-        unchecked {
-            for (uint256 i = 1; i < totalIds; ++i) {
-                // Determine if new allocator ID differs from current allocator ID.
-                errorBuffer |= (idsAndAmounts[i][0].toAllocatorId() != initialAllocatorId).asUint256();
-            }
-        }
-
-        if (errorBuffer.asBool()) {
-            revert InconsistentAllocators();
-        }
     }
 }

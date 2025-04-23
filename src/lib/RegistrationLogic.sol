@@ -1,9 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.27;
 
+import { AllocatorLib } from "./AllocatorLib.sol";
 import { RegistrationLib } from "./RegistrationLib.sol";
 import { HashLib } from "./HashLib.sol";
 import { ResetPeriod } from "../types/ResetPeriod.sol";
+import { ValidityLib } from "./ValidityLib.sol";
+import { IdLib } from "./IdLib.sol";
+
+import { ConstructorLogic } from "./ConstructorLogic.sol";
 
 /**
  * @title RegistrationLogic
@@ -11,10 +16,14 @@ import { ResetPeriod } from "../types/ResetPeriod.sol";
  * and typehashes and querying for whether given claim hashes and typehashes have
  * been registered.
  */
-contract RegistrationLogic {
+contract RegistrationLogic is ConstructorLogic {
+    using AllocatorLib for uint256[2][];
     using RegistrationLib for address;
     using RegistrationLib for bytes32;
     using RegistrationLib for bytes32[2][];
+    using ValidityLib for address;
+    using ValidityLib for bytes32;
+    using IdLib for address;
 
     /**
      * @notice Internal function for registering a claim hash. The claim hash and its
@@ -37,6 +46,59 @@ contract RegistrationLogic {
      */
     function _registerBatch(bytes32[2][] calldata claimHashesAndTypehashes) internal returns (bool) {
         return claimHashesAndTypehashes.registerBatchAsCaller();
+    }
+
+    function _registerFor(
+        address sponsor,
+        address token,
+        bytes12 lockTag,
+        uint256 amount,
+        address arbiter,
+        uint256 nonce,
+        uint256 expires,
+        bytes32 typehash,
+        bytes32 witness,
+        bytes calldata sponsorSignature
+    ) internal returns (uint256 id, bytes32 claimHash) {
+        // Derive resource lock ID using provided token, parameters, and allocator.
+        id = token.excludingNative().toIdIfRegistered(lockTag);
+
+        claimHash =
+            HashLib.toFlatMessageHashWithWitness(sponsor, id, amount, arbiter, nonce, expires, typehash, witness);
+
+        {
+            // Initialize idsAndAmounts array.
+            uint256[2][] memory idsAndAmounts = new uint256[2][](1);
+            idsAndAmounts[0] = [id, amount];
+
+            // TODO: support registering exogenous domain separators by passing notarized chainId?
+            claimHash.hasValidSponsor(sponsor, sponsorSignature, _domainSeparator(), idsAndAmounts);
+        }
+
+        sponsor.registerCompact(claimHash, typehash);
+    }
+
+    function _registerBatchFor(
+        address sponsor,
+        uint256[2][] calldata idsAndAmounts,
+        address arbiter,
+        uint256 nonce,
+        uint256 expires,
+        bytes32 typehash,
+        bytes32 witness,
+        bytes calldata sponsorSignature
+    ) internal returns (bytes32 claimHash) {
+        idsAndAmounts.enforceConsistentAllocators();
+
+        // Note: skips replacement of provided amounts as there are no corresponding deposits.
+        claimHash = HashLib.toFlatBatchClaimWithWitnessMessageHash(
+            sponsor, idsAndAmounts, arbiter, nonce, expires, typehash, witness, new uint256[](0)
+        );
+
+        // TODO: support registering exogenous domain separators by passing notarized chainId
+        claimHash.hasValidSponsor(sponsor, sponsorSignature, _domainSeparator(), idsAndAmounts);
+
+        sponsor.registerCompact(claimHash, typehash);
     }
 
     /**

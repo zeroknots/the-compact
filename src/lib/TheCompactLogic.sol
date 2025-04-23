@@ -10,6 +10,7 @@ import { RegistrationLogic } from "./RegistrationLogic.sol";
 import { TransferLogic } from "./TransferLogic.sol";
 import { WithdrawalLogic } from "./WithdrawalLogic.sol";
 import { EmissaryLogic } from "./EmissaryLogic.sol";
+import { TransferBenchmarkLogic } from "./TransferBenchmarkLogic.sol";
 
 /**
  * @title TheCompactLogic
@@ -24,5 +25,6 @@ contract TheCompactLogic is
     RegistrationLogic,
     TransferLogic,
     WithdrawalLogic,
-    EmissaryLogic
+    EmissaryLogic,
+    TransferBenchmarkLogic
 { }
