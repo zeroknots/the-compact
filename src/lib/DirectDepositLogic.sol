@@ -25,10 +25,9 @@ contract DirectDepositLogic is DepositLogic {
     using IdLib for uint256;
     using IdLib for address;
     using EfficiencyLib for bool;
+    using EfficiencyLib for address;
     using ValidityLib for address;
     using SafeTransferLib for address;
-
-    error InconsistentAllocators();
 
     /**
      * @notice Internal function for depositing multiple tokens in a single transaction. The
@@ -50,6 +49,9 @@ contract DirectDepositLogic is DepositLogic {
     ) internal returns (uint256[] memory mintedAmounts) {
         // Set reentrancy guard.
         _setReentrancyGuard();
+
+        // Reassign recipient to the caller if the null address was provided.
+        recipient = recipient.usingCallerIfNull();
 
         // Retrieve the total number of IDs and amounts in the batch.
         uint256 totalIds = idsAndAmounts.length;
@@ -119,8 +121,12 @@ contract DirectDepositLogic is DepositLogic {
 
                 // Determine if new allocator ID differs from current allocator ID.
                 if (newAllocatorId != currentAllocatorId) {
-                    if (enforceConsistentAllocator) {
-                        revert InconsistentAllocators();
+                    assembly ("memory-safe") {
+                        if enforceConsistentAllocator {
+                            // revert InconsistentAllocators();
+                            mstore(0, 0xaf346306)
+                            revert(0x1c, 4)
+                        }
                     }
 
                     // Ensure new allocator ID is registered.
@@ -148,6 +154,9 @@ contract DirectDepositLogic is DepositLogic {
      * @return id         The ERC6909 token identifier of the associated resource lock.
      */
     function _performCustomNativeTokenDeposit(bytes12 lockTag, address recipient) internal returns (uint256 id) {
+        // Reassign recipient to the caller if the null address was provided.
+        recipient = recipient.usingCallerIfNull();
+
         // Derive resource lock ID using null address, provided parameters, and allocator.
         id = address(0).toIdIfRegistered(lockTag);
 
@@ -173,6 +182,9 @@ contract DirectDepositLogic is DepositLogic {
         internal
         returns (uint256 id, uint256 mintedAmount)
     {
+        // Reassign recipient to the caller if the null address was provided.
+        recipient = recipient.usingCallerIfNull();
+
         // Derive resource lock ID using provided token, parameters, and allocator.
         id = token.excludingNative().toIdIfRegistered(lockTag);
 
