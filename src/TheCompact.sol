@@ -160,7 +160,7 @@ contract TheCompact is ITheCompact, ERC6909, TheCompactLogic {
             sponsor, idsAndAmounts, arbiter, nonce, expires, typehash, witness, new uint256[](0)
         );
 
-        // TOOD: support registering exogenous domain separators by passing notarized chainId
+        // TODO: support registering exogenous domain separators by passing notarized chainId
         claimHash.hasValidSponsor(sponsor, sponsorSignature, _domainSeparator(), idsAndAmounts);
 
         sponsor.registerCompact(claimHash, typehash);
