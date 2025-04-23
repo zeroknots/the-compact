@@ -41,17 +41,20 @@ contract DirectDepositLogic is DepositLogic {
      * @param idsAndAmounts Array of [id, amount] pairs with each pair indicating the resource lock and amount to deposit.
      * @param recipient     The address that will receive the corresponding ERC6909 tokens.
      * @param enforceConsistentAllocator Boolean to indicate whether the allocatorId should be consistent across deposits.
+     * @return mintedAmounts Array containing the final minted amount of each id.
      */
     function _processBatchDeposit(
         uint256[2][] calldata idsAndAmounts,
         address recipient,
         bool enforceConsistentAllocator
-    ) internal {
+    ) internal returns (uint256[] memory mintedAmounts) {
         // Set reentrancy guard.
         _setReentrancyGuard();
 
         // Retrieve the total number of IDs and amounts in the batch.
         uint256 totalIds = idsAndAmounts.length;
+
+        mintedAmounts = new uint256[](totalIds);
 
         // Declare variables for ID, amount, and whether first token is native.
         uint256 id;
@@ -98,6 +101,7 @@ contract DirectDepositLogic is DepositLogic {
         // Deposit native tokens directly if first underlying token is native.
         if (firstUnderlyingTokenIsNative) {
             recipient.deposit(id, msg.value);
+            mintedAmounts[0] = msg.value;
         }
 
         // Iterate over remaining IDs and amounts.
@@ -127,7 +131,7 @@ contract DirectDepositLogic is DepositLogic {
                 }
 
                 // Transfer underlying tokens in and mint ERC6909 tokens to recipient.
-                _transferAndDeposit(id.toAddress(), recipient, id, amount);
+                mintedAmounts[i] = _transferAndDeposit(id.toAddress(), recipient, id, amount);
             }
         }
 
@@ -158,21 +162,22 @@ contract DirectDepositLogic is DepositLogic {
      * the recipient is derived from the difference between the starting and ending balance held
      * in the resource lock, which may differ from the amount transferred depending on the
      * implementation details of the respective token.
-     * @param token       The address of the ERC20 token to deposit.
-     * @param lockTag    The lock tag containing allocator ID, reset period, and scope.
-     * @param amount      The amount of tokens to deposit.
-     * @param recipient   The address that will receive the corresponding ERC6909 tokens.
-     * @return id         The ERC6909 token identifier of the associated resource lock.
+     * @param token         The address of the ERC20 token to deposit.
+     * @param lockTag       The lock tag containing allocator ID, reset period, and scope.
+     * @param amount        The amount of tokens to deposit.
+     * @param recipient     The address that will receive the corresponding ERC6909 tokens.
+     * @return id           The ERC6909 token identifier of the associated resource lock.
+     * @return mintedAmount The minted ERC6909 token amount based on the balance change.
      */
     function _performCustomERC20Deposit(address token, bytes12 lockTag, uint256 amount, address recipient)
         internal
-        returns (uint256 id)
+        returns (uint256 id, uint256 mintedAmount)
     {
         // Derive resource lock ID using provided token, parameters, and allocator.
         id = token.excludingNative().toIdIfRegistered(lockTag);
 
         // Transfer ERC20 tokens in and mint ERC6909 tokens to recipient.
-        _transferAndDepositWithReentrancyGuard(token, recipient, id, amount);
+        mintedAmount = _transferAndDepositWithReentrancyGuard(token, recipient, id, amount);
     }
 
     /**
@@ -182,8 +187,12 @@ contract DirectDepositLogic is DepositLogic {
      * @param to    The address that will receive the corresponding ERC6909 tokens.
      * @param id    The ERC6909 token identifier of the associated resource lock.
      * @param amount The amount of tokens to transfer.
+     * @return mintedAmount The minted ERC6909 token amount based on the balance change.
      */
-    function _transferAndDeposit(address token, address to, uint256 id, uint256 amount) private {
+    function _transferAndDeposit(address token, address to, uint256 id, uint256 amount)
+        private
+        returns (uint256 mintedAmount)
+    {
         // Retrieve initial token balance of this contract.
         uint256 initialBalance = token.balanceOf(address(this));
 
@@ -191,23 +200,27 @@ contract DirectDepositLogic is DepositLogic {
         token.safeTransferFrom(msg.sender, address(this), amount);
 
         // Compare new balance to initial balance and deposit ERC6909 tokens to recipient.
-        _checkBalanceAndDeposit(token, to, id, initialBalance);
+        return _checkBalanceAndDeposit(token, to, id, initialBalance);
     }
 
     /**
      * @notice Private function for transferring ERC20 tokens in and minting the resulting balance
      * change of `id` to `to`. Emits a Transfer event.
-     * @param token The address of the ERC20 token to transfer.
-     * @param to    The address that will receive the corresponding ERC6909 tokens.
-     * @param id    The ERC6909 token identifier of the associated resource lock.
-     * @param amount The amount of tokens to transfer.
+     * @param token         The address of the ERC20 token to transfer.
+     * @param to            The address that will receive the corresponding ERC6909 tokens.
+     * @param id            The ERC6909 token identifier of the associated resource lock.
+     * @param amount        The amount of tokens to transfer.
+     * @return mintedAmount The minted ERC6909 token amount based on the balance change.
      */
-    function _transferAndDepositWithReentrancyGuard(address token, address to, uint256 id, uint256 amount) private {
+    function _transferAndDepositWithReentrancyGuard(address token, address to, uint256 id, uint256 amount)
+        private
+        returns (uint256 mintedAmount)
+    {
         // Set reentrancy guard.
         _setReentrancyGuard();
 
         // Transfer tokens in and mint ERC6909 tokens to recipient.
-        _transferAndDeposit(token, to, id, amount);
+        mintedAmount = _transferAndDeposit(token, to, id, amount);
 
         // Clear reentrancy guard.
         _clearReentrancyGuard();

@@ -100,7 +100,7 @@ contract AllocatorLogicTest is Test {
 
         // Generate lock ID using IdLib functions
         bytes12 lockTag = allocatorId.toLockTag(scope, resetPeriod);
-        uint256 id = token.asUint256() | (uint256(uint96(allocatorId)) << 160);
+        uint256 id = token.asUint256() | (uint256(bytes32(lockTag)));
 
         // Get lock details
         (
@@ -114,7 +114,9 @@ contract AllocatorLogicTest is Test {
         // Assert lock details match
         assertEq(retrievedToken, token, "Token address should match");
         assertEq(retrievedAllocator, allocatorAddr, "Allocator address should match");
-        // Assert other details match - may need to convert to uint256 for comparison
+        assertEq(retrievedLockTag, lockTag, "Lock tags should match");
+        assertEq(uint8(retrievedResetPeriod), uint8(resetPeriod), "Reset periods should match");
+        assertEq(uint8(retrievedScope), uint8(scope), "Scopes should match");
     }
 
     function test_registerAllocator_zeroAddress() public {

@@ -101,6 +101,7 @@ contract RegistrationLogic {
      * @param typehash      Typehash of the entire compact. Including the subtypes of the
      * witness
      * @param witness       EIP712 structured hash of witness.
+     * @param replacementAmounts An optional array of replacement amounts.
      */
     function _registerUsingBatchClaimWithWitness(
         address sponsor,
@@ -109,10 +110,11 @@ contract RegistrationLogic {
         uint256 nonce,
         uint256 expires,
         bytes32 typehash,
-        bytes32 witness
+        bytes32 witness,
+        uint256[] memory replacementAmounts
     ) internal returns (bytes32 claimhash) {
         claimhash = HashLib.toFlatBatchClaimWithWitnessMessageHash(
-            sponsor, idsAndAmounts, arbiter, nonce, expires, typehash, witness
+            sponsor, idsAndAmounts, arbiter, nonce, expires, typehash, witness, replacementAmounts
         );
         sponsor.registerCompact(claimhash, typehash);
     }

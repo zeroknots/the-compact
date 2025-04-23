@@ -1567,7 +1567,7 @@ contract TheCompactTest is Test {
             witness = keccak256(abi.encode(witnessArgument));
 
             vm.prank(swapperSponsor);
-            (id, registeredClaimHash) = theCompact.depositERC20AndRegisterFor(
+            (id, registeredClaimHash,) = theCompact.depositERC20AndRegisterFor(
                 address(swapper),
                 address(token),
                 lockTag,

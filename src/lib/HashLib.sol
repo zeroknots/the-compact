@@ -160,7 +160,7 @@ library HashLib {
 
                 assembly ("memory-safe") {
                     // Derive offset to id and amount based on total components.
-                    let extraOffset := add(add(idsAndAmounts, 0x20), mul(i, 0x40))
+                    let extraOffset := add(add(idsAndAmounts, 0x20), shl(6, i))
 
                     // Store the id and aggregate amount at the derived offset.
                     mstore(extraOffset, id)
@@ -585,12 +585,15 @@ library HashLib {
     /**
      * @notice Internal pure function for deriving the hash of ids and amounts provided.
      * @param idsAndAmounts      An array of ids and amounts.
+     * @param replacementAmounts An optional array of replacement amounts.
      * @return idsAndAmountsHash The hash of the ids and amounts.
      * @dev This function expects that the calldata of idsAndAmounts will have bounds
      * checked elsewhere; using it without this check occurring elsewhere can result in
-     * erroneous hash values.
+     * erroneous hash values. This function also assumes that replacementAmounts.length
+     * does not exceed replacementAmounts.length and will break if the invariant is not
+     * upheld.
      */
-    function toIdsAndAmountsHash(uint256[2][] calldata idsAndAmounts)
+    function toIdsAndAmountsHash(uint256[2][] calldata idsAndAmounts, uint256[] memory replacementAmounts)
         internal
         pure
         returns (bytes32 idsAndAmountsHash)
@@ -601,10 +604,19 @@ library HashLib {
 
             // Get the total length of the calldata slice.
             // Each element of the array consists of 2 words.
-            let len := mul(idsAndAmounts.length, 0x40)
+            let len := shl(6, idsAndAmounts.length)
 
             // Copy calldata into memory at the free memory pointer.
             calldatacopy(ptr, idsAndAmounts.offset, len)
+
+            let amountDataStart := add(ptr, 0x20)
+            let replacementDataStart := add(replacementAmounts, 0x20)
+            let amountsToReplace := mload(replacementAmounts)
+
+            // Iterate over the replacementAmounts array, splicing in the updated amounts.
+            for { let i := 0 } lt(i, amountsToReplace) { i := add(i, 1) } {
+                mstore(add(amountDataStart, shl(6, i)), mload(add(replacementDataStart, shl(5, i))))
+            }
 
             // Compute the hash of the calldata that has been copied into memory.
             idsAndAmountsHash := keccak256(ptr, len)
@@ -625,7 +637,7 @@ library HashLib {
         uint256 totalIds = claims.length;
 
         // Prepare a memory region for storing the ids and amounts.
-        bytes memory idsAndAmounts = new bytes(totalIds * 0x40);
+        bytes memory idsAndAmounts = new bytes(totalIds << 6);
 
         unchecked {
             // Iterate over the claims array.
@@ -634,12 +646,9 @@ library HashLib {
                 BatchClaimComponent calldata claimComponent = claims[i];
 
                 assembly ("memory-safe") {
-                    // Derive the offset to the current position in the memory region.
-                    let extraOffset := add(add(idsAndAmounts, 0x20), mul(i, 0x40))
-
-                    // Retrieve and store the id and amount at the current position.
-                    mstore(extraOffset, calldataload(claimComponent)) // id
-                    mstore(add(extraOffset, 0x20), calldataload(add(claimComponent, 0x20))) // amount
+                    // Derive the offset to the current position in the memory region,
+                    // then retrieve and store the id and amount at the current position.
+                    calldatacopy(add(add(idsAndAmounts, 0x20), shl(6, i)), claimComponent, 0x40)
                 }
             }
         }
@@ -694,14 +703,15 @@ library HashLib {
 
     /**
      * @notice Internal pure function for retrieving an EIP-712 claim hash.
-     * @param sponsor       The account sponsoring the claimed compact.
-     * @param idsAndAmounts An array with IDs and aggregate transfer amounts.
-     * @param arbiter       Account verifying and initiating the settlement of the claim.
-     * @param nonce         Allocator replay protection nonce.
-     * @param expires       Timestamp when the claim expires.
-     * @param typehash      Typehash of the entire compact. Including the subtypes.
-     * @param witness       EIP712 structured hash of witness.
-     * @return messageHash  The corresponding EIP-712 messagehash.
+     * @param sponsor            The account sponsoring the claimed compact.
+     * @param idsAndAmounts      An array with IDs and aggregate transfer amounts.
+     * @param arbiter            Account verifying and initiating the settlement of the claim.
+     * @param nonce              Allocator replay protection nonce.
+     * @param expires            Timestamp when the claim expires.
+     * @param typehash           Typehash of the entire compact. Including the subtypes.
+     * @param witness            EIP712 structured hash of witness.
+     * @param replacementAmounts An optional array of replacement amounts.
+     * @return messageHash       The corresponding EIP-712 messagehash.
      */
     function toFlatBatchClaimWithWitnessMessageHash(
         address sponsor,
@@ -710,9 +720,10 @@ library HashLib {
         uint256 nonce,
         uint256 expires,
         bytes32 typehash,
-        bytes32 witness
+        bytes32 witness,
+        uint256[] memory replacementAmounts
     ) internal pure returns (bytes32 messageHash) {
-        bytes32 idsAndAmountsHash = idsAndAmounts.toIdsAndAmountsHash();
+        bytes32 idsAndAmountsHash = idsAndAmounts.toIdsAndAmountsHash(replacementAmounts);
         assembly ("memory-safe") {
             // Retrieve the free memory pointer; memory will be left dirtied.
             let m := mload(0x40)
