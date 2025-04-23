@@ -172,9 +172,8 @@ contract TheCompactTest is Test {
 
         vm.startPrank(swapper);
         token.approve(address(theCompact), 1e18);
-        token.approve(permit2, 1e18);
         anotherToken.approve(address(theCompact), 1e18);
-        anotherToken.approve(permit2, 1e18);
+        // Permit2 has infinite default approval in Solady ERC20
         vm.stopPrank();
 
         alwaysOKAllocator = address(new AlwaysOKAllocator());
