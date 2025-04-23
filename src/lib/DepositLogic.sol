@@ -25,8 +25,12 @@ contract DepositLogic is ConstructorLogic {
      * @param to             The account to mint ERC6909 tokens to.
      * @param id             The ERC6909 token identifier to mint.
      * @param initialBalance The token balance before the deposit operation.
+     * @return mintedAmount The minted ERC6909 token amount based on the balance change.
      */
-    function _checkBalanceAndDeposit(address token, address to, uint256 id, uint256 initialBalance) internal {
+    function _checkBalanceAndDeposit(address token, address to, uint256 id, uint256 initialBalance)
+        internal
+        returns (uint256 mintedAmount)
+    {
         // Get the current token balance to compare against initial balance.
         uint256 tokenBalance = token.balanceOf(address(this));
 
@@ -41,8 +45,10 @@ contract DepositLogic is ConstructorLogic {
 
         // Skip underflow check as balance increase has been confirmed.
         unchecked {
-            // Mint the balance difference as ERC6909 tokens.
-            to.deposit(id, tokenBalance - initialBalance);
+            mintedAmount = tokenBalance - initialBalance;
         }
+
+        // Mint the balance difference as ERC6909 tokens.
+        to.deposit(id, mintedAmount);
     }
 }

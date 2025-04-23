@@ -333,17 +333,18 @@ interface ITheCompact {
      * designated recipient the caller is derived from the difference between the starting and ending
      * balance held in the resource lock, which may differ from the amount transferred depending on
      * the implementation details of the respective token.
-     * @param recipient   The recipient of the ERC6909 token.
-     * @param token       The address of the ERC20 token to deposit.
-     * @param lockTag     The lock tag containing allocator ID, reset period, and scope.
-     * @param amount      The amount of tokens to deposit.
-     * @param arbiter     The account tasked with verifying and submitting the claim.
-     * @param nonce       A parameter to enforce replay protection, scoped to allocator.
-     * @param expires     The time at which the claim expires.
-     * @param typehash    The EIP-712 typehash associated with the registered compact.
-     * @param witness     Hash of the witness data.
-     * @return id         The ERC6909 token identifier of the associated resource lock.
-     * @return claimhash  Hash of the claim. Can be used to verify the expected claim was registered.
+     * @param recipient         The recipient of the ERC6909 token.
+     * @param token             The address of the ERC20 token to deposit.
+     * @param lockTag           Lock tag containing allocator ID, reset period, & scope.
+     * @param amount            The amount of tokens to deposit.
+     * @param arbiter           The account tasked with verifying and submitting the claim.
+     * @param nonce             A parameter to enforce replay protection, scoped to allocator.
+     * @param expires           The time at which the claim expires.
+     * @param typehash          The EIP-712 typehash associated with the registered compact.
+     * @param witness           Hash of the witness data.
+     * @return id               The ERC6909 token identifier of the associated resource lock.
+     * @return claimhash        Hash for verifying that the expected claim was registered.
+     * @return registeredAmount Final registered amount after
      */
     function depositERC20AndRegisterFor(
         address recipient,
@@ -355,7 +356,7 @@ interface ITheCompact {
         uint256 expires,
         bytes32 typehash,
         bytes32 witness
-    ) external returns (uint256 id, bytes32 claimhash);
+    ) external returns (uint256 id, bytes32 claimhash, uint256 registeredAmount);
 
     /**
      * @notice External payable function for depositing multiple tokens in a single transaction
@@ -382,14 +383,15 @@ interface ITheCompact {
      * received by designated recipient the caller is derived from the difference between the
      * starting and ending balance held in the resource lock, which may differ from the amount
      * transferred depending on the implementation details of the respective token.
-     * @param recipient     The recipient of the ERC6909 token.
-     * @param idsAndAmounts The address of the ERC20 token to deposit.
-     * @param arbiter       The account tasked with verifying and submitting the claim.
-     * @param nonce         A parameter to enforce replay protection, scoped to allocator.
-     * @param expires       The time at which the claim expires.
-     * @param typehash      The EIP-712 typehash associated with the registered compact.
-     * @param witness       Hash of the witness data.
-     * @return claimhash  Hash of the claim. Can be used to verify the expected claim was registered.
+     * @param recipient         The recipient of the ERC6909 token.
+     * @param idsAndAmounts     The address of the ERC20 token to deposit.
+     * @param arbiter           The account tasked with verifying and submitting the claim.
+     * @param nonce             A parameter to enforce replay protection, scoped to allocator.
+     * @param expires           The time at which the claim expires.
+     * @param typehash          The EIP-712 typehash associated with the registered compact.
+     * @param witness           Hash of the witness data.
+     * @return claimhash        Hash of the claim. Can be used to verify the expected claim was registered.
+     * @return registeredAmounts Array containing the final minted amount of each id.
      */
     function batchDepositAndRegisterFor(
         address recipient,
@@ -399,7 +401,7 @@ interface ITheCompact {
         uint256 expires,
         bytes32 typehash,
         bytes32 witness
-    ) external payable returns (bytes32 claimhash);
+    ) external payable returns (bytes32 claimhash, uint256[] memory registeredAmounts);
 
     /**
      * @notice External function for depositing ERC20 tokens using Permit2 authorization and

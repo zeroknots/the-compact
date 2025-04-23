@@ -49,7 +49,9 @@ contract MockRegistrationLogic is TheCompactLogic {
         uint256 expires,
         bytes32 typehash,
         bytes32 witness
-    ) external returns (bytes32) {
-        return _registerUsingBatchClaimWithWitness(sponsor, idsAndAmounts, arbiter, nonce, expires, typehash, witness);
+    ) external returns (bytes32 claimHash) {
+        return _registerUsingBatchClaimWithWitness(
+            sponsor, idsAndAmounts, arbiter, nonce, expires, typehash, witness, new uint256[](0)
+        );
     }
 }

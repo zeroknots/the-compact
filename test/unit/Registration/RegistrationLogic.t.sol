@@ -105,7 +105,7 @@ contract RegistrationLogicTest is Test {
         assertEq(claimHash, expectedClaimHash, "Batch claim hash should match expected value");
     }
 
-    function test_getRegistrationStatus_nonexistent() public {
+    function test_getRegistrationStatus_nonexistent() public view {
         bytes32 claimHash = keccak256("look ma, no claim");
         bytes32 typehash = COMPACT_TYPEHASH;
 
