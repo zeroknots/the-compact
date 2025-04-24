@@ -10,6 +10,7 @@ import {
     PERMIT2_DEPOSIT_WITH_ACTIVATION_TYPESTRING_FRAGMENT_TWO,
     PERMIT2_BATCH_DEPOSIT_WITH_ACTIVATION_TYPESTRING_FRAGMENT_ONE,
     PERMIT2_BATCH_DEPOSIT_WITH_ACTIVATION_TYPESTRING_FRAGMENT_TWO,
+    PERMIT2_BATCH_DEPOSIT_WITH_ACTIVATION_TYPESTRING_FRAGMENT_THREE,
     TOKEN_PERMISSIONS_TYPESTRING_FRAGMENT_ONE,
     TOKEN_PERMISSIONS_TYPESTRING_FRAGMENT_TWO,
     COMPACT_ACTIVATION_TYPEHASH,
@@ -155,23 +156,24 @@ library DepositViaPermit2Lib {
                 // Handle non-batch cases.
                 if iszero(usesBatch) {
                     // Prepare initial Activation witness typestring fragment.
-                    mstore(add(memoryOffset, 0x09), PERMIT2_DEPOSIT_WITH_ACTIVATION_TYPESTRING_FRAGMENT_TWO)
+                    mstore(add(memoryOffset, 0x1b), PERMIT2_DEPOSIT_WITH_ACTIVATION_TYPESTRING_FRAGMENT_TWO)
                     mstore(memoryOffset, PERMIT2_DEPOSIT_WITH_ACTIVATION_TYPESTRING_FRAGMENT_ONE)
 
                     // Set memory pointers for Activation and Category-specific data start.
                     activationStart := add(memoryOffset, 0x13)
-                    categorySpecificStart := add(memoryOffset, 0x29)
+                    categorySpecificStart := add(memoryOffset, 0x3b)
                 }
 
                 // Proceed with batch case if preparation of activation has not begun.
                 if iszero(activationStart) {
                     // Prepare initial BatchActivation witness typestring fragment.
-                    mstore(add(memoryOffset, 0x16), PERMIT2_BATCH_DEPOSIT_WITH_ACTIVATION_TYPESTRING_FRAGMENT_TWO)
                     mstore(memoryOffset, PERMIT2_BATCH_DEPOSIT_WITH_ACTIVATION_TYPESTRING_FRAGMENT_ONE)
+                    mstore(add(memoryOffset, 0x28), PERMIT2_BATCH_DEPOSIT_WITH_ACTIVATION_TYPESTRING_FRAGMENT_THREE)
+                    mstore(add(memoryOffset, 0x20), PERMIT2_BATCH_DEPOSIT_WITH_ACTIVATION_TYPESTRING_FRAGMENT_TWO)
 
                     // Set memory pointers for Activation and Category-specific data.
                     activationStart := add(memoryOffset, 0x18)
-                    categorySpecificStart := add(memoryOffset, 0x36)
+                    categorySpecificStart := add(memoryOffset, 0x48)
                 }
 
                 // Declare variable for end of Category-specific data.
@@ -283,7 +285,7 @@ library DepositViaPermit2Lib {
 
     /**
      * @notice Internal pure function for deriving the activation witness hash and
-     * writing it to a specified memory location.
+     * writing it to a specified memory location. Depends on the "activator" or caller.
      * @param activationTypehash The derived activation typehash.
      * @param idOrIdsHash        Resource lock ID or uint256 representation of the hash of each ID.
      * @param claimHash          The claim hash.
@@ -296,21 +298,23 @@ library DepositViaPermit2Lib {
         bytes32 claimHash,
         uint256 memoryPointer,
         uint256 offset
-    ) internal pure {
+    ) internal view {
         assembly ("memory-safe") {
             // Retrieve and cache free memory pointer.
             let m := mload(0x40)
 
-            // Prepare data for the witness hash: activationTypehash, idOrIdsHash & claimHash.
+            // Prepare witness hash data: activationTypehash, activator, idOrIdsHash, & claimHash.
             mstore(0, activationTypehash)
-            mstore(0x20, idOrIdsHash)
-            mstore(0x40, claimHash)
+            mstore(0x20, caller())
+            mstore(0x40, idOrIdsHash)
+            mstore(0x60, claimHash)
 
             // Derive activation witness hash and write it to specified memory location.
-            mstore(add(memoryPointer, offset), keccak256(0, 0x60))
+            mstore(add(memoryPointer, offset), keccak256(0, 0x80))
 
-            // Restore the free memory pointer.
+            // Restore the free memory pointer and the zero slot.
             mstore(0x40, m)
+            mstore(0x60, 0)
         }
     }
 
