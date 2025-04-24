@@ -333,6 +333,10 @@ interface ITheCompact {
      * designated recipient the caller is derived from the difference between the starting and ending
      * balance held in the resource lock, which may differ from the amount transferred depending on
      * the implementation details of the respective token.
+     * @dev The final ERC6909 token amounts will be substituted into the compact which will be
+     * registered with the returned registeredAmount instead of the provided amount.
+     * Ensure the claim is processed using either the registeredAmount or the ERC6909 transfer event.
+     * This is especially important for fee-on-transfer tokens.
      * @param recipient         The recipient of the ERC6909 token.
      * @param token             The address of the ERC20 token to deposit.
      * @param lockTag           Lock tag containing allocator ID, reset period, & scope.
@@ -344,7 +348,7 @@ interface ITheCompact {
      * @param witness           Hash of the witness data.
      * @return id               The ERC6909 token identifier of the associated resource lock.
      * @return claimhash        Hash for verifying that the expected claim was registered.
-     * @return registeredAmount Final registered amount after
+     * @return registeredAmount Final registered amount after potential transfer fees.
      */
     function depositERC20AndRegisterFor(
         address recipient,
@@ -383,6 +387,10 @@ interface ITheCompact {
      * received by designated recipient the caller is derived from the difference between the
      * starting and ending balance held in the resource lock, which may differ from the amount
      * transferred depending on the implementation details of the respective token.
+     * @dev The final ERC6909 token amounts will be substituted into the compact which will be
+     * registered with the returned registeredAmounts instead of the provided idsAndAmounts.
+     * Ensure the claim is processed using either the registeredAmounts or the ERC6909 transfer events.
+     * This is especially important for fee-on-transfer tokens.
      * @param recipient         The recipient of the ERC6909 token.
      * @param idsAndAmounts     The address of the ERC20 token to deposit.
      * @param arbiter           The account tasked with verifying and submitting the claim.
