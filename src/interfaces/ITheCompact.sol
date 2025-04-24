@@ -333,7 +333,7 @@ interface ITheCompact {
      * designated recipient the caller is derived from the difference between the starting and ending
      * balance held in the resource lock, which may differ from the amount transferred depending on
      * the implementation details of the respective token.
-     * @dev The final ERC6909 token amount will be subsititued into the claim. The claim will be
+     * @dev The final ERC6909 token amounts will be substituted into the compact which will be
      * registered with the returned registeredAmount instead of the provided amount.
      * Ensure the claim is updated with either registeredAmount or the ERC6909 transfer event.
      * This is especially important for fee-on-transfer tokens.
