@@ -389,7 +389,7 @@ interface ITheCompact {
      * transferred depending on the implementation details of the respective token.
      * @dev The final ERC6909 token amounts will be substituted into the compact which will be
      * registered with the returned registeredAmounts instead of the provided idsAndAmounts.
-     * Ensure the claim is updated with either registeredAmounts or the ERC6909 transfer events.
+     * Ensure the claim is processed using either the registeredAmounts or the ERC6909 transfer events.
      * This is especially important for fee-on-transfer tokens.
      * @param recipient         The recipient of the ERC6909 token.
      * @param idsAndAmounts     The address of the ERC20 token to deposit.
