@@ -180,35 +180,49 @@ Registers multiple claim hashes and their associated EIP-712 typehashes in a sin
 
 ```solidity
 function registerFor(
-    address sponsor,
-    address token,
-    bytes12 lockTag,
-    uint256 amount,
+    bytes32 typehash,
     address arbiter,
+    address sponsor,
     uint256 nonce,
     uint256 expires,
-    bytes32 typehash,
+    uint256 id,
+    uint256 amount,
     bytes32 witness,
     bytes calldata sponsorSignature
-) external returns (uint256 id, bytes32 claimHash);
+) external returns (bytes32 claimHash);
 ```
-Registers a claim on behalf of a sponsor with their signature. The caller provides the tokens and must have the necessary approvals set for the token transfer. The registered compact can only utilize the deposited amount and not register arbitrary compacts on behalf of the recipient.
+Registers a compact on behalf of a sponsor with their signature. Any caller with the relevant data and signature can perform this registration.
 
 ### registerBatchFor
 
 ```solidity
 function registerBatchFor(
-    address sponsor,
-    uint256[2][] calldata idsAndAmounts,
+    bytes32 typehash,
     address arbiter,
+    address sponsor,
     uint256 nonce,
     uint256 expires,
-    bytes32 typehash,
+    bytes32 idsAndAmountsHash,
     bytes32 witness,
     bytes calldata sponsorSignature
 ) external returns (bytes32 claimHash);
 ```
-Registers a batch claim on behalf of a sponsor with their signature. The caller provides the tokens and must have the necessary approvals set for the token transfers. The registered compact can only utilize the deposited amounts and not register arbitrary compacts on behalf of the recipient.
+Registers a batch compact on behalf of a sponsor with their signature. Any caller with the relevant data and signature can perform this registration. Note that only a hash of idsAndAmounts must be supplied rather than the full idsAndAmounts array.
+
+### registerBatchFor
+
+```solidity
+function registerMultichainFor(
+    bytes32 typehash,
+    address sponsor,
+    uint256 nonce,
+    uint256 expires,
+    bytes32 elementsHash,
+    uint256 notarizedChainId,
+    bytes calldata sponsorSignature
+) external returns (bytes32 claimHash);
+```
+Registers a multichain compact on behalf of a sponsor with their signature and with the chainId of the respective EIP-712 domain used to sign the multichain compact. Any caller with the relevant data and signature can perform this registration. Note that only a hash of the elements array (which contains the arbiter, chainId, ids & amounts, and mandate for each chain) must be supplied rather than the full idsAndAmounts array.
 
 ## Combined Deposit and Registration Functions
 

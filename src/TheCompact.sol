@@ -83,32 +83,42 @@ contract TheCompact is ITheCompact, ERC6909, TheCompactLogic {
     }
 
     function registerFor(
-        address sponsor,
-        address token,
-        bytes12 lockTag,
-        uint256 amount,
-        address arbiter,
-        uint256 nonce,
-        uint256 expires,
         bytes32 typehash,
-        bytes32 witness,
+        address, // arbiter
+        address sponsor,
+        uint256, // nonce
+        uint256, // expires
+        uint256, // id
+        uint256, // amount
+        bytes32, // witness
         bytes calldata sponsorSignature
-    ) external returns (uint256 id, bytes32 claimHash) {
-        return
-            _registerFor(sponsor, token, lockTag, amount, arbiter, nonce, expires, typehash, witness, sponsorSignature);
+    ) external returns (bytes32 claimHash) {
+        return _registerFor(sponsor, typehash, sponsorSignature);
     }
 
     function registerBatchFor(
-        address sponsor,
-        uint256[2][] calldata idsAndAmounts,
-        address arbiter,
-        uint256 nonce,
-        uint256 expires,
         bytes32 typehash,
-        bytes32 witness,
+        address, // arbiter
+        address sponsor,
+        uint256, // nonce
+        uint256, // expires
+        bytes32, // idsAndAmountsHash
+        bytes32, // witness
         bytes calldata sponsorSignature
     ) external returns (bytes32 claimHash) {
-        return _registerBatchFor(sponsor, idsAndAmounts, arbiter, nonce, expires, typehash, witness, sponsorSignature);
+        return _registerBatchFor(sponsor, typehash, sponsorSignature);
+    }
+
+    function registerMultichainFor(
+        bytes32 typehash,
+        address sponsor,
+        uint256, // nonce,
+        uint256, // expires,
+        bytes32, // elementsHash,
+        uint256 notarizedChainId,
+        bytes calldata sponsorSignature
+    ) external returns (bytes32 claimHash) {
+        return _registerMultichainFor(sponsor, typehash, notarizedChainId, sponsorSignature);
     }
 
     function depositNativeAndRegister(bytes12 lockTag, bytes32 claimHash, bytes32 typehash)
