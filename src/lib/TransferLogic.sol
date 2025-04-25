@@ -260,22 +260,6 @@ contract TransferLogic is ConstructorLogic {
     }
 
     /**
-     * @notice Private pure function that retrieves the ID of a batch transfer component from
-     * an array of components at a specific index and uses it to derive an allocator ID.
-     * @param components   Array of batch transfer components.
-     * @param index        The index of the batch transfer component to retrieve.
-     * @return allocatorId The allocator ID derived from the transfer component at the given index.
-     */
-    function _allocatorIdOfTransferComponentId(TransferComponent[] calldata components, uint256 index)
-        private
-        pure
-        returns (uint96)
-    {
-        // Retrieve ID from the component and derive corresponding allocator ID.
-        return components[index].id.toAllocatorId();
-    }
-
-    /**
      * @notice Private pure function that retrieves the ID of a batch transfer component
      * from an array of components at a specific index and uses it to derive an allocator ID.
      * @param components   Array of batch transfer components.

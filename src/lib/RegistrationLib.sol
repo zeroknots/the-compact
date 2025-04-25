@@ -107,15 +107,4 @@ library RegistrationLib {
             registrationTimestamp := sload(keccak256(add(m, 0x1c), 0x58))
         }
     }
-
-    /**
-     * @notice Internal view function for checking if a registration occurred.
-     * @param sponsor   The account that registered the claim hash.
-     * @param claimHash A bytes32 hash derived from the details of the compact.
-     * @param typehash  The EIP-712 typehash associated with the claim hash.
-     * @return          Whether the registration is inactive or has expired.
-     */
-    function hasNotBeenRegistered(address sponsor, bytes32 claimHash, bytes32 typehash) internal view returns (bool) {
-        return sponsor.toRegistrationTimestamp(claimHash, typehash) == 0;
-    }
 }
