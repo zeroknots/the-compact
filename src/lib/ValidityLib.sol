@@ -12,6 +12,7 @@ import { EmissaryLib } from "./EmissaryLib.sol";
 import { RegistrationLib } from "./RegistrationLib.sol";
 
 import { FixedPointMathLib } from "solady/utils/FixedPointMathLib.sol";
+import { SignatureCheckerLib } from "solady/utils/SignatureCheckerLib.sol";
 
 /**
  * @title ValidityLib
@@ -33,6 +34,7 @@ library ValidityLib {
     using EmissaryLib for bytes32;
     using EmissaryLib for uint256[2][];
     using FixedPointMathLib for uint256;
+    using SignatureCheckerLib for address;
 
     error NoIdsAndAmountsProvided();
 
@@ -81,12 +83,10 @@ library ValidityLib {
 
     /**
      * @notice Internal function that validates a signature against an expected signer.
-     * If the initial verification fails, the emissary is used to valdiate the claim.
      * Returns if the signature is valid or if the caller is the expected signer, otherwise
      * reverts. The message hash is combined with the domain separator before verification.
-     * If ECDSA recovery fails, an EIP-1271 isValidSignature check is performed with half of
-     * available gas. If EIP-1271 fails, and an IEmissary is set for the sponsor, an
-     * IEmissary.verifyClaim check is performed.
+     * If ECDSA recovery fails, an EIP-1271 isValidSignature check is performed. Note that
+     * an emissary check will not be performed.
      * @param messageHash     The EIP-712 hash of the message to verify.
      * @param expectedSigner  The address that should have signed the message.
      * @param signature       The signature to verify.
@@ -96,8 +96,7 @@ library ValidityLib {
         bytes32 messageHash,
         address expectedSigner,
         bytes calldata signature,
-        bytes32 domainSeparator,
-        uint256[2][] memory idsAndAmounts
+        bytes32 domainSeparator
     ) internal view {
         // Apply domain separator to message hash to derive the digest.
         bytes32 digest = messageHash.withDomain(domainSeparator);
@@ -107,13 +106,14 @@ library ValidityLib {
             return;
         }
 
-        // Then, check EIP1271 using the digest, supplying half of available gas.
-        if (expectedSigner.isValidERC1271SignatureNowCalldataHalfGas(digest, signature)) {
-            return;
+        // Finally, check EIP1271 using the digest and signature.
+        if (!expectedSigner.isValidERC1271SignatureNowCalldata(digest, signature)) {
+            assembly ("memory-safe") {
+                // revert InvalidSignature();
+                mstore(0, 0x8baa579f)
+                revert(0x1c, 0x04)
+            }
         }
-
-        // Finally, fallback to emissary using the message hash.
-        messageHash.verifyWithEmissary(expectedSigner, idsAndAmounts.extractSameLockTag(), signature);
     }
 
     /**

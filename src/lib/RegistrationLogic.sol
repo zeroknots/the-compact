@@ -7,6 +7,8 @@ import { HashLib } from "./HashLib.sol";
 import { ResetPeriod } from "../types/ResetPeriod.sol";
 import { ValidityLib } from "./ValidityLib.sol";
 import { IdLib } from "./IdLib.sol";
+import { EfficiencyLib } from "./EfficiencyLib.sol";
+import { DomainLib } from "./DomainLib.sol";
 
 import { ConstructorLogic } from "./ConstructorLogic.sol";
 
@@ -24,6 +26,8 @@ contract RegistrationLogic is ConstructorLogic {
     using ValidityLib for address;
     using ValidityLib for bytes32;
     using IdLib for address;
+    using EfficiencyLib for uint256;
+    using DomainLib for uint256;
 
     /**
      * @notice Internal function for registering a claim hash. The claim hash and its
@@ -48,56 +52,55 @@ contract RegistrationLogic is ConstructorLogic {
         return claimHashesAndTypehashes.registerBatchAsCaller();
     }
 
-    function _registerFor(
-        address sponsor,
-        address token,
-        bytes12 lockTag,
-        uint256 amount,
-        address arbiter,
-        uint256 nonce,
-        uint256 expires,
-        bytes32 typehash,
-        bytes32 witness,
-        bytes calldata sponsorSignature
-    ) internal returns (uint256 id, bytes32 claimHash) {
-        // Derive resource lock ID using provided token, parameters, and allocator.
-        id = token.excludingNative().toIdIfRegistered(lockTag);
-
-        claimHash =
-            HashLib.toFlatMessageHashWithWitness(sponsor, id, amount, arbiter, nonce, expires, typehash, witness);
-
-        {
-            // Initialize idsAndAmounts array.
-            uint256[2][] memory idsAndAmounts = new uint256[2][](1);
-            idsAndAmounts[0] = [id, amount];
-
-            // TODO: support registering exogenous domain separators by passing notarized chainId?
-            claimHash.hasValidSponsor(sponsor, sponsorSignature, _domainSeparator(), idsAndAmounts);
-        }
-
-        sponsor.registerCompact(claimHash, typehash);
+    function _registerFor(address sponsor, bytes32 typehash, bytes calldata sponsorSignature)
+        internal
+        returns (bytes32 claimHash)
+    {
+        return _deriveClaimHashAndRegisterCompact(sponsor, typehash, 0x100, _domainSeparator(), sponsorSignature);
     }
 
-    function _registerBatchFor(
+    function _registerBatchFor(address sponsor, bytes32 typehash, bytes calldata sponsorSignature)
+        internal
+        returns (bytes32 claimHash)
+    {
+        return _deriveClaimHashAndRegisterCompact(sponsor, typehash, 0xe0, _domainSeparator(), sponsorSignature);
+    }
+
+    function _registerMultichainFor(
         address sponsor,
-        uint256[2][] calldata idsAndAmounts,
-        address arbiter,
-        uint256 nonce,
-        uint256 expires,
         bytes32 typehash,
-        bytes32 witness,
+        uint256 notarizedChainId,
         bytes calldata sponsorSignature
     ) internal returns (bytes32 claimHash) {
-        idsAndAmounts.enforceConsistentAllocators();
-
-        // Note: skips replacement of provided amounts as there are no corresponding deposits.
-        claimHash = HashLib.toFlatBatchClaimWithWitnessMessageHash(
-            sponsor, idsAndAmounts, arbiter, nonce, expires, typehash, witness, new uint256[](0)
+        return _deriveClaimHashAndRegisterCompact(
+            sponsor, typehash, 0xa0, notarizedChainId.toNotarizedDomainSeparator(), sponsorSignature
         );
+    }
 
-        // TODO: support registering exogenous domain separators by passing notarized chainId
-        claimHash.hasValidSponsor(sponsor, sponsorSignature, _domainSeparator(), idsAndAmounts);
+    function _deriveClaimHashAndRegisterCompact(
+        address sponsor,
+        bytes32 typehash,
+        uint256 preimageLength,
+        bytes32 domainSeparator,
+        bytes calldata sponsorSignature
+    ) internal returns (bytes32 claimHash) {
+        assembly ("memory-safe") {
+            // Retrieve the free memory pointer; memory will be left dirtied.
+            let m := mload(0x40)
 
+            // Copy relevant arguments from calldata to prepare hash preimage.
+            // Note that provided arguments may have dirty upper bits, which will
+            // give a claim hash that cannot be derived during claim processing.
+            calldatacopy(m, 0x04, preimageLength)
+
+            // Derive the claim hash from the prepared preimage data.
+            claimHash := keccak256(m, preimageLength)
+        }
+
+        // Ensure that the sponsor has verified the supplied claim hash.
+        claimHash.hasValidSponsor(sponsor, sponsorSignature, domainSeparator);
+
+        // Register the compact for the indicated sponsor.
         sponsor.registerCompact(claimHash, typehash);
     }
 

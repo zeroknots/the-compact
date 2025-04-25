@@ -215,52 +215,70 @@ interface ITheCompact {
 
     /**
      * @notice Register a claim on behalf of a sponsor with their signature.
-     * @param sponsor          The address of the sponsor for whom the claim is being registered.
-     * @param token            The address of the token associated with the resource lock.
-     * @param lockTag          The lock tag containing allocator ID, reset period, and scope.
-     * @param amount           The amount of tokens associated with the claim.
+     * @param typehash         The EIP-712 typehash associated with the registered compact.
      * @param arbiter          The account tasked with verifying and submitting the claim.
+     * @param sponsor          The address of the sponsor for whom the claim is being registered.
      * @param nonce            A parameter to enforce replay protection, scoped to allocator.
      * @param expires          The time at which the claim expires.
-     * @param typehash         The EIP-712 typehash associated with the registered compact.
+     * @param id               The ERC6909 token identifier of the associated resource lock.
+     * @param amount           The amount of tokens associated with the claim.
      * @param witness          Hash of the witness data.
      * @param sponsorSignature The signature from the sponsor authorizing the registration.
-     * @return id              The ERC6909 token identifier of the associated resource lock.
-     * @return claimHash       The hash of the registered claim.
+     * @return claimHash       The hash of the registered compact.
      */
     function registerFor(
-        address sponsor,
-        address token,
-        bytes12 lockTag,
-        uint256 amount,
+        bytes32 typehash,
         address arbiter,
+        address sponsor,
         uint256 nonce,
         uint256 expires,
-        bytes32 typehash,
+        uint256 id,
+        uint256 amount,
         bytes32 witness,
         bytes calldata sponsorSignature
-    ) external returns (uint256 id, bytes32 claimHash);
+    ) external returns (bytes32 claimHash);
 
     /**
      * @notice Register a batch claim on behalf of a sponsor with their signature.
-     * @param sponsor          The address of the sponsor for whom the claim is being registered.
-     * @param idsAndAmounts    Array of [id, amount] pairs with each pair indicating the resource lock and amount.
-     * @param arbiter          The account tasked with verifying and submitting the claim.
-     * @param nonce            A parameter to enforce replay protection, scoped to allocator.
-     * @param expires          The time at which the claim expires.
-     * @param typehash         The EIP-712 typehash associated with the registered compact.
-     * @param witness          Hash of the witness data.
-     * @param sponsorSignature The signature from the sponsor authorizing the registration.
-     * @return claimHash       The hash of the registered claim.
+     * @param typehash          The EIP-712 typehash associated with the registered compact.
+     * @param arbiter           The account tasked with verifying and submitting the claim.
+     * @param sponsor           The address of the sponsor for whom the claim is being registered.
+     * @param nonce             A parameter to enforce replay protection, scoped to allocator.
+     * @param expires           The time at which the claim expires.
+     * @param idsAndAmountsHash Hash of array of [id, amount] pairs per resource lock.
+     * @param witness           Hash of the witness data.
+     * @param sponsorSignature  The signature from the sponsor authorizing the registration.
+     * @return claimHash        The hash of the registered compact.
      */
     function registerBatchFor(
-        address sponsor,
-        uint256[2][] calldata idsAndAmounts,
+        bytes32 typehash,
         address arbiter,
+        address sponsor,
         uint256 nonce,
         uint256 expires,
-        bytes32 typehash,
+        bytes32 idsAndAmountsHash,
         bytes32 witness,
+        bytes calldata sponsorSignature
+    ) external returns (bytes32 claimHash);
+
+    /**
+     * @notice Register a multichain claim on behalf of a sponsor with their signature.
+     * @param typehash         The EIP-712 typehash associated with the registered compact.
+     * @param sponsor          The address of the sponsor for whom the claim is being registered.
+     * @param nonce            A parameter to enforce replay protection, scoped to allocator.
+     * @param expires          The time at which the claim expires.
+     * @param elementsHash     Hash of elements (arbiter, chainId, idsAndAmounts, & mandate) per chain.
+     * @param notarizedChainId Chain ID of the domain used to sign the multichain compact.
+     * @param sponsorSignature The signature from the sponsor authorizing the registration.
+     * @return claimHash       The hash of the registered compact.
+     */
+    function registerMultichainFor(
+        bytes32 typehash,
+        address sponsor,
+        uint256 nonce,
+        uint256 expires,
+        bytes32 elementsHash,
+        uint256 notarizedChainId,
         bytes calldata sponsorSignature
     ) external returns (bytes32 claimHash);
 
