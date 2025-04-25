@@ -50,3 +50,9 @@ comment:
   require_base: no
   require_head: yes
   branches: null
+
+ignore:
+  - "script"
+  - "test"
+  - "src/test"
+  - "src/examples"
