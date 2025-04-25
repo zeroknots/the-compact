@@ -93,44 +93,4 @@ library AllocatorLib {
             }
         }
     }
-
-    /**
-     * @notice Internal view function to ensure all resource lock IDs in a batch have the same allocator.
-     * @param idsAndAmounts Array of [id, amount] pairs to check for consistent allocators.
-     * @dev Reverts with InconsistentAllocators if any ID has a different allocator than the first ID.
-     */
-    function enforceConsistentAllocators(uint256[2][] calldata idsAndAmounts) internal view {
-        // Retrieve the total number of IDs and amounts in the batch.
-        uint256 totalIds = idsAndAmounts.length;
-
-        assembly ("memory-safe") {
-            if iszero(totalIds) {
-                // revert InconsistentAllocators();
-                mstore(0, 0xaf346306)
-                revert(0x1c, 4)
-            }
-        }
-
-        // Derive current allocator ID from first resource lock ID.
-        uint96 initialAllocatorId = idsAndAmounts[0][0].toRegisteredAllocatorId();
-
-        // Declare error buffer for tracking allocator ID consistency.
-        uint256 errorBuffer;
-
-        // Iterate over remaining IDs.
-        unchecked {
-            for (uint256 i = 1; i < totalIds; ++i) {
-                // Determine if new allocator ID differs from current allocator ID.
-                errorBuffer |= (idsAndAmounts[i][0].toAllocatorId() != initialAllocatorId).asUint256();
-            }
-        }
-
-        assembly ("memory-safe") {
-            if errorBuffer {
-                // revert InconsistentAllocators();
-                mstore(0, 0xaf346306)
-                revert(0x1c, 4)
-            }
-        }
-    }
 }

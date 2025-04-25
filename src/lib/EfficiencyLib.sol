@@ -115,17 +115,6 @@ library EfficiencyLib {
     }
 
     /**
-     * @notice Internal pure function that converts a uint8 to a uint256.
-     * @param a  The uint8 to convert.
-     * @return b The resulting uint256.
-     */
-    function asUint256(uint8 a) internal pure returns (uint256 b) {
-        assembly ("memory-safe") {
-            b := a
-        }
-    }
-
-    /**
      * @notice Internal pure function that converts a uint96 to a uint256.
      * @param a  The uint96 to convert.
      * @return b The resulting uint256.
