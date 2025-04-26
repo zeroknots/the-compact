@@ -26,7 +26,7 @@ contract IdLibTest is Test {
         allocatorId = IdLib.register(allocatorAddress);
     }
 
-    function testToCompactFlag_Address_Specific() public {
+    function testToCompactFlag_Address_Specific() public pure {
         // No leading zeros
         assertEq(address(0x1234567890123456789012345678901234567890).toCompactFlag(), 0);
         // 1 leading zero byte (2 nibbles)
@@ -48,7 +48,7 @@ contract IdLibTest is Test {
     }
 
     // Manual calculation for fuzzing toCompactFlag
-    function _calculateCompactFlag(address allocator) internal returns (uint8) {
+    function _calculateCompactFlag(address allocator) internal pure returns (uint8) {
         uint256 addrInt = uint256(uint160(allocator));
         uint8 leadingZeroBytes = 0;
         for (uint256 i = 0; i < 20; ++i) {
@@ -69,7 +69,7 @@ contract IdLibTest is Test {
         return leadingZeroNibbles - 3;
     }
 
-    function testFuzzToCompactFlag_Address(address allocator) public {
+    function testFuzzToCompactFlag_Address(address allocator) public pure {
         uint8 expectedFlag = _calculateCompactFlag(allocator);
         assertEq(allocator.toCompactFlag(), expectedFlag, "Fuzz toCompactFlag(address) failed");
     }
@@ -91,13 +91,13 @@ contract IdLibTest is Test {
         assertEq(allocatorZeroCompact.usingAllocatorId(), expectedId, "usingAllocatorId zero compact failed");
     }
 
-    function testFuzzUsingAllocatorId(address allocator) public {
+    function testFuzzUsingAllocatorId(address allocator) public pure {
         uint8 compactFlag = allocator.toCompactFlag();
         uint96 expectedId = (uint96(compactFlag) << 88) | uint96(uint256(uint160(allocator)) & ((1 << 88) - 1));
         assertEq(allocator.usingAllocatorId(), expectedId, "Fuzz usingAllocatorId failed");
     }
 
-    function testToLockTag_Components() public {
+    function testToLockTag_Components() public view {
         Scope scope = Scope.Multichain;
         ResetPeriod resetPeriod = ResetPeriod.OneDay;
 
@@ -110,7 +110,7 @@ contract IdLibTest is Test {
         assertEq(actualTag, expectedTag, "toLockTag from components failed");
     }
 
-    function testFuzzToLockTag_Components(uint8 scope, uint8 resetPeriod) public {
+    function testFuzzToLockTag_Components(uint8 scope, uint8 resetPeriod) public view {
         Scope actualScope = Scope(scope % 2);
         ResetPeriod actualResetPeriod = ResetPeriod(resetPeriod % 8);
 
@@ -132,7 +132,7 @@ contract IdLibTest is Test {
         assertEq(uint256(bytes32(actualTag)).toAllocatorId(), allocatorId, "Extracted allocatorId mismatch");
     }
 
-    function testToLockTag_FromId() public {
+    function testToLockTag_FromId() public pure {
         uint96 localAllocatorId = 123;
         address token = address(0x12345);
         Scope scope = Scope.Multichain;
@@ -143,25 +143,25 @@ contract IdLibTest is Test {
         assertEq(id.toLockTag(), expectedTag, "toLockTag from ID failed");
     }
 
-    function testFuzzToLockTag_FromId(uint256 id) public {
+    function testFuzzToLockTag_FromId(uint256 id) public pure {
         bytes12 expectedTag = bytes12(bytes32(id & ~uint256((1 << 160) - 1))); // Mask out lower 160 bits
         assertEq(id.toLockTag(), expectedTag, "Fuzz toLockTag from ID failed");
     }
 
-    function testToAllocatorId_FromTag() public {
+    function testToAllocatorId_FromTag() public view {
         Scope scope = Scope.Multichain;
         ResetPeriod resetPeriod = ResetPeriod.OneDay;
         bytes12 lockTag = allocatorId.toLockTag(scope, resetPeriod);
         assertEq(lockTag.toAllocatorId(), allocatorId, "toAllocatorId from tag failed");
     }
 
-    function testFuzzToAllocatorId_FromTag(address fuzzedAllocator) public {
+    function testFuzzToAllocatorId_FromTag(address fuzzedAllocator) public pure {
         uint96 fuzzedAllocatorId = fuzzedAllocator.usingAllocatorId();
         bytes12 lockTag = fuzzedAllocatorId.toLockTag(Scope.Multichain, ResetPeriod.OneDay);
         assertEq(lockTag.toAllocatorId(), fuzzedAllocatorId, "Fuzz toAllocatorId from tag failed");
     }
 
-    function testToAllocatorId_FromId() public {
+    function testToAllocatorId_FromId() public pure {
         uint96 expectedAllocatorId = 987654321987654321;
         Scope scope = Scope.ChainSpecific;
         ResetPeriod resetPeriod = ResetPeriod.OneHourAndFiveMinutes;
@@ -172,7 +172,7 @@ contract IdLibTest is Test {
         assertEq(id.toAllocatorId(), expectedAllocatorId, "toAllocatorId from ID failed");
     }
 
-    function testFuzzToAllocatorId_FromId(uint256 id) public {
+    function testFuzzToAllocatorId_FromId(uint256 id) public pure {
         // extract bits 160-251 and remove the compact flag (248-251)
         uint96 expectedId = uint96(uint256(uint256(id << 4) >> 164));
         assertEq(id.toAllocatorId(), expectedId, "Fuzz toAllocatorId from ID failed");
@@ -184,7 +184,7 @@ contract IdLibTest is Test {
         assertEq(id.toAddress(), expectedToken, "toAddress failed");
     }
 
-    function testFuzzToAddress(uint256 id) public {
+    function testFuzzToAddress(uint256 id) public pure {
         address expectedToken = address(uint160(id));
         assertEq(id.toAddress(), expectedToken, "Fuzz toAddress failed");
     }
@@ -203,7 +203,7 @@ contract IdLibTest is Test {
         assertEq(originalId.withReplacedToken(newToken), expectedId, "withReplacedToken failed");
     }
 
-    function testFuzzWithReplacedToken(uint256 originalId, address newToken) public {
+    function testFuzzWithReplacedToken(uint256 originalId, address newToken) public pure {
         bytes12 lockTag = originalId.toLockTag();
         uint256 expectedId = uint256(bytes32(lockTag)) | uint256(uint160(newToken));
         assertEq(originalId.withReplacedToken(newToken), expectedId, "Fuzz withReplacedToken failed");
@@ -228,28 +228,27 @@ contract IdLibTest is Test {
         assertEq(originalId.withReplacedLockTag(newLockTag), expectedId, "withReplacedLockTag failed");
     }
 
-    function testFuzzWithReplacedLockTag(uint256 originalId, bytes12 newLockTag) public {
+    function testFuzzWithReplacedLockTag(uint256 originalId, bytes12 newLockTag) public pure {
         address token = originalId.toAddress();
         uint256 expectedId = uint256(bytes32(newLockTag)) | uint256(uint160(token));
         assertEq(originalId.withReplacedLockTag(newLockTag), expectedId, "Fuzz withReplacedLockTag failed");
     }
 
-    function testToScope_FromId() public {
+    function testToScope_FromId() public pure {
         uint256 singleChain = uint256(1) << 255; // Set highest bit
         uint256 multichain = 0;
         assertEq(uint8(singleChain.toScope()), uint8(Scope.ChainSpecific), "toScope SingleChain failed");
         assertEq(uint8(multichain.toScope()), uint8(Scope.Multichain), "toScope Multichain failed");
     }
 
-    function testFuzzToScope_FromId(uint256 id) public {
+    function testFuzzToScope_FromId(uint256 id) public pure {
         Scope expectedScope = Scope(uint8(id >> 255));
         assertEq(uint8(id.toScope()), uint8(expectedScope), "Fuzz toScope failed");
     }
 
-    function testToResetPeriod_FromId() public {
+    function testToResetPeriod_FromId() public pure {
         uint256 baseId = 0;
         for (uint8 i = 0; i < 8; i++) {
-            ResetPeriod period = ResetPeriod(i);
             uint256 id = baseId | (uint256(i) << 252);
             assertEq(
                 uint8(id.toResetPeriod()), i, string.concat("toResetPeriod(ID) failed for period ", vm.toString(i))
@@ -257,12 +256,12 @@ contract IdLibTest is Test {
         }
     }
 
-    function testFuzzToResetPeriod_FromId(uint256 id) public {
+    function testFuzzToResetPeriod_FromId(uint256 id) public pure {
         ResetPeriod expectedPeriod = ResetPeriod(uint8((id >> 252) & 7));
         assertEq(uint8(id.toResetPeriod()), uint8(expectedPeriod), "Fuzz toResetPeriod(ID) failed");
     }
 
-    function testToResetPeriod_FromTag() public {
+    function testToResetPeriod_FromTag() public pure {
         uint96 localAllocatorId = 1;
         Scope scope = Scope.Multichain;
         for (uint8 i = 0; i < 8; i++) {
@@ -274,12 +273,12 @@ contract IdLibTest is Test {
         }
     }
 
-    function testFuzzToResetPeriod_FromTag(bytes12 tag) public {
+    function testFuzzToResetPeriod_FromTag(bytes12 tag) public pure {
         ResetPeriod expectedPeriod = ResetPeriod(uint8((uint256(bytes32(tag)) >> 252) & 7));
         assertEq(uint8(tag.toResetPeriod()), uint8(expectedPeriod), "Fuzz toResetPeriod(tag) failed");
     }
 
-    function testToCompactFlag_FromId() public {
+    function testToCompactFlag_FromId() public pure {
         uint256 baseId = 0;
         for (uint8 i = 0; i < 16; i++) {
             uint256 id = baseId | (uint256(i) << 248);
@@ -287,12 +286,12 @@ contract IdLibTest is Test {
         }
     }
 
-    function testFuzzToCompactFlag_FromId(uint256 id) public {
+    function testFuzzToCompactFlag_FromId(uint256 id) public pure {
         uint8 expectedFlag = uint8((id >> 248) & 15);
         assertEq(id.toCompactFlag(), expectedFlag, "Fuzz toCompactFlag(ID) failed");
     }
 
-    function testToSeconds() public {
+    function testToSeconds() public pure {
         assertEq(ResetPeriod.OneSecond.toSeconds(), 1, "OneSecond");
         assertEq(ResetPeriod.FifteenSeconds.toSeconds(), 15, "FifteenSeconds");
         assertEq(ResetPeriod.OneMinute.toSeconds(), 60, "OneMinute");
@@ -317,7 +316,7 @@ contract IdLibTest is Test {
         assertEq(lock.toId(), expectedId, "toId from Lock failed");
     }
 
-    function testFuzzToId_FromLock(address allocator, address token, uint8 scope, uint8 resetPeriod) public {
+    function testFuzzToId_FromLock(address allocator, address token, uint8 scope, uint8 resetPeriod) public pure {
         Scope actualScope = Scope(uint8(scope) % 2);
         ResetPeriod actualResetPeriod = ResetPeriod(uint8(resetPeriod) % 8);
 
@@ -376,7 +375,7 @@ contract IdLibTest is Test {
     //     IdLib.register(fuzzyMatch);
     // }
 
-    function testCollisionWithSpecificPattern() public {
+    function testCollisionWithSpecificPattern() public pure {
         // Test addresses with same lower 88 bits but different upper bits
         address baseAddr = address(0x1234567890123456789012345678901234567890);
         uint256 baseLower88 = uint256(uint160(baseAddr)) & ((1 << 88) - 1);
@@ -401,7 +400,7 @@ contract IdLibTest is Test {
         console.log("Pattern-specific collisions:", collisions, "out of", totalVariants);
     }
 
-    function testToRegisteredAllocator() public {
+    function testToRegisteredAllocator() public view {
         assertEq(allocatorId.toRegisteredAllocator(), allocatorAddress, "Should return registered allocator");
     }
 
@@ -417,7 +416,7 @@ contract IdLibTest is Test {
         unregisteredId.toRegisteredAllocator();
     }
 
-    function testToAllocatorIdIfRegistered() public {
+    function testToAllocatorIdIfRegistered() public view {
         assertEq(allocatorAddress.toAllocatorIdIfRegistered(), allocatorId, "Should return ID for registered allocator");
     }
 
@@ -432,12 +431,12 @@ contract IdLibTest is Test {
         unregisteredAllocator.toAllocatorIdIfRegistered();
     }
 
-    function testMustHaveARegisteredAllocator() public {
+    function testMustHaveARegisteredAllocator() public view {
         // Should not revert for registered allocator
         allocatorId.mustHaveARegisteredAllocator();
     }
 
-    function testToRegisteredAllocatorId_FromId() public {
+    function testToRegisteredAllocatorId_FromId() public view {
         uint256 id = allocatorId.asUint256() << 160 | tokenAddress.asUint256(); // Construct ID with registered allocator ID
         assertEq(id.toRegisteredAllocatorId(), allocatorId, "Should extract registered allocator ID from resource ID");
     }
@@ -451,7 +450,7 @@ contract IdLibTest is Test {
         id.toRegisteredAllocatorId();
     }
 
-    function testHasRegisteredAllocatorId_FromTag() public {
+    function testHasRegisteredAllocatorId_FromTag() public view {
         bytes12 lockTag = allocatorId.toLockTag(Scope.Multichain, ResetPeriod.OneDay);
         lockTag.hasRegisteredAllocatorId();
     }
@@ -464,7 +463,7 @@ contract IdLibTest is Test {
         lockTag.hasRegisteredAllocatorId();
     }
 
-    function testToIdIfRegistered() public {
+    function testToIdIfRegistered() public view {
         bytes12 lockTag = IdLib.toLockTag(allocatorId, Scope.ChainSpecific, ResetPeriod.OneHourAndFiveMinutes);
         uint256 expectedId = uint256(bytes32(lockTag)) | tokenAddress.asUint256();
         assertEq(IdLib.toIdIfRegistered(tokenAddress, lockTag), expectedId, "toIdIfRegistered failed");
@@ -478,13 +477,13 @@ contract IdLibTest is Test {
         IdLib.toIdIfRegistered(tokenAddress, lockTag);
     }
 
-    function testToAllocator_FromId() public {
+    function testToAllocator_FromId() public view {
         bytes12 lockTag = IdLib.toLockTag(allocatorId, Scope.ChainSpecific, ResetPeriod.OneHourAndFiveMinutes);
         uint256 id = uint256(bytes32(lockTag)) | tokenAddress.asUint256();
         assertEq(id.toAllocator(), allocatorAddress, "toAllocator from ID failed");
     }
 
-    function testToLock_FromId() public {
+    function testToLock_FromId() public view {
         Scope scope = Scope.Multichain;
         ResetPeriod resetPeriod = ResetPeriod.SevenDaysAndOneHour;
         bytes12 lockTag = IdLib.toLockTag(allocatorId, scope, resetPeriod);
@@ -577,7 +576,11 @@ contract IdLibTest is Test {
         assertFalse(dummy.canBeRegistered(eoaAllocator, ""), "Should be false for EOA, not sender, no proof");
     }
 
-    function computeCreate2Address(address factory, bytes32 salt, bytes32 initCodeHash) internal returns (address) {
+    function computeCreate2Address(address factory, bytes32 salt, bytes32 initCodeHash)
+        internal
+        pure
+        returns (address)
+    {
         return address(uint160(uint256(keccak256(abi.encodePacked(bytes1(0xff), factory, salt, initCodeHash)))));
     }
 
@@ -589,7 +592,7 @@ contract DummyContract is MockERC20 {
 
     constructor() MockERC20("Dummy", "DUMMY", 18) { }
 
-    function canBeRegistered(address allocator, bytes calldata proof) external returns (bool) {
+    function canBeRegistered(address allocator, bytes calldata proof) external view returns (bool) {
         return allocator.canBeRegistered(proof);
     }
 

@@ -74,34 +74,59 @@ contract Permit2Test is Test {
 
         bytes32 tokenPermissionsPortion = keccak256(abi.encodePacked(encodedPermissions));
 
-        bytes32 digest = keccak256(
-            abi.encodePacked(
-                bytes2(0x1901),
-                domainSeparator,
-                keccak256(
-                    abi.encode(
-                        keccak256(
-                            "PermitBatchWitnessTransferFrom(TokenPermissions[] permitted,address spender,uint256 nonce,uint256 deadline,CompactDeposit witness)CompactDeposit(bytes12 lockTag,address recipient)TokenPermissions(address token,uint256 amount)"
-                        ),
-                        tokenPermissionsPortion,
-                        address(_spender),
-                        _nonce,
-                        _deadline,
-                        keccak256(
-                            abi.encode(
-                                keccak256("CompactDeposit(bytes12 lockTag,address recipient)"), _lockTag, _recipient
-                            )
-                        )
-                    )
-                )
-            )
-        );
+        DigestArgs memory args;
+        args.domainSeparator = domainSeparator;
+        args.tokenPermissionsPortion = tokenPermissionsPortion;
+        args.spender = address(_spender);
+        args.nonce = _nonce;
+        args.deadline = _deadline;
+        args.lockTag = _lockTag;
+        args.recipient = _recipient;
+
+        bytes32 digest = _deriveDigest(args);
 
         // Sign the digest
         (bytes32 r, bytes32 vs) = vm.signCompact(_privateKey, digest);
         signature = abi.encodePacked(r, vs);
 
         return (tokenPermissions, signature);
+    }
+
+    struct DigestArgs {
+        bytes32 domainSeparator;
+        bytes32 tokenPermissionsPortion;
+        address spender;
+        uint256 nonce;
+        uint256 deadline;
+        bytes12 lockTag;
+        address recipient;
+    }
+
+    function _deriveDigest(DigestArgs memory args) internal pure returns (bytes32 digest) {
+        return keccak256(
+            abi.encodePacked(
+                bytes2(0x1901),
+                args.domainSeparator,
+                keccak256(
+                    abi.encode(
+                        keccak256(
+                            "PermitBatchWitnessTransferFrom(TokenPermissions[] permitted,address spender,uint256 nonce,uint256 deadline,CompactDeposit witness)CompactDeposit(bytes12 lockTag,address recipient)TokenPermissions(address token,uint256 amount)"
+                        ),
+                        args.tokenPermissionsPortion,
+                        args.spender,
+                        args.nonce,
+                        args.deadline,
+                        keccak256(
+                            abi.encode(
+                                keccak256("CompactDeposit(bytes12 lockTag,address recipient)"),
+                                args.lockTag,
+                                args.recipient
+                            )
+                        )
+                    )
+                )
+            )
+        );
     }
 
     function createPermitWitnessDigest(
@@ -144,9 +169,9 @@ contract Permit2Test is Test {
         address _spender
     )
         public
+        view
         returns (ISignatureTransfer.PermitTransferFrom memory permit, bytes32 witnessHash, bytes memory signature)
     {
-        address _depositor = vm.addr(_privateKey);
         bytes32 domainSeparator =
             keccak256(abi.encode(permit2EIP712DomainHash, keccak256(bytes("Permit2")), block.chainid, address(permit2)));
         witnessHash =
@@ -159,11 +184,10 @@ contract Permit2Test is Test {
         // Create signature and permit
         (bytes32 r, bytes32 vs) = vm.signCompact(_privateKey, digest);
         signature = abi.encodePacked(r, vs);
-        permit = ISignatureTransfer.PermitTransferFrom({
-            permitted: ISignatureTransfer.TokenPermissions({ token: _token, amount: _amount }),
-            nonce: 0,
-            deadline: block.timestamp + 1 days
-        });
+        permit.permitted = ISignatureTransfer.TokenPermissions({ token: _token, amount: _amount });
+
+        permit.nonce = 0;
+        permit.deadline = block.timestamp + 1 days;
 
         return (permit, witnessHash, signature);
     }
