@@ -3,7 +3,7 @@
  - **Compact** *[transitive verb]*: to make up by connecting or combining.
  - **Compact** *[adjective]*: occupying a small volume by reason of efficient use of space.
 
-[![CI](https://github.com/Uniswap/the-compact/actions/workflows/test.yml/badge.svg?branch=v1)](https://github.com/Uniswap/the-compact/actions/workflows/test.yml)[![codecov](https://codecov.io/gh/uniswap/the-compact/branch/v1/graph/badge.svg?token=BPcWGQYU53)]([https://codecov.io/gh/uniswap/the-compact](https://app.codecov.io/gh/uniswap/the-compact/tree/v1))[![Docs](https://img.shields.io/badge/docs-latest-blue.svg)](https://github.com/Uniswap/the-compact/blob/v1/docs/TheCompact-Overview.md)
+[![CI](https://github.com/Uniswap/the-compact/actions/workflows/test.yml/badge.svg?branch=v1)](https://github.com/Uniswap/the-compact/actions/workflows/test.yml)[![codecov](https://codecov.io/gh/uniswap/the-compact/branch/v1/graph/badge.svg?token=BPcWGQYU53)](https://codecov.io/gh/uniswap/the-compact/tree/v1)[![Docs](https://img.shields.io/badge/docs-latest-blue.svg)](https://github.com/Uniswap/the-compact/blob/v1/docs/TheCompact-Overview.md)
 
 > :warning: This is an early-stage contract under active development; it has not yet been properly tested, reviewed, or audited.
 
