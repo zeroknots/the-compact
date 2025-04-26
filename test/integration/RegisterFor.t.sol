@@ -2,7 +2,8 @@
 pragma solidity ^0.8.13;
 
 import { ITheCompact } from "../../src/interfaces/ITheCompact.sol";
-import { Setup, CreateClaimHashWithWitnessArgs, CreateBatchClaimHashWithWitnessArgs } from "./Setup.sol";
+import { Setup } from "./Setup.sol";
+import { CreateClaimHashWithWitnessArgs, CreateBatchClaimHashWithWitnessArgs } from "./TestHelperStructs.sol";
 import { ResetPeriod } from "../../src/types/ResetPeriod.sol";
 import { Scope } from "../../src/types/Scope.sol";
 import { IdLib } from "../../src/lib/IdLib.sol";

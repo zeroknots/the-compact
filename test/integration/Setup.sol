@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.13;
 
-import { Test, console } from "forge-std/Test.sol";
 import { TheCompact } from "../../src/TheCompact.sol";
 import { MockERC20 } from "../../lib/solady/test/utils/mocks/MockERC20.sol";
 import { Compact, BatchCompact, Element } from "../../src/types/EIP712Types.sol";
@@ -28,6 +27,17 @@ import { BatchMultichainClaim, ExogenousBatchMultichainClaim } from "../../src/t
 
 import { Component, TransferComponent, ComponentsById, BatchClaimComponent } from "../../src/types/Components.sol";
 
+import { TestHelpers } from "./TestHelpers.sol";
+
+import {
+    TestParams,
+    LockDetails,
+    CreateClaimHashWithWitnessArgs,
+    CreateBatchClaimHashWithWitnessArgs,
+    CreatePermitBatchWitnessDigestArgs,
+    SetupPermitCallExpectationArgs
+} from "./TestHelperStructs.sol";
+
 interface EIP712 {
     function DOMAIN_SEPARATOR() external view returns (bytes32);
 }
@@ -39,65 +49,7 @@ interface ImmutableCreate2Factory {
         returns (address deploymentAddress);
 }
 
-struct CreateClaimHashWithWitnessArgs {
-    bytes32 typehash;
-    address arbiter;
-    address sponsor;
-    uint256 nonce;
-    uint256 expires;
-    uint256 id;
-    uint256 amount;
-    bytes32 witness;
-}
-
-struct CreateBatchClaimHashWithWitnessArgs {
-    bytes32 typehash;
-    address arbiter;
-    address sponsor;
-    uint256 nonce;
-    uint256 expires;
-    bytes32 idsAndAmountsHash;
-    bytes32 witness;
-}
-
-struct CreatePermitBatchWitnessDigestArgs {
-    bytes32 domainSeparator;
-    bytes32 tokenPermissionsHash;
-    address spender;
-    uint256 nonce;
-    uint256 deadline;
-    bytes32 activationTypehash;
-    bytes32 idsHash;
-    bytes32 claimHash;
-}
-
-struct SetupPermitCallExpectationArgs {
-    bytes32 activationTypehash;
-    uint256[] ids;
-    bytes32 claimHash;
-    uint256 nonce;
-    uint256 deadline;
-    bytes signature;
-}
-
-struct TestParams {
-    address recipient;
-    ResetPeriod resetPeriod;
-    Scope scope;
-    uint256 amount;
-    uint256 nonce;
-    uint256 deadline;
-}
-
-struct LockDetails {
-    address token;
-    address allocator;
-    ResetPeriod resetPeriod;
-    Scope scope;
-    bytes12 lockTag;
-}
-
-contract Setup is Test {
+contract Setup is TestHelpers {
     using IdLib for uint96;
 
     TheCompact public theCompact;
@@ -179,24 +131,6 @@ contract Setup is Test {
         alwaysOKAllocator = address(new AlwaysOKAllocator());
     }
 
-    function _countLeadingZeroes(address a) internal pure returns (uint256) {
-        address flag = address(0x0fffFFFFFfFfffFfFfFFffFffFffFFfffFfFFFFf);
-
-        // addresses have a maximum of 40 leading 0s
-        for (uint256 i = 0; i < 40; i++) {
-            if (uint160(a) > uint160(uint160(flag) >> (4 * i))) return i;
-        }
-        // if the loop exits, the address is the 0 address
-        return 40;
-    }
-
-    /**
-     * Helper function to create a lock tag with the given parameters
-     */
-    function _createLockTag(ResetPeriod resetPeriod, Scope scope, uint96 allocatorId) internal pure returns (bytes12) {
-        return bytes12(bytes32((uint256(scope) << 255) | (uint256(resetPeriod) << 252) | (uint256(allocatorId) << 160)));
-    }
-
     /**
      * Helper function to create and register an allocator
      */
@@ -205,89 +139,6 @@ contract Setup is Test {
         allocatorId = theCompact.__registerAllocator(_allocator, "");
         lockTag = _createLockTag(ResetPeriod.TenMinutes, Scope.Multichain, allocatorId);
         return (allocatorId, lockTag);
-    }
-
-    /**
-     * Helper function to create a witness hash for a compact witness
-     */
-    function _createCompactWitness(uint256 _witnessArgument) internal pure returns (bytes32 witness) {
-        witness = keccak256(abi.encode(keccak256("Mandate(uint256 witnessArgument)"), _witnessArgument));
-        return witness;
-    }
-
-    function _createClaimHash(
-        bytes32 typehash,
-        address arbiter,
-        address sponsor,
-        uint256 nonce,
-        uint256 expires,
-        uint256 id,
-        uint256 amount
-    ) internal pure returns (bytes32) {
-        return keccak256(abi.encode(typehash, arbiter, sponsor, nonce, expires, id, amount));
-    }
-
-    /**
-     * Helper function to create a claim hash with witness
-     */
-    function _createClaimHashWithWitness(CreateClaimHashWithWitnessArgs memory args) internal pure returns (bytes32) {
-        return keccak256(
-            abi.encode(
-                args.typehash, args.arbiter, args.sponsor, args.nonce, args.expires, args.id, args.amount, args.witness
-            )
-        );
-    }
-
-    /**
-     * Helper function to create a batch claim hash with witness
-     */
-    function _createBatchClaimHashWithWitness(CreateBatchClaimHashWithWitnessArgs memory args)
-        internal
-        pure
-        returns (bytes32)
-    {
-        return keccak256(
-            abi.encode(
-                args.typehash,
-                args.arbiter,
-                args.sponsor,
-                args.nonce,
-                args.expires,
-                args.idsAndAmountsHash,
-                args.witness
-            )
-        );
-    }
-
-    function _createDigest(bytes32 domainSeparator, bytes32 hashValue) internal pure returns (bytes32) {
-        return keccak256(abi.encodePacked(bytes2(0x1901), domainSeparator, hashValue));
-    }
-
-    /**
-     * Helper function to create a permit batch witness digest
-     */
-    function _createPermitBatchWitnessDigest(CreatePermitBatchWitnessDigestArgs memory args)
-        internal
-        pure
-        returns (bytes32)
-    {
-        bytes32 activationHash =
-            keccak256(abi.encode(args.activationTypehash, address(1010), args.idsHash, args.claimHash));
-
-        bytes32 permitBatchHash = keccak256(
-            abi.encode(
-                keccak256(
-                    "PermitBatchWitnessTransferFrom(TokenPermissions[] permitted,address spender,uint256 nonce,uint256 deadline,BatchActivation witness)BatchActivation(address activator,uint256[] ids,BatchCompact compact)BatchCompact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256[2][] idsAndAmounts,Mandate mandate)Mandate(uint256 witnessArgument)TokenPermissions(address token,uint256 amount)"
-                ),
-                args.tokenPermissionsHash,
-                args.spender,
-                args.nonce,
-                args.deadline,
-                activationHash
-            )
-        );
-
-        return keccak256(abi.encodePacked(bytes2(0x1901), args.domainSeparator, permitBatchHash));
     }
 
     function _setupPermitCallExpectation(SetupPermitCallExpectationArgs memory args) internal {
@@ -400,5 +251,33 @@ contract Setup is Test {
         vm.prank(guy);
         id = theCompact.depositERC20(asset, lockTag, amount, guy);
         assertEq(theCompact.balanceOf(guy, id), amount);
+    }
+
+    function _verifyLockDetails(
+        uint256 id,
+        TestParams memory params,
+        LockDetails memory expectedDetails,
+        uint96 allocatorId
+    ) internal view {
+        LockDetails memory actualDetails;
+
+        (
+            actualDetails.token,
+            actualDetails.allocator,
+            actualDetails.resetPeriod,
+            actualDetails.scope,
+            actualDetails.lockTag
+        ) = theCompact.getLockDetails(id);
+
+        assertEq(actualDetails.token, expectedDetails.token);
+        assertEq(actualDetails.allocator, expectedDetails.allocator);
+        assertEq(uint256(actualDetails.resetPeriod), uint256(params.resetPeriod));
+        assertEq(uint256(actualDetails.scope), uint256(params.scope));
+        assertEq(
+            id,
+            (uint256(params.scope) << 255) | (uint256(params.resetPeriod) << 252) | (uint256(allocatorId) << 160)
+                | uint256(uint160(expectedDetails.token))
+        );
+        assertEq(actualDetails.lockTag, expectedDetails.lockTag);
     }
 }
