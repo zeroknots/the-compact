@@ -6,13 +6,14 @@ import { IERC1271 } from "permit2/src/interfaces/IERC1271.sol";
 import { ResetPeriod } from "../types/ResetPeriod.sol";
 
 contract AlwaysOKAllocator is IAllocator, IERC1271 {
-    function attest(address, address, address, uint256, uint256) external pure returns (bytes4) {
+    function attest(address, address, address, uint256, uint256) external pure virtual returns (bytes4) {
         return IAllocator.attest.selector;
     }
 
     function authorizeClaim(bytes32, address, address, uint256, uint256, uint256[2][] calldata, bytes calldata)
         external
         pure
+        virtual
         returns (bytes4)
     {
         return IAllocator.authorizeClaim.selector;
@@ -21,6 +22,7 @@ contract AlwaysOKAllocator is IAllocator, IERC1271 {
     function isClaimAuthorized(bytes32, address, address, uint256, uint256, uint256[2][] calldata, bytes calldata)
         external
         pure
+        virtual
         returns (bool)
     {
         return true;
