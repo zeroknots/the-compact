@@ -775,7 +775,9 @@ This approach supports more advanced functionality, such as:
 - Smart wallet / EIP-7702-enabled sponsors with their own authorization or batching logic
 - Chained deposit & register operations
 
-When registering a compact directly, a duration is either explicitly provided or inferred from the reset period on the corresponding deposit. The registered compact becomes inactive once that duration elapses.
+Registration can be performed directly by a sponsor, either independently of a deposit or as part of a deposit. It can also be performed by a third party that is able to supply the sponsor's signature along with the top-level arguments (including a hash of idsAndAmouts for BatchCompact registration or elements for MultichainCompact registration), or by providing an authorized Permit2 message containing an Activation or BatchActivation as part of the Permit2 witness data as long as that third party is named as the activator by the sponsor. Finally, registration can be performed by any third party that explicitly supplies deposited tokens on behalf of the sponsor. Note that emissaries cannot be used to authorize third-party signature-based registrations that do not involve a deposit.
+
+When registering a compact, the duration of the registration is inferred from the shortest reset period across all resource locks on that compact (or the element corresponding to the chain where it was registered). The registration becomes inactive once that duration elapses.
 
 ## EIP-712 Payloads
 
