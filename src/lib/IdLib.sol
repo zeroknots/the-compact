@@ -387,6 +387,7 @@ library IdLib {
             x := or(x, shr(8, x))
             x := or(x, shr(16, x))
             x := or(x, shr(32, x))
+            x := or(x, shr(64, x))
 
             // Count set bits to derive most significant bit in the last byte.
             let y := sub(x, and(shr(1, x), 0x5555555555555555))
