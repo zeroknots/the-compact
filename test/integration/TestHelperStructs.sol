@@ -62,6 +62,7 @@ struct TestParams {
     uint256 amount;
     uint256 nonce;
     uint256 deadline;
+    uint256 id;
 }
 
 struct LockDetails {
