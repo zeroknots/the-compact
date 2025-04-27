@@ -323,6 +323,15 @@ contract TheCompact is ITheCompact, ERC6909, TheCompactLogic {
     }
 
     /**
+     * @notice Returns the decimals for token `id`.
+     * @param id The ERC6909 token identifier to get the decimals for.
+     * @return The decimals of the token.
+     */
+    function decimals(uint256 id) public view virtual override returns (uint8) {
+        return _decimals(id);
+    }
+
+    /**
      * @notice Returns the ERC6909 Uniform Resource Identifier (URI) for token `id`.
      * @param id The ERC6909 token identifier to get the URI for.
      * @return The URI of the token.
