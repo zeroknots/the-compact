@@ -140,7 +140,6 @@ contract DepositAndRegisterForTest is Setup {
         assertEq(theCompact.balanceOf(params.recipient, id), params.amount);
     }
 
-
     function test_depositERC20AndRegisterForAndClaim() public {
         // Setup test parameters
         TestParams memory params;
