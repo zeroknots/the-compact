@@ -295,6 +295,68 @@ contract TokenURIFetchingTest is Setup {
         assertTrue(foundTokenDecimals, "Token Decimals attribute not found");
     }
 
+    function test_tokenURI_verifyLockTag() public {
+        // Register allocator and create a deposit with native token (ETH)
+        (, bytes12 lockTag) = _registerAllocator(alwaysOKAllocator);
+        uint256 id = _makeDeposit(swapper, 1e18, lockTag);
+
+        // Get the tokenURI for the native token
+        string memory uri = theCompact.tokenURI(id);
+
+        // Parse the JSON using Solady JSONParserLib
+        JSONParserLib.Item memory json = uri.parse();
+
+        // Verify the lock tag is included and has the correct format
+        JSONParserLib.Item[] memory attributes = json.at('"attributes"').children();
+        bool foundLockTag = false;
+
+        for (uint256 i = 0; i < attributes.length; i++) {
+            JSONParserLib.Item memory attribute = attributes[i];
+            if (keccak256(bytes(attribute.at('"trait_type"').value())) == keccak256(bytes('"Lock Tag"'))) {
+                // Verify the lock tag has the correct format (0x followed by 24 hex characters)
+                string memory value = attribute.at('"value"').value();
+
+                // Remove the quotes from the JSON string value
+                string memory valueWithoutQuotes = value;
+                if (bytes(value).length >= 2 && bytes(value)[0] == '"' && bytes(value)[bytes(value).length - 1] == '"')
+                {
+                    // Extract the string without quotes
+                    bytes memory valueBytes = bytes(value);
+                    bytes memory withoutQuotes = new bytes(valueBytes.length - 2);
+                    for (uint256 j = 0; j < withoutQuotes.length; j++) {
+                        withoutQuotes[j] = valueBytes[j + 1];
+                    }
+                    valueWithoutQuotes = string(withoutQuotes);
+                }
+
+                // Verify the lock tag starts with "0x"
+                assertTrue(
+                    bytes(valueWithoutQuotes).length > 2 && bytes(valueWithoutQuotes)[0] == "0"
+                        && bytes(valueWithoutQuotes)[1] == "x",
+                    "Lock tag does not start with 0x"
+                );
+
+                // Verify the lock tag has the correct length (0x + 24 hex characters)
+                assertTrue(bytes(valueWithoutQuotes).length == 26, "Lock tag does not have the correct length");
+
+                // First, compare the hex strings directly
+                string memory expectedLockTagHex = LibString.toHexString(uint96(lockTag));
+                assertEq(valueWithoutQuotes, expectedLockTagHex, "Lock tag hex string doesn't match expected value");
+
+                // Then, decode the hex string back to bytes12 and compare with the expected lock tag
+                // Remove the "0x" prefix before decoding
+                string memory hexWithoutPrefix = substring(valueWithoutQuotes, 2, bytes(valueWithoutQuotes).length);
+                bytes12 decodedLockTag = hexStringToBytes12(hexWithoutPrefix);
+                assertEq(decodedLockTag, lockTag, "Decoded lock tag doesn't match expected lock tag");
+
+                foundLockTag = true;
+                break;
+            }
+        }
+
+        assertTrue(foundLockTag, "Lock Tag attribute not found");
+    }
+
     function test_tokenURI_verifyAllAttributes() public {
         // Register allocator and create a deposit with native token (ETH)
         (, bytes12 lockTag) = _registerAllocator(alwaysOKAllocator);
@@ -310,7 +372,7 @@ contract TokenURIFetchingTest is Setup {
         JSONParserLib.Item[] memory attributes = json.at('"attributes"').children();
 
         // Define the expected attribute names
-        string[8] memory expectedAttributes = [
+        string[9] memory expectedAttributes = [
             "ID",
             "Token Address",
             "Token Name",
@@ -318,7 +380,8 @@ contract TokenURIFetchingTest is Setup {
             "Token Decimals",
             "Allocator",
             "Scope",
-            "Reset Period"
+            "Reset Period",
+            "Lock Tag"
         ];
 
         // Check that all expected attributes are present
@@ -345,6 +408,67 @@ contract TokenURIFetchingTest is Setup {
         // Verify the image field exists
         string memory image = json.at('"image"').value();
         assertTrue(bytes(image).length > 0, "Image is empty");
+    }
+
+    /// @dev Extracts a substring from a string
+    /// @param str The input string
+    /// @param startIndex The starting index (inclusive)
+    /// @param endIndex The ending index (exclusive)
+    /// @return The extracted substring
+    function substring(string memory str, uint256 startIndex, uint256 endIndex) internal pure returns (string memory) {
+        bytes memory strBytes = bytes(str);
+        require(startIndex < endIndex, "Invalid indices");
+        require(endIndex <= strBytes.length, "End index out of bounds");
+
+        bytes memory result = new bytes(endIndex - startIndex);
+        for (uint256 i = startIndex; i < endIndex; i++) {
+            result[i - startIndex] = strBytes[i];
+        }
+
+        return string(result);
+    }
+
+    /// @dev Converts the first 24 characters of a hexadecimal string to bytes12
+    /// @param hexString The hex string to convert (without 0x prefix)
+    /// @return result The resulting bytes12
+    function hexStringToBytes12(string memory hexString) internal pure returns (bytes12 result) {
+        bytes memory strBytes = bytes(hexString);
+
+        // Check if string has at least 24 characters
+        require(strBytes.length >= 24, "Hex string too short for bytes12");
+
+        // Process 24 characters (12 bytes)
+        for (uint256 i = 0; i < 12; i++) {
+            // Get the hex characters
+            bytes1 char1 = strBytes[i * 2];
+            bytes1 char2 = strBytes[i * 2 + 1];
+
+            // Convert hex characters to their numerical values
+            uint8 val1 = _hexCharToUint8(char1);
+            uint8 val2 = _hexCharToUint8(char2);
+
+            // Combine to get the byte value
+            uint8 byteValue = val1 * 16 + val2;
+
+            // Set the byte at the appropriate position in the result
+            result |= bytes12(bytes1(byteValue)) >> (i * 8);
+        }
+    }
+
+    /// @dev Helper function to convert a hex character to its decimal value
+    /// @param c The character to convert
+    /// @return The decimal value
+    function _hexCharToUint8(bytes1 c) internal pure returns (uint8) {
+        if (c >= bytes1("0") && c <= bytes1("9")) {
+            return uint8(c) - uint8(bytes1("0"));
+        }
+        if (c >= bytes1("a") && c <= bytes1("f")) {
+            return 10 + uint8(c) - uint8(bytes1("a"));
+        }
+        if (c >= bytes1("A") && c <= bytes1("F")) {
+            return 10 + uint8(c) - uint8(bytes1("A"));
+        }
+        revert("Invalid hex character");
     }
 
     function test_tokenURI_jsonStructure() public {

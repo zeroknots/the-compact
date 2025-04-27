@@ -17,6 +17,7 @@ import { MetadataReaderLib } from "solady/utils/MetadataReaderLib.sol";
 library MetadataLib {
     using MetadataLib for address;
     using MetadataLib for string;
+    using IdLib for address;
     using IdLib for Lock;
     using IdLib for ResetPeriod;
     using EfficiencyLib for address;
@@ -60,18 +61,30 @@ library MetadataLib {
 
     function toURI(Lock memory lock, uint256 id) internal view returns (string memory uri) {
         string memory attributes;
-        string memory description;
-        string memory name;
+        string memory tokenName;
+        string memory tokenAddress;
+        string memory allocator;
+        string memory resetPeriod;
+        string memory tokenSymbol;
         {
-            string memory tokenAddress =
-                lock.token.isNullAddress() ? "Native Token" : lock.token.toHexStringChecksummed();
-            string memory tokenSymbol = lock.token.readSymbolWithDefaultValue();
-            string memory allocator = lock.allocator.toHexStringChecksummed();
-            string memory resetPeriod = lock.resetPeriod.toString();
+            // Construct the lock tag from allocator, scope, and reset period
+            string memory lockTagHex;
+            {
+                uint96 allocatorId = lock.allocator.usingAllocatorId();
+                bytes12 lockTag = IdLib.toLockTag(allocatorId, lock.scope, lock.resetPeriod);
+                // Convert lock tag to hex string
+                lockTagHex = LibString.toHexString(uint96(lockTag));
+            }
+
+            tokenAddress = lock.token.isNullAddress() ? "Native Token" : lock.token.toHexStringChecksummed();
+            tokenSymbol = lock.token.readSymbolWithDefaultValue();
+            allocator = lock.allocator.toHexStringChecksummed();
+            resetPeriod = lock.resetPeriod.toString();
             string memory scope = lock.scope.toString();
-            string memory tokenName = lock.token.readNameWithDefaultValue();
+            tokenName = lock.token.readNameWithDefaultValue();
             string memory tokenDecimals =
                 lock.token.isNullAddress() ? "18" : uint256(lock.token.readDecimals()).toString();
+
             attributes = string.concat(
                 "\"attributes\": [",
                 toAttributeString("ID", id.toString(), false, true),
@@ -81,10 +94,14 @@ library MetadataLib {
                 toAttributeString("Token Decimals", tokenDecimals, false, false),
                 toAttributeString("Allocator", allocator, false, true),
                 toAttributeString("Scope", scope, false, true),
-                toAttributeString("Reset Period", resetPeriod, true, true),
+                toAttributeString("Reset Period", resetPeriod, false, true),
+                toAttributeString("Lock Tag", lockTagHex, true, true),
                 "]}"
             );
-
+        }
+        string memory description;
+        string memory name;
+        {
             description = string.concat(
                 "\"description\": \"Compact ",
                 tokenName,
