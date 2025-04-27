@@ -1,6 +1,4 @@
 {
   "depositERC20AndRegister": "85003",
-  "depositERC20AndRegisterFor": "78492",
-  "depositNativeAndRegister": "49071",
-  "depositNativeAndRegisterFor": "50632"
+  "depositNativeAndRegister": "49071"
 }
