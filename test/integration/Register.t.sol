@@ -99,7 +99,7 @@ contract RegisterTest is Setup {
         assertEq(theCompact.balanceOf(recipientTwo, claim.id), amountTwo);
     }
 
-    function registerMultipleAndClaim_lengthOne() public {
+    function test_registerMultipleAndClaim_lengthOne() public {
         Claim memory claim;
         claim.sponsor = swapper;
         claim.nonce = 0;
