@@ -190,37 +190,6 @@ library HashLib {
 
     /**
      * @notice Internal view function for deriving the EIP-712 message hash for
-     * a claim.
-     * @param claim            Pointer to the claim location in calldata.
-     * @param additionalOffset Additional offset from claim pointer to ID from most compact case.
-     * @return messageHash     The EIP-712 compliant message hash.
-     */
-    function toClaimMessageHash(uint256 claim, uint256 additionalOffset) internal view returns (bytes32 messageHash) {
-        assembly ("memory-safe") {
-            // Retrieve the free memory pointer; memory will be left dirtied.
-            let m := mload(0x40)
-
-            // Derive the calldata pointer for the offset values.
-            let claimWithAdditionalOffset := add(claim, additionalOffset)
-
-            // Prepare initial components of message data: typehash & arbiter.
-            mstore(m, COMPACT_TYPEHASH)
-            mstore(add(m, 0x20), caller()) // arbiter: msg.sender
-
-            // Next data segment copied from calldata: sponsor, nonce & expires.
-            calldatacopy(add(m, 0x40), add(claim, 0x40), 0x60)
-
-            // Prepare final components of message data: id and amount.
-            mstore(add(m, 0xa0), calldataload(add(claimWithAdditionalOffset, 0xa0))) // id
-            mstore(add(m, 0xc0), calldataload(add(claimWithAdditionalOffset, 0xc0))) // amount
-
-            // Derive the message hash from the prepared data.
-            messageHash := keccak256(m, 0xe0)
-        }
-    }
-
-    /**
-     * @notice Internal view function for deriving the EIP-712 message hash for
      * a claim with a witness.
      * @param claim               Pointer to the claim location in calldata.
      * @return messageHash        The EIP-712 compliant message hash.

@@ -246,27 +246,47 @@ library ValidityLib {
         view
         returns (bool isValid)
     {
-        if (signer == address(0)) return false;
+        // Determine whether the signer is the caller.
+        bool signerIsCaller = signer == msg.sender;
+
+        // Exit early if signer is either the caller or the null address.
+        if ((signer == address(0)).or(signerIsCaller)) {
+            // Valid if signer is caller, otherwise invalid (null address).
+            return signerIsCaller;
+        }
+
         assembly ("memory-safe") {
+            // Cache free memory pointer.
             let m := mload(0x40)
+
+            // Use a faux loop to support breaking early.
             for { } 1 { } {
+                // examine the length of the supplied signature.
                 switch signature.length
                 case 64 {
+                    // Parse length 64 as EIP2098 compact signatures.
                     let vs := calldataload(add(signature.offset, 0x20))
                     mstore(0x20, add(shr(255, vs), 27)) // `v`.
                     mstore(0x40, calldataload(signature.offset)) // `r`.
                     mstore(0x60, shr(1, shl(1, vs))) // `s`.
                 }
                 case 65 {
+                    // Parse length 65 as standard rsv signatures.
                     mstore(0x20, byte(0, calldataload(add(signature.offset, 0x40)))) // `v`.
                     calldatacopy(0x40, signature.offset, 0x40) // `r`, `s`.
                 }
                 default { break }
+
+                // Prepare hash in scratch space.
                 mstore(0x00, hash)
+
+                // Call the ecrecover precompile and examine returndata for validity.
                 let recovered := mload(staticcall(gas(), 1, 0x00, 0x80, 0x01, 0x20))
                 isValid := gt(returndatasize(), shl(96, xor(signer, recovered)))
-                mstore(0x60, 0) // Restore the zero slot.
-                mstore(0x40, m) // Restore the free memory pointer.
+
+                // Restore the zero slot and free memory pointer.
+                mstore(0x60, 0)
+                mstore(0x40, m)
                 break
             }
         }
