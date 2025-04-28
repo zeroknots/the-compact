@@ -574,7 +574,8 @@ contract HashLibTester {
         bytes32 typehash,
         bytes32 witness
     ) external returns (bytes32 messageHash) {
-        return HashLib.toFlatMessageHashWithWitness(sponsor, tokenId, amount, arbiter, nonce, expires, typehash, witness);
+        return
+            HashLib.toFlatMessageHashWithWitness(sponsor, tokenId, amount, arbiter, nonce, expires, typehash, witness);
     }
 
     function callToFlatBatchClaimWithWitnessMessageHash(
