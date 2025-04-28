@@ -211,7 +211,7 @@ function registerBatchFor(
 ```
 Registers a batch compact on behalf of a sponsor with their signature. Any caller with the relevant data and signature can perform this registration. Note that only a hash of idsAndAmounts must be supplied rather than the full idsAndAmounts array.
 
-### registerBatchFor
+### registerMultichainFor
 
 ```solidity
 function registerMultichainFor(
@@ -480,11 +480,11 @@ function name() external pure returns (string memory);
 ```
 Returns the name of the contract.
 
-All of the standard ERC6909 function endpoints are also available.
+All of the standard ERC6909 function endpoints are also available. The Compact also exposes arbitrary SLOAD / TLOAD requests via an ExtSload utility.
 
 # ITheCompactClaims
 
-The claims interface for The Compact protocol, which provides endpoints for settling compacts.
+The claims interface for The Compact protocol, which provides endpoints for settling compacts. Only callable by arbiters on the claimed compact in question (where the caller is implictly assigned as the arbiter during verification).
 
 ## Overview
 
