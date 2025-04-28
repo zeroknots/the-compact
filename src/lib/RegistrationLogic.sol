@@ -52,6 +52,13 @@ contract RegistrationLogic is ConstructorLogic {
         return claimHashesAndTypehashes.registerBatchAsCaller();
     }
 
+    /**
+     * @notice Internal function for registering a compact on behalf of a sponsor with their signature.
+     * @param sponsor          The address of the sponsor for whom the compact is being registered.
+     * @param typehash         The EIP-712 typehash associated with the registered compact.
+     * @param sponsorSignature The signature from the sponsor authorizing the registration.
+     * @return claimHash       The hash of the registered compact.
+     */
     function _registerFor(address sponsor, bytes32 typehash, bytes calldata sponsorSignature)
         internal
         returns (bytes32 claimHash)
@@ -59,6 +66,13 @@ contract RegistrationLogic is ConstructorLogic {
         return _deriveClaimHashAndRegisterCompact(sponsor, typehash, 0x100, _domainSeparator(), sponsorSignature);
     }
 
+    /**
+     * @notice Internal function for registering a batch compact on behalf of a sponsor with their signature.
+     * @param sponsor          The address of the sponsor for whom the compact is being registered.
+     * @param typehash         The EIP-712 typehash associated with the registered compact.
+     * @param sponsorSignature The signature from the sponsor authorizing the registration.
+     * @return claimHash       The hash of the registered batch compact.
+     */
     function _registerBatchFor(address sponsor, bytes32 typehash, bytes calldata sponsorSignature)
         internal
         returns (bytes32 claimHash)
@@ -66,6 +80,16 @@ contract RegistrationLogic is ConstructorLogic {
         return _deriveClaimHashAndRegisterCompact(sponsor, typehash, 0xe0, _domainSeparator(), sponsorSignature);
     }
 
+    /**
+     * @notice Internal function for registering a multichain compact on behalf of a sponsor with their signature.
+     * Note that the multichain compact in question will need to be independently registered on each chain where
+     * onchain registration is desired.
+     * @param sponsor          The address of the sponsor for whom the compact is being registered.
+     * @param typehash         The EIP-712 typehash associated with the registered compact.
+     * @param notarizedChainId Chain ID of the domain used to sign the multichain compact.
+     * @param sponsorSignature The signature from the sponsor authorizing the registration.
+     * @return claimHash       The hash of the registered multichain compact.
+     */
     function _registerMultichainFor(
         address sponsor,
         bytes32 typehash,
@@ -77,6 +101,15 @@ contract RegistrationLogic is ConstructorLogic {
         );
     }
 
+    /**
+     * @notice Internal function for deriving a claim hash and registering it as a compact.
+     * @param sponsor          The address of the sponsor for whom the compact is being registered.
+     * @param typehash         The EIP-712 typehash associated with the registered compact.
+     * @param preimageLength   The length of the preimage data used to derive the claim hash.
+     * @param domainSeparator  The domain separator to use for signature verification.
+     * @param sponsorSignature The signature from the sponsor authorizing the registration.
+     * @return claimHash       The derived and registered claim hash.
+     */
     function _deriveClaimHashAndRegisterCompact(
         address sponsor,
         bytes32 typehash,

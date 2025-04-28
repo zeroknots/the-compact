@@ -102,7 +102,7 @@ contract EmissaryLogicTest is Test {
         assertTrue(assignableAt == 0, "timestamp");
         assertTrue(currentEmissary == address(0), "addr");
 
-        // now we set the emissary
+        // Set the emissary.
         test_new_emissary();
 
         vm.prank(sponsor);

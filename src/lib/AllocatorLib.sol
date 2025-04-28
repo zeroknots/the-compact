@@ -6,6 +6,11 @@ import { IAllocator } from "../interfaces/IAllocator.sol";
 import { IdLib } from "./IdLib.sol";
 import { EfficiencyLib } from "./EfficiencyLib.sol";
 
+/**
+ * @title AllocatorLib
+ * @notice Library contract implementing logic for interacting with allocators, specifically
+ * for checking for authorization during claim processing via a low-level call.
+ */
 library AllocatorLib {
     using IdLib for uint256;
     using EfficiencyLib for bool;
@@ -14,6 +19,19 @@ library AllocatorLib {
     uint32 private constant _AUTHORIZE_CLAIM_SELECTOR = 0x7bb023f7;
     uint256 private constant _AUTHORIZE_CLAIM_IDS_AND_AMOUNTS_CALLDATA_POINTER = 0xe0;
 
+    /**
+     * @notice Internal function that calls an allocator's authorizeClaim function to validate
+     * that they have authorized the claim and that they are able to perform their own processing
+     * associated with that claim. Performs a low-level call to the allocator contract and verifies
+     * the response.
+     * @param allocator     The address of the allocator to call.
+     * @param claimHash     The message hash representing the claim.
+     * @param sponsor       The account to source the tokens from.
+     * @param nonce         A parameter to enforce replay protection, scoped to allocator.
+     * @param expires       The time at which the claim expires.
+     * @param idsAndAmounts The allocated token IDs and amounts.
+     * @param allocatorData Arbitrary data provided by the arbiter.
+     */
     function callAuthorizeClaim(
         address allocator,
         bytes32 claimHash,

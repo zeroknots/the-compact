@@ -109,15 +109,15 @@ library EmissaryLib {
             EmissaryAssignmentUnavailable(config.assignableAt)
         );
 
-        // if new Emissary is address(0), that means that the sponsor wants to remove the emissary feature.
-        // we wipe all storage
+        // If new Emissary is address(0), that means that the sponsor wants to remove the emissary feature.
+        // In that event, wipe all storage.
         if (newEmissary == address(0)) {
-            // If the new emissary is address(0), this means we are removing the emissary.
-            // We clear all related storage fields to maintain a clean state and avoid stale data.
+            // If the new emissary is address(0), this means the emissary should be removed.
+            // Clear all related storage fields to maintain a clean state and avoid stale data.
             delete config.emissary;
             delete config.assignableAt;
         }
-        // otherwise we set the provided resetPeriod
+        // Otherwise, set the provided resetPeriod.
         else {
             config.emissary = newEmissary;
             config.assignableAt = NOT_SCHEDULED;
