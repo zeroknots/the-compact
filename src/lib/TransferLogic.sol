@@ -38,10 +38,6 @@ contract TransferLogic is ConstructorLogic {
     using
     TransferFunctionCastLib
     for function(bytes32, address, AllocatedTransfer calldata, uint256[2][] memory) internal;
-    using
-    TransferFunctionCastLib
-    for
-        function(TransferComponent[] calldata, uint256, function (TransferComponent[] calldata, uint256) internal pure returns (uint96)) internal returns (address);
     using AllocatorLib for address;
 
     // bytes4(keccak256("attest(address,address,address,uint256,uint256)")).
@@ -54,7 +50,7 @@ contract TransferLogic is ConstructorLogic {
      * @param transfer  An AllocatedTransfer struct containing signature, nonce, expiry, and transfer details.
      * @return          Whether the transfer was successfully processed.
      */
-    function _processSplitTransfer(AllocatedTransfer calldata transfer) internal returns (bool) {
+    function _processTransfer(AllocatedTransfer calldata transfer) internal returns (bool) {
         // Set the reentrancy guard.
         _setReentrancyGuard();
 
@@ -70,7 +66,7 @@ contract TransferLogic is ConstructorLogic {
         );
 
         // Perform the transfers or withdrawals.
-        transfer.processSplitTransfer();
+        transfer.processTransfer();
 
         // Clear the reentancy guard.
         _clearReentrancyGuard();
@@ -86,7 +82,7 @@ contract TransferLogic is ConstructorLogic {
      * @param transfer  An AllocatedBatchTransfer struct containing signature, nonce, expiry, and batch transfer details.
      * @return          Whether the transfer was successfully processed.
      */
-    function _processSplitBatchTransfer(AllocatedBatchTransfer calldata transfer) internal returns (bool) {
+    function _processBatchTransfer(AllocatedBatchTransfer calldata transfer) internal returns (bool) {
         // Set the reentrancy guard.
         _setReentrancyGuard();
 
@@ -109,17 +105,15 @@ contract TransferLogic is ConstructorLogic {
         }
 
         // Derive hash, validate expiry, consume nonce, and check allocator signature.
-        _notExpiredAndAuthorizedByAllocator.usingSplitBatchTransfer()(
+        _notExpiredAndAuthorizedByAllocator.usingBatchTransfer()(
             transfer.toClaimHash(),
-            _deriveConsistentAllocatorAndConsumeNonce.usingSplitByIdComponent()(
-                transfer.transfers, transfer.nonce, _allocatorIdOfSplitByIdComponent
-            ),
+            _deriveConsistentAllocatorAndConsumeNonce(transfer.transfers, transfer.nonce),
             transfer,
             idsAndAmounts
         );
 
         // Perform the batch transfers or withdrawals.
-        transfer.performSplitBatchTransfer();
+        transfer.performBatchTransfer();
 
         // Clear the reentancy guard.
         _clearReentrancyGuard();
@@ -221,22 +215,29 @@ contract TransferLogic is ConstructorLogic {
      * allocator or if the batch is empty.
      * @param components           Array of transfer components to check.
      * @param nonce                The nonce to consume.
-     * @param allocatorIdRetrieval Function pointer to retrieve allocatorId from components array.
      * @return allocator           The validated allocator address.
      */
-    function _deriveConsistentAllocatorAndConsumeNonce(
-        TransferComponent[] calldata components,
-        uint256 nonce,
-        function (TransferComponent[] calldata, uint256) internal pure returns (uint96) allocatorIdRetrieval
-    ) private returns (address allocator) {
+    function _deriveConsistentAllocatorAndConsumeNonce(ComponentsById[] calldata components, uint256 nonce)
+        private
+        returns (address allocator)
+    {
         // Retrieve the total number of components.
         uint256 totalComponents = components.length;
 
         // Track errors, starting with whether total number of components is zero.
         uint256 errorBuffer = (totalComponents == 0).asUint256();
 
+        // Revert if an error was encountered.
+        assembly ("memory-safe") {
+            if errorBuffer {
+                // revert InvalidBatchAllocation()
+                mstore(0, 0x3a03d3bb)
+                revert(0x1c, 0x04)
+            }
+        }
+
         // Retrieve the ID of the initial component and derive the allocator ID.
-        uint96 allocatorId = allocatorIdRetrieval(components, 0);
+        uint96 allocatorId = components[0].id.toAllocatorId();
 
         // Retrieve the allocator address and consume the nonce.
         allocator = allocatorId.fromRegisteredAllocatorIdWithConsumed(nonce);
@@ -245,7 +246,7 @@ contract TransferLogic is ConstructorLogic {
             // Iterate over each additional component in calldata.
             for (uint256 i = 1; i < totalComponents; ++i) {
                 // Retrieve ID and mark error if derived allocatorId differs from initial one.
-                errorBuffer |= (allocatorIdRetrieval(components, i) != allocatorId).asUint256();
+                errorBuffer |= (components[i].id.toAllocatorId() != allocatorId).asUint256();
             }
         }
 
@@ -257,21 +258,5 @@ contract TransferLogic is ConstructorLogic {
                 revert(0x1c, 0x04)
             }
         }
-    }
-
-    /**
-     * @notice Private pure function that retrieves the ID of a batch transfer component
-     * from an array of components at a specific index and uses it to derive an allocator ID.
-     * @param components   Array of batch transfer components.
-     * @param index        The index of the batch transfer component to retrieve.
-     * @return allocatorId The allocator ID derived from the transfer component at the given index.
-     */
-    function _allocatorIdOfSplitByIdComponent(ComponentsById[] calldata components, uint256 index)
-        private
-        pure
-        returns (uint96)
-    {
-        // Retrieve ID from the component and derive corresponding allocator ID.
-        return components[index].id.toAllocatorId();
     }
 }

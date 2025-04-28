@@ -42,12 +42,12 @@ contract MockTransferLogic is TheCompactLogic {
         (id,) = _performCustomERC20Deposit(token, lockTag, amount, recipient.usingCallerIfNull());
     }
 
-    function processSplitTransfer(AllocatedTransfer calldata transfer) external returns (bool) {
-        return _processSplitTransfer(transfer);
+    function processTransfer(AllocatedTransfer calldata transfer) external returns (bool) {
+        return _processTransfer(transfer);
     }
 
-    function processSplitBatchTransfer(AllocatedBatchTransfer calldata transfer) external returns (bool) {
-        return _processSplitBatchTransfer(transfer);
+    function processBatchTransfer(AllocatedBatchTransfer calldata transfer) external returns (bool) {
+        return _processBatchTransfer(transfer);
     }
 
     function ensureAttested(address from, address to, uint256 id, uint256 amount) external {

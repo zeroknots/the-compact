@@ -197,10 +197,7 @@ Alternatively, the sponsor can register a compact (or group of compacts) by subm
 An arbiter takes a signed compact designated to them and uses it to submit a claim to The Compact.
 
 ### 4a) Allocated Transfer & Allocated Withdrawal
-In the most straightforward variety of claim, where the arbiter is the sponsor, there are three key factors that result in eight distinct endpoints:
- - transfer vs. withdrawal: whether to transfer the ERC6909 tokens directly, or to withdraw the underlying tokens (e.g. calling `allocatedTransfer` or `allocatedWithdrawal`)
- - whether or not to perform a "split": with no split, the caller specifies a single recipient, whereas with a split the caller specifies multiple recipients and respective amounts
- - whether or not the compact in question is a "batch" compact: with a batch compact, multiple resource locks and respective amounts are involved in the claim.
+In the most straightforward variety of claim, where the arbiter is the sponsor, there are two distinct endpoints depending on whether or not the compact in question is a "batch" compact: with a batch compact, multiple resource locks and respective amounts are involved in the claim.
 
  ```solidity
 struct BasicTransfer {
@@ -470,9 +467,9 @@ interface ICompactBatchClaims {
 When the sponsor wants to utilize multiple resource locks where each lock is on its own chain, they will sign a `MultichainCompact` EIP-712 payload that contains an array of `Allocation` structs, where each allocation indicates a specific arbiter, chainId, and array of length 1 containing the ID of the respective lock and an amount. The sponsor must sign the payload against the domain of the first allocation's chainId (called the "notarized" domain), and any subsequent allocations can only include resource locks with a "Multichain" scope. The allocator must sign the payload for each chain independently using its respective domain; these signatures can also each be uniquely qualified if necessary.
 
 There are thirty-two endpoints in this scenario, broken into two groups of sixteen that each map to the same combination as the cases above:
-    - sixteen "endogenous" versions that utilize the initial resource lock and therefore are considered "notarized": these take a single additional argument, an `additionalChains` array containing the additional allocation hashes (the initial allocation hash is excluded as it is derived as part of validation).
-    - sixteen "exogenous" versions that utilize subsequent resource locks outside of the "notarized" domain; these also take an `additionalChains` array (the allocation hash for the chain being claimed against is excluded, as it is derived as part of validation) as well as two additional arguments:
-        - a `chainIndex` argument indicating the index to insert the allocation hash of the current domain (a value of `0` indicates that it is the second allocation, an index of `1` indicates that it is the third allocation, etc)
+    - sixteen "endogenous" versions that utilize the initial resource lock and therefore are considered "notarized": these take a single additional argument, an `additionalChains` array containing the additional element hashes (the initial element hash is excluded as it is derived as part of validation).
+    - sixteen "exogenous" versions that utilize subsequent resource locks outside of the "notarized" domain; these also take an `additionalChains` array (the element hash for the chain being claimed against is excluded, as it is derived as part of validation) as well as two additional arguments:
+        - a `chainIndex` argument indicating the index to insert the element hash of the current domain (a value of `0` indicates that it is the second element, an index of `1` indicates that it is the third element, etc)
         - a `notarizedChainId` argument indicating the chainId of the domain used by the sponsor to authorize the claim
 
 ```solidity
@@ -482,7 +479,7 @@ struct MultichainClaim {
     address sponsor; // The account to source the tokens from.
     uint256 nonce; // A parameter to enforce replay protection, scoped to allocator.
     uint256 expires; // The time at which the claim expires.
-    bytes32[] additionalChains; // The allocation hashes from additional chains.
+    bytes32[] additionalChains; // The element hashes from additional chains.
     uint256 id; // The token ID of the ERC6909 token to allocate.
     uint256 allocatedAmount; // The original allocated amount of ERC6909 tokens.
     address claimant; // The claim recipient; specified by the arbiter.
@@ -491,8 +488,8 @@ struct MultichainClaim {
 
 struct ExogenousMultichainClaim {
     // ... same first 5 parameters as all claims
-    bytes32[] additionalChains; // The allocation hashes from additional chains.
-    uint256 chainIndex; // The index after which to insert the current allocation hash.
+    bytes32[] additionalChains; // The element hashes from additional chains.
+    uint256 chainIndex; // The index after which to insert the current element hash.
     uint256 notarizedChainId; // The chain id used to sign the multichain claim.
     // ... same last 4 parameters as MultichainClaim
 }
@@ -508,8 +505,8 @@ struct ExogenousQualifiedMultichainClaim {
     // ... same first 5 parameters as all claims
     bytes32 qualificationTypehash; // Typehash of the qualification payload.
     bytes qualificationPayload; // Data used to derive qualification hash.
-    bytes32[] additionalChains; // The allocation hashes from additional chains.
-    uint256 chainIndex; // The index after which to insert the current allocation hash.
+    bytes32[] additionalChains; // The element hashes from additional chains.
+    uint256 chainIndex; // The index after which to insert the current element hash.
     uint256 notarizedChainId; // The chain id used to sign the multichain claim.
     // ... same last 4 parameters as MultichainClaim
 }
@@ -525,8 +522,8 @@ struct ExogenousMultichainClaimWithWitness {
     // ... same first 5 parameters as all claims
     bytes32 witness; // Hash of the witness data.
     string witnessTypestring; // Witness typestring appended to existing typestring.
-    bytes32[] additionalChains; // The allocation hashes from additional chains.
-    uint256 chainIndex; // The index after which to insert the current allocation hash.
+    bytes32[] additionalChains; // The element hashes from additional chains.
+    uint256 chainIndex; // The index after which to insert the current element hash.
     uint256 notarizedChainId; // The chain id used to sign the multichain claim.
     // ... same last 4 parameters as MultichainClaim
 }
@@ -546,15 +543,15 @@ struct ExogenousQualifiedMultichainClaimWithWitness {
     string witnessTypestring; // Witness typestring appended to existing typestring.
     bytes32 qualificationTypehash; // Typehash of the qualification payload.
     bytes qualificationPayload; // Data used to derive qualification hash.
-    bytes32[] additionalChains; // The allocation hashes from additional chains.
-    uint256 chainIndex; // The index after which to insert the current allocation hash.
+    bytes32[] additionalChains; // The element hashes from additional chains.
+    uint256 chainIndex; // The index after which to insert the current element hash.
     uint256 notarizedChainId; // The chain id used to sign the multichain claim.
     // ... same last 4 parameters as MultichainClaim
 }
 
 struct SplitMultichainClaim {
     // ... same first 5 parameters as all claims
-    bytes32[] additionalChains; // The allocation hashes from additional chains.
+    bytes32[] additionalChains; // The element hashes from additional chains.
     uint256 id; // The token ID of the ERC6909 token to allocate.
     uint256 allocatedAmount; // The original allocated amount of ERC6909 tokens.
     SplitComponent[] claimants; // The claim recipients and amounts; specified by the arbiter.
@@ -562,8 +559,8 @@ struct SplitMultichainClaim {
 
 struct ExogenousSplitMultichainClaim {
     // ... same first 5 parameters as all claims
-    bytes32[] additionalChains; // The allocation hashes from additional chains.
-    uint256 chainIndex; // The index after which to insert the current allocation hash.
+    bytes32[] additionalChains; // The element hashes from additional chains.
+    uint256 chainIndex; // The index after which to insert the current element hash.
     uint256 notarizedChainId; // The chain id used to sign the multichain claim.
     // ... same last 3 parameters as MultichainSplitClaim
 }
@@ -579,8 +576,8 @@ struct ExogenousQualifiedSplitMultichainClaim {
     // ... same first 5 parameters as all claims
     bytes32 qualificationTypehash; // Typehash of the qualification payload.
     bytes qualificationPayload; // Data used to derive qualification hash.
-    bytes32[] additionalChains; // The allocation hashes from additional chains.
-    uint256 chainIndex; // The index after which to insert the current allocation hash.
+    bytes32[] additionalChains; // The element hashes from additional chains.
+    uint256 chainIndex; // The index after which to insert the current element hash.
     uint256 notarizedChainId; // The chain id used to sign the multichain claim.
     // ... same last 3 parameters as MultichainSplitClaim
 }
@@ -589,8 +586,8 @@ struct ExogenousSplitMultichainClaimWithWitness {
     // ... same first 5 parameters as all claims
     bytes32 witness; // Hash of the witness data.
     string witnessTypestring; // Witness typestring appended to existing typestring.
-    bytes32[] additionalChains; // The allocation hashes from additional chains.
-    uint256 chainIndex; // The index after which to insert the current allocation hash.
+    bytes32[] additionalChains; // The element hashes from additional chains.
+    uint256 chainIndex; // The index after which to insert the current element hash.
     uint256 notarizedChainId; // The chain id used to sign the multichain claim.
     // ... same last 3 parameters as MultichainSplitClaim
 }
@@ -617,8 +614,8 @@ struct ExogenousQualifiedSplitMultichainClaimWithWitness {
     string witnessTypestring; // Witness typestring appended to existing typestring.
     bytes32 qualificationTypehash; // Typehash of the qualification payload.
     bytes qualificationPayload; // Data used to derive qualification hash.
-    bytes32[] additionalChains; // The allocation hashes from additional chains.
-    uint256 chainIndex; // The index after which to insert the current allocation hash.
+    bytes32[] additionalChains; // The element hashes from additional chains.
+    uint256 chainIndex; // The index after which to insert the current element hash.
     uint256 notarizedChainId; // The chain id used to sign the multichain claim.
     // ... same last 3 parameters as MultichainSplitClaim
 }
@@ -671,7 +668,7 @@ struct BatchMultichainClaim {
     address sponsor; // The account to source the tokens from.
     uint256 nonce; // A parameter to enforce replay protection, scoped to allocator.
     uint256 expires; // The time at which the claim expires.
-    bytes32[] additionalChains; // The allocation hashes from additional chains.
+    bytes32[] additionalChains; // The element hashes from additional chains.
     BatchClaimComponent[] claims; // IDs and amounts.
     address claimant; // The claim recipient; specified by the arbiter.
 }

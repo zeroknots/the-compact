@@ -17,7 +17,7 @@ import {
     TestParams,
     CreateClaimHashWithWitnessArgs,
     CreateBatchClaimHashWithWitnessArgs,
-    SplitBatchMultichainClaimArgs
+    BatchMultichainClaimArgs
 } from "./TestHelperStructs.sol";
 
 contract ClaimTest is Setup {
