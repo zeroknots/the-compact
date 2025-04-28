@@ -129,6 +129,15 @@ contract ConstructorLogic is Tstorish {
     }
 
     /**
+     * @notice Internal view function for retrieving the decimals for a given token ID.
+     * @param id The ERC6909 token identifier.
+     * @return The token's decimals.
+     */
+    function _decimals(uint256 id) internal view returns (uint8) {
+        return _METADATA_RENDERER.decimals(id);
+    }
+
+    /**
      * @notice Internal view function for retrieving the URI for a given token ID.
      * @param id The ERC6909 token identifier.
      * @return The token's URI.

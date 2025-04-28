@@ -478,6 +478,8 @@ function name() external pure returns (string memory);
 ```
 Returns the name of the contract.
 
+All of the standard ERC6909 function endpoints are also available.
+
 # ITheCompactClaims
 
 The claims interface for The Compact protocol, which provides endpoints for settling compacts.

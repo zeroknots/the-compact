@@ -17,6 +17,7 @@ import { MetadataReaderLib } from "solady/utils/MetadataReaderLib.sol";
 library MetadataLib {
     using MetadataLib for address;
     using MetadataLib for string;
+    using IdLib for address;
     using IdLib for Lock;
     using IdLib for ResetPeriod;
     using EfficiencyLib for address;
@@ -60,30 +61,47 @@ library MetadataLib {
 
     function toURI(Lock memory lock, uint256 id) internal view returns (string memory uri) {
         string memory attributes;
+        string memory tokenName;
+        string memory tokenAddress;
+        string memory allocator;
+        string memory resetPeriod;
+        string memory tokenSymbol;
+        {
+            // Construct the lock tag from allocator, scope, and reset period
+            string memory lockTagHex;
+            {
+                uint96 allocatorId = lock.allocator.usingAllocatorId();
+                bytes12 lockTag = IdLib.toLockTag(allocatorId, lock.scope, lock.resetPeriod);
+                // Convert lock tag to hex string
+                lockTagHex = LibString.toHexString(uint96(lockTag));
+            }
+
+            tokenAddress = lock.token.isNullAddress() ? "Native Token" : lock.token.toHexStringChecksummed();
+            tokenSymbol = lock.token.readSymbolWithDefaultValue();
+            allocator = lock.allocator.toHexStringChecksummed();
+            resetPeriod = lock.resetPeriod.toString();
+            string memory scope = lock.scope.toString();
+            tokenName = lock.token.readNameWithDefaultValue();
+            string memory tokenDecimals =
+                lock.token.isNullAddress() ? "18" : uint256(lock.token.readDecimals()).toString();
+
+            attributes = string.concat(
+                "\"attributes\": [",
+                toAttributeString("ID", id.toString(), false, true),
+                toAttributeString("Token Address", tokenAddress, false, true),
+                toAttributeString("Token Name", tokenName, false, true),
+                toAttributeString("Token Symbol", tokenSymbol, false, true),
+                toAttributeString("Token Decimals", tokenDecimals, false, false),
+                toAttributeString("Allocator", allocator, false, true),
+                toAttributeString("Scope", scope, false, true),
+                toAttributeString("Reset Period", resetPeriod, false, true),
+                toAttributeString("Lock Tag", lockTagHex, true, true),
+                "]}"
+            );
+        }
         string memory description;
         string memory name;
         {
-            string memory tokenAddress =
-                lock.token.isNullAddress() ? "Native Token" : lock.token.toHexStringChecksummed();
-            string memory tokenSymbol = lock.token.readSymbolWithDefaultValue();
-            string memory allocator = lock.allocator.toHexStringChecksummed();
-            string memory resetPeriod = lock.resetPeriod.toString();
-            string memory scope = lock.scope.toString();
-            string memory tokenName = lock.token.readNameWithDefaultValue();
-            string memory tokenDecimals = uint256(lock.token.readDecimals()).toString();
-            attributes = string.concat(
-                "\"attributes\": [",
-                toAttributeString("ID", id.toString(), false),
-                toAttributeString("Token Address", tokenAddress, false),
-                toAttributeString("Token Name", tokenName, false),
-                toAttributeString("Token Symbol", tokenSymbol, false),
-                toAttributeString("Token Decimals", tokenDecimals, false),
-                toAttributeString("Allocator", allocator, false),
-                toAttributeString("Scope", scope, false),
-                toAttributeString("Reset Period", resetPeriod, true),
-                "]}"
-            );
-
             description = string.concat(
                 "\"description\": \"Compact ",
                 tokenName,
@@ -134,14 +152,28 @@ library MetadataLib {
         if (token.isNullAddress()) {
             return "18";
         }
-        return uint256(token.readDecimals()).toString();
+        return uint256(token.readDecimalsAsUint8WithDefaultValue()).toString();
     }
 
-    function toAttributeString(string memory trait, string memory value, bool terminal)
+    function readDecimalsAsUint8WithDefaultValue(address token) internal view returns (uint8 decimals) {
+        if (token.isNullAddress()) {
+            return 18;
+        }
+        return token.readDecimals();
+    }
+
+    function toAttributeString(string memory trait, string memory value, bool terminal, bool quoted)
         internal
         pure
         returns (string memory attribute)
     {
-        return string.concat("{\"trait_type\": \"", trait, "\", \"value\": \"", value, "\"}", terminal ? "" : ",");
+        string memory openQuote = quoted ? "\"" : "";
+        string memory closeQuote = quoted ? "\"" : "";
+        string memory terminator = terminal ? "" : ",";
+
+        // Use single concat with all parts
+        return string.concat(
+            "{\"trait_type\": \"", trait, "\", \"value\": ", openQuote, value, closeQuote, "}", terminator
+        );
     }
 }
