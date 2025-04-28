@@ -217,7 +217,7 @@ library ClaimProcessorLib {
         bytes32 domainSeparator
     ) internal {
         messageHash.processClaimWithComponents(
-            calldataPointer, 0x140, sponsorDomain, typehash, domainSeparator, validate
+            calldataPointer, uint256(0x140).asStubborn(), sponsorDomain, typehash, domainSeparator, validate
         );
     }
 
