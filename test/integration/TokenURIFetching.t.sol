@@ -17,33 +17,33 @@ import { LibString } from "../../lib/solady/src/utils/LibString.sol";
  * - Native tokens (ETH) should return default ETH values
  * - Tokens with their own name/symbol/decimals should return those values
  * - Tokens without these methods should return default values
- * Uses Solady JSONParserLib to parse and validate the returned JSON
+ * Uses Solady JSONParserLib to parse and validate the returned JSON.
  */
 contract TokenURIFetchingTest is Setup {
     using IdLib for uint96;
     using JSONParserLib for string;
     using JSONParserLib for JSONParserLib.Item;
 
-    // Mock token that doesn't implement name/symbol/decimals
+    // Mock token that doesn't implement name/symbol/decimals.
     MockERC20WithoutMetadata public tokenWithoutMetadata;
 
-    // Mock token with custom name/symbol/decimals
+    // Mock token with custom name/symbol/decimals.
     MockERC20 public customToken;
 
     function setUp() public override {
         super.setUp();
 
-        // Deploy a token without metadata methods
+        // Deploy a token without metadata methods.
         tokenWithoutMetadata = new MockERC20WithoutMetadata();
 
-        // Deploy a token with custom metadata
+        // Deploy a token with custom metadata.
         customToken = new MockERC20("Custom Token", "CSTM", 8);
 
-        // Mint tokens to the swapper
+        // Mint tokens to the swapper.
         tokenWithoutMetadata.mint(swapper, 1e18);
         customToken.mint(swapper, 1e18);
 
-        // Approve tokens for TheCompact
+        // Approve tokens for TheCompact.
         vm.startPrank(swapper);
         tokenWithoutMetadata.approve(address(theCompact), 1e18);
         customToken.approve(address(theCompact), 1e18);
@@ -51,20 +51,20 @@ contract TokenURIFetchingTest is Setup {
     }
 
     function test_tokenURI_nativeToken() public {
-        // Register allocator and create a deposit with native token (ETH)
+        // Register allocator and create a deposit with native token (ETH).
         (, bytes12 lockTag) = _registerAllocator(alwaysOKAllocator);
         uint256 id = _makeDeposit(swapper, 1e18, lockTag);
 
-        // Get the tokenURI for the native token
+        // Get the tokenURI for the native token.
         string memory uri = theCompact.tokenURI(id);
 
-        // Parse the JSON using Solady JSONParserLib
+        // Parse the JSON using Solady JSONParserLib.
         JSONParserLib.Item memory json = uri.parse();
 
-        // Verify the JSON contains the expected values
+        // Verify the JSON contains the expected values.
         assertEq(json.at('"name"').value(), '"Compact ETH"');
 
-        // Verify token address is "Native Token"
+        // Verify token address is "Native Token".
         JSONParserLib.Item[] memory attributes = json.at('"attributes"').children();
         bool foundTokenAddress = false;
 
@@ -79,7 +79,7 @@ contract TokenURIFetchingTest is Setup {
 
         assertTrue(foundTokenAddress, "Token Address attribute not found");
 
-        // Verify token name is "Ether"
+        // Verify token name is "Ether".
         bool foundTokenName = false;
         for (uint256 i = 0; i < attributes.length; i++) {
             JSONParserLib.Item memory attribute = attributes[i];
@@ -92,7 +92,7 @@ contract TokenURIFetchingTest is Setup {
 
         assertTrue(foundTokenName, "Token Name attribute not found");
 
-        // Verify token symbol is "ETH"
+        // Verify token symbol is "ETH".
         bool foundTokenSymbol = false;
         for (uint256 i = 0; i < attributes.length; i++) {
             JSONParserLib.Item memory attribute = attributes[i];
@@ -105,7 +105,7 @@ contract TokenURIFetchingTest is Setup {
 
         assertTrue(foundTokenSymbol, "Token Symbol attribute not found");
 
-        // Verify token decimals is 18
+        // Verify token decimals is 18.
         bool foundTokenDecimals = false;
         for (uint256 i = 0; i < attributes.length; i++) {
             JSONParserLib.Item memory attribute = attributes[i];
@@ -120,33 +120,34 @@ contract TokenURIFetchingTest is Setup {
     }
 
     function test_tokenURI_customToken() public {
-        // Register allocator and create a deposit with custom token
+        // Register allocator and create a deposit with custom token.
         (, bytes12 lockTag) = _registerAllocator(alwaysOKAllocator);
         uint256 id = _makeDeposit(swapper, address(customToken), 1e18, lockTag);
 
-        // Get the tokenURI for the custom token
+        // Get the tokenURI for the custom token.
         string memory uri = theCompact.tokenURI(id);
 
-        // Parse the JSON using Solady JSONParserLib
+        // Parse the JSON using Solady JSONParserLib.
         JSONParserLib.Item memory json = uri.parse();
 
-        // Verify the JSON contains the expected values
+        // Verify the JSON contains the expected values.
         assertEq(json.at('"name"').value(), '"Compact CSTM"');
 
-        // Verify token address is the custom token address
+        // Verify token address is the custom token address.
         JSONParserLib.Item[] memory attributes = json.at('"attributes"').children();
         bool foundTokenAddress = false;
 
         for (uint256 i = 0; i < attributes.length; i++) {
             JSONParserLib.Item memory attribute = attributes[i];
             if (keccak256(bytes(attribute.at('"trait_type"').value())) == keccak256(bytes('"Token Address"'))) {
-                // The address should be checksummed, so we can compare with the checksummed address
+                // The address must be checksummed to compare with the string representation.
                 string memory value = attribute.at('"value"').value();
-                // Remove the quotes from the JSON string value
+
+                // Remove the quotes from the JSON string value.
                 string memory valueWithoutQuotes = value;
                 if (bytes(value).length >= 2 && bytes(value)[0] == '"' && bytes(value)[bytes(value).length - 1] == '"')
                 {
-                    // Extract the string without quotes
+                    // Extract the string without quotes.
                     bytes memory valueBytes = bytes(value);
                     bytes memory withoutQuotes = new bytes(valueBytes.length - 2);
                     for (uint256 j = 0; j < withoutQuotes.length; j++) {
@@ -155,7 +156,7 @@ contract TokenURIFetchingTest is Setup {
                     valueWithoutQuotes = string(withoutQuotes);
                 }
 
-                // Get the checksummed address of the custom token
+                // Get the checksummed address of the custom token.
                 string memory expectedAddress = LibString.toHexStringChecksummed(address(customToken));
                 assertEq(
                     valueWithoutQuotes, expectedAddress, "Token address doesn't match expected checksummed address"
@@ -167,7 +168,7 @@ contract TokenURIFetchingTest is Setup {
 
         assertTrue(foundTokenAddress, "Token Address attribute not found");
 
-        // Verify token name is "Custom Token"
+        // Verify token name is "Custom Token".
         bool foundTokenName = false;
         for (uint256 i = 0; i < attributes.length; i++) {
             JSONParserLib.Item memory attribute = attributes[i];
@@ -180,7 +181,7 @@ contract TokenURIFetchingTest is Setup {
 
         assertTrue(foundTokenName, "Token Name attribute not found");
 
-        // Verify token symbol is "CSTM"
+        // Verify token symbol is "CSTM".
         bool foundTokenSymbol = false;
         for (uint256 i = 0; i < attributes.length; i++) {
             JSONParserLib.Item memory attribute = attributes[i];
@@ -193,7 +194,7 @@ contract TokenURIFetchingTest is Setup {
 
         assertTrue(foundTokenSymbol, "Token Symbol attribute not found");
 
-        // Verify token decimals is 8
+        // Verify token decimals is 8.
         bool foundTokenDecimals = false;
         for (uint256 i = 0; i < attributes.length; i++) {
             JSONParserLib.Item memory attribute = attributes[i];
@@ -208,33 +209,33 @@ contract TokenURIFetchingTest is Setup {
     }
 
     function test_tokenURI_tokenWithoutMetadata() public {
-        // Register allocator and create a deposit with token that doesn't implement metadata
+        // Register allocator and create a deposit with token that doesn't implement metadata.
         (, bytes12 lockTag) = _registerAllocator(alwaysOKAllocator);
         uint256 id = _makeDeposit(swapper, address(tokenWithoutMetadata), 1e18, lockTag);
 
-        // Get the tokenURI for the token without metadata
+        // Get the tokenURI for the token without metadata.
         string memory uri = theCompact.tokenURI(id);
 
-        // Parse the JSON using Solady JSONParserLib
+        // Parse the JSON using Solady JSONParserLib.
         JSONParserLib.Item memory json = uri.parse();
 
-        // Verify the JSON contains the expected values
+        // Verify the JSON contains the expected values.
         assertEq(json.at('"name"').value(), '"Compact ???"');
 
-        // Verify token address is the token without metadata address
+        // Verify token address is the token without metadata address.
         JSONParserLib.Item[] memory attributes = json.at('"attributes"').children();
         bool foundTokenAddress = false;
 
         for (uint256 i = 0; i < attributes.length; i++) {
             JSONParserLib.Item memory attribute = attributes[i];
             if (keccak256(bytes(attribute.at('"trait_type"').value())) == keccak256(bytes('"Token Address"'))) {
-                // The address should be checksummed, so we can compare with the checksummed address
+                // The address should be checksummed to compare with the string representation.
                 string memory value = attribute.at('"value"').value();
-                // Remove the quotes from the JSON string value
+                // Remove the quotes from the JSON string value.
                 string memory valueWithoutQuotes = value;
                 if (bytes(value).length >= 2 && bytes(value)[0] == '"' && bytes(value)[bytes(value).length - 1] == '"')
                 {
-                    // Extract the string without quotes
+                    // Extract the string without quotes.
                     bytes memory valueBytes = bytes(value);
                     bytes memory withoutQuotes = new bytes(valueBytes.length - 2);
                     for (uint256 j = 0; j < withoutQuotes.length; j++) {
@@ -243,7 +244,7 @@ contract TokenURIFetchingTest is Setup {
                     valueWithoutQuotes = string(withoutQuotes);
                 }
 
-                // Get the checksummed address of the token without metadata
+                // Get the checksummed address of the token without metadata.
                 string memory expectedAddress = LibString.toHexStringChecksummed(address(tokenWithoutMetadata));
                 assertEq(
                     valueWithoutQuotes, expectedAddress, "Token address doesn't match expected checksummed address"
@@ -255,7 +256,7 @@ contract TokenURIFetchingTest is Setup {
 
         assertTrue(foundTokenAddress, "Token Address attribute not found");
 
-        // Verify token name is "unknown token"
+        // Verify token name is "unknown token".
         bool foundTokenName = false;
         for (uint256 i = 0; i < attributes.length; i++) {
             JSONParserLib.Item memory attribute = attributes[i];
@@ -268,7 +269,7 @@ contract TokenURIFetchingTest is Setup {
 
         assertTrue(foundTokenName, "Token Name attribute not found");
 
-        // Verify token symbol is "???"
+        // Verify token symbol is "???".
         bool foundTokenSymbol = false;
         for (uint256 i = 0; i < attributes.length; i++) {
             JSONParserLib.Item memory attribute = attributes[i];
@@ -281,7 +282,7 @@ contract TokenURIFetchingTest is Setup {
 
         assertTrue(foundTokenSymbol, "Token Symbol attribute not found");
 
-        // Verify token decimals is 0
+        // Verify token decimals is 0.
         bool foundTokenDecimals = false;
         for (uint256 i = 0; i < attributes.length; i++) {
             JSONParserLib.Item memory attribute = attributes[i];
@@ -296,31 +297,31 @@ contract TokenURIFetchingTest is Setup {
     }
 
     function test_tokenURI_verifyLockTag() public {
-        // Register allocator and create a deposit with native token (ETH)
+        // Register allocator and create a deposit with native token (ETH).
         (, bytes12 lockTag) = _registerAllocator(alwaysOKAllocator);
         uint256 id = _makeDeposit(swapper, 1e18, lockTag);
 
-        // Get the tokenURI for the native token
+        // Get the tokenURI for the native token.
         string memory uri = theCompact.tokenURI(id);
 
-        // Parse the JSON using Solady JSONParserLib
+        // Parse the JSON using Solady JSONParserLib.
         JSONParserLib.Item memory json = uri.parse();
 
-        // Verify the lock tag is included and has the correct format
+        // Verify the lock tag is included and has the correct format.
         JSONParserLib.Item[] memory attributes = json.at('"attributes"').children();
         bool foundLockTag = false;
 
         for (uint256 i = 0; i < attributes.length; i++) {
             JSONParserLib.Item memory attribute = attributes[i];
             if (keccak256(bytes(attribute.at('"trait_type"').value())) == keccak256(bytes('"Lock Tag"'))) {
-                // Verify the lock tag has the correct format (0x followed by 24 hex characters)
+                // Verify the lock tag has the correct format (0x followed by 24 hex characters).
                 string memory value = attribute.at('"value"').value();
 
-                // Remove the quotes from the JSON string value
+                // Remove the quotes from the JSON string value.
                 string memory valueWithoutQuotes = value;
                 if (bytes(value).length >= 2 && bytes(value)[0] == '"' && bytes(value)[bytes(value).length - 1] == '"')
                 {
-                    // Extract the string without quotes
+                    // Extract the string without quotes.
                     bytes memory valueBytes = bytes(value);
                     bytes memory withoutQuotes = new bytes(valueBytes.length - 2);
                     for (uint256 j = 0; j < withoutQuotes.length; j++) {
@@ -329,22 +330,22 @@ contract TokenURIFetchingTest is Setup {
                     valueWithoutQuotes = string(withoutQuotes);
                 }
 
-                // Verify the lock tag starts with "0x"
+                // Verify the lock tag starts with "0x".
                 assertTrue(
                     bytes(valueWithoutQuotes).length > 2 && bytes(valueWithoutQuotes)[0] == "0"
                         && bytes(valueWithoutQuotes)[1] == "x",
                     "Lock tag does not start with 0x"
                 );
 
-                // Verify the lock tag has the correct length (0x + 24 hex characters)
+                // Verify the lock tag has the correct length (0x + 24 hex characters).
                 assertTrue(bytes(valueWithoutQuotes).length == 26, "Lock tag does not have the correct length");
 
-                // First, compare the hex strings directly
+                // First, compare the hex strings directly.
                 string memory expectedLockTagHex = LibString.toHexString(uint96(lockTag));
                 assertEq(valueWithoutQuotes, expectedLockTagHex, "Lock tag hex string doesn't match expected value");
 
-                // Then, decode the hex string back to bytes12 and compare with the expected lock tag
-                // Remove the "0x" prefix before decoding
+                // Then, decode the hex string back to bytes12 and compare with the expected lock tag.
+                // Remove the "0x" prefix before decoding.
                 string memory hexWithoutPrefix = substring(valueWithoutQuotes, 2, bytes(valueWithoutQuotes).length);
                 bytes12 decodedLockTag = hexStringToBytes12(hexWithoutPrefix);
                 assertEq(decodedLockTag, lockTag, "Decoded lock tag doesn't match expected lock tag");
@@ -358,20 +359,20 @@ contract TokenURIFetchingTest is Setup {
     }
 
     function test_tokenURI_verifyAllAttributes() public {
-        // Register allocator and create a deposit with native token (ETH)
+        // Register allocator and create a deposit with native token (ETH).
         (, bytes12 lockTag) = _registerAllocator(alwaysOKAllocator);
         uint256 id = _makeDeposit(swapper, 1e18, lockTag);
 
-        // Get the tokenURI for the native token
+        // Get the tokenURI for the native token.
         string memory uri = theCompact.tokenURI(id);
 
-        // Parse the JSON using Solady JSONParserLib
+        // Parse the JSON using Solady JSONParserLib.
         JSONParserLib.Item memory json = uri.parse();
 
-        // Verify all required attributes are present
+        // Verify all required attributes are present.
         JSONParserLib.Item[] memory attributes = json.at('"attributes"').children();
 
-        // Define the expected attribute names
+        // Define the expected attribute names.
         string[9] memory expectedAttributes = [
             "ID",
             "Token Address",
@@ -384,7 +385,7 @@ contract TokenURIFetchingTest is Setup {
             "Lock Tag"
         ];
 
-        // Check that all expected attributes are present
+        // Check that all expected attributes are present.
         for (uint256 i = 0; i < expectedAttributes.length; i++) {
             bool found = false;
             for (uint256 j = 0; j < attributes.length; j++) {
@@ -401,16 +402,16 @@ contract TokenURIFetchingTest is Setup {
             assertTrue(found, string.concat("Expected attribute not found: ", expectedAttributes[i]));
         }
 
-        // Verify the description field exists and contains expected content
+        // Verify the description field exists and contains expected content.
         string memory description = json.at('"description"').value();
         assertTrue(bytes(description).length > 0, "Description is empty");
 
-        // Verify the image field exists
+        // Verify the image field exists.
         string memory image = json.at('"image"').value();
         assertTrue(bytes(image).length > 0, "Image is empty");
     }
 
-    /// @dev Extracts a substring from a string
+    /// @dev Extracts a substring from a string.
     /// @param str The input string
     /// @param startIndex The starting index (inclusive)
     /// @param endIndex The ending index (exclusive)
@@ -428,34 +429,34 @@ contract TokenURIFetchingTest is Setup {
         return string(result);
     }
 
-    /// @dev Converts the first 24 characters of a hexadecimal string to bytes12
+    /// @dev Converts the first 24 characters of a hexadecimal string to bytes12.
     /// @param hexString The hex string to convert (without 0x prefix)
     /// @return result The resulting bytes12
     function hexStringToBytes12(string memory hexString) internal pure returns (bytes12 result) {
         bytes memory strBytes = bytes(hexString);
 
-        // Check if string has at least 24 characters
+        // Check if string has at least 24 characters.
         require(strBytes.length >= 24, "Hex string too short for bytes12");
 
-        // Process 24 characters (12 bytes)
+        // Process 24 characters (12 bytes).
         for (uint256 i = 0; i < 12; i++) {
-            // Get the hex characters
+            // Get the hex characters.
             bytes1 char1 = strBytes[i * 2];
             bytes1 char2 = strBytes[i * 2 + 1];
 
-            // Convert hex characters to their numerical values
+            // Convert hex characters to their numerical values.
             uint8 val1 = _hexCharToUint8(char1);
             uint8 val2 = _hexCharToUint8(char2);
 
-            // Combine to get the byte value
+            // Combine to get the byte value.
             uint8 byteValue = val1 * 16 + val2;
 
-            // Set the byte at the appropriate position in the result
+            // Set the byte at the appropriate position in the result.
             result |= bytes12(bytes1(byteValue)) >> (i * 8);
         }
     }
 
-    /// @dev Helper function to convert a hex character to its decimal value
+    /// @dev Helper function to convert a hex character to its decimal value.
     /// @param c The character to convert
     /// @return The decimal value
     function _hexCharToUint8(bytes1 c) internal pure returns (uint8) {
@@ -472,26 +473,26 @@ contract TokenURIFetchingTest is Setup {
     }
 
     function test_tokenURI_jsonStructure() public {
-        // Register allocator and create a deposit with native token (ETH)
+        // Register allocator and create a deposit with native token (ETH).
         (, bytes12 lockTag) = _registerAllocator(alwaysOKAllocator);
         uint256 id = _makeDeposit(swapper, 1e18, lockTag);
 
-        // Get the tokenURI for the native token
+        // Get the tokenURI for the native token.
         string memory uri = theCompact.tokenURI(id);
 
-        // Parse the JSON using Solady JSONParserLib
+        // Parse the JSON using Solady JSONParserLib.
         JSONParserLib.Item memory json = uri.parse();
 
-        // Verify the JSON has the expected structure
+        // Verify the JSON has the expected structure.
         assertTrue(json.isObject(), "JSON is not an object");
 
-        // Check required top-level fields
+        // Check required top-level fields.
         assertTrue(json.at('"name"').isString(), "name field is not a string");
         assertTrue(json.at('"description"').isString(), "description field is not a string");
         assertTrue(json.at('"image"').isString(), "image field is not a string");
         assertTrue(json.at('"attributes"').isArray(), "attributes field is not an array");
 
-        // Check attributes structure
+        // Check attributes structure.
         JSONParserLib.Item[] memory attributes = json.at('"attributes"').children();
         assertTrue(attributes.length > 0, "attributes array is empty");
 
@@ -500,13 +501,13 @@ contract TokenURIFetchingTest is Setup {
             assertTrue(attribute.isObject(), "attribute is not an object");
             assertTrue(attribute.at('"trait_type"').isString(), "trait_type is not a string");
 
-            // Check that the value has the correct type based on the trait_type
+            // Check that the value has the correct type based on the trait_type.
             string memory traitType = attribute.at('"trait_type"').value();
             if (keccak256(bytes(traitType)) == keccak256(bytes('"Token Decimals"'))) {
-                // Token Decimals should be a number
+                // Token Decimals should be a number.
                 assertTrue(attribute.at('"value"').isNumber(), "Token Decimals value is not a number");
             } else {
-                // All other attributes should have string values
+                // All other attributes should have string values.
                 assertTrue(attribute.at('"value"').isString(), "Attribute value is not a string");
             }
         }
@@ -515,7 +516,7 @@ contract TokenURIFetchingTest is Setup {
 
 /**
  * @title MockERC20WithoutMetadata
- * @notice A mock ERC20 token that doesn't implement name, symbol, or decimals methods
+ * @notice A mock ERC20 token that doesn't implement name, symbol, or decimals methods.
  */
 contract MockERC20WithoutMetadata {
     mapping(address => uint256) private _balances;

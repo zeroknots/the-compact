@@ -43,7 +43,7 @@ contract NonceConsumptionTest is Test {
             );
         }
 
-        // Verify that a nonce we didn't consume is still valid
+        // Verify that an unconsumed nonce is still valid
         uint256 unusedNonce = 100;
         bool isUnusedNonceConsumed = theCompact.hasConsumedAllocatorNonce(unusedNonce, allocator);
         assertFalse(isUnusedNonceConsumed, "Unused nonce should not be consumed");
