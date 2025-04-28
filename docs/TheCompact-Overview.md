@@ -381,7 +381,7 @@ Executes a forced withdrawal from a resource lock assuming it is in an activated
 ```solidity
 function assignEmissary(bytes12 lockTag, address emissary) external returns (bool);
 ```
-Assigns an emissary for the caller that has authority to authorize claims where that caller is the sponsor. Once an emissary has been set for a given sponsor and lock tag, any reassignment must first be scheduled and can only be reassigned once the reset period on the lock tag in question has elapsed. 
+Assigns an emissary for the caller that has authority to authorize claims where that caller is the sponsor. Once an emissary has been set for a given sponsor and lock tag, any reassignment must first be scheduled and can only be reassigned once the reset period on the lock tag in question has elapsed. Providing an the emissary of address(0) indicates to remove the emissary assignment completely.
 
 ### scheduleEmissaryAssignment
 
@@ -762,6 +762,13 @@ Emissaries provide a fallback verification mechanism for sponsors. They are part
 
 The emissary is assigned for a specific lock tag and uses the reset period on that lock tag to block reassignment for the duration of that reset period. This ensures that once an emissary is assigned, another assignment cannot be made until the reset period has elapsed.
 
+Emissaries can have one of three statuses:
+- **Disabled**: No emissary is currently assigned
+- **Enabled**: An emissary is currently active and can verify claims
+- **Scheduled**: An emissary assignment is pending and will become active after the timelock period as indicated by the reset period on the respective lock tag.
+
+To change an emissary once an initial emissary has already been assigned, the sponsor must first call `scheduleEmissaryAssignment` to initiate the timelock, then wait for the reset period to elapse before calling `assignEmissary` with the new emissary address. To remove an emissary completely, the sponsor can call `assignEmissary` with address(0) (after scheduling emissary assignment if necessary).
+
 ## Forced Withdrawals
 
 Forced withdrawals provide a safety mechanism for sponsors in case an allocator goes down or refuses to cosign for a claim. The process works as follows:
@@ -866,13 +873,15 @@ The Compact also supports integration with Permit2 for gasless deposits. These u
 When a compact is created through signatures, the following verification process occurs:
 
 1. The sponsor signs the appropriate EIP-712 payload (Compact, BatchCompact, or MultichainCompact)
-2. The allocator provides an interface as well as any additional `allocatorData` to provide supplimentary verification
+2. The allocator provides an interface as well as any additional `allocatorData` to provide supplementary verification
 3. When the arbiter submits the claim, The Compact verifies both the sponsor and the allocator portion of the claim. For the sponsor:
    - First, onchain registration is checked; if registered, it is valid
    - Next, the caller is checked; if the caller is the sponsor, it is valid
    - Then, ECDSA signature verification is attempted; if it succeeds, it is valid
    - Subsequently, EIP-1271 `isValidSignature` is called with half of remaining gas; if it succeeds, it is valid
    - Finally, for sponsors with assigned emissaries, the emissary's `verifyClaim` function is called; if it succeeds, it is valid
+
+The verification process for the emissary involves passing the sponsor address, claim hash, signature, and lock tag to the emissary's `verifyClaim` function. The emissary must return the function selector (0xcd4d6588) to indicate successful verification.
 
 This approach ensures that both the sponsor and allocator have authorized the compact, providing security against unauthorized claims. Note that sponsors do not have authority to "cancel" a compact; only allocators have the authority to cancel (as they are the entities bearing the trust assumption to uphold equivocation guarantees on behalf of claimants that fulfill the mandate of a given compact).
 
@@ -975,7 +984,16 @@ To prevent griefing by claimants via malicious receive hooks or callbacks during
 3. This fallback only occurs if there is sufficient gas remaining (above a benchmarked stipend amount).
 4. The required stipend amounts for both native token and ERC20 token withdrawals can be queried using the `getRequiredWithdrawalFallbackStipends` function.
 
-This fallback mechanism ensures that claims can still be processed even if there are issues with the underlying token and that one claimant cannot prevent a claim from being processed by other claimants via manipulation of receive hooks or other callbacks.
+The benchmarking process for determining these stipend amounts is performed by calling the `__benchmark` function with a salt value and exactly 2 wei of callvalue. This function:
+1. Measures the gas cost of transferring native tokens to a cold address (derived from the contract address and salt)
+2. Measures the gas cost of transferring ERC20 tokens using a benchmark token deployed during contract creation
+3. Stores these gas costs for use in the fallback mechanism
+
+This benchmarking ensures that the fallback mechanism has accurate gas estimates for different token types across various chains, accounting for differences in gas pricing and execution costs.
+
+Note that benchmarking cannot be performed during initial deployment of The Compact as it benchmarks cold account accesses; it must be triggered in a subsequent transaction in order to successfully run.
+
+This fallback mechanism ensures that claims can still be processed even if there are issues with the underlying token and that one claimant cannot prevent a claim from being processed by other claimants via manipulation of receive hooks or other callbacks. If benchmarking has not been performed, the fallback can still be triggered but is more susceptible to purposefully being triggered as a way to save gas by skipping withdrawals as part of claim processing.
 
 # Key Data Structures
 
