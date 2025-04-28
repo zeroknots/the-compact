@@ -1,8 +1,8 @@
 {
-  "depositBatchSingleERC20": "66402",
-  "depositBatchSingleNative": "26824",
-  "depositERC20AndURI": "66020",
-  "depositERC20Basic": "66020",
-  "depositETHAndURI": "26077",
-  "depositETHBasic": "26077"
+  "depositBatchSingleERC20": "68913",
+  "depositBatchSingleNative": "27079",
+  "depositERC20AndURI": "68667",
+  "depositERC20Basic": "68667",
+  "depositETHAndURI": "26160",
+  "depositETHBasic": "26160"
 }
