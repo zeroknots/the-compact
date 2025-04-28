@@ -31,13 +31,13 @@ contract ComponentLibTester {
         return ComponentLib._buildIdsAndAmounts(claims, sponsorDomainSeparator);
     }
 
-    function verifyAndProcessSplitComponents(
+    function verifyAndProcessComponents(
         Component[] calldata claimants,
         address sponsor,
         uint256 id,
         uint256 allocatedAmount
     ) external {
-        claimants.verifyAndProcessSplitComponents(sponsor, id, allocatedAmount);
+        claimants.verifyAndProcessComponents(sponsor, id, allocatedAmount);
     }
 }
 
@@ -60,18 +60,18 @@ contract ComponentLibTest is Test {
         (allocatorId, lockTag) = _registerAllocator(ALLOCATOR);
     }
 
-    function testAggregate_Empty() public {
+    function testAggregate_Empty() public view {
         Component[] memory recipients = new Component[](0);
         assertEq(tester.aggregateComponents(recipients), 0, "Aggregate empty failed");
     }
 
-    function testAggregate_Single() public {
+    function testAggregate_Single() public view {
         Component[] memory recipients = new Component[](1);
         recipients[0] = Component({ claimant: _makeClaimant(CLAIMANT_1), amount: 100 });
         assertEq(tester.aggregateComponents(recipients), 100, "Aggregate single failed");
     }
 
-    function testAggregate_Multiple() public {
+    function testAggregate_Multiple() public view {
         Component[] memory recipients = new Component[](3);
         recipients[0] = Component({ claimant: _makeClaimant(CLAIMANT_1), amount: 100 });
         recipients[1] = Component({ claimant: _makeClaimant(CLAIMANT_2), amount: 250 });
@@ -129,7 +129,7 @@ contract ComponentLibTest is Test {
         return lock.toId();
     }
 
-    function testBuildIdsAndAmounts_Single() public {
+    function testBuildIdsAndAmounts_Single() public view {
         uint256 id = _buildTestId(ALLOCATOR, TOKEN, Scope.Multichain, ResetPeriod.OneDay);
         uint256 amount = 1000;
         Component[] memory portions = new Component[](1);
@@ -148,7 +148,7 @@ contract ComponentLibTest is Test {
         assertEq(shortestResetPeriod, uint256(ResetPeriod.OneDay), "Shortest period mismatch");
     }
 
-    function testBuildIdsAndAmounts_Multiple_Valid() public {
+    function testBuildIdsAndAmounts_Multiple_Valid() public view {
         uint256 id1 = _buildTestId(ALLOCATOR, TOKEN, Scope.Multichain, ResetPeriod.OneDay);
         uint256 id2 = _buildTestId(ALLOCATOR, address(0xcccc), Scope.Multichain, ResetPeriod.OneHourAndFiveMinutes);
         uint256 amount1 = 1000;
@@ -212,7 +212,7 @@ contract ComponentLibTest is Test {
         tester.buildIdsAndAmounts(claims, sponsorDomainSeparator);
     }
 
-    function testVerifyAndProcessSplitComponents_AmountExceedsAllocation() public {
+    function testVerifyAndProcessComponents_AmountExceedsAllocation() public {
         uint256 id = _buildTestId(ALLOCATOR, TOKEN, Scope.Multichain, ResetPeriod.OneDay);
         uint256 allocatedAmount = 300;
 
@@ -221,20 +221,20 @@ contract ComponentLibTest is Test {
         recipients[1] = Component({ claimant: _makeClaimant(CLAIMANT_2), amount: 250 });
 
         vm.expectRevert(InsufficientBalance.selector);
-        tester.verifyAndProcessSplitComponents(recipients, address(this), id, allocatedAmount);
+        tester.verifyAndProcessComponents(recipients, address(this), id, allocatedAmount);
     }
 
-    function testVerifyAndProcessSplitComponents_EmptyClaimants() public {
+    function testVerifyAndProcessComponents_EmptyClaimants() public {
         uint256 id = _buildTestId(ALLOCATOR, TOKEN, Scope.Multichain, ResetPeriod.OneDay);
         uint256 allocatedAmount = 100;
         Component[] memory recipients = new Component[](0);
 
         // Empty array sets the error buffer to 0, which causes a revert with AllocatedAmountExceeded
         vm.expectRevert(abi.encodeWithSelector(ITheCompact.AllocatedAmountExceeded.selector, allocatedAmount, 0));
-        tester.verifyAndProcessSplitComponents(recipients, address(this), id, allocatedAmount);
+        tester.verifyAndProcessComponents(recipients, address(this), id, allocatedAmount);
     }
 
-    function testVerifyAndProcessSplitComponents_Overflow() public {
+    function testVerifyAndProcessComponents_Overflow() public {
         uint256 id = _buildTestId(ALLOCATOR, TOKEN, Scope.Multichain, ResetPeriod.OneDay);
         uint256 allocatedAmount = type(uint256).max;
 
@@ -243,7 +243,7 @@ contract ComponentLibTest is Test {
         recipients[1] = Component({ claimant: _makeClaimant(CLAIMANT_2), amount: 1 });
 
         vm.expectRevert(InsufficientBalance.selector);
-        tester.verifyAndProcessSplitComponents(recipients, address(this), id, allocatedAmount);
+        tester.verifyAndProcessComponents(recipients, address(this), id, allocatedAmount);
     }
 
     function _makeClaimant(address _recipient) internal view returns (uint256) {

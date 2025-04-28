@@ -69,10 +69,10 @@ contract TransferLogicTest is Test {
 
         // Process the transfer
         vm.prank(sponsor);
-        assertTrue(logic.processSplitTransfer(transfer), "Transfer should be successful");
+        assertTrue(logic.processTransfer(transfer), "Transfer should be successful");
     }
 
-    function test_processSplitBatchTransfer() public {
+    function test_processBatchTransfer() public {
         MockERC20 secondToken = new MockERC20("Second Token", "SECOND", 18);
         secondToken.mint(sponsor, 500);
         _makeDeposit(sponsor, address(secondToken), 500, lockTag);
@@ -110,7 +110,7 @@ contract TransferLogicTest is Test {
 
         // Process the batch transfer
         vm.prank(sponsor);
-        assertTrue(logic.processSplitBatchTransfer(batchTransfer), "Batch transfer should be successful");
+        assertTrue(logic.processBatchTransfer(batchTransfer), "Batch transfer should be successful");
     }
 
     function test_processSplitTransfer_expired() public {
@@ -130,10 +130,10 @@ contract TransferLogicTest is Test {
         // Process the transfer - should revert with ExpiredCompact
         vm.prank(sponsor);
         vm.expectRevert();
-        logic.processSplitTransfer(transfer);
+        logic.processTransfer(transfer);
     }
 
-    function test_processSplitTransfer_insufficientBalance() public {
+    function test_processTransfer_insufficientBalance() public {
         // Create components array requesting more than available
         Component[] memory recipients = new Component[](1);
         recipients[0] = Component({ claimant: _makeClaimant(recipient), amount: 1001 }); // More than the 1000 available
@@ -150,10 +150,10 @@ contract TransferLogicTest is Test {
         // Process the transfer - should revert with arithmetic error
         vm.prank(sponsor);
         vm.expectRevert();
-        logic.processSplitTransfer(transfer);
+        logic.processTransfer(transfer);
     }
 
-    function test_processSplitTransfer_zeroAmount() public {
+    function test_processTransfer_zeroAmount() public {
         // Create components array with zero amount
         Component[] memory recipients = new Component[](1);
         recipients[0] = Component({ claimant: _makeClaimant(recipient), amount: 0 });
@@ -170,10 +170,10 @@ contract TransferLogicTest is Test {
         // Reverts because zero amount is disallowed
         vm.expectRevert(abi.encodePacked(bytes4(keccak256("InsufficientBalance()"))));
         vm.prank(sponsor);
-        logic.processSplitTransfer(transfer);
+        logic.processTransfer(transfer);
     }
 
-    function test_processSplitTransfer_zeroRecipients() public {
+    function test_processTransfer_zeroRecipients() public {
         // Create empty components array
         Component[] memory recipients = new Component[](0);
 
@@ -188,7 +188,7 @@ contract TransferLogicTest is Test {
 
         // Process the transfer
         vm.prank(sponsor);
-        bool success = logic.processSplitTransfer(transfer);
+        bool success = logic.processTransfer(transfer);
 
         // Verify the transfer was "successful" but no tokens moved
         assertTrue(success, "Transfer should be 'successful'");
@@ -219,7 +219,7 @@ contract TransferLogicTest is Test {
         emit ERC6909.Transfer(sponsor, sponsor, recipient, testTokenId, 300);
 
         vm.prank(sponsor);
-        assertTrue(logic.processSplitTransfer(transfer), "Transfer should be successful");
+        assertTrue(logic.processTransfer(transfer), "Transfer should be successful");
     }
 
     function test_processSplitTransfer_maxRecipients() public {
@@ -245,7 +245,7 @@ contract TransferLogicTest is Test {
 
         // Process the transfer
         vm.prank(sponsor);
-        assertTrue(logic.processSplitTransfer(transfer), "Transfer should be successful");
+        assertTrue(logic.processTransfer(transfer), "Transfer should be successful");
     }
 
     function test_processSplitBatchTransfer_emptyTransfers() public {
@@ -263,7 +263,7 @@ contract TransferLogicTest is Test {
         // Process the batch transfer - should revert because of empty array check
         vm.prank(sponsor);
         vm.expectRevert();
-        logic.processSplitBatchTransfer(batchTransfer);
+        logic.processBatchTransfer(batchTransfer);
     }
 
     function test_processSplitBatchTransfer_mixedResults() public {
@@ -317,7 +317,7 @@ contract TransferLogicTest is Test {
         vm.expectRevert(abi.encodePacked(bytes4(keccak256("InsufficientBalance()"))));
 
         vm.prank(sponsor);
-        logic.processSplitBatchTransfer(batchTransfer);
+        logic.processBatchTransfer(batchTransfer);
     }
 
     function test_inconsistentAllocatorsInBatchTransfer() public {
@@ -359,7 +359,7 @@ contract TransferLogicTest is Test {
         // Should revert with inconsistent allocators
         vm.expectRevert();
         vm.prank(sponsor);
-        logic.processSplitBatchTransfer(batchTransfer);
+        logic.processBatchTransfer(batchTransfer);
     }
 
     function test_integerOverflowInAggregate() public {
@@ -379,7 +379,7 @@ contract TransferLogicTest is Test {
         // Should revert with arithmetic overflow
         vm.expectRevert();
         vm.prank(sponsor);
-        logic.processSplitTransfer(transfer);
+        logic.processTransfer(transfer);
     }
 
     function test_unusualTokenIdBitPatterns() public {
@@ -401,7 +401,7 @@ contract TransferLogicTest is Test {
         // Should either handle correctly or revert with a specific error
         vm.prank(sponsor);
         vm.expectRevert(); // Expect revert due to invalid token ID
-        logic.processSplitTransfer(transfer);
+        logic.processTransfer(transfer);
     }
 
     function _makeClaimant(address _recipient) internal view returns (uint256) {

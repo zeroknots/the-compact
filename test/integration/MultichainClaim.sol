@@ -17,11 +17,11 @@ import {
     TestParams,
     CreateClaimHashWithWitnessArgs,
     CreateBatchClaimHashWithWitnessArgs,
-    SplitBatchMultichainClaimArgs
+    BatchMultichainClaimArgs
 } from "./TestHelperStructs.sol";
 
 contract MultichainClaimTest is Setup {
-    function test_splitMultichainClaimWithWitness() public {
+    function test_multichainClaimWithWitness() public {
         // Setup test parameters
         TestParams memory params;
         params.resetPeriod = ResetPeriod.TenMinutes;
@@ -74,14 +74,14 @@ contract MultichainClaimTest is Setup {
             claim.witness = _createCompactWitness(witnessArgument);
         }
 
-        // Create allocation hashes
-        bytes32[] memory allocationHashes = new bytes32[](3);
+        // Create element hashes
+        bytes32[] memory elementHashes = new bytes32[](3);
         {
             bytes32 elementTypehash = keccak256(
                 "Element(address arbiter,uint256 chainId,uint256[2][] idsAndAmounts,Mandate mandate)Mandate(uint256 witnessArgument)"
             );
 
-            allocationHashes[0] = keccak256(
+            elementHashes[0] = keccak256(
                 abi.encode(
                     elementTypehash,
                     0x2222222222222222222222222222222222222222, // arbiter
@@ -91,7 +91,7 @@ contract MultichainClaimTest is Setup {
                 )
             );
 
-            allocationHashes[1] = keccak256(
+            elementHashes[1] = keccak256(
                 abi.encode(
                     elementTypehash,
                     0x2222222222222222222222222222222222222222, // arbiter
@@ -101,7 +101,7 @@ contract MultichainClaimTest is Setup {
                 )
             );
 
-            allocationHashes[2] = keccak256(
+            elementHashes[2] = keccak256(
                 abi.encode(
                     elementTypehash,
                     0x2222222222222222222222222222222222222222, // arbiter
@@ -125,7 +125,7 @@ contract MultichainClaimTest is Setup {
                     claim.sponsor,
                     claim.nonce,
                     claim.expires,
-                    keccak256(abi.encodePacked(allocationHashes))
+                    keccak256(abi.encodePacked(elementHashes))
                 )
             );
         }
@@ -155,12 +155,12 @@ contract MultichainClaimTest is Setup {
         // Set up additional chains
         {
             bytes32[] memory additionalChains = new bytes32[](2);
-            additionalChains[0] = allocationHashes[1];
-            additionalChains[1] = allocationHashes[2];
+            additionalChains[0] = elementHashes[1];
+            additionalChains[1] = elementHashes[2];
             claim.additionalChains = additionalChains;
         }
 
-        // Create split components
+        // Create components
         {
             uint256 claimantOne = abi.decode(
                 abi.encodePacked(bytes12(bytes32(id)), 0x1111111111111111111111111111111111111111), (uint256)
@@ -171,12 +171,12 @@ contract MultichainClaimTest is Setup {
 
             Component[] memory recipients;
             {
-                Component memory splitOne = Component({ claimant: claimantOne, amount: 4e17 });
-                Component memory splitTwo = Component({ claimant: claimantTwo, amount: 6e17 });
+                Component memory componentOne = Component({ claimant: claimantOne, amount: 4e17 });
+                Component memory componentTwo = Component({ claimant: claimantTwo, amount: 6e17 });
 
                 recipients = new Component[](2);
-                recipients[0] = splitOne;
-                recipients[1] = splitTwo;
+                recipients[0] = componentOne;
+                recipients[1] = componentTwo;
             }
 
             claim.claimants = recipients;
@@ -189,7 +189,7 @@ contract MultichainClaimTest is Setup {
             {
                 vm.prank(0x2222222222222222222222222222222222222222);
                 bytes32 returnedClaimHash = theCompact.multichainClaim(claim);
-                vm.snapshotGasLastCall("splitMultichainClaimWithWitness");
+                vm.snapshotGasLastCall("multichainClaimWithWitness");
                 assertEq(returnedClaimHash, claimHash);
 
                 assertEq(address(theCompact).balance, 1e18);
@@ -228,8 +228,8 @@ contract MultichainClaimTest is Setup {
             ExogenousMultichainClaim memory anotherClaim;
             {
                 bytes32[] memory additionalChains = new bytes32[](2);
-                additionalChains[0] = allocationHashes[0];
-                additionalChains[1] = allocationHashes[2];
+                additionalChains[0] = elementHashes[0];
+                additionalChains[1] = elementHashes[2];
 
                 anotherClaim.allocatorData = exogenousAllocatorData;
                 anotherClaim.sponsorSignature = claim.sponsorSignature;
@@ -250,7 +250,7 @@ contract MultichainClaimTest is Setup {
             {
                 vm.prank(0x2222222222222222222222222222222222222222);
                 bytes32 returnedClaimHash = theCompact.exogenousClaim(anotherClaim);
-                vm.snapshotGasLastCall("exogenousSplitMultichainClaimWithWitness");
+                vm.snapshotGasLastCall("exogenousMultichainClaimWithWitness");
                 assertEq(returnedClaimHash, claimHash);
 
                 assertEq(theCompact.balanceOf(swapper, anotherId), 0);
@@ -264,8 +264,8 @@ contract MultichainClaimTest is Setup {
         }
     }
 
-    function test_splitBatchMultichainClaimWithWitness() public {
-        SplitBatchMultichainClaimArgs memory args;
+    function test_BatchMultichainClaimWithWitness() public {
+        BatchMultichainClaimArgs memory args;
 
         // Setup test parameters
         args.params.deadline = block.timestamp + 1000;
@@ -318,7 +318,7 @@ contract MultichainClaimTest is Setup {
             args.claim.witness = _createCompactWitness(witnessArgument);
         }
 
-        // Create allocation hashes
+        // Create element hashes
         {
             bytes32 elementTypehash = keccak256(
                 "Element(address arbiter,uint256 chainId,uint256[2][] idsAndAmounts,Mandate mandate)Mandate(uint256 witnessArgument)"
@@ -398,11 +398,11 @@ contract MultichainClaimTest is Setup {
                     (uint256)
                 );
 
-                Component memory splitOne = Component({ claimant: claimantOne, amount: 4e17 });
-                Component memory splitTwo = Component({ claimant: claimantTwo, amount: 6e17 });
+                Component memory componentOne = Component({ claimant: claimantOne, amount: 4e17 });
+                Component memory componentTwo = Component({ claimant: claimantTwo, amount: 6e17 });
 
-                recipients[0] = splitOne;
-                recipients[1] = splitTwo;
+                recipients[0] = componentOne;
+                recipients[1] = componentTwo;
             }
             args.claim.claims[0] = BatchClaimComponent({ id: args.ids[0], allocatedAmount: 1e18, portions: recipients });
         }
@@ -414,7 +414,7 @@ contract MultichainClaimTest is Setup {
             {
                 vm.prank(0x2222222222222222222222222222222222222222);
                 bytes32 returnedClaimHash = theCompact.batchMultichainClaim(args.claim);
-                vm.snapshotGasLastCall("splitBatchMultichainClaimWithWitness");
+                vm.snapshotGasLastCall("batchMultichainClaimWithWitness");
                 assertEq(returnedClaimHash, args.claimHash);
 
                 assertEq(address(theCompact).balance, 1e18);
@@ -500,7 +500,7 @@ contract MultichainClaimTest is Setup {
             {
                 vm.prank(0x2222222222222222222222222222222222222222);
                 bytes32 returnedClaimHash = theCompact.exogenousBatchClaim(args.anotherClaim);
-                vm.snapshotGasLastCall("exogenousSplitBatchMultichainClaimWithWitness");
+                vm.snapshotGasLastCall("exogenousBatchMultichainClaimWithWitness");
                 assertEq(returnedClaimHash, args.claimHash);
             }
 

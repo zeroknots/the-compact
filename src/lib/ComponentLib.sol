@@ -53,9 +53,9 @@ library ComponentLib {
      * @param transfer  An AllocatedTransfer struct containing transfer details.
      * @return          Whether the transfer was successfully processed.
      */
-    function processSplitTransfer(AllocatedTransfer calldata transfer) internal returns (bool) {
+    function processTransfer(AllocatedTransfer calldata transfer) internal returns (bool) {
         // Process the transfer for each component.
-        _processSplitTransferComponents(transfer.recipients, transfer.id);
+        _processTransferComponents(transfer.recipients, transfer.id);
 
         return true;
     }
@@ -66,8 +66,8 @@ library ComponentLib {
      * resource locks.
      * @param transfer  An AllocatedBatchTransfer struct containing batch transfer details.
      */
-    function performSplitBatchTransfer(AllocatedBatchTransfer calldata transfer) internal {
-        // Navigate to the split batch components array in calldata.
+    function performBatchTransfer(AllocatedBatchTransfer calldata transfer) internal {
+        // Navigate to the batch components array in calldata.
         ComponentsById[] calldata transfers = transfer.transfers;
 
         // Retrieve the total number of components.
@@ -79,8 +79,8 @@ library ComponentLib {
                 // Navigate to location of the component in calldata.
                 ComponentsById calldata component = transfers[i];
 
-                // Process transfer for each split component in the set.
-                _processSplitTransferComponents(component.portions, component.id);
+                // Process transfer for each component in the set.
+                _processTransferComponents(component.portions, component.id);
             }
         }
     }
@@ -98,7 +98,7 @@ library ComponentLib {
      * @param domainSeparator          The local domain separator.
      * @param validation               Function pointer to the _validate function.
      */
-    function processClaimWithSplitComponents(
+    function processClaimWithComponents(
         bytes32 messageHash,
         uint256 calldataPointer,
         uint256 offsetToId,
@@ -147,7 +147,7 @@ library ComponentLib {
         sponsorDomainSeparator.ensureValidScope(id);
 
         // Process each component, verifying total amount and executing operations.
-        components.verifyAndProcessSplitComponents(sponsor, id, allocatedAmount);
+        components.verifyAndProcessComponents(sponsor, id, allocatedAmount);
     }
 
     /**
@@ -164,7 +164,7 @@ library ComponentLib {
      * @param domainSeparator          The local domain separator.
      * @param validation               Function pointer to the _validate function.
      */
-    function processClaimWithSplitBatchComponents(
+    function processClaimWithBatchComponents(
         bytes32 messageHash,
         uint256 calldataPointer,
         uint256 offsetToId,
@@ -205,7 +205,7 @@ library ComponentLib {
                 BatchClaimComponent calldata claimComponent = claims[i];
 
                 // Process each component, verifying total amount and executing operations.
-                claimComponent.portions.verifyAndProcessSplitComponents(
+                claimComponent.portions.verifyAndProcessComponents(
                     sponsor, claimComponent.id, claimComponent.allocatedAmount
                 );
             }
@@ -266,7 +266,7 @@ library ComponentLib {
      * @param id              The ERC6909 token identifier of the resource lock.
      * @param allocatedAmount The total amount allocated for this claim.
      */
-    function verifyAndProcessSplitComponents(
+    function verifyAndProcessComponents(
         Component[] calldata claimants,
         address sponsor,
         uint256 id,
@@ -278,7 +278,7 @@ library ComponentLib {
         uint256 errorBuffer = (totalClaims == 0).asUint256();
 
         unchecked {
-            // Process each split component while tracking total amount and checking for overflow.
+            // Process each component while tracking total amount and checking for overflow.
             for (uint256 i = 0; i < totalClaims; ++i) {
                 Component calldata component = claimants[i];
                 uint256 amount = component.amount;
@@ -312,13 +312,13 @@ library ComponentLib {
      */
     function aggregate(Component[] calldata recipients) internal pure returns (uint256 sum) {
         // Retrieve the total number of components.
-        uint256 totalSplits = recipients.length;
+        uint256 totalComponents = recipients.length;
 
         uint256 errorBuffer;
         uint256 amount;
         unchecked {
             // Iterate over each additional component in calldata.
-            for (uint256 i = 0; i < totalSplits; ++i) {
+            for (uint256 i = 0; i < totalComponents; ++i) {
                 amount = recipients[i].amount;
                 sum += amount;
                 errorBuffer |= (sum < amount).asUint256();
@@ -337,13 +337,13 @@ library ComponentLib {
      * @param recipients A Component struct array containing transfer details.
      * @param id         The ERC6909 token identifier of the resource lock.
      */
-    function _processSplitTransferComponents(Component[] calldata recipients, uint256 id) private {
+    function _processTransferComponents(Component[] calldata recipients, uint256 id) private {
         // Retrieve the total number of components.
-        uint256 totalSplits = recipients.length;
+        uint256 totalComponents = recipients.length;
 
         unchecked {
             // Iterate over each additional component in calldata.
-            for (uint256 i = 0; i < totalSplits; ++i) {
+            for (uint256 i = 0; i < totalComponents; ++i) {
                 // Navigate to location of the component in calldata.
                 Component calldata component = recipients[i];
 

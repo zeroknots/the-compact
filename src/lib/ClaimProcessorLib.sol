@@ -153,31 +153,31 @@ library ClaimProcessorLib {
     }
 
     /**
-     * @notice Internal function for processing simple split claims with local domain
-     * signatures. Extracts split claim parameters from calldata, validates the claim,
-     * and executes operations for multiple recipients. Uses the message hash itself as
-     * the qualification message and a zero sponsor domain separator.
+     * @notice Internal function for processing simple claims with local domain
+     * signatures. Extracts claim parameters from calldata, validates the claim,
+     * and executes operations for multiple recipients. Uses the zero sponsor
+     * domain separator.
      * @param messageHash      The EIP-712 hash of the claim message.
      * @param calldataPointer  Pointer to the location of the associated struct in calldata.
      * @param offsetToId       Offset to segment of calldata where relevant claim parameters begin.
      * @param typehash         The EIP-712 typehash used for the claim message.
      * @param domainSeparator  The local domain separator.
      */
-    function processSimpleSplitClaim(
+    function processSimpleClaim(
         bytes32 messageHash,
         uint256 calldataPointer,
         uint256 offsetToId,
         bytes32 typehash,
         bytes32 domainSeparator
     ) internal {
-        messageHash.processClaimWithSplitComponents(
+        messageHash.processClaimWithComponents(
             calldataPointer, offsetToId, bytes32(0).asStubborn(), typehash, domainSeparator, validate
         );
     }
 
     /**
-     * @notice Internal function for processing simple split batch claims with local domain
-     * signatures. Extracts split batch claim parameters from calldata, validates the claim,
+     * @notice Internal function for processing simple batch claims with local domain
+     * signatures. Extracts batch claim parameters from calldata, validates the claim,
      * and executes operations for multiple resource locks to multiple recipients. Uses the
      * message hash itself as the qualification message and a zero sponsor domain separator.
      * @param messageHash      The EIP-712 hash of the claim message.
@@ -186,66 +186,62 @@ library ClaimProcessorLib {
      * @param typehash         The EIP-712 typehash used for the claim message.
      * @param domainSeparator  The local domain separator.
      */
-    function processSimpleSplitBatchClaim(
+    function processSimpleBatchClaim(
         bytes32 messageHash,
         uint256 calldataPointer,
         uint256 offsetToId,
         bytes32 typehash,
         bytes32 domainSeparator
     ) internal {
-        messageHash.processClaimWithSplitBatchComponents(
+        messageHash.processClaimWithBatchComponents(
             calldataPointer, offsetToId, bytes32(0).asStubborn(), typehash, domainSeparator, validate
         );
     }
 
     /**
-     * @notice Internal function for processing split claims with sponsor domain signatures.
-     * Extracts split claim parameters from calldata, validates the claim using the provided
+     * @notice Internal function for processing claims with sponsor domain signatures.
+     * Extracts claim parameters from calldata, validates the claim using the provided
      * sponsor domain, and executes operations for multiple recipients. Uses the message
      * hash itself as the qualification message.
      * @param messageHash      The EIP-712 hash of the claim message.
      * @param calldataPointer  Pointer to the location of the associated struct in calldata.
-     * @param offsetToId       Offset to segment of calldata where relevant claim parameters begin.
      * @param sponsorDomain    The domain separator for the sponsor's signature.
      * @param typehash         The EIP-712 typehash used for the claim message.
      * @param domainSeparator  The local domain separator.
      */
-    function processSplitClaimWithSponsorDomain(
+    function processClaimWithSponsorDomain(
         bytes32 messageHash,
         uint256 calldataPointer,
-        uint256 offsetToId,
         bytes32 sponsorDomain,
         bytes32 typehash,
         bytes32 domainSeparator
     ) internal {
-        messageHash.processClaimWithSplitComponents(
-            calldataPointer, offsetToId, sponsorDomain, typehash, domainSeparator, validate
+        messageHash.processClaimWithComponents(
+            calldataPointer, 0x140, sponsorDomain, typehash, domainSeparator, validate
         );
     }
 
     /**
-     * @notice Internal function for processing split batch claims with sponsor domain
-     * signatures. Extracts split batch claim parameters from calldata, validates the claim
+     * @notice Internal function for processing batch claims with sponsor domain
+     * signatures. Extracts batch claim parameters from calldata, validates the claim
      * using the provided sponsor domain, and executes operations for multiple resource
      * locks to multiple recipients. Uses the message hash itself as the qualification
      * message.
      * @param messageHash      The EIP-712 hash of the claim message.
      * @param calldataPointer  Pointer to the location of the associated struct in calldata.
-     * @param offsetToId       Offset to segment of calldata where relevant claim parameters begin.
      * @param sponsorDomain    The domain separator for the sponsor's signature.
      * @param typehash         The EIP-712 typehash used for the claim message.
      * @param domainSeparator  The local domain separator.
      */
-    function processSplitBatchClaimWithSponsorDomain(
+    function processBatchClaimWithSponsorDomain(
         bytes32 messageHash,
         uint256 calldataPointer,
-        uint256 offsetToId,
         bytes32 sponsorDomain,
         bytes32 typehash,
         bytes32 domainSeparator
     ) internal {
-        messageHash.processClaimWithSplitBatchComponents(
-            calldataPointer, offsetToId, sponsorDomain, typehash, domainSeparator, validate
+        messageHash.processClaimWithBatchComponents(
+            calldataPointer, 0x140, sponsorDomain, typehash, domainSeparator, validate
         );
     }
 }

@@ -65,11 +65,11 @@ contract TheCompact is ITheCompact, ERC6909, TheCompactLogic {
     }
 
     function allocatedTransfer(AllocatedTransfer calldata transfer) external returns (bool) {
-        return _processSplitTransfer(transfer);
+        return _processTransfer(transfer);
     }
 
     function allocatedBatchTransfer(AllocatedBatchTransfer calldata transfer) external returns (bool) {
-        return _processSplitBatchTransfer(transfer);
+        return _processBatchTransfer(transfer);
     }
 
     function register(bytes32 claimHash, bytes32 typehash) external returns (bool) {

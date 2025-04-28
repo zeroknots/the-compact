@@ -1,6 +1,6 @@
 {
-  "exogenousSplitBatchMultichainClaimWithWitness": "122960",
-  "exogenousSplitMultichainClaimWithWitness": "93798",
-  "splitBatchMultichainClaimWithWitness": "95174",
-  "splitMultichainClaimWithWitness": "94026"
+  "batchMultichainClaimWithWitness": "99440",
+  "exogenousBatchMultichainClaimWithWitness": "128044",
+  "exogenousMultichainClaimWithWitness": "98356",
+  "multichainClaimWithWitness": "97618"
 }

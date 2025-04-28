@@ -24,7 +24,7 @@ library ClaimProcessorFunctionCastLib {
     /**
      * @notice Function cast to provide a Claim calldata struct while
      * treating it as a uint256 representing a calldata pointer location.
-     * @param fnIn   Function pointer to `ClaimProcessorLib.processSimpleSplitClaim`.
+     * @param fnIn   Function pointer to `ClaimProcessorLib.processSimpleClaim`.
      * @return fnOut Modified function used in `ClaimProcessorLogic._processClaim`.
      */
     function usingClaim(function(bytes32, uint256, uint256, bytes32, bytes32) internal fnIn)
@@ -40,7 +40,7 @@ library ClaimProcessorFunctionCastLib {
     /**
      * @notice Function cast to provide a BatchClaim calldata struct while
      * treating it as a uint256 representing a calldata pointer location.
-     * @param fnIn   Function pointer to `ClaimProcessorLib.processSimpleSplitBatchClaim`.
+     * @param fnIn   Function pointer to `ClaimProcessorLib.processSimpleBatchClaim`.
      * @return fnOut Modified function used in `ClaimProcessorLogic._processBatchClaim`.
      */
     function usingBatchClaim(function(bytes32, uint256, uint256, bytes32, bytes32) internal fnIn)
@@ -56,7 +56,7 @@ library ClaimProcessorFunctionCastLib {
     /**
      * @notice Function cast to provide a MultichainClaim calldata struct while
      * treating it as a uint256 representing a calldata pointer location.
-     * @param fnIn   Function pointer to `ClaimProcessorLib.processSimpleSplitClaim`.
+     * @param fnIn   Function pointer to `ClaimProcessorLib.processSimpleClaim`.
      * @return fnOut Modified function used in `ClaimProcessorLogic._processMultichainClaim`.
      */
     function usingMultichainClaim(function(bytes32, uint256, uint256, bytes32, bytes32) internal fnIn)
@@ -72,7 +72,7 @@ library ClaimProcessorFunctionCastLib {
     /**
      * @notice Function cast to provide a BatchMultichainClaim calldata struct while
      * treating it as a uint256 representing a calldata pointer location.
-     * @param fnIn   Function pointer to `ClaimProcessorLib.processSimpleSplitBatchClaim`.
+     * @param fnIn   Function pointer to `ClaimProcessorLib.processSimpleBatchClaim`.
      * @return fnOut Modified function used in `ClaimProcessorLogic._processBatchMultichainClaim`.
      */
     function usingBatchMultichainClaim(function(bytes32, uint256, uint256, bytes32, bytes32) internal fnIn)
@@ -88,15 +88,13 @@ library ClaimProcessorFunctionCastLib {
     /**
      * @notice Function cast to provide a ExogenousMultichainClaim calldata struct while
      * treating it as a uint256 representing a calldata pointer location.
-     * @param fnIn   Function pointer to `ClaimProcessorLib.processSplitClaimWithSponsorDomain`.
+     * @param fnIn   Function pointer to `ClaimProcessorLib.processClaimWithSponsorDomain`.
      * @return fnOut Modified function used in `ClaimProcessorLogic._processExogenousMultichainClaim`.
      */
-    function usingExogenousMultichainClaim(function(bytes32, uint256, uint256, bytes32, bytes32, bytes32) internal fnIn)
+    function usingExogenousMultichainClaim(function(bytes32, uint256, bytes32, bytes32, bytes32) internal fnIn)
         internal
         pure
-        returns (
-            function(bytes32, ExogenousMultichainClaim calldata, uint256, bytes32, bytes32, bytes32) internal fnOut
-        )
+        returns (function(bytes32, ExogenousMultichainClaim calldata, bytes32, bytes32, bytes32) internal fnOut)
     {
         assembly ("memory-safe") {
             fnOut := fnIn
@@ -106,17 +104,13 @@ library ClaimProcessorFunctionCastLib {
     /**
      * @notice Function cast to provide a ExogenousBatchMultichainClaim calldata struct while
      * treating it as a uint256 representing a calldata pointer location.
-     * @param fnIn   Function pointer to `ClaimProcessorLib.processSplitBatchClaimWithSponsorDomain`.
+     * @param fnIn   Function pointer to `ClaimProcessorLib.processBatchClaimWithSponsorDomain`.
      * @return fnOut Modified function used in `ClaimProcessorLogic._processExogenousBatchMultichainClaim`.
      */
-    function usingExogenousBatchMultichainClaim(
-        function(bytes32, uint256, uint256, bytes32, bytes32, bytes32) internal fnIn
-    )
+    function usingExogenousBatchMultichainClaim(function(bytes32, uint256, bytes32, bytes32, bytes32) internal fnIn)
         internal
         pure
-        returns (
-            function(bytes32, ExogenousBatchMultichainClaim calldata, uint256, bytes32, bytes32, bytes32) internal fnOut
-        )
+        returns (function(bytes32, ExogenousBatchMultichainClaim calldata, bytes32, bytes32, bytes32) internal fnOut)
     {
         assembly ("memory-safe") {
             fnOut := fnIn

@@ -37,7 +37,6 @@ import { TransferFunctionCastLib } from "./TransferFunctionCastLib.sol";
 library HashLib {
     using EfficiencyLib for bool;
     using EfficiencyLib for uint256;
-    using TransferFunctionCastLib for function(AllocatedTransfer calldata, uint256) internal view returns (bytes32);
     using HashLib for uint256;
     using HashLib for uint256[2][];
     using HashLib for AllocatedBatchTransfer;
@@ -48,11 +47,7 @@ library HashLib {
      * @param transfer     An AllocatedTransfer struct containing the transfer details.
      * @return messageHash The EIP-712 compliant message hash.
      */
-    function toSplitTransferMessageHash(AllocatedTransfer calldata transfer)
-        internal
-        view
-        returns (bytes32 messageHash)
-    {
+    function toTransferMessageHash(AllocatedTransfer calldata transfer) internal view returns (bytes32 messageHash) {
         // Declare variables for tracking, total amount, current amount, and errors.
         uint256 amount = 0;
         uint256 currentAmount;
@@ -110,11 +105,7 @@ library HashLib {
      * @param transfer     An AllocatedBatchTransfer struct containing the transfer details.
      * @return messageHash The EIP-712 compliant message hash.
      */
-    function toSplitBatchTransferMessageHash(AllocatedBatchTransfer calldata transfer)
-        internal
-        view
-        returns (bytes32)
-    {
+    function toBatchTransferMessageHash(AllocatedBatchTransfer calldata transfer) internal view returns (bytes32) {
         // Navigate to the transfer components array in calldata.
         ComponentsById[] calldata transfers = transfer.transfers;
 
@@ -597,7 +588,7 @@ library HashLib {
      * @param claims             An array of BatchClaimComponent structs.
      * @return idsAndAmountsHash The hash of the ids and amounts.
      */
-    function toSplitIdsAndAmountsHash(BatchClaimComponent[] calldata claims)
+    function toIdsAndAmountsHash(BatchClaimComponent[] calldata claims)
         internal
         pure
         returns (uint256 idsAndAmountsHash)
