@@ -62,12 +62,12 @@ contract AllocatedTransferTest is Setup {
             uint256 claimantOne = abi.decode(abi.encodePacked(bytes12(bytes32(id)), recipientOne), (uint256));
             uint256 claimantTwo = abi.decode(abi.encodePacked(bytes12(bytes32(id)), recipientTwo), (uint256));
 
-            Component memory splitOne = Component({ claimant: claimantOne, amount: amountOne });
-            Component memory splitTwo = Component({ claimant: claimantTwo, amount: amountTwo });
+            Component memory componentOne = Component({ claimant: claimantOne, amount: amountOne });
+            Component memory componentTwo = Component({ claimant: claimantTwo, amount: amountTwo });
 
             recipients = new Component[](2);
-            recipients[0] = splitOne;
-            recipients[1] = splitTwo;
+            recipients[0] = componentOne;
+            recipients[1] = componentTwo;
         }
 
         // Create and execute transfer
@@ -152,10 +152,10 @@ contract AllocatedTransferTest is Setup {
         {
             uint256 claimant = abi.decode(abi.encodePacked(bytes12(bytes32(id)), params.recipient), (uint256));
 
-            Component memory split = Component({ claimant: claimant, amount: params.amount });
+            Component memory component = Component({ claimant: claimant, amount: params.amount });
 
             recipients = new Component[](1);
-            recipients[0] = split;
+            recipients[0] = component;
         }
 
         // Create and execute transfer
@@ -235,15 +235,15 @@ contract AllocatedTransferTest is Setup {
             }
 
             {
-                Component memory splitOne;
-                Component memory splitTwo;
+                Component memory componentOne;
+                Component memory componentTwo;
 
-                splitOne = Component({ claimant: claimantOne, amount: amountOne });
-                splitTwo = Component({ claimant: claimantTwo, amount: amountTwo });
+                componentOne = Component({ claimant: claimantOne, amount: amountOne });
+                componentTwo = Component({ claimant: claimantTwo, amount: amountTwo });
 
                 recipients = new Component[](2);
-                recipients[0] = splitOne;
-                recipients[1] = splitTwo;
+                recipients[0] = componentOne;
+                recipients[1] = componentTwo;
             }
         }
 
@@ -263,7 +263,7 @@ contract AllocatedTransferTest is Setup {
             {
                 vm.prank(swapper);
                 bool status = theCompact.allocatedTransfer(transfer);
-                vm.snapshotGasLastCall("splitWithdrawal");
+                vm.snapshotGasLastCall("allocatedWithdrawal");
                 assert(status);
             }
         }

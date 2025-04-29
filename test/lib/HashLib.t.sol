@@ -42,11 +42,11 @@ contract HashLibTest is Test {
         expiration = uint256(uint64(vm.randomUint()));
     }
 
-    function _makeClaimant(address _recipient) internal returns (uint256) {
+    function _makeClaimant(address _recipient) internal view returns (uint256) {
         return abi.decode(abi.encodePacked(lockTag, _recipient), (uint256));
     }
 
-    function testToSplitTransferMessageHash_SingleRecipient() public {
+    function testToTransferMessageHash_SingleRecipient() public {
         uint256 id = vm.randomUint();
         uint256 amount = vm.randomUint();
         Component[] memory recipients = new Component[](1);
@@ -66,11 +66,11 @@ contract HashLibTest is Test {
         );
 
         vm.prank(sponsor);
-        bytes32 actualHash = tester.callToSplitTransferMessageHash(transfer);
-        assertEq(actualHash, expectedHash, "SplitTransfer single recipient hash mismatch");
+        bytes32 actualHash = tester.callToTransferMessageHash(transfer);
+        assertEq(actualHash, expectedHash, "Transfer single recipient hash mismatch");
     }
 
-    function testToSplitTransferMessageHash_MultipleRecipients() public {
+    function test_toTransferMessageHash_MultipleRecipients() public {
         uint256 id = 9876;
         uint256 amount1 = 1000;
         uint256 amount2 = 500;
@@ -90,16 +90,16 @@ contract HashLibTest is Test {
         });
 
         vm.prank(sponsor);
-        bytes32 actualHash = tester.callToSplitTransferMessageHash(transfer);
+        bytes32 actualHash = tester.callToTransferMessageHash(transfer);
 
         bytes32 expectedHash = keccak256(
             abi.encode(COMPACT_TYPEHASH, sponsor, sponsor, transfer.nonce, transfer.expires, transfer.id, totalAmount)
         );
 
-        assertEq(actualHash, expectedHash, "SplitTransfer multiple recipients hash mismatch");
+        assertEq(actualHash, expectedHash, "Transfer multiple recipients hash mismatch");
     }
 
-    function testToSplitTransferMessageHash_RevertOverflow() public {
+    function test_toTransferMessageHash_RevertOverflow() public {
         uint256 id = 111;
         Component[] memory recipients = new Component[](2);
         uint256 claimant1_val = _makeClaimant(claimant1);
@@ -116,10 +116,10 @@ contract HashLibTest is Test {
         });
 
         vm.expectRevert(stdError.arithmeticError);
-        tester.callToSplitTransferMessageHash(transfer);
+        tester.callToTransferMessageHash(transfer);
     }
 
-    function testToSplitBatchTransferMessageHash() public {
+    function test_toBatchTransferMessageHash() public {
         Component[] memory portions1 = new Component[](2);
         portions1[0] = Component({ claimant: _makeClaimant(claimant1), amount: 100 });
         portions1[1] = Component({ claimant: _makeClaimant(claimant2), amount: 200 });
@@ -140,14 +140,14 @@ contract HashLibTest is Test {
             transfers: transfers
         });
 
-        bytes32 expectedHash = _calculateSplitBatchTransferMessageHash(batchTransfer);
+        bytes32 expectedHash = _calculateBatchTransferMessageHash(batchTransfer);
 
         vm.prank(sponsor);
-        bytes32 actualHash = tester.callToSplitBatchTransferMessageHash(batchTransfer);
-        assertEq(actualHash, expectedHash, "SplitBatchTransfer hash mismatch");
+        bytes32 actualHash = tester.callToBatchTransferMessageHash(batchTransfer);
+        assertEq(actualHash, expectedHash, "BatchTransfer hash mismatch");
     }
 
-    function testToSplitBatchTransferMessageHash_RevertOverflow() public {
+    function test_toBatchTransferMessageHash_RevertOverflow() public {
         // ID 1 setup (will cause overflow)
         uint256 id1 = vm.randomUint();
         Component[] memory portions1 = new Component[](2);
@@ -177,7 +177,7 @@ contract HashLibTest is Test {
         });
 
         vm.expectRevert(stdError.arithmeticError);
-        tester.callToSplitBatchTransferMessageHash(batchTransfer);
+        tester.callToBatchTransferMessageHash(batchTransfer);
     }
 
     function testToFlatMessageHashWithWitness() public {
@@ -325,7 +325,7 @@ contract HashLibTest is Test {
         assertEq(actualHash, expectedHash, "toIdsAndAmountsHash replace multiple failed");
     }
 
-    function testToSplitIdsAndAmountsHash() public {
+    function testToIdsAndAmountsHash() public {
         uint256 id1 = vm.randomUint();
         uint256 amount1 = vm.randomUint();
         Component[] memory portions1 = new Component[](1);
@@ -349,21 +349,22 @@ contract HashLibTest is Test {
         bytes memory encoded = abi.encode(id1, amount1, id2, amount2);
         bytes32 expectedHash = keccak256(encoded);
 
-        uint256 actualHash = tester.callToSplitIdsAndAmountsHash(claims);
-        assertEq(bytes32(actualHash), expectedHash, "toSplitIdsAndAmountsHash failed");
+        uint256 actualHash = tester.callToIdsAndAmountsHash(claims);
+        assertEq(bytes32(actualHash), expectedHash, "toIdsAndAmountsHash failed");
     }
 
-    function testToSplitIdsAndAmountsHash_Empty() public {
+    function test_toIdsAndAmountsHash_Empty() public view {
         BatchClaimComponent[] memory claims = new BatchClaimComponent[](0);
         bytes memory encoded = abi.encode();
         bytes32 expectedHash = keccak256(encoded);
 
-        uint256 actualHash = tester.callToSplitIdsAndAmountsHash(claims);
-        assertEq(bytes32(actualHash), expectedHash, "toSplitIdsAndAmountsHash empty failed");
+        uint256 actualHash = tester.callToIdsAndAmountsHash(claims);
+        assertEq(bytes32(actualHash), expectedHash, "toIdsAndAmountsHash empty failed");
     }
 
-    function _calculateSplitBatchTransferMessageHash(AllocatedBatchTransfer memory transfer)
+    function _calculateBatchTransferMessageHash(AllocatedBatchTransfer memory transfer)
         internal
+        view
         returns (bytes32 messageHash)
     {
         ComponentsById[] memory transfers = transfer.transfers;
@@ -392,9 +393,7 @@ contract HashLibTest is Test {
         );
     }
 
-    function testFuzz_ToSplitTransferMessageHash(uint256 _id, uint256 _amount, uint256 _nonce, uint256 _expires)
-        public
-    {
+    function testFuzz_ToTransferMessageHash(uint256 _id, uint256 _amount, uint256 _nonce, uint256 _expires) public {
         // Bound the inputs to avoid overflows
         vm.assume(_amount > 0 && _amount < type(uint128).max);
 
@@ -415,12 +414,12 @@ contract HashLibTest is Test {
         );
 
         vm.prank(sponsor);
-        bytes32 actualHash = tester.callToSplitTransferMessageHash(transfer);
+        bytes32 actualHash = tester.callToTransferMessageHash(transfer);
 
-        assertEq(actualHash, expectedHash, "SplitTransfer hash mismatch");
+        assertEq(actualHash, expectedHash, "Transfer hash mismatch");
     }
 
-    function testFuzz_ToSplitTransferMessageHash_MultipleRecipients(
+    function testFuzz_ToTransferMessageHash_MultipleRecipients(
         uint256 _id,
         uint256 _amount1,
         uint256 _amount2,
@@ -453,13 +452,14 @@ contract HashLibTest is Test {
         );
 
         vm.prank(sponsor);
-        bytes32 actualHash = tester.callToSplitTransferMessageHash(transfer);
+        bytes32 actualHash = tester.callToTransferMessageHash(transfer);
 
-        assertEq(actualHash, expectedHash, "SplitTransfer multiple recipients hash mismatch");
+        assertEq(actualHash, expectedHash, "Transfer multiple recipients hash mismatch");
     }
 
     function testFuzz_ToFlatMessageHashWithWitness(uint256 _tokenId, uint256 _amount, uint256 _nonce, uint256 _expires)
         public
+        view
     {
         bytes32 typehash = keccak256(bytes("SomeTypehash()"));
         bytes32 witness = keccak256(bytes("witness data"));
@@ -474,7 +474,7 @@ contract HashLibTest is Test {
         assertEq(actualHash, expectedHash, "FlatMessageWithWitness hash mismatch");
     }
 
-    function testFuzz_ToIdsAndAmountsHash(uint256 _id1, uint256 _amount1, uint256 _id2, uint256 _amount2) public {
+    function testFuzz_ToIdsAndAmountsHash(uint256 _id1, uint256 _amount1, uint256 _id2, uint256 _amount2) public view {
         uint256[2][] memory idsAndAmounts = new uint256[2][](2);
         idsAndAmounts[0] = [_id1, _amount1];
         idsAndAmounts[1] = [_id2, _amount2];
@@ -494,7 +494,7 @@ contract HashLibTest is Test {
         uint256 _id2,
         uint256 _amount2,
         uint256 _replacementAmount
-    ) public {
+    ) public view {
         uint256[2][] memory idsAndAmounts = new uint256[2][](2);
         idsAndAmounts[0] = [_id1, _amount1];
         idsAndAmounts[1] = [_id2, _amount2];
@@ -510,7 +510,7 @@ contract HashLibTest is Test {
         assertEq(actualHash, expectedHash, "toIdsAndAmountsHash with replacement failed");
     }
 
-    function testFuzz_toSplitIdsAndAmountsHash(uint256 _id1, uint256 _amount1, uint256 _id2, uint256 _amount2) public {
+    function testFuzz_toIdsAndAmountsHash(uint256 _id1, uint256 _amount1, uint256 _id2, uint256 _amount2) public view {
         Component[] memory portions1 = new Component[](1);
         portions1[0] = Component({ claimant: _makeClaimant(claimant1), amount: _amount1 });
         BatchClaimComponent memory claim1 =
@@ -528,40 +528,44 @@ contract HashLibTest is Test {
         bytes memory encoded = abi.encode(_id1, _amount1, _id2, _amount2);
         bytes32 expectedHash = keccak256(encoded);
 
-        uint256 actualHash = tester.callToSplitIdsAndAmountsHash(claims);
-        assertEq(bytes32(actualHash), expectedHash, "toSplitIdsAndAmountsHash failed");
+        uint256 actualHash = tester.callToIdsAndAmountsHash(claims);
+        assertEq(bytes32(actualHash), expectedHash, "toIdsAndAmountsHash failed");
     }
 }
 
 contract HashLibTester {
     using HashLib for *;
 
-    function callToSplitTransferMessageHash(AllocatedTransfer calldata transfer)
+    function callToTransferMessageHash(AllocatedTransfer calldata transfer)
         external
+        view
         returns (bytes32 messageHash)
     {
-        return transfer.toSplitTransferMessageHash();
+        return transfer.toTransferMessageHash();
     }
 
-    function callToSplitBatchTransferMessageHash(AllocatedBatchTransfer calldata transfer)
+    function callToBatchTransferMessageHash(AllocatedBatchTransfer calldata transfer)
         external
+        view
         returns (bytes32 messageHash)
     {
-        return transfer.toSplitBatchTransferMessageHash();
+        return transfer.toBatchTransferMessageHash();
     }
 
     function callToIdsAndAmountsHash(uint256[2][] calldata idsAndAmounts, uint256[] memory replacementAmounts)
         external
+        pure
         returns (bytes32 idsAndAmountsHash)
     {
         return idsAndAmounts.toIdsAndAmountsHash(replacementAmounts);
     }
 
-    function callToSplitIdsAndAmountsHash(BatchClaimComponent[] calldata claims)
+    function callToIdsAndAmountsHash(BatchClaimComponent[] calldata claims)
         external
+        pure
         returns (uint256 idsAndAmountsHash)
     {
-        return claims.toSplitIdsAndAmountsHash();
+        return claims.toIdsAndAmountsHash();
     }
 
     function callToFlatMessageHashWithWitness(
@@ -573,7 +577,7 @@ contract HashLibTester {
         uint256 expires,
         bytes32 typehash,
         bytes32 witness
-    ) external returns (bytes32 messageHash) {
+    ) external pure returns (bytes32 messageHash) {
         return
             HashLib.toFlatMessageHashWithWitness(sponsor, tokenId, amount, arbiter, nonce, expires, typehash, witness);
     }
@@ -587,7 +591,7 @@ contract HashLibTester {
         bytes32 typehash,
         bytes32 witness,
         uint256[] memory replacementAmounts
-    ) external returns (bytes32 messageHash) {
+    ) external pure returns (bytes32 messageHash) {
         return HashLib.toFlatBatchClaimWithWitnessMessageHash(
             sponsor, idsAndAmounts, arbiter, nonce, expires, typehash, witness, replacementAmounts
         );

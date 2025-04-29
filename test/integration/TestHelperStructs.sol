@@ -73,7 +73,7 @@ struct LockDetails {
     bytes12 lockTag;
 }
 
-struct SplitBatchMultichainClaimArgs {
+struct BatchMultichainClaimArgs {
     TestParams params;
     BatchMultichainClaim claim;
     uint256 anotherChainId;

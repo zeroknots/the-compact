@@ -247,7 +247,7 @@ contract AllocatedBatchTransferTest is Setup {
         {
             vm.prank(swapper);
             bool status = theCompact.allocatedBatchTransfer(transfer);
-            vm.snapshotGasLastCall("splitBatchWithdrawal");
+            vm.snapshotGasLastCall("batchWithdrawal");
             assert(status);
         }
 

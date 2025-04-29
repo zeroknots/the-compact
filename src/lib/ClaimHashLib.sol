@@ -55,11 +55,11 @@ library ClaimHashLib {
 
     ///// CATEGORY 1: Transfer claim hashes /////
     function toClaimHash(AllocatedTransfer calldata transfer) internal view returns (bytes32 claimHash) {
-        return transfer.toSplitTransferMessageHash();
+        return transfer.toTransferMessageHash();
     }
 
     function toClaimHash(AllocatedBatchTransfer calldata transfer) internal view returns (bytes32 claimHash) {
-        return transfer.toSplitBatchTransferMessageHash();
+        return transfer.toBatchTransferMessageHash();
     }
 
     ///// CATEGORY 2: Claim with witness message & type hashes /////
@@ -68,8 +68,7 @@ library ClaimHashLib {
     }
 
     function toMessageHashes(BatchClaim calldata claim) internal view returns (bytes32 claimHash, bytes32 typehash) {
-        return
-            HashLib.toBatchClaimWithWitnessMessageHash.usingBatchClaim()(claim, claim.claims.toSplitIdsAndAmountsHash());
+        return HashLib.toBatchClaimWithWitnessMessageHash.usingBatchClaim()(claim, claim.claims.toIdsAndAmountsHash());
     }
 
     function toMessageHashes(MultichainClaim calldata claim)
@@ -86,7 +85,7 @@ library ClaimHashLib {
         returns (bytes32 claimHash, bytes32 typehash)
     {
         return _toGenericMultichainClaimWithWitnessMessageHash.usingBatchMultichainClaim()(
-            claim, claim.claims.toSplitIdsAndAmountsHash(), HashLib.toMultichainClaimMessageHash
+            claim, claim.claims.toIdsAndAmountsHash(), HashLib.toMultichainClaimMessageHash
         );
     }
 
@@ -104,7 +103,7 @@ library ClaimHashLib {
         returns (bytes32 claimHash, bytes32 typehash)
     {
         return _toGenericMultichainClaimWithWitnessMessageHash.usingExogenousBatchMultichainClaim()(
-            claim, claim.claims.toSplitIdsAndAmountsHash(), HashLib.toExogenousMultichainClaimMessageHash
+            claim, claim.claims.toIdsAndAmountsHash(), HashLib.toExogenousMultichainClaimMessageHash
         );
     }
 
