@@ -51,20 +51,20 @@ contract DepositViaPermit2LogicTest is Permit2Test {
         recipient = makeAddr("recipient");
         allocator = new AlwaysOKAllocator();
 
-        // Setup test tokens
+        // Setup test tokens.
         testToken = new MockERC20("Test Token", "TEST", 18);
         secondToken = new MockERC20("Second Token", "SECOND", 18);
         testToken.mint(depositor, 1 ether);
         secondToken.mint(depositor, 1 ether);
 
-        // Deploy the logic contract
+        // Deploy the logic contract.
         logic = new MockDepositViaPermit2Logic();
 
-        // Register allocator
+        // Register allocator.
         (allocatorId, lockTag) = logic.registerAllocator(address(allocator));
         testTokenId = logic.toIdIfRegistered(address(testToken), lockTag);
 
-        // Pre-approve tokens to the logic contract for our tests
+        // Pre-approve tokens to the logic contract.
         vm.startPrank(depositor);
         testToken.approve(address(logic), type(uint256).max);
         secondToken.approve(address(logic), type(uint256).max);

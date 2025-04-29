@@ -245,7 +245,7 @@ contract WithdrawalLogicTest is Test {
         uint256 amount = logic.balanceOf(user, testTokenId) + 1;
         vm.prank(user);
 
-        // TODO: should we add a custom error to avoid panic here?
+        // TODO: add a custom error to avoid panic here?
         // currently reverts with 0x11 (panic: arithmetic under/overflow)
         vm.expectRevert();
         logic.processForcedWithdrawal(testTokenId, recipient, amount);

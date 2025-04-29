@@ -33,6 +33,13 @@ library TransferBenchmarkLib {
 
     error InsufficientStipendForWithdrawalFallback();
 
+    /**
+     * @notice Internal function for benchmarking the cost of native token transfers.
+     * Uses a deterministic address derived from the contract address and provided salt
+     * to measure the gas cost to transfer native tokens to a cold address with no balance.
+     * @param salt A bytes32 value used to derive a cold account for benchmarking.
+     * @return benchmark The measured gas cost of the native token transfer.
+     */
     function setNativeTokenBenchmark(bytes32 salt) internal returns (uint256 benchmark) {
         assembly ("memory-safe") {
             // Derive the target for  native token transfer using address.this & salt.
@@ -76,6 +83,13 @@ library TransferBenchmarkLib {
         }
     }
 
+    /**
+     * @notice Internal function for benchmarking the cost of ERC20 token transfers.
+     * Measures the gas cost of transferring tokens to a zero-balance account and
+     * includes the overhead of interacting with a cold token contract.
+     * @param token The address of the ERC20 token to benchmark.
+     * @return benchmark The measured gas cost of the ERC20 token transfer.
+     */
     function setERC20TokenBenchmark(address token) internal returns (uint256 benchmark) {
         // Set the caller as the target.
         address target = msg.sender;
@@ -174,6 +188,12 @@ library TransferBenchmarkLib {
         }
     }
 
+    /**
+     * @notice Internal view function to ensure there is sufficient gas remaining to
+     * cover the benchmarked cost of a token withdrawal. Reverts if the remaining gas
+     * is less than the benchmark for the specified token type.
+     * @param token The address of the token (address(0) for native tokens).
+     */
     function ensureBenchmarkExceeded(address token) internal view {
         assembly ("memory-safe") {
             // Select the appropriate scope based on the token in question.
@@ -192,6 +212,12 @@ library TransferBenchmarkLib {
         }
     }
 
+    /**
+     * @notice Internal view function for retrieving the benchmarked gas costs for
+     * both native token and ERC20 token withdrawals.
+     * @return nativeTokenBenchmark The benchmarked gas cost for native token withdrawals.
+     * @return erc20TokenBenchmark  The benchmarked gas cost for ERC20 token withdrawals.
+     */
     function getTokenWithdrawalBenchmarks()
         internal
         view

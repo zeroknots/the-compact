@@ -48,11 +48,10 @@ contract MetadataRenderer {
     }
 
     /**
-     * @notice External view function for generating the symbol of an ERC6909 token. Combines
-     * a handshake emoji with the underlying token's symbol, falling back to a default if
-     * needed.
+     * @notice External view function for retrieving the decimals of an ERC6909 token.
+     * Returns the decimals of the underlying token, falling back to a default if needed.
      * @param id The ERC6909 token identifier.
-     * @return   The generated symbol string.
+     * @return   The number of decimals for the token.
      */
     function decimals(uint256 id) external view returns (uint8) {
         return id.asSanitizedAddress().readDecimalsAsUint8WithDefaultValue();
