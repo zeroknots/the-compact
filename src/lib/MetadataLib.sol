@@ -101,19 +101,25 @@ library MetadataLib {
             tokenSymbolString = token.readSymbolWithDefaultValue();
             allocatorString = allocator.toHexStringChecksummed();
             resetPeriodString = resetPeriod.toString();
-            string memory scopeString = scope.toString();
             tokenName = token.readNameWithDefaultValue();
-            string memory tokenDecimals = token.isNullAddress() ? "18" : uint256(token.readDecimals()).toString();
+
+            {
+                string memory tokenDecimals = token.isNullAddress() ? "18" : uint256(token.readDecimals()).toString();
+
+                attributes = string.concat(
+                    "\"attributes\": [",
+                    toAttributeString("ID", id.toString(), false, true),
+                    toAttributeString("Token Address", tokenAddressString, false, true),
+                    toAttributeString("Token Name", tokenName, false, true),
+                    toAttributeString("Token Symbol", tokenSymbolString, false, true),
+                    toAttributeString("Token Decimals", tokenDecimals, false, false)
+                );
+            }
 
             attributes = string.concat(
-                "\"attributes\": [",
-                toAttributeString("ID", id.toString(), false, true),
-                toAttributeString("Token Address", tokenAddressString, false, true),
-                toAttributeString("Token Name", tokenName, false, true),
-                toAttributeString("Token Symbol", tokenSymbolString, false, true),
-                toAttributeString("Token Decimals", tokenDecimals, false, false),
+                attributes,
                 toAttributeString("Allocator", allocatorString, false, true),
-                toAttributeString("Scope", scopeString, false, true),
+                toAttributeString("Scope", scope.toString(), false, true),
                 toAttributeString("Reset Period", resetPeriodString, false, true),
                 toAttributeString("Lock Tag", lockTagHex, true, true),
                 "]}"
