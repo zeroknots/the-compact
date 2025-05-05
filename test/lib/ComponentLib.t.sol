@@ -9,7 +9,6 @@ import { Scope } from "src/types/Scope.sol";
 import { ResetPeriod } from "src/types/ResetPeriod.sol";
 import { IdLib } from "src/lib/IdLib.sol";
 import { EfficiencyLib } from "src/lib/EfficiencyLib.sol";
-import { Lock } from "src/types/Lock.sol";
 
 error InsufficientBalance();
 
@@ -125,8 +124,7 @@ contract ComponentLibTest is Test {
         pure
         returns (uint256)
     {
-        Lock memory lock = Lock({ allocator: allocator, token: token, scope: scope, resetPeriod: period });
-        return lock.toId();
+        return IdLib.toId(token, allocator, period, scope);
     }
 
     function testBuildIdsAndAmounts_Single() public view {

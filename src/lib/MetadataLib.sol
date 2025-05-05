@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.27;
 
-import { Lock } from "../types/Lock.sol";
 import { ResetPeriod } from "../types/ResetPeriod.sol";
 import { Scope } from "../types/Scope.sol";
 import { IdLib } from "./IdLib.sol";
@@ -18,7 +17,6 @@ library MetadataLib {
     using MetadataLib for address;
     using MetadataLib for string;
     using IdLib for address;
-    using IdLib for Lock;
     using IdLib for ResetPeriod;
     using EfficiencyLib for address;
     using LibString for uint256;
@@ -71,46 +69,52 @@ library MetadataLib {
 
     /**
      * @notice Internal view function for generating a token URI for a given lock and ID.
-     * @param lock The Lock struct containing token, allocator, reset period, and scope.
-     * @param id   The ERC6909 token identifier.
+     * @param token       The address of the underlying token (or address(0) for native tokens).
+     * @param allocator   The address of the allocator mediating the resource lock.
+     * @param resetPeriod The duration after which the underlying tokens can be withdrawn once a forced withdrawal is initiated.
+     * @param scope       The scope of the resource lock (multichain or single chain).
+     * @param id          The ERC6909 token identifier.
      * @return uri A JSON string containing token metadata.
      */
-    function toURI(Lock memory lock, uint256 id) internal view returns (string memory uri) {
+    function toURI(address token, address allocator, ResetPeriod resetPeriod, Scope scope, uint256 id)
+        internal
+        view
+        returns (string memory uri)
+    {
         string memory attributes;
         string memory tokenName;
-        string memory tokenAddress;
-        string memory allocator;
-        string memory resetPeriod;
-        string memory tokenSymbol;
+        string memory tokenAddressString;
+        string memory allocatorString;
+        string memory resetPeriodString;
+        string memory tokenSymbolString;
         {
             // Construct the lock tag from allocator, scope, and reset period
             string memory lockTagHex;
             {
-                uint96 allocatorId = lock.allocator.usingAllocatorId();
-                bytes12 lockTag = IdLib.toLockTag(allocatorId, lock.scope, lock.resetPeriod);
+                uint96 allocatorId = allocator.usingAllocatorId();
+                bytes12 lockTag = IdLib.toLockTag(allocatorId, scope, resetPeriod);
                 // Convert lock tag to hex string
                 lockTagHex = LibString.toHexString(uint96(lockTag));
             }
 
-            tokenAddress = lock.token.isNullAddress() ? "Native Token" : lock.token.toHexStringChecksummed();
-            tokenSymbol = lock.token.readSymbolWithDefaultValue();
-            allocator = lock.allocator.toHexStringChecksummed();
-            resetPeriod = lock.resetPeriod.toString();
-            string memory scope = lock.scope.toString();
-            tokenName = lock.token.readNameWithDefaultValue();
-            string memory tokenDecimals =
-                lock.token.isNullAddress() ? "18" : uint256(lock.token.readDecimals()).toString();
+            tokenAddressString = token.isNullAddress() ? "Native Token" : token.toHexStringChecksummed();
+            tokenSymbolString = token.readSymbolWithDefaultValue();
+            allocatorString = allocator.toHexStringChecksummed();
+            resetPeriodString = resetPeriod.toString();
+            string memory scopeString = scope.toString();
+            tokenName = token.readNameWithDefaultValue();
+            string memory tokenDecimals = token.isNullAddress() ? "18" : uint256(token.readDecimals()).toString();
 
             attributes = string.concat(
                 "\"attributes\": [",
                 toAttributeString("ID", id.toString(), false, true),
-                toAttributeString("Token Address", tokenAddress, false, true),
+                toAttributeString("Token Address", tokenAddressString, false, true),
                 toAttributeString("Token Name", tokenName, false, true),
-                toAttributeString("Token Symbol", tokenSymbol, false, true),
+                toAttributeString("Token Symbol", tokenSymbolString, false, true),
                 toAttributeString("Token Decimals", tokenDecimals, false, false),
-                toAttributeString("Allocator", allocator, false, true),
-                toAttributeString("Scope", scope, false, true),
-                toAttributeString("Reset Period", resetPeriod, false, true),
+                toAttributeString("Allocator", allocatorString, false, true),
+                toAttributeString("Scope", scopeString, false, true),
+                toAttributeString("Reset Period", resetPeriodString, false, true),
                 toAttributeString("Lock Tag", lockTagHex, true, true),
                 "]}"
             );
@@ -122,15 +126,15 @@ library MetadataLib {
                 "\"description\": \"Compact ",
                 tokenName,
                 " (",
-                tokenAddress,
+                tokenAddressString,
                 ") resource lock with allocator ",
-                allocator,
+                allocatorString,
                 " and reset period of ",
-                resetPeriod,
+                resetPeriodString,
                 "\","
             );
 
-            name = string.concat("{\"name\": \"Compact ", tokenSymbol, "\",");
+            name = string.concat("{\"name\": \"Compact ", tokenSymbolString, "\",");
         }
 
         string memory image =

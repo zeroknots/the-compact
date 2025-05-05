@@ -3,7 +3,6 @@ pragma solidity ^0.8.27;
 
 import { ResetPeriod } from "../types/ResetPeriod.sol";
 import { Scope } from "../types/Scope.sol";
-import { Lock } from "../types/Lock.sol";
 import { MetadataLib } from "./MetadataLib.sol";
 import { EfficiencyLib } from "./EfficiencyLib.sol";
 import { CompactCategory } from "../types/CompactCategory.sol";
@@ -22,7 +21,6 @@ library IdLib {
     using IdLib for uint256;
     using IdLib for address;
     using IdLib for ResetPeriod;
-    using MetadataLib for Lock;
     using EfficiencyLib for bool;
     using EfficiencyLib for uint8;
     using EfficiencyLib for uint96;
@@ -197,16 +195,23 @@ library IdLib {
     }
 
     /**
-     * @notice Internal view function for extracting the full Lock struct from a
+     * @notice Internal view function for extracting the contents from a
      * resource lock ID.
      * @param id    The resource lock ID to extract from.
-     * @return lock A Lock struct containing token, allocator, reset period, and scope.
+     * @return token       The address of the underlying token (or address(0) for native tokens).
+     * @return allocator   The address of the allocator mediating the resource lock.
+     * @return resetPeriod The duration after which the underlying tokens can be withdrawn once a forced withdrawal is initiated.
+     * @return scope       The scope of the resource lock (multichain or single chain).
      */
-    function toLock(uint256 id) internal view returns (Lock memory lock) {
-        lock.token = id.toAddress();
-        lock.allocator = id.toAllocator();
-        lock.resetPeriod = id.toResetPeriod();
-        lock.scope = id.toScope();
+    function toLock(uint256 id)
+        internal
+        view
+        returns (address token, address allocator, ResetPeriod resetPeriod, Scope scope)
+    {
+        token = id.toAddress();
+        allocator = id.toAllocator();
+        resetPeriod = id.toResetPeriod();
+        scope = id.toScope();
     }
 
     /**
@@ -449,13 +454,20 @@ library IdLib {
      *  - Bits 160-251: allocator ID (first 4 bits are compact flag, next 88 from allocator address)
      *  - Bits 0-159: token address
      * @dev Note that this will return an ID even if the allocator is unregistered.
-     * @param lock The Lock struct containing the resource lock's components.
-     * @return id  The derived resource lock ID.
+     * @param token        The address of the underlying token (or address(0) for native tokens).
+     * @param allocator    The address of the allocator mediating the resource lock.
+     * @param resetPeriod  The duration after which the underlying tokens can be withdrawn once a forced withdrawal is initiated.
+     * @param scope        The scope of the resource lock (multichain or single chain).
+     * @return id          The derived resource lock ID.
      */
-    function toId(Lock memory lock) internal pure returns (uint256 id) {
+    function toId(address token, address allocator, ResetPeriod resetPeriod, Scope scope)
+        internal
+        pure
+        returns (uint256 id)
+    {
         id = (
-            (lock.scope.asUint256() << 255) | (lock.resetPeriod.asUint256() << 252)
-                | (lock.allocator.usingAllocatorId().asUint256() << 160) | lock.token.asUint256()
+            (scope.asUint256() << 255) | (resetPeriod.asUint256() << 252)
+                | (allocator.usingAllocatorId().asUint256() << 160) | token.asUint256()
         );
     }
 }

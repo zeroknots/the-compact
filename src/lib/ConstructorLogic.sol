@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.27;
 
-import { Lock } from "../types/Lock.sol";
 import { ResetPeriod } from "../types/ResetPeriod.sol";
 import { Scope } from "../types/Scope.sol";
 
@@ -143,7 +142,8 @@ contract ConstructorLogic is Tstorish {
      * @return The token's URI.
      */
     function _tokenURI(uint256 id) internal view returns (string memory) {
-        return _METADATA_RENDERER.uri(id.toLock(), id);
+        (address token, address allocator, ResetPeriod resetPeriod, Scope scope) = id.toLock();
+        return _METADATA_RENDERER.uri(token, allocator, resetPeriod, scope, id);
     }
 
     /**
