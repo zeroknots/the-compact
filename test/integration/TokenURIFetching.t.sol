@@ -71,7 +71,7 @@ contract TokenURIFetchingTest is Setup {
         for (uint256 i = 0; i < attributes.length; i++) {
             JSONParserLib.Item memory attribute = attributes[i];
             if (keccak256(bytes(attribute.at('"trait_type"').value())) == keccak256(bytes('"Token Address"'))) {
-                assertEq(attribute.at('"value"').value(), '"Native Token"');
+                assertEq(attribute.at('"value"').value(), '"0x0000000000000000000000000000000000000000"');
                 foundTokenAddress = true;
                 break;
             }
@@ -79,12 +79,12 @@ contract TokenURIFetchingTest is Setup {
 
         assertTrue(foundTokenAddress, "Token Address attribute not found");
 
-        // Verify token name is "Ether".
+        // Verify token name is "Native Token".
         bool foundTokenName = false;
         for (uint256 i = 0; i < attributes.length; i++) {
             JSONParserLib.Item memory attribute = attributes[i];
             if (keccak256(bytes(attribute.at('"trait_type"').value())) == keccak256(bytes('"Token Name"'))) {
-                assertEq(attribute.at('"value"').value(), '"Ether"');
+                assertEq(attribute.at('"value"').value(), '"Native Token"');
                 foundTokenName = true;
                 break;
             }
@@ -256,12 +256,12 @@ contract TokenURIFetchingTest is Setup {
 
         assertTrue(foundTokenAddress, "Token Address attribute not found");
 
-        // Verify token name is "unknown token".
+        // Verify token name is "Unknown Token".
         bool foundTokenName = false;
         for (uint256 i = 0; i < attributes.length; i++) {
             JSONParserLib.Item memory attribute = attributes[i];
             if (keccak256(bytes(attribute.at('"trait_type"').value())) == keccak256(bytes('"Token Name"'))) {
-                assertEq(attribute.at('"value"').value(), '"unknown token"');
+                assertEq(attribute.at('"value"').value(), '"Unknown Token"');
                 foundTokenName = true;
                 break;
             }
@@ -373,13 +373,14 @@ contract TokenURIFetchingTest is Setup {
         JSONParserLib.Item[] memory attributes = json.at('"attributes"').children();
 
         // Define the expected attribute names.
-        string[9] memory expectedAttributes = [
+        string[10] memory expectedAttributes = [
             "ID",
             "Token Address",
             "Token Name",
             "Token Symbol",
             "Token Decimals",
-            "Allocator",
+            "Allocator Address",
+            "Allocator Name",
             "Scope",
             "Reset Period",
             "Lock Tag"
