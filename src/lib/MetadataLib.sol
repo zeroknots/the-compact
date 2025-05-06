@@ -523,7 +523,8 @@ library MetadataLib {
      * @return symbol The token's symbol or a default value if not available.
      */
     function readSymbolWithDefaultValue(address token) internal view returns (string memory symbol) {
-        // NOTE: this will not be the correct symbol on many chains, should we use a chain id -> symbol mapping?
+        // NOTE: returning the correct symbol on many chains requires a chain id -> symbol mapping
+        // which is not currently implemented; current default set to ETH
         if (token.isNullAddress()) {
             return "ETH";
         }
