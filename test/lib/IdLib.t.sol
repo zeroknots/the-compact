@@ -8,13 +8,11 @@ import { EfficiencyLib } from "src/lib/EfficiencyLib.sol";
 import { MetadataLib } from "src/lib/MetadataLib.sol";
 import { ResetPeriod } from "src/types/ResetPeriod.sol";
 import { Scope } from "src/types/Scope.sol";
-import { Lock } from "src/types/Lock.sol";
 import { MockERC20 } from "lib/solady/test/utils/mocks/MockERC20.sol";
 
 contract IdLibTest is Test {
     using IdLib for *;
     using EfficiencyLib for *;
-    using MetadataLib for Lock;
 
     address allocatorAddress = vm.addr(uint256(0xdeadbeef));
     address tokenAddress = vm.addr(uint256(0xcafebabe));
@@ -303,31 +301,27 @@ contract IdLibTest is Test {
     }
 
     function testToId_FromLock() public {
-        Lock memory lock;
-        lock.allocator = makeAddr("probably safe allocator");
-        lock.token = makeAddr("probably safe token");
-        lock.scope = Scope.Multichain;
-        lock.resetPeriod = ResetPeriod.OneDay;
+        address allocator = makeAddr("probably safe allocator");
+        address token = makeAddr("probably safe token");
+        Scope scope = Scope.Multichain;
+        ResetPeriod resetPeriod = ResetPeriod.OneDay;
 
-        uint96 lockAllocatorId = lock.allocator.usingAllocatorId(); // Uses compact flag internally
-        bytes12 lockTag = IdLib.toLockTag(lockAllocatorId, lock.scope, lock.resetPeriod);
-        uint256 expectedId = uint256(bytes32(lockTag)) | uint256(uint160(lock.token));
+        uint96 lockAllocatorId = allocator.usingAllocatorId(); // Uses compact flag internally
+        bytes12 lockTag = IdLib.toLockTag(lockAllocatorId, scope, resetPeriod);
+        uint256 expectedId = uint256(bytes32(lockTag)) | uint256(uint160(token));
 
-        assertEq(lock.toId(), expectedId, "toId from Lock failed");
+        assertEq(IdLib.toId(token, allocator, resetPeriod, scope), expectedId, "toId from Lock failed");
     }
 
     function testFuzzToId_FromLock(address allocator, address token, uint8 scope, uint8 resetPeriod) public pure {
         Scope actualScope = Scope(uint8(scope) % 2);
         ResetPeriod actualResetPeriod = ResetPeriod(uint8(resetPeriod) % 8);
 
-        Lock memory lock =
-            Lock({ allocator: allocator, token: token, scope: actualScope, resetPeriod: actualResetPeriod });
+        uint96 lockAllocatorId = allocator.usingAllocatorId();
+        bytes12 lockTag = IdLib.toLockTag(lockAllocatorId, actualScope, actualResetPeriod);
 
-        uint96 lockAllocatorId = lock.allocator.usingAllocatorId();
-        bytes12 lockTag = IdLib.toLockTag(lockAllocatorId, lock.scope, lock.resetPeriod);
-
-        uint256 actualId = lock.toId();
-        assertEq(actualId, uint256(bytes32(lockTag)) | uint256(uint160(lock.token)));
+        uint256 actualId = IdLib.toId(token, allocator, actualResetPeriod, actualScope);
+        assertEq(actualId, uint256(bytes32(lockTag)) | uint256(uint160(token)));
 
         // Cross-check extractors
         assertEq(actualId.toAddress(), token, "Extracted token mismatch");
@@ -489,12 +483,12 @@ contract IdLibTest is Test {
         bytes12 lockTag = IdLib.toLockTag(allocatorId, scope, resetPeriod);
         uint256 id = uint256(bytes32(lockTag)) | tokenAddress.asUint256();
 
-        Lock memory resultLock = id.toLock();
+        (address resultToken, address resultAllocator, ResetPeriod resultResetPeriod, Scope resultScope) = id.toLock();
 
-        assertEq(resultLock.allocator, allocatorAddress, "Lock allocator mismatch");
-        assertEq(resultLock.token, tokenAddress, "Lock token mismatch");
-        assertEq(uint8(resultLock.scope), uint8(scope), "Lock scope mismatch");
-        assertEq(uint8(resultLock.resetPeriod), uint8(resetPeriod), "Lock resetPeriod mismatch");
+        assertEq(resultAllocator, allocatorAddress, "Lock allocator mismatch");
+        assertEq(resultToken, tokenAddress, "Lock token mismatch");
+        assertEq(uint8(resultScope), uint8(scope), "Lock scope mismatch");
+        assertEq(uint8(resultResetPeriod), uint8(resetPeriod), "Lock resetPeriod mismatch");
     }
 
     function testCanBeRegistered_SenderIsAllocator() public {

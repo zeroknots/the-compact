@@ -6,7 +6,6 @@ import { ITheCompact } from "./interfaces/ITheCompact.sol";
 import { AllocatedBatchTransfer } from "./types/BatchClaims.sol";
 import { AllocatedTransfer } from "./types/Claims.sol";
 import { CompactCategory } from "./types/CompactCategory.sol";
-import { Lock } from "./types/Lock.sol";
 import { Scope } from "./types/Scope.sol";
 import { ResetPeriod } from "./types/ResetPeriod.sol";
 import { ForcedWithdrawalStatus } from "./types/ForcedWithdrawalStatus.sol";
