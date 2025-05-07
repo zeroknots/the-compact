@@ -70,7 +70,7 @@ Resource locks are the fundamental building blocks of The Compact protocol. They
 
 Each unique combination of these four properties is represented by a fungible ERC6909 tokenID. The owner of these ERC6909 tokens can act as a sponsor and create compacts.
 
-The `scope`, `resetPeriod`, and the `allocatorId` (obtained when an allocator is registered) are packed into a `bytes12 lockTag`. A resource lock's specific ID (the ERC6909 `tokenId`) is a hash of this `lockTag` and the `token` address. This `lockTag` is used throughout various interfaces to succinctly identify the parameters of a lock.
+The `scope`, `resetPeriod`, and the `allocatorId` (obtained when an allocator is registered) are packed into a `bytes12 lockTag`. A resource lock's specific ID (the ERC6909 `tokenId`) is a concatenation of this `lockTag` and the underlying `token` address, represented as a `uint256` for ERC6909 compatibility. This `lockTag` is used throughout various interfaces to succinctly identify the parameters of a lock.
 
 **Fee-on-Transfer and Rebasing Token Handling:**
 -   **Fee-on-Transfer:** The Compact correctly handles fee-on-transfer tokens for both deposits and withdrawals. The amount of ERC6909 tokens minted or burned is based on the *actual balance change* in The Compact contract, not just the specified amount. This ensures ERC6909 tokens accurately represent the underlying assets.
@@ -80,26 +80,26 @@ The `scope`, `resetPeriod`, and the `allocatorId` (obtained when an allocator is
 Each resource lock is mediated by an **allocator**. Their primary responsibilities include:
 1.  **Preventing Double-Spending:** Ensuring sponsors don't commit the same tokens to multiple compacts or transfer away committed funds.
 2.  **Validating Transfers:** Attesting to standard ERC6909 transfers of resource lock tokens (via `IAllocator.attest`).
-3.  **Authorizing Claims:** Cosigning on claims against resource locks (via `IAllocator.authorizeClaim` or by providing off-chain `allocatorData`).
+3.  **Authorizing Claims:** Validating claims against resource locks (via `IAllocator.authorizeClaim`).
 4.  **Nonce Management:** Ensuring nonces are not reused for claims and (optionally) consuming nonces directly on The Compact using [`consume`](./src/interfaces/ITheCompact.sol#L550).
 
 Allocators must be registered with The Compact via [`__registerAllocator`](./src/interfaces/ITheCompact.sol#L561) before they can be assigned to locks. They must implement the [`IAllocator`](./src/interfaces/IAllocator.sol) interface.
 
 The trust assumptions around allocators are important:
 -   Claimants must trust that the allocator is sound and will not allow resource locks to become underfunded.
--   Sponsors must trust that the allocator will not unduly censor valid requests against fully funded locks.
+-   Sponsors must trust that the allocator will not unduly censor valid requests against fully funded locks. However, the sponsor can always initiate a forced withdrawal if the allocator fails to authorize the sponsor's requests. The allocator cannot steal or otherwise unilaterally move anyone's funds.
 
 ### Arbiters
 Arbiters are responsible for verifying and submitting claims. When a sponsor creates a compact, they designate an arbiter who will:
 1.  Verify that the specified conditions of the compact have been met (these conditions can be implicitly understood or explicitly defined via witness data).
 2.  Process the claim by calling the appropriate function on The Compact (from [`ITheCompactClaims`](./src/interfaces/ITheCompactClaims.sol)).
-3.  Specify which accounts will receive the tokens and in what quantities as part of the claim payload.
+3.  Specify which claimants are entitled to the committed resources and in what form each claimant's portion will be issued (i.e., direct transfer, withdrawal, or conversion) as part of the claim payload.
 
 The trust assumptions around arbiters are also important:
 -   Sponsors must trust that the arbiter will not process claims where conditions weren't met.
 -   Claimants must trust that the arbiter will not fail to process claims where conditions *were* met.
 
-Often, the entity fulfilling an off-chain condition (like a cross-chain swap filler) might also act as or work closely with the arbiter.
+Often, the entity fulfilling an off-chain condition (like a filler or solver) might interface directly with the arbiter.
 
 ### Emissaries
 Emissaries provide a fallback verification mechanism for sponsors when authorizing claims. This is particularly useful for:
@@ -340,7 +340,7 @@ Sponsors own the underlying assets and create resource locks to make them availa
 **2. Create a Compact:**
     - To make locked funds available for claiming, a sponsor creates a compact, defining terms and designating an **arbiter**.
     - **Option A: Signing an EIP-712 Payload:** The sponsor signs a `Compact`, `BatchCompact`, or `MultichainCompact` payload. This signed payload is given to the arbiter. See [Key Concepts: Compacts & EIP-712 Payloads](#compacts--eip-712-payloads).
-    - **Option B: Registering the Compact:** The sponsor (or a trusted third party) registers the *hash* of the intended compact details using [`register`](./src/interfaces/ITheCompact.sol#L204) or combined deposit-and-register functions. See [Key Concepts: Registration](#registration).
+    - **Option B: Registering the Compact:** The sponsor (or a third party with an existing sponsor signature) registers the *hash* of the intended compact details using [`register`](./src/interfaces/ITheCompact.sol#L204) or combined deposit-and-register functions. It is also possible to deposit tokens on behalf of a sponsor and register a compact using only the deposited tokens without the sponsor's signature using the `depositAndRegisterFor` (or the batch and permit2 variants). See [Key Concepts: Registration](#registration).
 
 **3. (Optional) Transfer Resource Lock Ownership:**
     - Sponsors can transfer their ERC6909 tokens, provided they have authorization from the allocator.
@@ -377,13 +377,13 @@ Arbiters verify conditions and process claims. Claimants are the recipients.
 Relayers can perform certain interactions on behalf of sponsors and/or claimants.
 
 **1. Relaying Permit2 Interactions:**
-    - Submit user-signed Permit2 messages for deposits/registrations (e.g., [`depositERC20ViaPermit2`](./src/interfaces/ITheCompact.sol#L131), [`depositERC20AndRegisterViaPermit2`](./src/interfaces/ITheCompact.sol#L451)).
+    - Submit user-signed Permit2 messages for deposits/registrations (e.g., [`depositERC20ViaPermit2`](./src/interfaces/ITheCompact.sol#L131), [`depositERC20AndRegisterViaPermit2`](./src/interfaces/ITheCompact.sol#L451), or the batch variants). For the register variants, this role is called the `Activator` and the registration is authorized by the sponsor as part of the Permit2 witness data.
 
 **2. Relaying Registrations-for-Sponsor:**
     - Submit sponsor-signed registration details using `registerFor` functions (e.g., [`registerFor`](./src/interfaces/ITheCompact.sol#L229)).
 
 **3. Relaying Claims:**
-    - Submit authorized claims on behalf of a claimant using the standard `claim` functions.
+    - Submit authorized claims on behalf of a claimant using the standard `claim` functions. This would generally be performed by the arbiter of the claim being relayed.
 
 ### Allocators (Infrastructure)
 
@@ -416,7 +416,7 @@ The Compact provides several view functions defined in the [`ITheCompact`](./src
 -   [`DOMAIN_SEPARATOR`](./src/interfaces/ITheCompact.sol#L659): Returns the EIP-712 domain separator for the contract.
 -   [`name`](./src/interfaces/ITheCompact.sol#L665): Returns the contract name ("TheCompact").
 
-All standard ERC6909 ([EIP-6909](https://eips.ethereum.org/EIPS/eip-6909)) and ERC165 ([EIP-165](https://eips.ethereum.org/EIPS/eip-165)) functions are also supported.
+All standard ERC6909 ([EIP-6909](https://eips.ethereum.org/EIPS/eip-6909)) and ERC165 ([EIP-165](https://eips.ethereum.org/EIPS/eip-165)) functions are also supported, as well as [Extslod](./src/lib/Extsload.sol) to allow arbitrary sload/tload by slot. 
 
 ## Core Interfaces Overview
 
