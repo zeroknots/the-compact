@@ -52,7 +52,7 @@ contract MetadataFetchingTest is Setup {
 
         // Verify name returns the default ETH value
         string memory name = theCompact.name(id);
-        assertEq(name, "Compact Ether");
+        assertEq(name, "Compact Native Token");
     }
 
     function test_symbol_nativeToken() public {
@@ -112,7 +112,7 @@ contract MetadataFetchingTest is Setup {
 
         // Verify name returns the default value for tokens without metadata
         string memory name = theCompact.name(id);
-        assertEq(name, "Compact unknown token");
+        assertEq(name, "Compact Unknown Token");
     }
 
     function test_symbol_tokenWithoutMetadata() public {
