@@ -151,6 +151,11 @@ library MetadataLib {
         attributes = string.concat(attributes, "]}");
     }
 
+    /**
+     * @notice Internal view function for generating the description section of the token metadata.
+     * @param lock The lock containing token, allocator, reset period, and scope information.
+     * @return description The description section of the token metadata as a JSON string.
+     */
     function _getDescription(Lock memory lock) internal view returns (string memory description) {
         (string memory tokenAddress, string memory tokenName,,) = _getTokenDetails(lock);
         string memory allocatorName = _tryReadAllocatorName(lock.allocator);
@@ -175,6 +180,14 @@ library MetadataLib {
         );
     }
 
+    /**
+     * @notice Internal view function for retrieving token details.
+     * @param lock The lock containing the token address.
+     * @return tokenAddress The token's address as a checksummed hex string.
+     * @return tokenName The token's name or a default value if not available.
+     * @return tokenSymbol The token's symbol or a default value if not available.
+     * @return tokenDecimals The token's decimals as a string or a default value if not available.
+     */
     function _getTokenDetails(Lock memory lock)
         internal
         view
@@ -193,6 +206,8 @@ library MetadataLib {
 
     /**
      * @notice Internal view function to generate a dynamic SVG image for the token.
+     * @param lock The lock containing token, allocator, reset period, and scope information.
+     * @return A string containing the complete SVG image markup.
      */
     function _generateSvgImage(Lock memory lock) internal view returns (string memory) {
         return string.concat(
@@ -227,7 +242,9 @@ library MetadataLib {
     }
 
     /**
-     * @notice Returns the SVG definitions section
+     * @notice Returns the SVG definitions section with filters, gradients, and paths.
+     * @param lock The lock containing the token address used for color generation.
+     * @return A string containing the SVG definitions markup.
      */
     function _getSvgDefs(Lock memory lock) internal pure returns (string memory) {
         (string memory bgColor1, string memory bgColor2, string memory bgColor3) = _generateColors(lock.token);
@@ -314,7 +331,8 @@ library MetadataLib {
     }
 
     /**
-     * @notice Returns the SVG background section
+     * @notice Returns the SVG background section with gradient and filter effects.
+     * @return A string containing the SVG background markup.
      */
     function _getSvgBackground() internal pure returns (string memory) {
         return string.concat(
@@ -330,7 +348,8 @@ library MetadataLib {
     }
 
     /**
-     * @notice Returns the SVG border elements
+     * @notice Returns the SVG border elements that frame the token image.
+     * @return A string containing the SVG border markup.
      */
     function _getSvgBorder() internal pure returns (string memory) {
         return string.concat(
@@ -533,7 +552,7 @@ library MetadataLib {
     /**
      * @notice Try to read the name from the allocator contract.
      * @param allocatorAddress The address of the allocator.
-     * @return The name of the allocator or an empty string if not readable.
+     * @return The name of the allocator or "Unnamed Allocator" if not readable.
      */
     function _tryReadAllocatorName(address allocatorAddress) internal view returns (string memory) {
         string memory name = allocatorAddress.readName();
