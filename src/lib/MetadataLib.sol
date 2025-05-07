@@ -455,7 +455,7 @@ library MetadataLib {
         // Handshake Icon
         string memory iconSvg = string.concat(
             '<g style="transform:translate(420px, 50px)">',
-            '<text x="20px" y="28px" text-anchor="middle" font-size="64px" opacity="0.1">',
+            '<text x="20px" y="28px" text-anchor="middle" font-size="64px" opacity="0.4">',
             unicode"🤝",
             "</text>",
             "</g>"
