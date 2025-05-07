@@ -15,12 +15,18 @@ import { Base64 } from "solady/utils/Base64.sol";
  * ERC6909 metadata as well as metadata specific to various underlying tokens.
  */
 library MetadataLib {
-    using EfficiencyLib for *;
-    using IdLib for *;
+    using EfficiencyLib for Scope;
+    using EfficiencyLib for ResetPeriod;
+    using EfficiencyLib for address;
+    using EfficiencyLib for uint96;
+    using IdLib for address;
+    using IdLib for uint96;
     using LibString for address;
     using LibString for uint256;
     using MetadataReaderLib for address;
-    using MetadataLib for *;
+    using MetadataLib for address;
+    using MetadataLib for ResetPeriod;
+    using MetadataLib for Scope;
 
     struct Lock {
         address token;
