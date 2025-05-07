@@ -23,10 +23,12 @@ library MetadataLib {
     using IdLib for uint96;
     using LibString for address;
     using LibString for uint256;
+    using LibString for uint96;
     using MetadataReaderLib for address;
     using MetadataLib for address;
     using MetadataLib for ResetPeriod;
     using MetadataLib for Scope;
+    using MetadataLib for Lock;
 
     struct Lock {
         address token;
@@ -113,27 +115,37 @@ library MetadataLib {
         string memory resetPeriod = lock.resetPeriod.toString();
         string memory scope = lock.scope.toString();
         string memory allocatorName = _tryReadAllocatorName(lock.allocator);
-        string memory lockTagHex = LibString.toHexString(uint96(toLockTag(lock)));
+        string memory lockTagHex = uint96(lock.toLockTag()).toHexString();
 
         (string memory tokenAddress, string memory tokenName, string memory tokenSymbol, string memory tokenDecimals) =
             _getTokenDetails(lock);
 
         // Initialize the attributes string
-        attributes = "\"attributes\": [";
+        attributes = string.concat("\"attributes\": [", _makeAttribute("ID", id.toHexString(), false, true));
 
-        // Concatenate attributes step-by-step to avoid stack depth issues
-        attributes = string.concat(attributes, toAttributeString("ID", id.toHexString(), false, true));
-        attributes = string.concat(attributes, toAttributeString("Token Address", tokenAddress, false, true));
-        attributes = string.concat(attributes, toAttributeString("Token Name", tokenName, false, true));
-        attributes = string.concat(attributes, toAttributeString("Token Symbol", tokenSymbol, false, true));
-        attributes = string.concat(attributes, toAttributeString("Token Decimals", tokenDecimals, false, false));
-        attributes = string.concat(attributes, toAttributeString("Allocator Address", allocator, false, true));
-        attributes = string.concat(attributes, toAttributeString("Allocator Name", allocatorName, false, true));
-        attributes = string.concat(attributes, toAttributeString("Scope", scope, false, true));
-        attributes = string.concat(attributes, toAttributeString("Reset Period", resetPeriod, false, true));
-        attributes = string.concat(attributes, toAttributeString("Lock Tag", lockTagHex, false, true));
-        attributes =
-            string.concat(attributes, toAttributeString("Origin Chain", LibString.toString(block.chainid), true, true));
+        // Token details
+        {
+            attributes = string.concat(
+                attributes,
+                _makeAttribute("Token Address", tokenAddress, false, true),
+                _makeAttribute("Token Name", tokenName, false, true),
+                _makeAttribute("Token Symbol", tokenSymbol, false, true),
+                _makeAttribute("Token Decimals", tokenDecimals, false, false)
+            );
+        }
+
+        // Allocator & Lock details
+        {
+            attributes = string.concat(
+                attributes,
+                _makeAttribute("Allocator Address", allocator, false, true),
+                _makeAttribute("Allocator Name", allocatorName, false, true),
+                _makeAttribute("Scope", scope, false, true),
+                _makeAttribute("Reset Period", resetPeriod, false, true),
+                _makeAttribute("Lock Tag", lockTagHex, false, true),
+                _makeAttribute("Origin Chain", block.chainid.toString(), true, true)
+            );
+        }
 
         // Close the JSON array and object
         attributes = string.concat(attributes, "]}");
@@ -342,7 +354,7 @@ library MetadataLib {
             tokenAddress,
             middot,
             "Lock Tag ",
-            LibString.toHexString(uint96(toLockTag(lock)))
+            uint96(toLockTag(lock)).toHexString()
         );
         string memory allocator = string.concat(
             "The Compact v1",
@@ -391,7 +403,7 @@ library MetadataLib {
     function _getSvgTitleSection(Lock memory lock) internal view returns (string memory) {
         (,, string memory tokenSymbol,) = _getTokenDetails(lock);
         string memory scope = lock.scope.toString();
-        string memory lockId = LibString.toHexString(toId(lock));
+        string memory lockId = lock.toId().toHexString();
         return string.concat(
             "<g id=\"title\">",
             '<text y="60px" x="32px" fill="white" font-family="monospace" font-weight="100" font-size="32px" filter="url(#ts)">',
@@ -437,7 +449,7 @@ library MetadataLib {
             '<g style="transform:translate(32px, 140px)">',
             '<rect width="200px" height="64px" rx="8px" ry="8px" fill="rgba(0,0,0,0.6)" />',
             '<text x="12px" y="17px" font-family="monospace" font-size="12px" fill="rgba(255,255,255,0.6)">Locked Token: </text>',
-            _wrappableText(string.concat(tokenName, " (", tokenSymbol, ")"), "190px", "40px"),
+            _makeWrappable(string.concat(tokenName, " (", tokenSymbol, ")"), "190px", "40px"),
             "</g>",
             // Reset Period
             '<g style="transform:translate(32px, 212px)">',
@@ -452,7 +464,7 @@ library MetadataLib {
             '<g style="transform:translate(260px, 140px)">',
             '<rect width="210px" height="64px" rx="8px" ry="8px" fill="rgba(0,0,0,0.6)" />',
             '<text x="12px" y="17px" font-family="monospace" font-size="12px" fill="rgba(255,255,255,0.6)">Allocator: </text>',
-            _wrappableText(allocatorName, "190px", "40px"),
+            _makeWrappable(allocatorName, "190px", "40px"),
             "</g>",
             // Resource lock tag
             '<g style="transform:translate(260px, 212px)">',
@@ -475,13 +487,32 @@ library MetadataLib {
     }
 
     /**
+     * @notice Internal pure function for formatting a metadata attribute as a JSON string.
+     * @param trait      The trait name.
+     * @param value      The trait value.
+     * @param terminal   Whether this is the last attribute in the list.
+     * @param quoted     Whether the value should be quoted.
+     * @return attribute The formatted attribute string.
+     */
+    function _makeAttribute(string memory trait, string memory value, bool terminal, bool quoted)
+        internal
+        pure
+        returns (string memory attribute)
+    {
+        string memory maybeQuote = quoted ? '"' : "";
+        string memory terminator = terminal ? "" : ",";
+        attribute =
+            string.concat('{"trait_type": "', trait, '", "value": ', maybeQuote, value, maybeQuote, "}", terminator);
+    }
+
+    /**
      * @notice Wraps text in a foreignObject element to allow for text wrapping.
      * @param text The text to wrap.
      * @param width The width of the foreignObject.
      * @param height The height of the foreignObject.
      * @return The wrapped text.
      */
-    function _wrappableText(string memory text, string memory width, string memory height)
+    function _makeWrappable(string memory text, string memory width, string memory height)
         internal
         pure
         returns (string memory)
@@ -560,32 +591,20 @@ library MetadataLib {
     }
 
     /**
-     * @notice Internal pure function for formatting a metadata attribute as a JSON string.
-     * @param trait      The trait name.
-     * @param value      The trait value.
-     * @param terminal   Whether this is the last attribute in the list.
-     * @param quoted     Whether the value should be quoted.
-     * @return attribute The formatted attribute string.
+     * @notice Internal pure function for generating a lock tag from a lock.
+     * @param lock The lock.
+     * @return lockTag The lock tag.
      */
-    function toAttributeString(string memory trait, string memory value, bool terminal, bool quoted)
-        internal
-        pure
-        returns (string memory attribute)
-    {
-        string memory openQuote = quoted ? "\"" : "";
-        string memory closeQuote = quoted ? "\"" : "";
-        string memory terminator = terminal ? "" : ",";
-
-        return string.concat(
-            "{\"trait_type\": \"", trait, "\", \"value\": ", openQuote, value, closeQuote, "}", terminator
-        );
-    }
-
     function toLockTag(Lock memory lock) internal pure returns (bytes12) {
         uint96 allocatorId = lock.allocator.usingAllocatorId();
         return allocatorId.toLockTag(lock.scope, lock.resetPeriod);
     }
 
+    /**
+     * @notice Internal pure function for deriving a resource lock ID from lock details.
+     * @param lock The lock.
+     * @return id The ID.
+     */
     function toId(Lock memory lock) internal pure returns (uint256 id) {
         id = (
             (lock.scope.asUint256() << 255) | (lock.resetPeriod.asUint256() << 252)
