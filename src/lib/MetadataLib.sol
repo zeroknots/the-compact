@@ -102,6 +102,12 @@ library MetadataLib {
         uri = string.concat(name, description, image, attributes);
     }
 
+    /**
+     * @notice Internal view function for generating the attributes section of the token metadata.
+     * @param lock The lock.
+     * @param id The ERC6909 token identifier.
+     * @return attributes The attributes section of the token metadata.
+     */
     function _getAttributes(Lock memory lock, uint256 id) internal view returns (string memory attributes) {
         string memory allocator = lock.allocator.toHexStringChecksummed();
         string memory resetPeriod = lock.resetPeriod.toString();
