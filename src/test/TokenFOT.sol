@@ -8,8 +8,8 @@ contract TokenFOT is ERC20 {
     string private _symbol;
     uint8 private immutable _decimals;
     uint8 private immutable _fee;
-    constructor(string memory name_, string memory symbol_, uint8 decimals_, uint8 fee_)
-    {
+
+    constructor(string memory name_, string memory symbol_, uint8 decimals_, uint8 fee_) {
         _name = name_;
         _symbol = symbol_;
         _decimals = decimals_;
@@ -21,7 +21,7 @@ contract TokenFOT is ERC20 {
     }
 
     function _afterTokenTransfer(address from, address to, uint256) internal override {
-        if(from != address(0) && to != address(0)) {
+        if (from != address(0) && to != address(0)) {
             _burn(to, _fee);
         }
     }
@@ -40,5 +40,4 @@ contract TokenFOT is ERC20 {
     function decimals() public view override returns (uint8) {
         return _decimals;
     }
-    
 }

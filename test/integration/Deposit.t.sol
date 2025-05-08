@@ -284,7 +284,9 @@ contract DepositTest is Setup {
         assert(bytes(theCompact.tokenURI(id)).length > 0);
     }
 
-    function test_revert_InvalidDepositBalanceChange(uint8 fee_, uint8 failingAmount_, uint256 successfulAmount_) public {
+    function test_revert_InvalidDepositBalanceChange(uint8 fee_, uint8 failingAmount_, uint256 successfulAmount_)
+        public
+    {
         ResetPeriod resetPeriod = ResetPeriod.TenMinutes;
         Scope scope = Scope.Multichain;
         fee_ = uint8(bound(fee_, 2, type(uint8).max)); // fee must be at least 2, so failingAmount can be at least 1

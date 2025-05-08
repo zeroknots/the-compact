@@ -466,7 +466,9 @@ contract ClaimTest is Setup {
 
         // Execute claim
         vm.prank(arbiter);
-        vm.expectRevert(abi.encodeWithSelector(ITheCompact.InvalidAllocation.selector, alwaysDenyingAllocator), address(theCompact));
+        vm.expectRevert(
+            abi.encodeWithSelector(ITheCompact.InvalidAllocation.selector, alwaysDenyingAllocator), address(theCompact)
+        );
         theCompact.claim(claim);
 
         // Verify balances
@@ -556,7 +558,9 @@ contract ClaimTest is Setup {
 
         // Execute claim
         vm.prank(arbiter);
-        vm.expectRevert(abi.encodeWithSelector(AlwaysRevertingAllocator.AlwaysReverting.selector), address(alwaysRevertingAllocator));
+        vm.expectRevert(
+            abi.encodeWithSelector(AlwaysRevertingAllocator.AlwaysReverting.selector), address(alwaysRevertingAllocator)
+        );
         theCompact.claim(claim);
 
         // Verify balances
