@@ -5,7 +5,7 @@ import { ITheCompact } from "../../src/interfaces/ITheCompact.sol";
 
 import { ResetPeriod } from "../../src/types/ResetPeriod.sol";
 import { Scope } from "../../src/types/Scope.sol";
-import { TokenFOT } from "../../src/test/TokenFOT.sol";
+import { FeeOnTransferToken } from "../../src/test/FeeOnTransferToken.sol";
 
 import { Setup } from "./Setup.sol";
 
@@ -299,38 +299,38 @@ contract DepositTest is Setup {
         bytes12 lockTag =
             bytes12(bytes32((uint256(scope) << 255) | (uint256(resetPeriod) << 252) | (uint256(allocatorId) << 160)));
 
-        TokenFOT tokenFOT = new TokenFOT("Test", "TEST", 18, fee_);
-        uint256 id = uint256(bytes32(lockTag)) | uint256(uint160(address(tokenFOT)));
+        FeeOnTransferToken fotToken = new FeeOnTransferToken("Test", "TEST", 18, fee_);
+        uint256 id = uint256(bytes32(lockTag)) | uint256(uint160(address(fotToken)));
 
-        tokenFOT.mint(address(theCompact), fee_);
-        tokenFOT.mint(swapper, failingAmount_);
+        fotToken.mint(address(theCompact), fee_);
+        fotToken.mint(swapper, failingAmount_);
 
         vm.prank(swapper);
-        tokenFOT.approve(address(theCompact), type(uint256).max);
+        fotToken.approve(address(theCompact), type(uint256).max);
 
-        assertEq(tokenFOT.balanceOf(address(theCompact)), fee_);
-        assertEq(tokenFOT.balanceOf(swapper), failingAmount_);
+        assertEq(fotToken.balanceOf(address(theCompact)), fee_);
+        assertEq(fotToken.balanceOf(swapper), failingAmount_);
 
         vm.prank(swapper);
         vm.expectRevert(abi.encodeWithSelector(ITheCompact.InvalidDepositBalanceChange.selector), address(theCompact));
-        theCompact.depositERC20(address(tokenFOT), lockTag, failingAmount_, swapper);
+        theCompact.depositERC20(address(fotToken), lockTag, failingAmount_, swapper);
 
         // Check balances of ERC20
-        assertEq(tokenFOT.balanceOf(address(theCompact)), fee_);
-        assertEq(tokenFOT.balanceOf(swapper), failingAmount_);
+        assertEq(fotToken.balanceOf(address(theCompact)), fee_);
+        assertEq(fotToken.balanceOf(swapper), failingAmount_);
         // Check balances of ERC6909
         assertEq(theCompact.balanceOf(address(theCompact), id), 0);
         assertEq(theCompact.balanceOf(swapper, id), 0);
 
         // FOT token works if the fee is smaller or equal to the deposited amount
-        tokenFOT.mint(swapper, successfulAmount_ - failingAmount_);
+        fotToken.mint(swapper, successfulAmount_ - failingAmount_);
         vm.prank(swapper);
-        uint256 realId = theCompact.depositERC20(address(tokenFOT), lockTag, successfulAmount_, swapper);
+        uint256 realId = theCompact.depositERC20(address(fotToken), lockTag, successfulAmount_, swapper);
         assertEq(realId, id, "id mismatch");
 
         // Check balances of ERC20
-        assertEq(tokenFOT.balanceOf(address(theCompact)), successfulAmount_); // fee gets deducted from previous balance
-        assertEq(tokenFOT.balanceOf(swapper), 0);
+        assertEq(fotToken.balanceOf(address(theCompact)), successfulAmount_); // fee gets deducted from previous balance
+        assertEq(fotToken.balanceOf(swapper), 0);
         // Check balances of ERC6909
         assertEq(theCompact.balanceOf(swapper, id), successfulAmount_ - fee_);
     }

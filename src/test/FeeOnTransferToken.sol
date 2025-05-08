@@ -3,7 +3,7 @@ pragma solidity ^0.8.27;
 
 import { ERC20 } from "solady/tokens/ERC20.sol";
 
-contract TokenFOT is ERC20 {
+contract FeeOnTransferToken is ERC20 {
     string private _name;
     string private _symbol;
     uint8 private immutable _decimals;
