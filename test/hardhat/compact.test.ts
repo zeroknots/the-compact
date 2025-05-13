@@ -62,8 +62,6 @@ describe("Compact Protocol E2E", function () {
     };
   }
 
-  async function registerAllocator() {}
-
   it("should deploy the protocol", async function () {
     const { compactContract } = await loadFixture(deployCompactFixture);
     expect(await compactContract.read.name()).to.equal("The Compact");
